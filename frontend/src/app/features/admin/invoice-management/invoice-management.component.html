@@ -1,0 +1,124 @@
+<div class="card p-4 m-3 shadow-sm border-0 bg-light-blue">
+  <h2 class="mb-2 text-dark fw-bold">{{ 'INVOICE_MANAGEMENT.TITLE' | translate }}</h2>
+  <p class="text-muted mb-4">{{ 'INVOICE_MANAGEMENT.SUBTITLE' | translate }}</p>
+
+  <!-- Table -->
+  <p-table [value]="invoices" [paginator]="true" [rows]="10" styleClass="p-datatable-striped p-datatable-gridlines bg-white rounded shadow-sm">
+    <ng-template pTemplate="header">
+      <tr>
+        <th class="bg-light text-dark fw-bold">{{ 'INVOICE_MANAGEMENT.COL_ID' | translate }}</th>
+        <th class="bg-light text-dark fw-bold">{{ 'INVOICE_MANAGEMENT.COL_CUSTOMER' | translate }}</th>
+        <th class="bg-light text-dark fw-bold">{{ 'INVOICE_MANAGEMENT.COL_DATE' | translate }}</th>
+        <th class="bg-light text-dark fw-bold">{{ 'INVOICE_MANAGEMENT.COL_AMOUNT' | translate }}</th>
+        <th class="bg-light text-dark fw-bold">{{ 'INVOICE_MANAGEMENT.COL_STATUS' | translate }}</th>
+        <th class="bg-light text-dark fw-bold text-center">{{ 'COMMON.ACTIONS' | translate }}</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-inv>
+      <tr>
+        <td class="text-dark fw-medium">{{inv.invoiceCode}}</td>
+        <td>{{inv.customerName}}</td>
+        <td>{{inv.issueDate}}</td>
+        <td class="fw-bold">{{inv.totalAmount}}</td>
+        <td>
+          <span class="badge rounded-pill" 
+                [ngClass]="inv.status === 'Paid' ? 'bg-success-soft text-success-dark' : 'bg-warning-soft text-warning-dark'"
+                style="padding: 0.5em 1em;">
+            {{inv.status}}
+          </span>
+        </td>
+        <td class="text-center">
+          <button pButton [label]="'INVOICE_MANAGEMENT.PREVIEW_BTN' | translate" 
+                  class="p-button-outlined p-button-sm px-4 rounded-pill"
+                  (click)="showPreview(inv)">
+          </button>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
+
+<!-- Preview Modal -->
+<p-dialog [(visible)]="displayModal" [modal]="true" [style]="{width: '600px'}" [draggable]="false" [resizable]="false" styleClass="invoice-dialog">
+  
+  <div id="invoice-pdf-content" class="p-4 bg-white">
+    <div class="d-flex justify-content-between align-items-center border-bottom pb-4 mb-4">
+      <h3 class="fw-bold m-0 text-dark">INVOICE - #{{selectedInvoice?.invoiceCode}}</h3>
+      <div class="text-end text-primary fw-bold fs-4">
+        Booking.com<br><small class="text-dark fw-normal fs-6">Hotel</small>
+      </div>
+    </div>
+
+    <div class="row mb-5">
+      <div class="col-6">
+        <h6 class="fw-bold text-dark">{{ 'INVOICE_MANAGEMENT.BILL_TO' | translate }}:</h6>
+        <div>{{selectedInvoice?.customerName}}</div>
+        <div>John Esnman</div>
+        <div>1233 Marine Rive</div>
+        <div>Booking.com, 573038</div>
+      </div>
+      <div class="col-6 text-end">
+        <h6 class="fw-bold text-dark">{{ 'INVOICE_MANAGEMENT.INVOICE_DETAILS' | translate }}:</h6>
+        <div>Date: {{selectedInvoice?.issueDate}}</div>
+        <div>Duration: 2024-06-16</div>
+        <div>Sector: 5023050</div>
+        <div>Customers booking.com.com</div>
+      </div>
+    </div>
+
+    <h6 class="fw-bold text-dark mb-3">{{ 'INVOICE_MANAGEMENT.ITEMIZED_CHARGES' | translate }}</h6>
+    <table class="table table-borderless table-sm border-bottom mb-4">
+      <thead>
+        <tr class="border-bottom">
+          <th class="text-dark fw-bold">Description</th>
+          <th class="text-dark fw-bold text-end">Date</th>
+          <th class="text-dark fw-bold text-end">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Room Charge</td>
+          <td class="text-end">Apr 1, 2024</td>
+          <td class="text-end">$450.00</td>
+        </tr>
+        <tr>
+          <td>Taxes</td>
+          <td class="text-end">Apr 1, 2024</td>
+          <td class="text-end">$30.00</td>
+        </tr>
+        <tr>
+          <td>Services</td>
+          <td class="text-end">May 11, 2024</td>
+          <td class="text-end">$89.75</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="d-flex justify-content-end mb-5">
+      <div class="d-flex gap-4">
+        <span class="fw-bold text-dark fs-5">{{ 'INVOICE_MANAGEMENT.TOTAL_DUE' | translate }}:</span>
+        <span class="fw-bold text-dark fs-5">{{selectedInvoice?.totalAmount}}</span>
+      </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-4 p-3 bg-light rounded">
+      <img src="assets/images/qr-mock.png" alt="QR Code" style="width: 150px; height: 150px;">
+      <div>
+        <h6 class="fw-bold text-dark">{{ 'INVOICE_MANAGEMENT.PAYMENT_VERIFICATION' | translate }}</h6>
+        <p class="small text-muted mb-2">Scan to pay via Booking.com Secure Payment.</p>
+        <p class="small text-muted m-0">To-sinternationality, click your confirmation via Booking.com Secure Payment.</p>
+      </div>
+    </div>
+
+    <div class="text-center mt-4 pt-4 border-top">
+      <p class="small text-muted">Scan to pay via Booking.com Secure Payment and nevr airport It information. <a href="#">Learn more</a> about Foesnice omnswewatten system.</p>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="d-flex justify-content-end gap-2 p-2 bg-light border-top">
+      <button pButton [label]="'INVOICE_MANAGEMENT.DOWNLOAD_PDF' | translate" icon="pi pi-download" class="p-button-primary custom-blue-btn" (click)="downloadPDF()"></button>
+      <button pButton label="Close" class="p-button-outlined p-button-secondary bg-white text-dark border" (click)="displayModal=false"></button>
+    </div>
+  </ng-template>
+</p-dialog>

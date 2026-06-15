@@ -1,0 +1,23 @@
+.bg-light-blue {
+  background-color: #f8fafc !important; /* Very subtle blue-gray matching template background */
+}
+
+.invoice-dialog .p-dialog-header {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+#invoice-pdf-content {
+  color: #1a1a1a;
+  font-family: Arial, sans-serif;
+}
+
+.custom-blue-btn {
+  background-color: #0071c2 !important; /* Booking.com blue */
+  border-color: #0071c2 !important;
+}
+
+.custom-blue-btn:hover {
+  background-color: #005999 !important;
+  border-color: #005999 !important;
+}

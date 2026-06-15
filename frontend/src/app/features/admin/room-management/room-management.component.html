@@ -1,0 +1,61 @@
+<div class="card p-4 m-3 shadow-sm border-0">
+  <h2 class="mb-4 text-dark fw-bold">{{ 'ROOM_MANAGEMENT.TITLE' | translate }}</h2>
+
+  <!-- Toolbar -->
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+    <div class="d-flex gap-3 flex-grow-1">
+      <span class="p-input-icon-left w-100" style="max-width: 300px;">
+        <i class="pi pi-search"></i>
+        <input pInputText type="text" [placeholder]="'ROOM_MANAGEMENT.SEARCH_PLACEHOLDER' | translate" class="w-100" />
+      </span>
+      <p-select [options]="floors" [placeholder]="'ROOM_MANAGEMENT.ALL_FLOORS' | translate" styleClass="w-100" [style]="{'min-width': '180px'}"></p-select>
+      <p-select [options]="statuses" [placeholder]="'ROOM_MANAGEMENT.ALL_STATUSES' | translate" styleClass="w-100" [style]="{'min-width': '180px'}"></p-select>
+    </div>
+
+    <button pButton [label]="'ROOM_MANAGEMENT.ADD_ROOM' | translate" icon="pi pi-plus" class="p-button-primary custom-blue-btn"></button>
+  </div>
+
+  <!-- Table -->
+  <p-table [value]="rooms" [paginator]="true" [rows]="10" [showCurrentPageReport]="true"
+           [currentPageReportTemplate]="'ROOM_MANAGEMENT.PAGINATION_REPORT' | translate"
+           styleClass="p-datatable-striped p-datatable-gridlines border-top border-start border-end">
+    <ng-template pTemplate="header">
+      <tr>
+        <th class="bg-light text-dark fw-bold border-bottom">{{ 'ROOM_MANAGEMENT.COL_ROOM_NUMBER' | translate }}</th>
+        <th class="bg-light text-dark fw-bold border-bottom">{{ 'ROOM_MANAGEMENT.COL_ROOM_TYPE' | translate }}</th>
+        <th class="bg-light text-dark fw-bold border-bottom">{{ 'ROOM_MANAGEMENT.COL_FLOOR' | translate }}</th>
+        <th class="bg-light text-dark fw-bold border-bottom">{{ 'ROOM_MANAGEMENT.COL_STATUS' | translate }}</th>
+        <th class="bg-light text-dark fw-bold border-bottom">{{ 'ROOM_MANAGEMENT.COL_PRICE' | translate }}</th>
+        <th class="bg-light text-dark fw-bold border-bottom text-center">{{ 'COMMON.ACTIONS' | translate }}</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-room>
+      <tr>
+        <td class="text-dark">{{room.roomNumber}}</td>
+        <td>
+          <span class="badge rounded-pill" 
+                [ngClass]="room.roomType === 'Deluxe Suite' ? 'bg-primary-soft text-primary-dark' : 'bg-purple-soft text-purple-dark'"
+                style="font-size: 0.85rem; padding: 0.5em 0.8em;">
+            {{room.roomType}}
+          </span>
+        </td>
+        <td class="text-dark">{{room.floor}}</td>
+        <td>
+          <span class="badge rounded-pill" 
+                [ngClass]="{'bg-success': room.status === 'Active', 'bg-warning text-dark': room.status === 'Cleaning', 'bg-orange text-white': room.status === 'Maintenance'}"
+                style="font-size: 0.85rem; padding: 0.5em 0.8em;">
+            {{room.status}}
+          </span>
+        </td>
+        <td class="text-dark">{{room.price}}</td>
+        <td class="text-center">
+          <div class="d-flex gap-2 justify-content-center">
+            <button pButton icon="pi pi-pencil" class="p-button-rounded p-button-outlined p-button-secondary p-button-sm action-btn"></button>
+            <button pButton icon="pi pi-trash" class="p-button-rounded p-button-outlined p-button-danger p-button-sm action-btn text-danger"></button>
+            <button pButton icon="pi pi-eye" class="p-button-rounded p-button-outlined p-button-secondary p-button-sm action-btn"></button>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>

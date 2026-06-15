@@ -1,0 +1,88 @@
+.login-container {
+  height: 100vh;
+  width: 100%;
+}
+
+.login-left {
+  flex: 1;
+  background: linear-gradient(rgba(0, 48, 135, 0.6), rgba(0, 48, 135, 0.8)), url('https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80') center/cover;
+  padding: 5rem;
+}
+
+.brand-text {
+  max-width: 600px;
+}
+
+.login-right {
+  flex: 1;
+  background-color: #ffffff;
+  padding: 4rem;
+}
+
+.login-card {
+  max-width: 450px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: center;
+}
+
+.text-primary-dark {
+  color: #0b2d6a; /* Matches the dark blue in the template */
+}
+
+.custom-btn {
+  background-color: #0b2d6a !important;
+  border-color: #0b2d6a !important;
+  height: 3.5rem;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+.custom-btn:hover {
+  background-color: #082150 !important;
+  border-color: #082150 !important;
+}
+
+.form-control-lg {
+  border-radius: 8px;
+  height: 3.5rem;
+  border: 1px solid #ced4da;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.divider span {
+  padding: 0 1rem;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.social-btn {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-color: #ced4da !important;
+  color: #6c757d !important;
+}
+
+.social-btn:hover {
+  background-color: #f8f9fa !important;
+}
+
+.social-btn i {
+  font-size: 1.5rem;
+}

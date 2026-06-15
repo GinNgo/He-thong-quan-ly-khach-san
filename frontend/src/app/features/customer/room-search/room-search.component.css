@@ -1,0 +1,42 @@
+.search-header {
+  background-color: #0b2d6a !important; /* Booking.com dark blue style */
+}
+
+.custom-blue-btn {
+  background-color: #0b2d6a !important;
+  border-color: #0b2d6a !important;
+  font-weight: 500;
+  border-radius: 6px;
+}
+
+.custom-blue-btn:hover {
+  background-color: #082150 !important;
+}
+
+.room-card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.room-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+}
+
+.p-slider {
+  background: #e9ecef;
+}
+
+.p-slider .p-slider-range {
+  background: #0b2d6a;
+}
+
+.p-slider .p-slider-handle {
+  border: 2px solid #0b2d6a;
+}
+
+.filter-section h6 {
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: 0.5rem;
+}

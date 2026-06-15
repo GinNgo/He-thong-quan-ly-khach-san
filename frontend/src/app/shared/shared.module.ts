@@ -1,0 +1,54 @@
+import { NgModule } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { TranslatePipe, TranslateDirective } from '@ngx-translate/core';
+
+// PrimeNG
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { TableModule } from 'primeng/table';
+import { DialogModule } from 'primeng/dialog';
+import { TabsModule } from 'primeng/tabs';
+import { SliderModule } from 'primeng/slider';
+import { SelectModule } from 'primeng/select';
+import { CheckboxModule } from 'primeng/checkbox';
+import { PasswordModule } from 'primeng/password';
+import { CardModule } from 'primeng/card';
+
+@NgModule({
+  imports: [
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
+    TranslatePipe,
+    TranslateDirective,
+    ButtonModule,
+    InputTextModule,
+    TableModule,
+    DialogModule,
+    TabsModule,
+    SliderModule,
+    SelectModule,
+    CheckboxModule,
+    PasswordModule,
+    CardModule
+  ],
+  exports: [
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
+    TranslatePipe,
+    TranslateDirective,
+    ButtonModule,
+    InputTextModule,
+    TableModule,
+    DialogModule,
+    TabsModule,
+    SliderModule,
+    SelectModule,
+    CheckboxModule,
+    PasswordModule,
+    CardModule
+  ]
+})
+export class SharedModule { }

@@ -1,0 +1,94 @@
+<div class="room-search-container bg-light">
+  
+  <!-- Booking.com Style Header -->
+  <div class="search-header bg-primary text-white p-3 shadow-sm d-flex justify-content-center align-items-center gap-2">
+    <div class="d-flex align-items-center me-3">
+      <h3 class="m-0 fw-bold">Booking.com</h3>
+    </div>
+    
+    <span class="p-input-icon-left bg-white rounded flex-grow-1" style="max-width: 300px;">
+      <i class="pi pi-map-marker"></i>
+      <input type="text" pInputText [placeholder]="'ROOM_SEARCH.DESTINATION' | translate" class="w-100 border-0 shadow-none"/>
+    </span>
+
+    <span class="p-input-icon-left bg-white rounded flex-grow-1" style="max-width: 300px;">
+      <i class="pi pi-calendar"></i>
+      <input type="text" pInputText [placeholder]="'ROOM_SEARCH.CHECKIN_CHECKOUT' | translate" class="w-100 border-0 shadow-none"/>
+    </span>
+
+    <span class="p-input-icon-left bg-white rounded" style="width: 150px;">
+      <i class="pi pi-users"></i>
+      <input type="text" pInputText [placeholder]="'ROOM_SEARCH.GUESTS' | translate" class="w-100 border-0 shadow-none"/>
+    </span>
+
+    <button pButton [label]="'COMMON.SEARCH' | translate" class="p-button-warning fw-bold text-dark px-4 border-0"></button>
+  </div>
+
+  <!-- Main Content -->
+  <div class="container-fluid mt-4 px-4 pb-5">
+    <div class="row">
+      
+      <!-- Left Sidebar: Filters -->
+      <div class="col-md-3 col-lg-2">
+        <h5 class="fw-bold mb-3">{{ 'ROOM_SEARCH.FILTER_RESULTS' | translate }}</h5>
+        
+        <div class="filter-section mb-4">
+          <h6 class="fw-bold mb-3">{{ 'ROOM_SEARCH.PRICE_RANGE' | translate }}</h6>
+          <p-slider [(ngModel)]="priceRange" [range]="true" [min]="0" [max]="2000" class="mb-3"></p-slider>
+          <div class="d-flex justify-content-between align-items-center">
+            <input pInputText type="number" [(ngModel)]="priceRange[0]" class="form-control form-control-sm text-center" style="width: 45%;">
+            <span>-</span>
+            <input pInputText type="number" [(ngModel)]="priceRange[1]" class="form-control form-control-sm text-center" style="width: 45%;">
+          </div>
+        </div>
+
+        <div class="filter-section mb-4">
+          <h6 class="fw-bold mb-3">{{ 'ROOM_SEARCH.ROOM_TYPE' | translate }}</h6>
+          <div class="form-check mb-2" *ngFor="let type of roomTypes">
+            <input class="form-check-input" type="checkbox" [id]="type">
+            <label class="form-check-label" [for]="type">{{type}}</label>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <h6 class="fw-bold mb-3">{{ 'ROOM_SEARCH.AMENITIES' | translate }} <i class="pi pi-chevron-up float-end small mt-1"></i></h6>
+          <div class="form-check mb-2" *ngFor="let am of amenities">
+            <input class="form-check-input" type="checkbox" [id]="am">
+            <label class="form-check-label" [for]="am">{{am | translate}}</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Side: Room Listings -->
+      <div class="col-md-9 col-lg-10">
+        <div class="row g-4">
+          
+          <div class="col-md-6 col-xl-4" *ngFor="let room of searchResults">
+            <div class="card h-100 shadow-sm border-0 room-card">
+              <img [src]="room.image" class="card-img-top" alt="Room Image" style="height: 250px; object-fit: cover;">
+              <div class="card-body d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <h5 class="card-title fw-bold m-0">{{room.title}}</h5>
+                  <span class="badge bg-warning text-dark"><i class="pi pi-star-fill text-dark small me-1"></i> {{room.rating}}/5</span>
+                </div>
+                
+                <div class="d-flex gap-3 text-muted small mb-3 flex-wrap">
+                  <span *ngIf="room.wifi"><i class="pi pi-wifi me-1"></i> {{ 'ROOM_SEARCH.WIFI' | translate }}</span>
+                  <span *ngIf="room.ac"><i class="pi pi-snowflake me-1"></i> {{ 'ROOM_SEARCH.AC' | translate }}</span>
+                  <span *ngIf="room.breakfast"><i class="pi pi-info-circle me-1"></i> {{ 'ROOM_SEARCH.BREAKFAST' | translate }}</span>
+                </div>
+
+                <div class="mt-auto">
+                  <h4 class="fw-bold mb-3">{{room.price}} <span class="fs-6 fw-normal text-muted">{{ 'ROOM_SEARCH.PER_NIGHT' | translate }}</span></h4>
+                  <button pButton [label]="'COMMON.VIEW_DETAILS' | translate" class="p-button-primary w-100 custom-blue-btn"></button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

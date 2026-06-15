@@ -1,0 +1,134 @@
+<div class="ai-container shadow-lg rounded-4 overflow-hidden d-flex flex-column m-4">
+  
+  <!-- Header -->
+  <div class="ai-header d-flex justify-content-between align-items-center p-3 text-white">
+    <div class="d-flex align-items-center gap-2">
+      <span class="fs-4 fw-bold text-gold">A</span>
+      <div>
+        <h5 class="m-0 fw-bold text-gold">AURUM</h5>
+        <small class="text-gold" style="font-size: 0.7rem; letter-spacing: 1px;">LUXURY HOTELS</small>
+      </div>
+    </div>
+    
+    <h3 class="m-0 fw-bold">{{ 'AI_ASSISTANT.TITLE' | translate }}</h3>
+    
+    <div class="user-icon bg-gold text-dark d-flex justify-content-center align-items-center rounded-circle" style="width: 40px; height: 40px;">
+      <i class="pi pi-user fs-5"></i>
+    </div>
+  </div>
+
+  <!-- Main Content 3 Columns -->
+  <div class="row flex-grow-1 m-0 p-3 gap-3 bg-light" style="min-height: 600px;">
+    
+    <!-- Left Sidebar: FAQs -->
+    <div class="col-lg-3 ai-sidebar rounded-4 p-3 text-white d-flex flex-column gap-2">
+      <h5 class="mb-4">{{ 'AI_ASSISTANT.FAQ' | translate }}</h5>
+      
+      <div class="faq-item d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 pt-2">
+        <span>{{ 'AI_ASSISTANT.BOOKING_MODS' | translate }}</span>
+        <i class="pi pi-chevron-down text-muted small"></i>
+      </div>
+      <div class="faq-item d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 pt-2">
+        <span>{{ 'AI_ASSISTANT.LOYALTY_BENEFITS' | translate }}</span>
+        <i class="pi pi-chevron-down text-muted small"></i>
+      </div>
+      <div class="faq-item d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 pt-2">
+        <span>{{ 'AI_ASSISTANT.IN_ROOM_SERVICES' | translate }}</span>
+        <i class="pi pi-chevron-down text-muted small"></i>
+      </div>
+      <!-- Duplicate items as per template -->
+      <div class="faq-item d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 pt-2">
+        <span>{{ 'AI_ASSISTANT.BOOKING_MODS' | translate }}</span>
+        <i class="pi pi-chevron-down text-muted small"></i>
+      </div>
+      <div class="faq-item d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 pt-2">
+        <span>{{ 'AI_ASSISTANT.SPA_SERVICES' | translate }}</span>
+        <i class="pi pi-chevron-down text-muted small"></i>
+      </div>
+    </div>
+
+    <!-- Center: Chat Window -->
+    <div class="col bg-white rounded-4 shadow-sm d-flex flex-column p-0">
+      <div class="chat-header p-3 border-bottom d-flex align-items-center gap-3">
+        <div class="bot-avatar bg-dark text-white rounded-circle d-flex justify-content-center align-items-center" style="width: 40px; height: 40px;">
+          <i class="pi pi-android"></i>
+        </div>
+        <h5 class="m-0 fw-bold">{{ 'AI_ASSISTANT.BOT_NAME' | translate }}</h5>
+      </div>
+
+      <!-- Chat Messages -->
+      <div class="chat-messages p-4 flex-grow-1 overflow-auto d-flex flex-column gap-4" style="background: url('assets/images/wave-bg.png') no-repeat bottom right; background-size: cover;">
+        
+        <!-- Bot Message -->
+        <div class="d-flex gap-3 max-w-75">
+          <div class="bot-avatar bg-dark text-white rounded-circle d-flex justify-content-center align-items-center flex-shrink-0" style="width: 40px; height: 40px;">
+            <i class="pi pi-android"></i>
+          </div>
+          <div>
+            <div class="text-muted small mb-1">{{ 'AI_ASSISTANT.BOT_NAME' | translate }}</div>
+            <div class="bg-light p-3 rounded-3 shadow-sm border text-dark">
+              Welcome back, Mr. Davis. Based on your recent stays, here are some Smart Recommendations for your upcoming trip to New York.
+            </div>
+
+            <!-- Rich Cards inside Bot Message -->
+            <div class="mt-3 d-flex flex-column gap-2">
+              <div class="card d-flex flex-row p-2 align-items-center gap-3 shadow-sm border-0">
+                <img src="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=100&h=60&fit=crop" class="rounded" alt="Room">
+                <div class="fw-bold small">The Ritz-Carlton, Central Park - Deluxe Park View Suite with 24-hour butler service</div>
+              </div>
+              <div class="card d-flex flex-row p-2 align-items-center gap-3 shadow-sm border-0">
+                <img src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=100&h=60&fit=crop" class="rounded" alt="Dining">
+                <div class="fw-bold small">Private Dining Experience at Le Bernardin</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Chat Input -->
+      <div class="chat-input-area p-3 border-top">
+        <div class="input-group bg-white rounded-3 border shadow-sm p-1 d-flex align-items-center">
+          <input type="text" class="form-control border-0 shadow-none bg-transparent" [placeholder]="'AI_ASSISTANT.TYPE_MESSAGE' | translate">
+          <button class="btn bg-gold text-white rounded-3 px-3"><i class="pi pi-send"></i></button>
+        </div>
+        <div class="d-flex gap-3 mt-2 ms-2 text-muted">
+          <i class="pi pi-microphone cursor-pointer hover-dark"></i>
+          <i class="pi pi-paperclip cursor-pointer hover-dark"></i>
+          <i class="pi pi-calendar cursor-pointer hover-dark"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Sidebar: Updates -->
+    <div class="col-lg-3 ai-sidebar rounded-4 p-4 text-white d-flex flex-column gap-4">
+      <h5 class="mb-2">{{ 'AI_ASSISTANT.TRAVEL_UPDATES' | translate }}</h5>
+      
+      <div class="d-flex gap-3 align-items-start">
+        <i class="pi pi-send text-gold mt-1"></i>
+        <div>
+          <div class="fw-bold">New York (JFK)</div>
+          <div class="small text-muted">Status: <span class="text-success">On Time</span></div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-3 align-items-start">
+        <i class="pi pi-cloud text-gold mt-1"></i>
+        <div>
+          <div class="fw-bold">Local Weather:</div>
+          <div class="small text-muted">68°F, Partly Cloudy</div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-3 align-items-start">
+        <i class="pi pi-car text-gold mt-1"></i>
+        <div>
+          <div class="fw-bold">Airport Shuttle:</div>
+          <div class="small text-muted">Next departure in 15 mins</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>

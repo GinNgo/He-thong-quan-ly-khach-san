@@ -1,0 +1,50 @@
+<div class="d-flex justify-content-center align-items-center bg-light" style="min-height: 100vh;">
+  <p-card header="Đăng nhập Hệ thống" [style]="{ width: '400px' }" styleClass="shadow-sm">
+    <ng-template pTemplate="subtitle">
+      Vui lòng điền thông tin để đăng nhập.
+    </ng-template>
+
+    <div *ngIf="errorMessage" class="alert alert-danger p-2 mb-3">
+      {{ errorMessage }}
+    </div>
+
+    <form (ngSubmit)="onSubmit()" #loginForm="ngForm">
+      <div class="mb-3">
+        <label for="username" class="form-label fw-bold">Tài khoản</label>
+        <input 
+          id="username" 
+          type="text" 
+          pInputText 
+          [(ngModel)]="loginObj.username" 
+          name="username" 
+          class="w-100" 
+          required 
+          autofocus 
+        />
+      </div>
+
+      <div class="mb-4">
+        <label for="password" class="form-label fw-bold">Mật khẩu</label>
+        <p-password 
+          id="password" 
+          [(ngModel)]="loginObj.password" 
+          name="password" 
+          [toggleMask]="true" 
+          [feedback]="false"
+          styleClass="w-100"
+          inputStyleClass="w-100"
+          [required]="true">
+        </p-password>
+      </div>
+
+      <div class="d-grid gap-2">
+        <p-button 
+          label="Đăng nhập" 
+          type="submit" 
+          [loading]="isLoading" 
+          styleClass="w-100">
+        </p-button>
+      </div>
+    </form>
+  </p-card>
+</div>

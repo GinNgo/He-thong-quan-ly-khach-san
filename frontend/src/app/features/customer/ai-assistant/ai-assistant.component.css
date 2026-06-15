@@ -1,0 +1,49 @@
+.ai-container {
+  background-color: #0f172a; /* Dark navy from template */
+}
+
+.ai-header {
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.text-gold {
+  color: #d4af37 !important;
+}
+
+.bg-gold {
+  background-color: #d4af37 !important;
+}
+
+.ai-sidebar {
+  background-color: #0f172a;
+}
+
+.faq-item {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.faq-item:hover {
+  color: #d4af37;
+}
+
+.faq-item:hover i {
+  color: #d4af37 !important;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.hover-dark:hover {
+  color: #0f172a !important;
+}
+
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 10px;
+}
