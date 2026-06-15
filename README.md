@@ -34,20 +34,29 @@ Dự án Đồ án xây dựng Hệ thống Quản lý Khách sạn toàn diện
 ## Hướng Dẫn Cài Đặt (Local Development)
 
 ### Yêu cầu hệ thống:
-1. **Java Development Kit (JDK) 21**.
+1. **Java Development Kit (JDK) 21**. (Bắt buộc thiết lập biến môi trường `JAVA_HOME`).
 2. **Node.js (v18+)** và **npm**.
 3. **Microsoft SQL Server**.
 
-### 1. Cấu hình Cơ sở dữ liệu (Database)
-- Đảm bảo SQL Server đang chạy và **TCP/IP Port 1433** đã được bật trong *SQL Server Configuration Manager*.
-- Tạo một database mới tên là `HotelDB` (Hoặc đổi tên trong file cấu hình).
-- Đăng nhập mặc định cho Backend: `sa` / `HotelAdmin@2026!`. (Sửa trong `/backend/src/main/resources/application.yml` nếu cần).
+### 1. Cấu hình Cơ sở dữ liệu (Database) & Biến môi trường
+- Đảm bảo SQL Server đang chạy và **TCP/IP Port 1433** đã được bật trong *SQL Server Configuration Manager* (Vào SQL Server Network Configuration -> Protocols cho SQLEXPRESS -> Chuột phải TCP/IP chọn Enable, sau đó restart lại service SQL Server).
+- Tạo một database mới tên là `HotelDB` trong SQL Server.
+- Mở file `backend/src/main/resources/application.yml` và cấu hình lại thông tin đăng nhập SQL Server của máy tính ở nhà:
+  ```yaml
+  spring:
+    datasource:
+      url: jdbc:sqlserver://localhost:1433;databaseName=HotelDB;encrypt=true;trustServerCertificate=true
+      username: sa             # Thay bằng username SQL Server ở nhà của bạn
+      password: HotelAdmin@2026! # Thay bằng mật khẩu SQL Server ở nhà của bạn
+  ```
 
 ### 2. Chạy Backend
 Mở Terminal/PowerShell tại thư mục root của dự án:
 ```bash
 cd backend
-./run.ps1
+./run.ps1 # Hoặc ./run.bat nếu dùng CMD
+# Lưu ý: Nếu ở nhà bạn cài Java 21 ở thư mục khác, hãy mở file run.ps1/run.bat và sửa lại đường dẫn JAVA_HOME cho đúng với máy tính ở nhà, hoặc xóa dòng set JAVA_HOME đi để máy tự dùng biến môi trường toàn cục.
+
 # Backend sẽ khởi chạy tại http://localhost:8080
 # Xem danh sách API tại: http://localhost:8080/swagger-ui.html
 ```
