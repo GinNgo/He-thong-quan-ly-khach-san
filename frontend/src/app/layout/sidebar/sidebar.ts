@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { PermissionService, FunctionCode } from '../../core/services/permission.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -8,7 +9,6 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
   styleUrl: './sidebar.css',
 })
 export class Sidebar {
-  logout() {
-    // Implement logout logic
-  }
+  permissionService = inject(PermissionService);
+  FunctionCode = FunctionCode;
 }

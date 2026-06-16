@@ -1,0 +1,14 @@
+.sidebar-link {
+  transition: all 0.2s ease-in-out;
+}
+
+.sidebar-link:hover {
+  background-color: var(--hotel-secondary-light);
+  color: var(--hotel-gold) !important;
+}
+
+.sidebar-link.active {
+  background-color: var(--hotel-primary);
+  color: #fff !important;
+  font-weight: 600;
+}

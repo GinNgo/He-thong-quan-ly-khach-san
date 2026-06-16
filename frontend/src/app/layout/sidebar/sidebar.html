@@ -1,52 +1,50 @@
-<div class="d-flex flex-column flex-shrink-0 p-3 text-white bg-dark" style="width: 250px; min-height: 100vh;">
-  <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
-    <i class="pi pi-building fs-3 me-2"></i>
-    <span class="fs-4">Hotel Admin</span>
+<div class="d-flex flex-column flex-shrink-0 p-3" style="width: 250px; min-height: 100vh; background-color: var(--hotel-secondary); color: #fff;">
+  <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none px-2">
+    <i class="pi pi-building fs-3 me-3" style="color: var(--hotel-gold);"></i>
+    <span class="fs-4 fw-bold">Hotel Admin</span>
   </a>
-  <hr>
-  <ul class="nav nav-pills flex-column mb-auto">
-    <li class="nav-item">
-      <a routerLink="/admin/dashboard" routerLinkActive="active" class="nav-link text-white" aria-current="page">
-        <i class="pi pi-home me-2"></i>
-        Dashboard
-      </a>
-    </li>
-    <li>
-      <a routerLink="/admin/rooms" routerLinkActive="active" class="nav-link text-white">
-        <i class="pi pi-box me-2"></i>
-        Quản lý Phòng
-      </a>
-    </li>
-    <li>
-      <a routerLink="/admin/reservations" routerLinkActive="active" class="nav-link text-white">
-        <i class="pi pi-calendar me-2"></i>
-        Đặt phòng
-      </a>
-    </li>
-    <li>
-      <a routerLink="/admin/users" routerLinkActive="active" class="nav-link text-white">
-        <i class="pi pi-users me-2"></i>
-        Người dùng
-      </a>
-    </li>
-    <li>
-      <a routerLink="/admin/invoices" routerLinkActive="active" class="nav-link text-white">
-        <i class="pi pi-file-o me-2"></i>
-        Hóa đơn
-      </a>
-    </li>
+  <hr style="border-color: var(--hotel-secondary-light); margin: 1.5rem 0;">
+  
+  <ul class="nav nav-pills flex-column mb-auto gap-2">
+    @if (permissionService.canView(FunctionCode.REPORT)) {
+      <li class="nav-item">
+        <a routerLink="/admin/dashboard" routerLinkActive="active" class="nav-link text-white d-flex align-items-center rounded-3 sidebar-link" aria-current="page">
+          <i class="pi pi-home me-3 fs-5"></i>
+          Dashboard
+        </a>
+      </li>
+    }
+    @if (permissionService.canView(FunctionCode.ROOM)) {
+      <li>
+        <a routerLink="/admin/rooms" routerLinkActive="active" class="nav-link text-white d-flex align-items-center rounded-3 sidebar-link">
+          <i class="pi pi-box me-3 fs-5"></i>
+          Quản lý Phòng
+        </a>
+      </li>
+    }
+    @if (permissionService.canView(FunctionCode.RESERVATION)) {
+      <li>
+        <a routerLink="/admin/reservations" routerLinkActive="active" class="nav-link text-white d-flex align-items-center rounded-3 sidebar-link">
+          <i class="pi pi-calendar me-3 fs-5"></i>
+          Đặt phòng
+        </a>
+      </li>
+    }
+    @if (permissionService.canView(FunctionCode.USER)) {
+      <li>
+        <a routerLink="/admin/users" routerLinkActive="active" class="nav-link text-white d-flex align-items-center rounded-3 sidebar-link">
+          <i class="pi pi-users me-3 fs-5"></i>
+          Người dùng
+        </a>
+      </li>
+    }
+    @if (permissionService.canView(FunctionCode.INVOICE)) {
+      <li>
+        <a routerLink="/admin/invoices" routerLinkActive="active" class="nav-link text-white d-flex align-items-center rounded-3 sidebar-link">
+          <i class="pi pi-file-o me-3 fs-5"></i>
+          Hóa đơn
+        </a>
+      </li>
+    }
   </ul>
-  <hr>
-  <div class="dropdown">
-    <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
-      <img src="https://github.com/mdo.png" alt="" width="32" height="32" class="rounded-circle me-2">
-      <strong>Admin</strong>
-    </a>
-    <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
-      <li><a class="dropdown-item" href="#">Cài đặt</a></li>
-      <li><a class="dropdown-item" href="#">Hồ sơ</a></li>
-      <li><hr class="dropdown-divider"></li>
-      <li><a class="dropdown-item" href="#" (click)="logout()">Đăng xuất</a></li>
-    </ul>
-  </div>
 </div>

@@ -3,6 +3,8 @@ import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { jwtInterceptor } from './core/interceptors/jwt-interceptor';
+import { providePrimeNG } from 'primeng/config';
+import { HotelPreset } from './core/theme';
 
 import { routes } from './app.routes';
 
@@ -11,6 +13,14 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideHttpClient(withInterceptors([jwtInterceptor])),
-    provideAnimations()
+    provideAnimations(),
+    providePrimeNG({
+        theme: {
+            preset: HotelPreset,
+            options: {
+                darkModeSelector: '.my-app-dark'
+            }
+        }
+    })
   ]
 };

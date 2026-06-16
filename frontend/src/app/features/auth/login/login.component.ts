@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, ChangeDetectorRef, OnInit } from '@angular/core';
 import { SharedModule } from '@app/shared/shared.module';
 import { AuthService } from '@app/core/services/auth';
 import { Router } from '@angular/router';
@@ -11,7 +11,7 @@ import { Router } from '@angular/router';
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./login.component.css'],
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   loginObj = {
     username: '',
     password: '',
@@ -21,6 +21,18 @@ export class LoginComponent {
 
   private authService = inject(AuthService);
   private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
+
+  ngOnInit() {
+    if (this.authService.isLoggedIn()) {
+      const roles = this.authService.getRoles();
+      if (roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) {
+        this.router.navigate(['/admin/dashboard']);
+      } else {
+        this.router.navigate(['/']);
+      }
+    }
+  }
 
   onSubmit() {
     if (!this.loginObj.username || !this.loginObj.password) {
@@ -37,20 +49,23 @@ export class LoginComponent {
           localStorage.setItem('token', res.accessToken);
           localStorage.setItem('user', JSON.stringify({
             username: res.username,
-            roles: res.roles
+            roles: res.roles,
+            permissions: res.permissions
           }));
           
-          if (res.roles.includes('ADMIN')) {
+          if (res.roles.includes('SUPER_ADMIN') || res.roles.includes('ADMIN')) {
             this.router.navigate(['/admin/dashboard']);
           } else {
             this.router.navigate(['/']);
           }
         }
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
       error: (err) => {
         this.errorMessage = 'Sai tài khoản hoặc mật khẩu.';
         this.isLoading = false;
+        this.cdr.markForCheck();
       }
     });
   }

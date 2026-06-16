@@ -7,7 +7,9 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import com.hotel.security.Permission;
+import com.hotel.security.FunctionCode;
+import com.hotel.security.ActionCode;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,33 +24,35 @@ public class RoomTypeController {
     private final RoomTypeService roomTypeService;
 
     @GetMapping
+    @Permission(function = FunctionCode.ROOM_TYPE, action = ActionCode.VIEW)
     @Operation(summary = "Get all room types")
     public ResponseEntity<List<RoomTypeDTO>> getAllRoomTypes() {
         return ResponseEntity.ok(roomTypeService.getAllRoomTypes());
     }
 
     @GetMapping("/{id}")
+    @Permission(function = FunctionCode.ROOM_TYPE, action = ActionCode.VIEW)
     @Operation(summary = "Get room type by ID")
     public ResponseEntity<RoomTypeDTO> getRoomTypeById(@PathVariable Long id) {
         return ResponseEntity.ok(roomTypeService.getRoomTypeById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @Permission(function = FunctionCode.ROOM_TYPE, action = ActionCode.CREATE)
     @Operation(summary = "Create new room type")
     public ResponseEntity<RoomTypeDTO> createRoomType(@RequestBody RoomTypeDTO dto) {
         return ResponseEntity.ok(roomTypeService.createRoomType(dto));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @Permission(function = FunctionCode.ROOM_TYPE, action = ActionCode.UPDATE)
     @Operation(summary = "Update room type")
     public ResponseEntity<RoomTypeDTO> updateRoomType(@PathVariable Long id, @RequestBody RoomTypeDTO dto) {
         return ResponseEntity.ok(roomTypeService.updateRoomType(id, dto));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @Permission(function = FunctionCode.ROOM_TYPE, action = ActionCode.DELETE)
     @Operation(summary = "Delete room type")
     public ResponseEntity<Void> deleteRoomType(@PathVariable Long id) {
         roomTypeService.deleteRoomType(id);

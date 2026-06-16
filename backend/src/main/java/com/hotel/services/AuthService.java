@@ -48,7 +48,19 @@ public class AuthService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         String token = jwtTokenProvider.generateToken(authentication);
-        return new AuthResponse(token);
+        java.util.List<String> roles = authentication.getAuthorities().stream()
+                .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                .collect(java.util.stream.Collectors.toList());
+
+        java.util.List<com.hotel.dtos.PermissionDTO> permissions = new java.util.ArrayList<>();
+        if (authentication.getPrincipal() instanceof com.hotel.security.CustomUserDetails) {
+            com.hotel.security.CustomUserDetails userDetails = (com.hotel.security.CustomUserDetails) authentication.getPrincipal();
+            userDetails.getPermissionMasks().forEach((func, mask) -> {
+                permissions.add(new com.hotel.dtos.PermissionDTO(func.name(), mask));
+            });
+        }
+
+        return new AuthResponse(token, authentication.getName(), roles, permissions);
     }
 
     public String register(RegisterRequest registerRequest) {

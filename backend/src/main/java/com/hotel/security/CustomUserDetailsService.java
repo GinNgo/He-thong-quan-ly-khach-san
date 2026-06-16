@@ -26,15 +26,31 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
 
-        Set<GrantedAuthority> authorities = user.getRoles().stream()
-                .flatMap(role -> role.getPermissions().stream())
-                .map(permission -> new SimpleGrantedAuthority(permission.getCode()))
+        java.util.Set<GrantedAuthority> authorities = user.getRoles().stream()
+                .map(role -> new SimpleGrantedAuthority(role.getCode()))
                 .collect(Collectors.toSet());
 
-        return new org.springframework.security.core.userdetails.User(
+        java.util.Map<FunctionCode, Integer> permissionMasks = new java.util.HashMap<>();
+
+        user.getRoles().forEach(role -> {
+            if (role.getRolePermissions() != null) {
+                role.getRolePermissions().forEach(rp -> {
+                    try {
+                        FunctionCode functionCode = FunctionCode.valueOf(rp.getFunction().getCode());
+                        int existingMask = permissionMasks.getOrDefault(functionCode, 0);
+                        permissionMasks.put(functionCode, existingMask | rp.getActionMask());
+                    } catch (IllegalArgumentException e) {
+                        // Ignore unknown functions
+                    }
+                });
+            }
+        });
+
+        return new CustomUserDetails(
                 user.getUsername(),
                 user.getPasswordHash(),
-                authorities
+                authorities,
+                permissionMasks
         );
     }
 }

@@ -1,0 +1,102 @@
+<div class="m-3">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="mb-1 text-dark fw-bold"><i class="pi pi-file-o me-2" style="color: var(--hotel-gold);"></i>Quản lý Hóa đơn</h2>
+      <p class="text-muted mb-0">Theo dõi, in và quản lý hóa đơn thanh toán</p>
+    </div>
+  </div>
+
+  <p-card styleClass="shadow-sm border-0 rounded-4" [style]="{'border-radius': '12px'}">
+    <p-table [value]="reservations" [paginator]="true" [rows]="10" responsiveLayout="scroll" [rowHover]="true" styleClass="p-datatable-striped p-datatable-sm border-top">
+      <ng-template pTemplate="header">
+        <tr>
+          <th class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">Mã Booking</th>
+          <th class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">Khách hàng</th>
+          <th class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">Ngày trả phòng</th>
+          <th class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">Tổng tiền</th>
+          <th class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">Trạng thái</th>
+          <th class="text-muted fw-bold border-bottom text-center" style="font-size: 0.85rem; text-transform: uppercase;">Thao tác</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-res>
+        <tr>
+          <td class="text-dark fw-bold">RES-{{ res.id }}</td>
+          <td class="text-dark">{{ res.userFullName || res.username }}</td>
+          <td class="text-muted">{{ res.checkOutDate | date:'dd/MM/yyyy' }}</td>
+          <td class="text-dark fw-bold">{{ res.totalAmount | currency:'VND' }}</td>
+          <td>
+            <span class="badge rounded-pill badge-status" 
+                  [ngClass]="{
+                    'status-available': res.status === 'CONFIRMED' || res.status === 'CHECKED_OUT', 
+                    'status-occupied': res.status === 'CHECKED_IN', 
+                    'status-reserved': res.status === 'PENDING', 
+                    'status-maintenance': res.status === 'CANCELLED'
+                  }">
+              {{res.status}}
+            </span>
+          </td>
+          <td class="text-center">
+            <p-button icon="pi pi-print" label="Xuất Hóa đơn" styleClass="p-button-sm p-button-outlined p-button-secondary" (onClick)="showInvoice(res)"></p-button>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="6" class="text-center p-4 text-muted">Không tìm thấy dữ liệu hóa đơn.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+</div>
+
+<p-dialog header="Hóa đơn Thanh toán" [(visible)]="displayInvoiceDialog" [modal]="true" [style]="{width: '50vw'}">
+  <div class="p-4" id="invoice-print-area">
+    <div class="text-center mb-4">
+      <h2 class="text-uppercase fw-bold">HÓA ĐƠN KHÁCH SẠN</h2>
+      <p class="mb-0 text-muted">Mã số: {{ currentInvoice?.invoiceCode }}</p>
+      <p class="text-muted">Ngày xuất: {{ currentInvoice?.issueDate | date:'dd/MM/yyyy' }}</p>
+    </div>
+    
+    <div class="row mb-4">
+      <div class="col-6">
+        <h6 class="fw-bold">Thông tin Khách hàng:</h6>
+        <p class="mb-1">Tên: {{ currentReservation?.userFullName }}</p>
+      </div>
+      <div class="col-6 text-end">
+        <h6 class="fw-bold">Thông tin Booking:</h6>
+        <p class="mb-1">Ngày đến: {{ currentReservation?.checkInDate | date:'dd/MM/yyyy' }}</p>
+        <p class="mb-1">Ngày đi: {{ currentReservation?.checkOutDate | date:'dd/MM/yyyy' }}</p>
+      </div>
+    </div>
+
+    <table class="table table-bordered mb-4">
+      <thead class="table-light">
+        <tr>
+          <th>Phòng</th>
+          <th class="text-end">Đơn giá</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let detail of currentReservation?.details">
+          <td>Phòng {{ detail.roomNumber }}</td>
+          <td class="text-end">{{ detail.priceAtBooking | currency:'VND' }}</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <th class="text-end fs-5">Tổng cộng:</th>
+          <th class="text-end fs-5 text-danger">{{ currentInvoice?.totalAmount | currency:'VND' }}</th>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="text-center mt-5">
+      <p class="fst-italic text-muted">Cảm ơn quý khách đã sử dụng dịch vụ của chúng tôi!</p>
+    </div>
+  </div>
+  
+  <ng-template pTemplate="footer">
+    <p-button icon="pi pi-times" (onClick)="displayInvoiceDialog = false" label="Đóng" styleClass="p-button-text"></p-button>
+    <p-button icon="pi pi-print" (onClick)="printInvoice()" label="In Hóa đơn" styleClass="p-button-primary"></p-button>
+  </ng-template>
+</p-dialog>

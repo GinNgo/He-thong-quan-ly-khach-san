@@ -4,7 +4,9 @@ import com.hotel.dtos.ChatRequest;
 import com.hotel.dtos.ChatResponse;
 import com.hotel.services.AiService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import com.hotel.security.Permission;
+import com.hotel.security.FunctionCode;
+import com.hotel.security.ActionCode;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +22,7 @@ public class AiController {
     }
 
     @PostMapping("/chat")
-    @PreAuthorize("hasAuthority('CUSTOMER')")
+    @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.CREATE)
     public ResponseEntity<ChatResponse> chat(Authentication authentication, @RequestBody ChatRequest request) {
         String username = authentication != null ? authentication.getName() : "Guest";
         ChatResponse response = aiService.processMessage(username, request);

@@ -1,0 +1,73 @@
+<div class="m-3" *ngIf="data">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="mb-1 text-dark fw-bold"><i class="pi pi-chart-line me-2" style="color: var(--hotel-gold);"></i>Tổng quan Analytics (AI Enhanced)</h2>
+      <p class="text-muted mb-0">Theo dõi doanh thu, công suất và dự báo AI</p>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <!-- Revenue Card -->
+    <div class="col-12 col-md-4">
+      <p-card styleClass="shadow-sm border-0 rounded-4 h-100" [style]="{'border-radius': '12px', 'background-color': 'var(--hotel-primary-light)'}">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <p class="text-muted mb-1 fw-bold text-uppercase" style="font-size: 0.85rem;">Tổng Doanh thu</p>
+            <h3 class="mb-0 fw-bold" style="color: var(--hotel-primary);">{{ data.totalRevenue | currency:'VND' }}</h3>
+          </div>
+          <div class="p-3 bg-white rounded-circle shadow-sm">
+            <i class="pi pi-wallet fs-4" style="color: var(--hotel-primary);"></i>
+          </div>
+        </div>
+      </p-card>
+    </div>
+
+    <!-- Bookings Card -->
+    <div class="col-12 col-md-4">
+      <p-card styleClass="shadow-sm border-0 rounded-4 h-100" [style]="{'border-radius': '12px', 'background-color': 'var(--hotel-success-light)'}">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <p class="text-muted mb-1 fw-bold text-uppercase" style="font-size: 0.85rem;">Tổng Đặt phòng</p>
+            <h3 class="mb-0 fw-bold" style="color: var(--hotel-success);">{{ data.totalBookings }}</h3>
+          </div>
+          <div class="p-3 bg-white rounded-circle shadow-sm">
+            <i class="pi pi-check-circle fs-4" style="color: var(--hotel-success);"></i>
+          </div>
+        </div>
+      </p-card>
+    </div>
+
+    <!-- Occupancy Card -->
+    <div class="col-12 col-md-4">
+      <p-card styleClass="shadow-sm border-0 rounded-4 h-100" [style]="{'border-radius': '12px', 'background-color': 'var(--hotel-warning-light)'}">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <p class="text-muted mb-1 fw-bold text-uppercase" style="font-size: 0.85rem;">Công suất lấp đầy</p>
+            <h3 class="mb-0 fw-bold" style="color: var(--hotel-warning);">{{ data.occupancyRate }}%</h3>
+          </div>
+          <div class="p-3 bg-white rounded-circle shadow-sm">
+            <i class="pi pi-users fs-4" style="color: var(--hotel-warning);"></i>
+          </div>
+        </div>
+      </p-card>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12 col-lg-6">
+      <p-card header="Biểu đồ Doanh thu" styleClass="shadow-sm border-0 rounded-4 h-100" [style]="{'border-radius': '12px'}">
+        <p-chart type="line" [data]="revenueChartData" [options]="chartOptions" height="300px"></p-chart>
+      </p-card>
+    </div>
+    <div class="col-12 col-lg-6">
+      <p-card header="Công suất & AI Dự báo" styleClass="shadow-sm border-0 rounded-4 h-100" [style]="{'border-radius': '12px'}">
+        <p-chart type="line" [data]="occupancyChartData" [options]="chartOptions" height="300px"></p-chart>
+      </p-card>
+    </div>
+  </div>
+</div>
+
+<div class="m-3 text-center" *ngIf="!data">
+  <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
+  <p class="mt-2 text-muted">Đang tải dữ liệu Analytics...</p>
+</div>

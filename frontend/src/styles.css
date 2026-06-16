@@ -1,1 +1,68 @@
 /* You can add global styles to this file, and also import other style files */
+@import "bootstrap/dist/css/bootstrap.min.css";
+@import "primeicons/primeicons.css";
+
+:root {
+    /* Primary */
+    --hotel-primary: #2563EB;
+    --hotel-primary-hover: #1D4ED8;
+    --hotel-primary-light: #DBEAFE;
+
+    /* Secondary */
+    --hotel-secondary: #0F172A;
+    --hotel-secondary-light: #334155;
+
+    /* Accent */
+    --hotel-gold: #D4AF37;
+
+    /* Status */
+    --hotel-success: #16A34A;
+    --hotel-success-light: #DCFCE7;
+    --hotel-warning: #F59E0B;
+    --hotel-warning-light: #FEF3C7;
+    --hotel-danger: #DC2626;
+    --hotel-danger-light: #FEE2E2;
+
+    /* Neutral */
+    --hotel-bg: #F8FAFC;
+    --hotel-card-bg: #FFFFFF;
+    --hotel-border: #E2E8F0;
+
+    /* Typography */
+    --hotel-heading: #0F172A;
+    --hotel-text: #334155;
+    --hotel-text-muted: #64748B;
+}
+
+body {
+    margin: 0;
+    font-family: var(--p-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol");
+    background-color: var(--hotel-bg);
+    color: var(--hotel-text);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--hotel-heading);
+}
+
+/* Status Badges */
+.badge-status {
+    font-size: 0.85rem;
+    padding: 0.5em 0.8em;
+    font-weight: 600;
+}
+.status-available { background-color: var(--hotel-success-light); color: var(--hotel-success); }
+.status-reserved { background-color: var(--hotel-warning-light); color: var(--hotel-warning); }
+.status-occupied { background-color: var(--hotel-primary-light); color: var(--hotel-primary); }
+.status-maintenance { background-color: var(--hotel-danger-light); color: var(--hotel-danger); }
+
+/* Buttons */
+.btn-primary-hotel {
+    background-color: var(--hotel-primary);
+    border-color: var(--hotel-primary);
+    color: #fff;
+}
+.btn-primary-hotel:hover {
+    background-color: var(--hotel-primary-hover);
+    border-color: var(--hotel-primary-hover);
+}

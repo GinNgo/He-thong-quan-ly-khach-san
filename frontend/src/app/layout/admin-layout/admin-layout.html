@@ -1,6 +1,40 @@
-<div class="d-flex" style="min-height: 100vh; overflow-x: hidden;">
+<div class="d-flex" style="min-height: 100vh; background-color: var(--hotel-bg); overflow-x: hidden;">
+  <!-- Sidebar -->
   <app-sidebar></app-sidebar>
-  <div class="flex-grow-1 bg-light p-4 overflow-auto">
-    <router-outlet></router-outlet>
+  
+  <!-- Main Content Area -->
+  <div class="flex-grow-1 d-flex flex-column" style="overflow-x: hidden;">
+    <!-- Top Header -->
+    <header class="d-flex align-items-center justify-content-between p-3 border-bottom bg-white" style="height: 70px; border-color: var(--hotel-border) !important;">
+      <div>
+        <!-- Breadcrumb or Title placeholder -->
+        <h5 class="m-0" style="color: var(--hotel-heading); font-weight: 600;">Dashboard</h5>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-light position-relative" style="border: 1px solid var(--hotel-border); background-color: var(--hotel-card-bg);">
+          <i class="pi pi-bell text-muted"></i>
+          <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
+            <span class="visually-hidden">New alerts</span>
+          </span>
+        </button>
+        <div class="dropdown">
+          <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" style="color: var(--hotel-text);" id="dropdownUser" data-bs-toggle="dropdown" aria-expanded="false">
+            <img src="https://github.com/mdo.png" alt="" width="32" height="32" class="rounded-circle me-2">
+            <strong>Admin</strong>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="dropdownUser">
+            <li><a class="dropdown-item" href="#"><i class="pi pi-cog me-2"></i>Cài đặt</a></li>
+            <li><a class="dropdown-item" href="#"><i class="pi pi-user me-2"></i>Hồ sơ</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="#" (click)="logout()"><i class="pi pi-sign-out me-2"></i>Đăng xuất</a></li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Router Outlet -->
+    <main class="flex-grow-1 p-4 overflow-auto">
+      <router-outlet></router-outlet>
+    </main>
   </div>
 </div>

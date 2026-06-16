@@ -1,0 +1,48 @@
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-header bg-white py-3">
+    <h4 class="mb-0 text-primary">Tạo Đặt phòng Mới</h4>
+  </div>
+  <div class="card-body">
+    <div class="row g-4">
+      <div class="col-md-6">
+        <label class="form-label fw-bold">Khách hàng <span class="text-danger">*</span></label>
+        <p-select [options]="users" [(ngModel)]="reservation.userId" optionLabel="fullName" optionValue="id" [filter]="true" filterBy="fullName,username" placeholder="Chọn khách hàng" styleClass="w-100"></p-select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-bold">Phòng <span class="text-danger">*</span></label>
+        <p-select [options]="rooms" [(ngModel)]="selectedRoomId" optionLabel="roomNumber" optionValue="id" [filter]="true" filterBy="roomNumber" placeholder="Chọn phòng trống" styleClass="w-100">
+          <ng-template let-room pTemplate="item">
+            <div class="d-flex justify-content-between w-100">
+              <span>{{room.roomNumber}}</span>
+              <span class="text-muted">{{room.roomType?.nameVi}}</span>
+            </div>
+          </ng-template>
+        </p-select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-bold">Ngày nhận phòng <span class="text-danger">*</span></label>
+        <p-datepicker [(ngModel)]="reservation.checkInDate" dateFormat="dd/mm/yy" [showIcon]="true" styleClass="w-100"></p-datepicker>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-bold">Ngày trả phòng <span class="text-danger">*</span></label>
+        <p-datepicker [(ngModel)]="reservation.checkOutDate" dateFormat="dd/mm/yy" [showIcon]="true" styleClass="w-100"></p-datepicker>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-bold">Số lượng khách</label>
+        <p-inputNumber [(ngModel)]="reservation.guests" [min]="1" [max]="10" [showButtons]="true" styleClass="w-100"></p-inputNumber>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-bold">Hình thức thanh toán</label>
+        <p-select [options]="paymentMethods" [(ngModel)]="reservation.paymentMethod" styleClass="w-100"></p-select>
+      </div>
+      <div class="col-12">
+        <label class="form-label fw-bold">Yêu cầu đặc biệt</label>
+        <textarea pTextarea [(ngModel)]="reservation.specialRequests" rows="3" class="w-100"></textarea>
+      </div>
+    </div>
+  </div>
+  <div class="card-footer bg-light d-flex justify-content-end gap-2 py-3">
+    <p-button label="Hủy" icon="pi pi-times" styleClass="p-button-secondary p-button-outlined" (onClick)="cancel()"></p-button>
+    <p-button label="Lưu thông tin" icon="pi pi-check" styleClass="p-button-primary" (onClick)="save()"></p-button>
+  </div>
+</div>

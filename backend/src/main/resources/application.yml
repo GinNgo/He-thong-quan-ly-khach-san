@@ -2,11 +2,14 @@ spring:
   application:
     name: backend
 
+
+
   datasource:
-    url: jdbc:h2:file:./hoteldb;MODE=MSSQLServer
+    # SQL Server Configuration
+    url: jdbc:sqlserver://DESKTOP-JLPTS26:1433;databaseName=HotelDB;encrypt=false;trustServerCertificate=true
     username: sa
-    password: 
-    driver-class-name: org.h2.Driver
+    password: HotelAdmin@2026!
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
   jpa:
     hibernate:

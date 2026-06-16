@@ -61,6 +61,39 @@
 
       <!-- Right Side: Room Listings -->
       <div class="col-md-9 col-lg-10">
+        
+        <!-- AI Recommendations Carousel -->
+        <div class="mb-5">
+          <h4 class="fw-bold mb-3 d-flex align-items-center">
+            <i class="pi pi-sparkles fs-4 me-2" style="color: var(--hotel-gold);"></i>
+            AI Đề Xuất Dành Riêng Cho Bạn
+          </h4>
+          <p-carousel [value]="recommendedRooms" [numVisible]="2" [numScroll]="1" [circular]="true" [autoplayInterval]="5000">
+            <ng-template let-room pTemplate="item">
+              <div class="card h-100 shadow-sm border-0 room-card m-2 position-relative" style="border-radius: 12px; overflow: hidden; background-color: var(--hotel-gold-light);">
+                <div class="position-absolute top-0 start-0 m-2 px-2 py-1 bg-white rounded shadow-sm d-flex align-items-center z-1" style="font-size: 0.8rem; color: var(--hotel-primary);">
+                  <i class="pi pi-sparkles me-1"></i> Gợi ý lý tưởng
+                </div>
+                <img [src]="room.image" class="card-img-top" alt="Room Image" style="height: 200px; object-fit: cover;">
+                <div class="card-body d-flex flex-column">
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="card-title fw-bold m-0" style="color: var(--hotel-text);">{{room.title}}</h5>
+                    <span class="badge bg-warning text-dark"><i class="pi pi-star-fill text-dark small me-1"></i> {{room.rating}}/5</span>
+                  </div>
+                  
+                  <p class="text-muted small mb-3 fst-italic">"{{ room.aiReason }}"</p>
+                  
+                  <div class="mt-auto d-flex justify-content-between align-items-end">
+                    <h4 class="fw-bold mb-0" style="color: var(--hotel-primary);">{{room.price}} <span class="fs-6 fw-normal text-muted">/đêm</span></h4>
+                    <button pButton label="Xem chi tiết" class="p-button-outlined p-button-sm p-button-secondary rounded-pill"></button>
+                  </div>
+                </div>
+              </div>
+            </ng-template>
+          </p-carousel>
+        </div>
+
+        <h5 class="fw-bold mb-3">Kết quả tìm kiếm ({{ searchResults.length }})</h5>
         <div class="row g-4">
           
           <div class="col-md-6 col-xl-4" *ngFor="let room of searchResults">

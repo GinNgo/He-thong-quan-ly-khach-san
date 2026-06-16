@@ -1,48 +1,64 @@
-<p-card header="Quản lý Người dùng" styleClass="shadow-sm mt-3">
-  <p-table 
-    [value]="users" 
-    [paginator]="true" 
-    [rows]="10" 
-    [loading]="loading"
-    [rowHover]="true" 
-    responsiveLayout="scroll"
-    styleClass="p-datatable-striped"
-  >
-    <ng-template pTemplate="header">
-      <tr>
-        <th pSortableColumn="id">ID <p-sortIcon field="id"></p-sortIcon></th>
-        <th pSortableColumn="username">Tài khoản <p-sortIcon field="username"></p-sortIcon></th>
-        <th pSortableColumn="email">Email <p-sortIcon field="email"></p-sortIcon></th>
-        <th>Vai trò</th>
-        <th pSortableColumn="status">Trạng thái <p-sortIcon field="status"></p-sortIcon></th>
-        <th>Thao tác</th>
-      </tr>
-    </ng-template>
-    <ng-template pTemplate="body" let-user>
-      <tr>
-        <td>{{ user.id }}</td>
-        <td>{{ user.username }}</td>
-        <td>{{ user.email }}</td>
-        <td>
-          <span class="badge bg-primary me-1" *ngFor="let role of user.roles">
-            {{ role.name }}
-          </span>
-        </td>
-        <td>
-          <span class="badge" [ngClass]="{'bg-success': user.status === 'ACTIVE', 'bg-danger': user.status === 'INACTIVE'}">
-            {{ user.status }}
-          </span>
-        </td>
-        <td>
-          <p-button icon="pi pi-pencil" styleClass="p-button-rounded p-button-text p-button-info mr-2"></p-button>
-          <p-button icon="pi pi-trash" styleClass="p-button-rounded p-button-text p-button-danger"></p-button>
-        </td>
-      </tr>
-    </ng-template>
-    <ng-template pTemplate="emptymessage">
-      <tr>
-        <td colspan="6" class="text-center p-4">Không tìm thấy dữ liệu người dùng.</td>
-      </tr>
-    </ng-template>
-  </p-table>
-</p-card>
+<div class="m-3">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="mb-1 text-dark fw-bold"><i class="pi pi-users me-2" style="color: var(--hotel-gold);"></i>Quản lý Người dùng</h2>
+      <p class="text-muted mb-0">Quản lý tài khoản, phân quyền và trạng thái</p>
+    </div>
+    <button pButton label="Thêm người dùng" icon="pi pi-user-plus" class="btn btn-primary-hotel"></button>
+  </div>
+
+  <p-card styleClass="shadow-sm border-0 rounded-4" [style]="{'border-radius': '12px'}">
+    <p-table 
+      [value]="users" 
+      [paginator]="true" 
+      [rows]="10" 
+      [loading]="loading"
+      [rowHover]="true" 
+      responsiveLayout="scroll"
+      styleClass="p-datatable-striped p-datatable-sm border-top"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="id" class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">ID <p-sortIcon field="id"></p-sortIcon></th>
+          <th pSortableColumn="username" class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">Tài khoản <p-sortIcon field="username"></p-sortIcon></th>
+          <th pSortableColumn="email" class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">Email <p-sortIcon field="email"></p-sortIcon></th>
+          <th class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">Vai trò</th>
+          <th pSortableColumn="status" class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">Trạng thái <p-sortIcon field="status"></p-sortIcon></th>
+          <th class="text-muted fw-bold border-bottom text-center" style="font-size: 0.85rem; text-transform: uppercase;">Thao tác</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-user>
+        <tr>
+          <td class="text-muted fw-bold">#{{ user.id }}</td>
+          <td class="text-dark fw-bold">{{ user.username }}</td>
+          <td class="text-muted">{{ user.email }}</td>
+          <td>
+            <span class="badge rounded-pill bg-light text-dark border me-1" *ngFor="let role of user.roles" style="font-size: 0.8rem;">
+              {{ role.name }}
+            </span>
+          </td>
+          <td>
+            <span class="badge rounded-pill badge-status" 
+                  [ngClass]="{
+                    'status-available': user.status === 'ACTIVE', 
+                    'status-maintenance': user.status === 'INACTIVE'
+                  }">
+              {{ user.status }}
+            </span>
+          </td>
+          <td class="text-center">
+            <div class="d-flex gap-2 justify-content-center">
+              <button pButton icon="pi pi-pencil" class="p-button-text p-button-secondary p-button-sm"></button>
+              <button pButton icon="pi pi-trash" class="p-button-text p-button-danger p-button-sm"></button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="6" class="text-center p-4 text-muted">Không tìm thấy dữ liệu người dùng.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+</div>
