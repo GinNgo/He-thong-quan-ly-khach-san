@@ -1,48 +1,50 @@
-<div class="d-flex flex-column flex-shrink-0 p-3" style="width: 250px; min-height: 100vh; background-color: var(--hotel-secondary); color: #fff;">
-  <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none px-2">
-    <i class="pi pi-building fs-3 me-3" style="color: var(--hotel-gold);"></i>
-    <span class="fs-4 fw-bold">Hotel Admin</span>
-  </a>
-  <hr style="border-color: var(--hotel-secondary-light); margin: 1.5rem 0;">
+<div class="d-flex flex-column flex-shrink-0 p-3 sidebar-container" [class.collapsed]="isCollapsed" style="background-color: #1e293b; color: #fff; height: 100vh; overflow-y: auto;">
+  <div class="d-flex align-items-center mb-4 mt-2 px-2 brand-container">
+    <div class="d-flex align-items-center justify-content-center fw-bold text-white rounded-1 me-3 shadow-sm brand-logo" style="width: 32px; height: 32px; background-color: #f59e0b; flex-shrink: 0;">A</div>
+    <div class="text-uppercase fw-bold sidebar-text" style="letter-spacing: 0.1em; font-size: 0.875rem; line-height: 1.2; white-space: nowrap;">
+      AURORA <br> 
+      <span class="text-white-50" style="font-size: 0.65rem;">HOTEL MANAGEMENT</span>
+    </div>
+  </div>
   
-  <ul class="nav nav-pills flex-column mb-auto gap-2">
+  <ul class="nav nav-pills flex-column mb-auto gap-1 px-1">
     @if (permissionService.canView(FunctionCode.REPORT)) {
-      <li class="nav-item">
-        <a routerLink="/admin/dashboard" routerLinkActive="active" class="nav-link text-white d-flex align-items-center rounded-3 sidebar-link" aria-current="page">
-          <i class="pi pi-home me-3 fs-5"></i>
-          Dashboard
+      <li class="nav-item" title="Bảng điều khiển">
+        <a routerLink="/admin/dashboard" routerLinkActive="sidebar-active text-white" [routerLinkActiveOptions]="{exact: true}" class="nav-link text-white-50 d-flex align-items-center rounded-2 sidebar-link py-3 px-3 fw-medium">
+          <i class="pi pi-home me-3 fs-5 sidebar-icon"></i>
+          <span class="sidebar-text text-truncate">Bảng điều khiển</span>
         </a>
       </li>
     }
     @if (permissionService.canView(FunctionCode.ROOM)) {
-      <li>
-        <a routerLink="/admin/rooms" routerLinkActive="active" class="nav-link text-white d-flex align-items-center rounded-3 sidebar-link">
-          <i class="pi pi-box me-3 fs-5"></i>
-          Quản lý Phòng
+      <li class="nav-item" title="Quản lý Phòng">
+        <a routerLink="/admin/rooms" routerLinkActive="sidebar-active text-white" class="nav-link text-white-50 d-flex align-items-center rounded-2 sidebar-link py-3 px-3 fw-medium">
+          <i class="pi pi-box me-3 fs-5 sidebar-icon"></i>
+          <span class="sidebar-text text-truncate">Quản lý Phòng</span>
         </a>
       </li>
     }
     @if (permissionService.canView(FunctionCode.RESERVATION)) {
-      <li>
-        <a routerLink="/admin/reservations" routerLinkActive="active" class="nav-link text-white d-flex align-items-center rounded-3 sidebar-link">
-          <i class="pi pi-calendar me-3 fs-5"></i>
-          Đặt phòng
+      <li class="nav-item" title="Đặt phòng">
+        <a routerLink="/admin/reservations" routerLinkActive="sidebar-active text-white" class="nav-link text-white-50 d-flex align-items-center rounded-2 sidebar-link py-3 px-3 fw-medium">
+          <i class="pi pi-calendar me-3 fs-5 sidebar-icon"></i>
+          <span class="sidebar-text text-truncate">Đặt phòng</span>
         </a>
       </li>
     }
     @if (permissionService.canView(FunctionCode.USER)) {
-      <li>
-        <a routerLink="/admin/users" routerLinkActive="active" class="nav-link text-white d-flex align-items-center rounded-3 sidebar-link">
-          <i class="pi pi-users me-3 fs-5"></i>
-          Người dùng
+      <li class="nav-item" title="Người dùng">
+        <a routerLink="/admin/users" routerLinkActive="sidebar-active text-white" class="nav-link text-white-50 d-flex align-items-center rounded-2 sidebar-link py-3 px-3 fw-medium">
+          <i class="pi pi-users me-3 fs-5 sidebar-icon"></i>
+          <span class="sidebar-text text-truncate">Người dùng</span>
         </a>
       </li>
     }
     @if (permissionService.canView(FunctionCode.INVOICE)) {
-      <li>
-        <a routerLink="/admin/invoices" routerLinkActive="active" class="nav-link text-white d-flex align-items-center rounded-3 sidebar-link">
-          <i class="pi pi-file-o me-3 fs-5"></i>
-          Hóa đơn
+      <li class="nav-item" title="Hóa đơn">
+        <a routerLink="/admin/invoices" routerLinkActive="sidebar-active text-white" class="nav-link text-white-50 d-flex align-items-center rounded-2 sidebar-link py-3 px-3 fw-medium">
+          <i class="pi pi-file-o me-3 fs-5 sidebar-icon"></i>
+          <span class="sidebar-text text-truncate">Hóa đơn</span>
         </a>
       </li>
     }

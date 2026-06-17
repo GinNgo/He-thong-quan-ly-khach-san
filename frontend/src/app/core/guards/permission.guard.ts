@@ -19,5 +19,5 @@ export const permissionGuard: CanActivateFn = (route, state) => {
     return true;
   }
 
-  return router.createUrlTree(['/']);
+  return router.createUrlTree(['/403']);
 };

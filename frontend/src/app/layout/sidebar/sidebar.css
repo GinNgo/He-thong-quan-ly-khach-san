@@ -1,14 +1,50 @@
+.sidebar-container {
+  width: 250px;
+  transition: width 0.3s ease-in-out;
+}
+
+.sidebar-container.collapsed {
+  width: 80px;
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+
+.sidebar-container.collapsed .sidebar-text {
+  display: none !important;
+}
+
+.sidebar-container.collapsed .sidebar-icon {
+  margin-right: 0 !important;
+  font-size: 1.5rem !important;
+}
+
+.sidebar-container.collapsed .nav-link {
+  justify-content: center;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.sidebar-container.collapsed .brand-container {
+  justify-content: center;
+}
+
+.sidebar-container.collapsed .brand-logo {
+  margin-right: 0 !important;
+}
+
 .sidebar-link {
   transition: all 0.2s ease-in-out;
+  border-left: 4px solid transparent;
 }
 
 .sidebar-link:hover {
-  background-color: var(--hotel-secondary-light);
-  color: var(--hotel-gold) !important;
+  background-color: #334155;
+  color: #ffffff !important;
 }
 
-.sidebar-link.active {
-  background-color: var(--hotel-primary);
-  color: #fff !important;
+.sidebar-link.sidebar-active {
+  background-color: #334155;
+  color: #ffffff !important;
+  border-left: 4px solid #c49a6c;
   font-weight: 600;
 }

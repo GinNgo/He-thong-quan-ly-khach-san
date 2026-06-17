@@ -1,13 +1,16 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AnalyticsService, AnalyticsData } from '../../../core/services/analytics';
-import { ChartModule } from 'primeng/chart';
-import { CardModule } from 'primeng/card';
+import { StatCard } from '../../../shared/components/stat-card/stat-card';
+import { RevenueChart } from '../../../shared/components/charts/revenue-chart/revenue-chart';
+import { OccupancyChart } from '../../../shared/components/charts/occupancy-chart/occupancy-chart';
+import { DataTable, ColumnDefinition } from '../../../shared/components/data-table/data-table';
+import { PageRequest, SortRequest, FilterRequest } from '../../../shared/models/pagination.model';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, ChartModule, CardModule],
+  imports: [CommonModule, StatCard, RevenueChart, OccupancyChart, DataTable],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
 })
@@ -17,7 +20,21 @@ export class Dashboard implements OnInit {
   occupancyChartData: any;
   chartOptions: any;
 
-  constructor(private analyticsService: AnalyticsService) {}
+  // Work Orders Table Data
+  workOrderColumns: ColumnDefinition[] = [
+    { field: 'priority', header: 'Ưu tiên', sortable: true, type: 'badge' },
+    { field: 'roomNumber', header: 'Số phòng', sortable: true },
+    { field: 'issue', header: 'Sự cố báo cáo' },
+    { field: 'reporter', header: 'Người báo cáo' },
+    { field: 'createdAt', header: 'Ngày tạo', sortable: true },
+    { field: 'status', header: 'Trạng thái', type: 'badge' }
+  ];
+  
+  workOrders: any[] = [];
+  totalWorkOrders = 0;
+  loadingWorkOrders = false;
+
+  constructor(private analyticsService: AnalyticsService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     this.analyticsService.getDashboardData().subscribe((res) => {
@@ -105,5 +122,30 @@ export class Dashboard implements OnInit {
         }
       ]
     };
+  }
+
+  loadWorkOrders() {
+    if (this.loadingWorkOrders) return;
+    this.loadingWorkOrders = true;
+    
+    // Simulate API call returning empty data to demonstrate Empty State
+    setTimeout(() => {
+      this.workOrders = [];
+      this.totalWorkOrders = 0;
+      this.loadingWorkOrders = false;
+      this.cdr.detectChanges();
+    }, 500);
+  }
+
+  onPageChange(event: PageRequest) {
+    this.loadWorkOrders();
+  }
+
+  onSortChange(event: SortRequest) {
+    this.loadWorkOrders();
+  }
+
+  onFilterChange(event: FilterRequest) {
+    this.loadWorkOrders();
   }
 }

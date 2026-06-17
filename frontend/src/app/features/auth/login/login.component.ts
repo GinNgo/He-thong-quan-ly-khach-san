@@ -15,6 +15,7 @@ export class LoginComponent implements OnInit {
   loginObj = {
     username: '',
     password: '',
+    rememberMe: false
   };
   errorMessage = '';
   isLoading = false;

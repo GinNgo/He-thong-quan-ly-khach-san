@@ -31,4 +31,9 @@ public class AuthController {
         String response = authService.register(registerRequest);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
+
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<String> handleAuthenticationException(org.springframework.security.core.AuthenticationException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Sai tài khoản hoặc mật khẩu");
+    }
 }

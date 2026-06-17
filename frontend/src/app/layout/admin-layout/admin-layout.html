@@ -1,40 +1,67 @@
-<div class="d-flex" style="min-height: 100vh; background-color: var(--hotel-bg); overflow-x: hidden;">
+<div class="d-flex" style="height: 100vh; background-color: var(--hotel-bg); overflow: hidden;">
   <!-- Sidebar -->
-  <app-sidebar></app-sidebar>
+  <app-sidebar [isCollapsed]="isSidebarCollapsed"></app-sidebar>
   
   <!-- Main Content Area -->
-  <div class="flex-grow-1 d-flex flex-column" style="overflow-x: hidden;">
+  <div class="flex-grow-1 d-flex flex-column" style="height: 100vh; overflow: hidden;">
     <!-- Top Header -->
-    <header class="d-flex align-items-center justify-content-between p-3 border-bottom bg-white" style="height: 70px; border-color: var(--hotel-border) !important;">
-      <div>
-        <!-- Breadcrumb or Title placeholder -->
-        <h5 class="m-0" style="color: var(--hotel-heading); font-weight: 600;">Dashboard</h5>
-      </div>
+    <header class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom bg-white sticky-top shadow-sm flex-shrink-0" style="height: 70px;">
       <div class="d-flex align-items-center gap-3">
-        <button class="btn btn-light position-relative" style="border: 1px solid var(--hotel-border); background-color: var(--hotel-card-bg);">
-          <i class="pi pi-bell text-muted"></i>
-          <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
-            <span class="visually-hidden">New alerts</span>
-          </span>
+        <!-- Hamburger Button -->
+        <button class="btn btn-light border-0 d-flex align-items-center justify-content-center p-2 rounded-circle" (click)="toggleSidebar()" style="width: 40px; height: 40px; background-color: #f1f5f9;">
+          <i class="pi pi-bars fs-5 text-dark"></i>
         </button>
-        <div class="dropdown">
-          <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" style="color: var(--hotel-text);" id="dropdownUser" data-bs-toggle="dropdown" aria-expanded="false">
-            <img src="https://github.com/mdo.png" alt="" width="32" height="32" class="rounded-circle me-2">
-            <strong>Admin</strong>
-          </a>
-          <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="dropdownUser">
-            <li><a class="dropdown-item" href="#"><i class="pi pi-cog me-2"></i>Cài đặt</a></li>
-            <li><a class="dropdown-item" href="#"><i class="pi pi-user me-2"></i>Hồ sơ</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item text-danger" href="#" (click)="logout()"><i class="pi pi-sign-out me-2"></i>Đăng xuất</a></li>
-          </ul>
+        <h1 class="h4 mb-0 fw-bold text-dark d-none d-sm-block">Bảng điều khiển</h1>
+      </div>
+      
+      <div class="d-flex align-items-center gap-4">
+        <!-- Search bar -->
+        <div class="position-relative d-none d-md-block">
+          <i class="pi pi-search position-absolute text-muted" style="left: 1rem; top: 50%; transform: translateY(-50%);"></i>
+          <input type="text" class="form-control bg-light border-0 rounded-pill ps-5 pe-4 py-2" placeholder="Tìm kiếm..." style="width: 250px;">
+        </div>
+        
+        <!-- Notifications -->
+        <button class="btn btn-link text-muted p-0 position-relative border-0 text-decoration-none">
+          <i class="pi pi-bell fs-5"></i>
+          <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"></span>
+        </button>
+        
+        <!-- User Profile -->
+        <div class="d-flex align-items-center gap-3 border-start ps-4">
+          <div class="dropdown">
+            <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle text-dark" id="dropdownUser" data-bs-toggle="dropdown" aria-expanded="false">
+              <div class="rounded-circle bg-light d-flex align-items-center justify-content-center me-2 overflow-hidden" style="width: 40px; height: 40px;">
+                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4AxKezLVEL6Koz7JbpGQCH0d8mS9K_MsvayuEgYO5Oz4nL9SxsuFmODyOp9J8ZLSyjAf8HG9nk-Y18dURZTfyfEKzmvsYS6HJ2fJXvSppC4tX4__e8rGxNP0m5nYhlpOaUfUFaKWj8J6FLOv3RqAe8WyCIO2fNexBmkMlUF863moMNn4fLMBa0tBUUqZlw9tRCT4PtTrJqpP913vDqJ0S6anJHI1QHxgDSSliyCqmyJOV3FIqBEe2JH3jydhyexlDZa2HKsIY2UQ" alt="Avatar" class="w-100 h-100 object-fit-cover">
+              </div>
+              <div class="d-none d-lg-block text-start">
+                <p class="mb-0 fw-semibold text-dark" style="font-size: 0.875rem;">Admin | John Doe</p>
+                <p class="mb-0 text-muted" style="font-size: 0.75rem;">Quản lý kỹ thuật</p>
+              </div>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="dropdownUser">
+              <li><a class="dropdown-item py-2" href="javascript:void(0)"><i class="pi pi-cog me-2 text-muted"></i> Cài đặt</a></li>
+              <li><a class="dropdown-item py-2" href="javascript:void(0)" (click)="viewProfile()"><i class="pi pi-user me-2 text-muted"></i> Hồ sơ</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger py-2" href="javascript:void(0)" (click)="logout(); $event.preventDefault()"><i class="pi pi-sign-out me-2"></i> Đăng xuất</a></li>
+            </ul>
+          </div>
         </div>
       </div>
     </header>
 
-    <!-- Main Router Outlet -->
-    <main class="flex-grow-1 p-4 overflow-auto">
-      <router-outlet></router-outlet>
+    <!-- Main Router Outlet & Footer -->
+    <main class="flex-grow-1 overflow-auto d-flex flex-column" style="background-color: #f8fafc;">
+      <div class="flex-grow-1 p-4">
+        <router-outlet></router-outlet>
+      </div>
+      
+      <!-- Footer -->
+      <footer class="py-3 text-center text-muted border-top bg-white flex-shrink-0" style="font-size: 0.875rem;">
+        &copy; 2026 Aurora Hotel Management. All rights reserved.
+      </footer>
     </main>
   </div>
 </div>
+
+<app-ai-assistant></app-ai-assistant>

@@ -34,58 +34,87 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        if (appModuleRepository.count() == 0) {
-            AppModule sysModule = new AppModule(null, "SYSTEM", "Hệ Thống");
-            AppModule hotelModule = new AppModule(null, "HOTEL", "Khách Sạn");
-            appModuleRepository.save(sysModule);
-            appModuleRepository.save(hotelModule);
-
-            AppFunction funcUser = new AppFunction(null, sysModule, FunctionCode.USER.name(), "Quản lý Người Dùng", "/admin/users", "pi pi-users", 1);
-            AppFunction funcRole = new AppFunction(null, sysModule, FunctionCode.ROLE.name(), "Quản lý Phân Quyền", "/admin/roles", "pi pi-key", 2);
-            AppFunction funcRoom = new AppFunction(null, hotelModule, FunctionCode.ROOM.name(), "Quản lý Phòng", "/admin/rooms", "pi pi-home", 3);
-            AppFunction funcRoomType = new AppFunction(null, hotelModule, FunctionCode.ROOM_TYPE.name(), "Quản lý Loại Phòng", "/admin/room-types", "pi pi-list", 4);
-            AppFunction funcReservation = new AppFunction(null, hotelModule, FunctionCode.RESERVATION.name(), "Quản lý Đặt Phòng", "/admin/reservations", "pi pi-calendar", 5);
-            
-            appFunctionRepository.save(funcUser);
-            appFunctionRepository.save(funcRole);
-            appFunctionRepository.save(funcRoom);
-            appFunctionRepository.save(funcRoomType);
-            appFunctionRepository.save(funcReservation);
+        AppModule sysModule = appModuleRepository.findByCode("SYSTEM");
+        if (sysModule == null) {
+            sysModule = appModuleRepository.save(new AppModule(null, "SYSTEM", "Hệ Thống"));
+        }
+        
+        AppModule hotelModule = appModuleRepository.findByCode("HOTEL");
+        if (hotelModule == null) {
+            hotelModule = appModuleRepository.save(new AppModule(null, "HOTEL", "Khách Sạn"));
+        }
+        
+        AppModule financeModule = appModuleRepository.findByCode("FINANCE");
+        if (financeModule == null) {
+            financeModule = appModuleRepository.save(new AppModule(null, "FINANCE", "Tài Chính"));
         }
 
-        if (roleRepository.count() == 0) {
-            Role adminRole = new Role();
+        initFunction(sysModule, FunctionCode.USER.name(), "Quản lý Người Dùng", "/admin/users", "pi pi-users", 1);
+        initFunction(sysModule, FunctionCode.ROLE.name(), "Quản lý Phân Quyền", "/admin/roles", "pi pi-key", 2);
+        initFunction(hotelModule, FunctionCode.ROOM.name(), "Quản lý Phòng", "/admin/rooms", "pi pi-home", 3);
+        initFunction(hotelModule, FunctionCode.ROOM_TYPE.name(), "Quản lý Loại Phòng", "/admin/room-types", "pi pi-list", 4);
+        initFunction(hotelModule, FunctionCode.RESERVATION.name(), "Quản lý Đặt Phòng", "/admin/reservations", "pi pi-calendar", 5);
+        initFunction(sysModule, FunctionCode.REPORT.name(), "Báo Cáo Thống Kê", "/admin/dashboard", "pi pi-chart-bar", 6);
+        initFunction(financeModule, FunctionCode.INVOICE.name(), "Quản lý Hóa Đơn", "/admin/invoices", "pi pi-file-o", 7);
+        initFunction(hotelModule, FunctionCode.HOTEL.name(), "Dịch vụ Khách Sạn", "/admin/services", "pi pi-box", 8);
+        initFunction(sysModule, FunctionCode.AI_CHAT.name(), "AI Chatbot", "/ai", "pi pi-android", 9);
+        initFunction(financeModule, FunctionCode.FINANCE.name(), "Thanh Toán", "/admin/payments", "pi pi-money-bill", 10);
+
+        Role adminRole = roleRepository.findByCode("SUPER_ADMIN").orElse(null);
+        if (adminRole == null) {
+            adminRole = new Role();
             adminRole.setCode("SUPER_ADMIN");
             adminRole.setName("ADMIN");
-            roleRepository.save(adminRole);
+            adminRole = roleRepository.save(adminRole);
+        }
 
+        if (roleRepository.findByCode("CUSTOMER").isEmpty()) {
             Role customerRole = new Role();
             customerRole.setCode("CUSTOMER");
             customerRole.setName("CUSTOMER");
             roleRepository.save(customerRole);
+        }
 
+        if (roleRepository.findByCode("RECEPTIONIST").isEmpty()) {
             Role receptionistRole = new Role();
             receptionistRole.setCode("RECEPTIONIST");
             receptionistRole.setName("RECEPTIONIST");
             roleRepository.save(receptionistRole);
+        }
 
-            // Assign permissions to SUPER_ADMIN
-            int allActions = ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.DELETE | ActionCode.EXPORT | ActionCode.APPROVE;
-            for (AppFunction func : appFunctionRepository.findAll()) {
+        // Assign permissions to SUPER_ADMIN
+        int allActions = ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.DELETE | ActionCode.EXPORT | ActionCode.APPROVE;
+        for (AppFunction func : appFunctionRepository.findAll()) {
+            RolePermission existing = rolePermissionRepository.findByRoleIdAndFunctionId(adminRole.getId(), func.getId());
+            if (existing == null) {
                 RolePermission rp = new RolePermission(null, adminRole, func, allActions);
                 rolePermissionRepository.save(rp);
+            } else {
+                existing.setActionMask(allActions);
+                rolePermissionRepository.save(existing);
             }
         }
 
-        if (userRepository.findByUsername("admin").isEmpty()) {
-            User admin = new User();
+        User admin = userRepository.findByUsername("admin").orElse(null);
+        if (admin == null) {
+            admin = new User();
             admin.setUsername("admin");
             admin.setPasswordHash(passwordEncoder.encode("admin"));
             admin.setFullName("System Admin");
             admin.setEmail("admin@hotel.com");
-            admin.setRoles(Set.of(roleRepository.findByCode("SUPER_ADMIN").orElseThrow()));
             admin.setStatus("ACTIVE");
+        }
+        
+        if (admin.getRoles() == null || admin.getRoles().stream().noneMatch(r -> r.getCode().equals("SUPER_ADMIN"))) {
+            admin.setRoles(new java.util.HashSet<>(Set.of(adminRole)));
             userRepository.save(admin);
+        }
+    }
+
+    private void initFunction(AppModule module, String code, String name, String url, String icon, int order) {
+        AppFunction func = appFunctionRepository.findByCode(code);
+        if (func == null) {
+            appFunctionRepository.save(new AppFunction(null, module, code, name, url, icon, order));
         }
     }
 }

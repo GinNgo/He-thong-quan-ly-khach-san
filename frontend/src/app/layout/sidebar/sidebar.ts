@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, Input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { PermissionService, FunctionCode } from '../../core/services/permission.service';
 
@@ -9,6 +9,7 @@ import { PermissionService, FunctionCode } from '../../core/services/permission.
   styleUrl: './sidebar.css',
 })
 export class Sidebar {
+  @Input() isCollapsed = false;
   permissionService = inject(PermissionService);
   FunctionCode = FunctionCode;
 }

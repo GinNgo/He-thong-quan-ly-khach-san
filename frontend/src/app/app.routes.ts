@@ -31,5 +31,7 @@ export const routes: Routes = [
       { path: 'invoices', component: InvoiceManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.INVOICE, actionCode: ActionCode.VIEW } },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
-  }
+  },
+  { path: '403', loadComponent: () => import('./features/error/forbidden/forbidden.component').then(m => m.ForbiddenComponent) },
+  { path: '**', redirectTo: 'login' }
 ];
