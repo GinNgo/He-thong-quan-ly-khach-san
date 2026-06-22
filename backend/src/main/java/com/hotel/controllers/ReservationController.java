@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import com.hotel.security.Permission;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.ActionCode;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,5 +36,24 @@ public class ReservationController {
     @Permission(function = FunctionCode.RESERVATION, action = ActionCode.VIEW)
     public ResponseEntity<java.util.List<com.hotel.dtos.ReservationDTO>> getAllReservations() {
         return ResponseEntity.ok(reservationService.getAllReservations());
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('CUSTOMER') or hasAuthority('RECEPTIONIST') or hasAuthority('HOTEL_ADMIN')")
+    public ResponseEntity<com.hotel.dtos.ReservationDTO> getReservationById(@PathVariable Long id) {
+        return ResponseEntity.ok(reservationService.getReservationById(id));
+    }
+
+    @GetMapping("/my-bookings")
+    @PreAuthorize("hasAuthority('CUSTOMER')")
+    public ResponseEntity<java.util.List<com.hotel.dtos.ReservationDTO>> getMyReservations(Authentication authentication) {
+        String username = authentication.getName();
+        return ResponseEntity.ok(reservationService.getMyReservations(username));
+    }
+
+    @PutMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('RECEPTIONIST') or hasAuthority('HOTEL_ADMIN')")
+    public ResponseEntity<Reservation> updateStatus(@PathVariable Long id, @RequestParam String status) {
+        return ResponseEntity.ok(reservationService.updateReservationStatus(id, status));
     }
 }

@@ -102,4 +102,72 @@ public class ReservationService {
             return dto;
         }).collect(java.util.stream.Collectors.toList());
     }
+
+    @Transactional(readOnly = true)
+    public com.hotel.dtos.ReservationDTO getReservationById(Long id) {
+        Reservation reservation = reservationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Reservation not found"));
+        // For simplicity, reusing the mapping logic. In real app, extract to a mapper.
+        com.hotel.dtos.ReservationDTO dto = new com.hotel.dtos.ReservationDTO();
+        dto.setId(reservation.getId());
+        dto.setUserId(reservation.getUser().getId());
+        dto.setUsername(reservation.getUser().getUsername());
+        dto.setUserFullName(reservation.getUser().getFullName());
+        dto.setCheckInDate(reservation.getCheckInDate());
+        dto.setCheckOutDate(reservation.getCheckOutDate());
+        dto.setGuests(reservation.getGuests());
+        dto.setTotalAmount(reservation.getTotalAmount());
+        dto.setStatus(reservation.getStatus());
+        dto.setPaymentMethod(reservation.getPaymentMethod());
+        dto.setSpecialRequests(reservation.getSpecialRequests());
+
+        java.util.List<com.hotel.dtos.ReservationDetailDTO> detailDTOs = reservationDetailRepository
+                .findByReservationId(reservation.getId()).stream()
+                .map(detail -> {
+                    com.hotel.dtos.ReservationDetailDTO detailDto = new com.hotel.dtos.ReservationDetailDTO();
+                    detailDto.setId(detail.getId());
+                    detailDto.setReservationId(detail.getReservation().getId());
+                    detailDto.setRoomId(detail.getRoom().getId());
+                    detailDto.setRoomNumber(detail.getRoom().getRoomNumber());
+                    detailDto.setPriceAtBooking(detail.getPrice());
+                    return detailDto;
+                }).collect(java.util.stream.Collectors.toList());
+
+        dto.setDetails(detailDTOs);
+        return dto;
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<com.hotel.dtos.ReservationDTO> getMyReservations(String username) {
+        return getAllReservations().stream()
+                .filter(r -> r.getUsername().equals(username))
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Transactional
+    public Reservation updateReservationStatus(Long id, String status) {
+        Reservation reservation = reservationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Reservation not found"));
+        
+        reservation.setStatus(status);
+        
+        // Handle room status based on reservation status
+        if ("CHECKED_IN".equals(status)) {
+            // update room to OCCUPIED
+            reservationDetailRepository.findByReservationId(id).forEach(detail -> {
+                Room room = detail.getRoom();
+                room.setStatus("OCCUPIED");
+                roomRepository.save(room);
+            });
+        } else if ("CHECKED_OUT".equals(status) || "CANCELLED".equals(status)) {
+            // update room to AVAILABLE
+            reservationDetailRepository.findByReservationId(id).forEach(detail -> {
+                Room room = detail.getRoom();
+                room.setStatus("AVAILABLE");
+                roomRepository.save(room);
+            });
+        }
+        
+        return reservationRepository.save(reservation);
+    }
 }

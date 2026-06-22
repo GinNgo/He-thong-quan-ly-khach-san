@@ -1,3 +1,4 @@
+<p-toast></p-toast>
 <div class="m-3">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
@@ -42,7 +43,9 @@
             <div class="d-flex gap-2 justify-content-center">
               <button pButton icon="pi pi-check" class="p-button-text p-button-success p-button-sm" pTooltip="Xác nhận" *ngIf="res.status === 'PENDING'" (onClick)="updateStatus(res.id, 'CONFIRMED')"></button>
               <button pButton icon="pi pi-sign-in" class="p-button-text p-button-info p-button-sm" pTooltip="Check-in" *ngIf="res.status === 'CONFIRMED'" (onClick)="updateStatus(res.id, 'CHECKED_IN')"></button>
+              <button pButton icon="pi pi-wallet" class="p-button-text p-button-warning p-button-sm" pTooltip="Thanh toán" *ngIf="res.status === 'CHECKED_IN'" (onClick)="processPayment(res)"></button>
               <button pButton icon="pi pi-sign-out" class="p-button-text p-button-secondary p-button-sm" pTooltip="Check-out" *ngIf="res.status === 'CHECKED_IN'" (onClick)="updateStatus(res.id, 'CHECKED_OUT')"></button>
+              <button pButton icon="pi pi-file-pdf" class="p-button-text p-button-help p-button-sm" pTooltip="Xuất hóa đơn" *ngIf="res.status === 'CHECKED_OUT'" (onClick)="generateInvoice(res.id)"></button>
               <button pButton icon="pi pi-times" class="p-button-text p-button-danger p-button-sm" pTooltip="Hủy phòng" *ngIf="res.status === 'PENDING' || res.status === 'CONFIRMED'" (onClick)="updateStatus(res.id, 'CANCELLED')"></button>
             </div>
           </td>
