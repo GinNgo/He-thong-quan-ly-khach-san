@@ -30,23 +30,39 @@ public class DataInitializer implements CommandLineRunner {
     private final AppFunctionRepository appFunctionRepository;
     private final RolePermissionRepository rolePermissionRepository;
     private final PasswordEncoder passwordEncoder;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @Override
     @Transactional
     public void run(String... args) throws Exception {
+        try {
+            jdbcTemplate.execute("ALTER TABLE app_module ALTER COLUMN name NVARCHAR(255)");
+            jdbcTemplate.execute("ALTER TABLE app_function ALTER COLUMN name NVARCHAR(255)");
+        } catch (Exception e) {
+            System.out.println("Could not alter table columns: " + e.getMessage());
+        }
         AppModule sysModule = appModuleRepository.findByCode("SYSTEM");
         if (sysModule == null) {
             sysModule = appModuleRepository.save(new AppModule(null, "SYSTEM", "Hệ Thống"));
+        } else {
+            sysModule.setName("Hệ Thống");
+            sysModule = appModuleRepository.save(sysModule);
         }
         
         AppModule hotelModule = appModuleRepository.findByCode("HOTEL");
         if (hotelModule == null) {
             hotelModule = appModuleRepository.save(new AppModule(null, "HOTEL", "Khách Sạn"));
+        } else {
+            hotelModule.setName("Khách Sạn");
+            hotelModule = appModuleRepository.save(hotelModule);
         }
         
         AppModule financeModule = appModuleRepository.findByCode("FINANCE");
         if (financeModule == null) {
             financeModule = appModuleRepository.save(new AppModule(null, "FINANCE", "Tài Chính"));
+        } else {
+            financeModule.setName("Tài Chính");
+            financeModule = appModuleRepository.save(financeModule);
         }
 
         initFunction(sysModule, FunctionCode.USER.name(), "Quản lý Người Dùng", "/admin/users", "pi pi-users", 1);
@@ -59,6 +75,7 @@ public class DataInitializer implements CommandLineRunner {
         initFunction(hotelModule, FunctionCode.HOTEL.name(), "Dịch vụ Khách Sạn", "/admin/services", "pi pi-box", 8);
         initFunction(sysModule, FunctionCode.AI_CHAT.name(), "AI Chatbot", "/ai", "pi pi-android", 9);
         initFunction(financeModule, FunctionCode.FINANCE.name(), "Thanh Toán", "/admin/payments", "pi pi-money-bill", 10);
+        initFunction(sysModule, FunctionCode.SYSTEM.name(), "Cấu hình Trang", "/admin/modules", "pi pi-cog", 11);
 
         Role adminRole = roleRepository.findByCode("SUPER_ADMIN").orElse(null);
         if (adminRole == null) {
@@ -115,6 +132,12 @@ public class DataInitializer implements CommandLineRunner {
         AppFunction func = appFunctionRepository.findByCode(code);
         if (func == null) {
             appFunctionRepository.save(new AppFunction(null, module, code, name, url, icon, order));
+        } else {
+            func.setName(name);
+            func.setUrl(url);
+            func.setIcon(icon);
+            func.setSortOrder(order);
+            appFunctionRepository.save(func);
         }
     }
 }
