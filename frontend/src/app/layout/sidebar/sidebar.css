@@ -13,9 +13,17 @@
   display: none !important;
 }
 
+.sidebar-text {
+  white-space: nowrap;
+}
+
 .sidebar-container.collapsed .sidebar-icon {
   margin-right: 0 !important;
   font-size: 1.5rem !important;
+}
+
+.sidebar-icon {
+  flex-shrink: 0;
 }
 
 .sidebar-container.collapsed .nav-link {

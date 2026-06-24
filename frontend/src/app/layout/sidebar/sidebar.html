@@ -8,45 +8,18 @@
   </div>
   
   <ul class="nav nav-pills flex-column mb-auto gap-1 px-1">
-    @if (permissionService.canView(FunctionCode.REPORT)) {
-      <li class="nav-item" title="Bảng điều khiển">
-        <a routerLink="/admin/dashboard" routerLinkActive="sidebar-active text-white" [routerLinkActiveOptions]="{exact: true}" class="nav-link text-white-50 d-flex align-items-center rounded-2 sidebar-link py-3 px-3 fw-medium">
-          <i class="pi pi-home me-3 fs-5 sidebar-icon"></i>
-          <span class="sidebar-text text-truncate">Bảng điều khiển</span>
-        </a>
+    @for (module of menuItems; track module.id) {
+      <li class="nav-item mt-3 px-3">
+        <span class="text-uppercase fw-bold text-white-50" style="font-size: 0.7rem; letter-spacing: 0.1em;">{{module.name}}</span>
       </li>
-    }
-    @if (permissionService.canView(FunctionCode.ROOM)) {
-      <li class="nav-item" title="Quản lý Phòng">
-        <a routerLink="/admin/rooms" routerLinkActive="sidebar-active text-white" class="nav-link text-white-50 d-flex align-items-center rounded-2 sidebar-link py-3 px-3 fw-medium">
-          <i class="pi pi-box me-3 fs-5 sidebar-icon"></i>
-          <span class="sidebar-text text-truncate">Quản lý Phòng</span>
-        </a>
-      </li>
-    }
-    @if (permissionService.canView(FunctionCode.RESERVATION)) {
-      <li class="nav-item" title="Đặt phòng">
-        <a routerLink="/admin/reservations" routerLinkActive="sidebar-active text-white" class="nav-link text-white-50 d-flex align-items-center rounded-2 sidebar-link py-3 px-3 fw-medium">
-          <i class="pi pi-calendar me-3 fs-5 sidebar-icon"></i>
-          <span class="sidebar-text text-truncate">Đặt phòng</span>
-        </a>
-      </li>
-    }
-    @if (permissionService.canView(FunctionCode.USER)) {
-      <li class="nav-item" title="Người dùng">
-        <a routerLink="/admin/users" routerLinkActive="sidebar-active text-white" class="nav-link text-white-50 d-flex align-items-center rounded-2 sidebar-link py-3 px-3 fw-medium">
-          <i class="pi pi-users me-3 fs-5 sidebar-icon"></i>
-          <span class="sidebar-text text-truncate">Người dùng</span>
-        </a>
-      </li>
-    }
-    @if (permissionService.canView(FunctionCode.INVOICE)) {
-      <li class="nav-item" title="Hóa đơn">
-        <a routerLink="/admin/invoices" routerLinkActive="sidebar-active text-white" class="nav-link text-white-50 d-flex align-items-center rounded-2 sidebar-link py-3 px-3 fw-medium">
-          <i class="pi pi-file-o me-3 fs-5 sidebar-icon"></i>
-          <span class="sidebar-text text-truncate">Hóa đơn</span>
-        </a>
-      </li>
+      @for (func of module.functions; track func.id) {
+        <li class="nav-item" [title]="func.name">
+          <a [routerLink]="func.url" routerLinkActive="sidebar-active text-white" [routerLinkActiveOptions]="{exact: func.url === '/admin/dashboard'}" class="nav-link text-white-50 d-flex align-items-center rounded-2 sidebar-link py-3 px-3 fw-medium">
+            <i [class]="func.icon" class="me-3 fs-5 sidebar-icon"></i>
+            <span class="sidebar-text text-truncate d-block">{{func.name}}</span>
+          </a>
+        </li>
+      }
     }
   </ul>
 </div>

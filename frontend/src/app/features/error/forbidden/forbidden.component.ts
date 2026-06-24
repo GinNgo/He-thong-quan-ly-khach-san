@@ -20,4 +20,10 @@ export class ForbiddenComponent {
   goBack() {
     window.history.back();
   }
+
+  logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('permissions');
+    this.router.navigate(['/login']);
+  }
 }

@@ -36,4 +36,9 @@ public class AuthController {
     public ResponseEntity<String> handleAuthenticationException(org.springframework.security.core.AuthenticationException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Sai tài khoản hoặc mật khẩu");
     }
+
+    @GetMapping("/my-menu")
+    public ResponseEntity<java.util.List<com.hotel.dtos.AppModuleDto>> getMyMenu() {
+        return ResponseEntity.ok(authService.getMyMenu());
+    }
 }

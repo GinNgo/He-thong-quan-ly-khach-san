@@ -36,12 +36,15 @@
         Tài khoản của bạn được phân một vai trò không có quyền quản trị cho tính năng này. Vui lòng liên hệ Quản trị viên hệ thống nếu bạn cho rằng đây là lỗi.
       </div>
 
-      <div class="d-flex gap-3 buttons-container">
-        <button class="btn btn-primary btn-lg px-4 d-flex align-items-center gap-2" (click)="goBack()">
+      <div class="d-flex flex-wrap gap-3 buttons-container">
+        <button class="btn btn-primary btn-lg px-4 d-flex align-items-center justify-content-center gap-2 text-nowrap" (click)="goBack()">
           <i class="pi pi-arrow-left"></i> Quay lại trang trước
         </button>
-        <button class="btn btn-outline-secondary btn-lg px-4 d-flex align-items-center gap-2" (click)="returnToDashboard()">
+        <button class="btn btn-outline-secondary btn-lg px-4 d-flex align-items-center justify-content-center gap-2 text-nowrap" (click)="returnToDashboard()">
           <i class="pi pi-home"></i> Về Dashboard
+        </button>
+        <button class="btn btn-outline-danger btn-lg px-4 d-flex align-items-center justify-content-center gap-2 text-nowrap" (click)="logout()">
+          <i class="pi pi-sign-out"></i> Đăng nhập lại
         </button>
       </div>
     </div>

@@ -16,7 +16,7 @@ public class AppModule {
     @Column(nullable = false, unique = true)
     private String code;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "NVARCHAR(255)")
     private String name;
 
     public Long getId() { return id; }

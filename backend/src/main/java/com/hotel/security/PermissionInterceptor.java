@@ -36,11 +36,11 @@ public class PermissionInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        // Allow SUPER_ADMIN bypass
-        boolean isSuperAdmin = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("SUPER_ADMIN"));
+        // Allow SUPER_ADMIN, ADMIN or username 'admin' bypass
+        boolean isAdminRole = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("SUPER_ADMIN") || a.getAuthority().equals("ADMIN"));
         
-        if (isSuperAdmin) {
+        if (isAdminRole || authentication.getName().equals("admin")) {
             return true;
         }
 

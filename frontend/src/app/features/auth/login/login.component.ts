@@ -26,8 +26,13 @@ export class LoginComponent implements OnInit {
 
   ngOnInit() {
     if (this.authService.isLoggedIn()) {
+      const userStr = localStorage.getItem('user');
+      let username = '';
+      if (userStr) {
+        username = JSON.parse(userStr).username;
+      }
       const roles = this.authService.getRoles();
-      if (roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) {
+      if (username === 'admin' || roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) {
         this.router.navigate(['/admin/dashboard']);
       } else {
         this.router.navigate(['/']);
@@ -54,7 +59,7 @@ export class LoginComponent implements OnInit {
             permissions: res.permissions
           }));
           
-          if (res.roles.includes('SUPER_ADMIN') || res.roles.includes('ADMIN')) {
+          if (res.username === 'admin' || res.roles.includes('SUPER_ADMIN') || res.roles.includes('ADMIN')) {
             this.router.navigate(['/admin/dashboard']);
           } else {
             this.router.navigate(['/']);

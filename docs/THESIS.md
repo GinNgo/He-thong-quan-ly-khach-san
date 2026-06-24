@@ -2,14 +2,21 @@
 # TỔNG QUAN ĐỀ TÀI
 
 ## 1.1. LÝ DO CHỌN ĐỀ TÀI
-(Nội dung đang được cập nhật)
+Trong bối cảnh ngành du lịch và dịch vụ khách sạn đang trên đà phục hồi và phát triển mạnh mẽ sau đại dịch, việc áp dụng công nghệ thông tin vào quản lý và vận hành không còn là một lựa chọn mà đã trở thành yếu tố bắt buộc để cạnh tranh. Tuy nhiên, nhiều khách sạn quy mô vừa và nhỏ (SME) hiện nay vẫn đang chật vật với các quy trình quản lý thủ công, sổ sách giấy tờ, hoặc sử dụng các phần mềm rời rạc, lỗi thời. Điều này không chỉ gây thất thoát doanh thu, sai sót trong nghiệp vụ đặt/trả phòng mà còn làm giảm trải nghiệm của khách hàng.
+
+Nhận thấy nhu cầu cấp thiết về một giải pháp phần mềm quản trị toàn diện, tập trung và dễ sử dụng, nhóm quyết định chọn đề tài **"Xây dựng Hệ thống Quản lý Khách sạn (Hotel Management System)"**. Hệ thống được thiết kế dựa trên kiến trúc hiện đại (Spring Boot & Angular), tích hợp các tính năng thông minh (AI Chatbot) nhằm tối ưu hóa quy trình nghiệp vụ cho Lễ tân, Quản lý, đồng thời cung cấp trải nghiệm số hóa liền mạch cho khách lưu trú.
 
 ## 1.2. MỤC TIÊU NGHIÊN CỨU
 ### 1.2.1. Mục tiêu tổng quát
-(Nội dung đang được cập nhật)
+Phân tích, thiết kế và xây dựng thành công một hệ thống phần mềm quản lý khách sạn hoàn chỉnh (Full-stack), đáp ứng được các nghiệp vụ cốt lõi của một cơ sở lưu trú như: quản lý phòng, quản lý đặt phòng, xử lý thanh toán, và báo cáo thống kê doanh thu theo thời gian thực.
 
 ### 1.2.2. Mục tiêu cụ thể
-(Nội dung đang được cập nhật)
+- **Về mặt lý thuyết:** Tìm hiểu và ứng dụng thành thạo các quy trình phát triển phần mềm Agile/Scrum. Phân tích rõ ràng các yêu cầu nghiệp vụ (Business Requirements) của quy trình quản trị khách sạn.
+- **Về mặt công nghệ:** Nắm vững và áp dụng kiến trúc phát triển ứng dụng nhiều tầng (N-tier architecture) bằng cách kết hợp Java Spring Boot 3 (Backend) và Angular 22 (Frontend).
+- **Về mặt thực tiễn:** 
+  - Triển khai thành công phân hệ Quản lý cốt lõi (Room, Reservation, Invoice).
+  - Tích hợp biểu đồ thống kê trực quan bằng thư viện Chart.js.
+  - Ứng dụng Trí tuệ Nhân tạo (AI Chatbot) để nâng cao trải nghiệm hỗ trợ khách hàng và tối ưu công việc của Lễ tân.
 
 ---
 
@@ -180,6 +187,16 @@ Bảng 3.2. Mô tả chi tiết các bảng trong phân hệ Phòng và Dịch v
 | room_images | Lưu trữ đường dẫn ảnh thực tế của từng phòng | id | room_id (Foreign Key) |
 | services | Danh mục các dịch vụ phụ trợ do khách sạn cung cấp | id | code (Unique) |
 
+### 3.1.4. Thiết kế phân hệ Đặt phòng và Thanh toán (Reservation & Payment Management)
+Phân hệ Đặt phòng và Thanh toán là lõi giao dịch thương mại của hệ thống. Phân hệ này chịu trách nhiệm quản lý vòng đời của một phiên lưu trú, từ lúc khách hàng tạo yêu cầu đặt phòng (Booking), tiến hành nhận phòng (Check-in), sử dụng dịch vụ phát sinh, cho đến lúc trả phòng (Check-out) và xuất hóa đơn (Invoice).
+
+**Các nghiệp vụ cốt lõi:**
+- **Quản lý Đặt phòng (Reservation):** Hỗ trợ theo dõi trạng thái phòng, ghi nhận thông tin khách hàng, ngày dự kiến đến/đi và các yêu cầu đặc biệt.
+- **Thanh toán (Payment):** Xử lý giao dịch tài chính, hỗ trợ đa phương thức thanh toán (Tiền mặt, Thẻ tín dụng, Chuyển khoản) và ghi nhận lịch sử giao dịch.
+- **Hóa đơn (Invoice):** Tự động tổng hợp chi phí tiền phòng và các dịch vụ phát sinh để xuất hóa đơn điện tử minh bạch cho khách hàng.
+
+Thiết kế này đảm bảo mọi giao dịch đều được lưu vết chặt chẽ, hỗ trợ tối đa cho bộ phận Lễ tân và Kế toán trong việc đối soát doanh thu.
+
 ## 3.2. THIẾT KẾ GIAO DIỆN
 Trải nghiệm người dùng đóng vai trò cốt lõi trong việc đánh giá chất lượng của một hệ thống phần mềm. Do đó, quy trình thiết kế giao diện được thực hiện dựa trên các nguyên tắc thiết kế hiện đại, tập trung vào tính tương tác và sự thuận tiện trong thao tác nghiệp vụ.
 
@@ -203,6 +220,11 @@ Giao diện được phân bổ thành ba khu vực chính:
 1. **Chỉ số tóm tắt (KPI Cards)**: Cung cấp tức thì các số liệu quan trọng nhất (như sự cố khẩn cấp, yêu cầu sửa chữa).
 2. **Biểu đồ phân tích (Analytics Charts)**: Tích hợp thư viện Chart.js để biểu diễn biến động doanh thu và tỷ lệ lấp đầy phòng dưới dạng đồ thị trực quan.
 3. **Danh sách tương tác nhanh**: Bảng danh sách các tác vụ hoặc yêu cầu bảo trì đang chờ xử lý, được ứng dụng kỹ thuật tải lười (Lazy Loading) để tối ưu hóa hiệu suất bộ nhớ. Mọi thao tác truy xuất ban đầu đều được thiết kế thông qua dữ liệu giả lập (Mock Data) nhằm chốt phương án hiển thị (UI) trước khi tiến hành tích hợp với Backend API.
+
+### 3.2.3. Giao diện Quản lý Đặt phòng (Reservation Management)
+Giao diện quản lý đặt phòng được thiết kế chuyên biệt để hỗ trợ nhân viên Lễ tân thao tác nhanh chóng và chính xác.
+- **Danh sách đặt phòng:** Kế thừa thành phần dùng chung `DataTable` để hiển thị danh sách khách hàng đặt phòng với đầy đủ các tính năng lọc theo ngày, trạng thái (Chờ xác nhận, Đã Check-in, Đã Check-out).
+- **Thao tác nhanh:** Tích hợp trực tiếp các nút chức năng nhận phòng, trả phòng và thanh toán ngay trên từng dòng dữ liệu, giúp giảm thiểu số lần chuyển trang và tối ưu hóa luồng công việc (Workflow) của nhân viên.
 
 ---
 
