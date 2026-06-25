@@ -1,11 +1,19 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { TableModule } from 'primeng/table';
+import { FormsModule } from '@angular/forms';
+import { TreeNode, MenuItem, MessageService } from 'primeng/api';
+import { TreeTableModule } from 'primeng/treetable';
+import { ContextMenuModule } from 'primeng/contextmenu';
+import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { CheckboxModule } from 'primeng/checkbox';
+import { ToastModule } from 'primeng/toast';
 
 interface AppFunction {
   id: number;
+  moduleId: number;
   code: string;
   name: string;
   url: string;
@@ -23,103 +31,158 @@ interface AppModule {
 @Component({
   selector: 'app-module-management',
   standalone: true,
-  imports: [CommonModule, TableModule, ButtonModule],
-  template: `
-    <div class="card shadow-sm border-0">
-      <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-        <h5 class="mb-0 fw-bold text-primary"><i class="pi pi-cog me-2"></i>Cấu hình Module & Chức năng</h5>
-        <button pButton icon="pi pi-plus" label="Thêm Module" class="p-button-sm p-button-primary"></button>
-      </div>
-      <div class="card-body p-0">
-        <p-table [value]="modules" dataKey="id" [expandedRowKeys]="expandedRows" styleClass="p-datatable-sm p-datatable-striped">
-          <ng-template pTemplate="header">
-            <tr>
-              <th style="width: 3rem"></th>
-              <th>Mã Module</th>
-              <th>Tên Module</th>
-              <th style="width: 10rem">Thao tác</th>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="body" let-mod let-expanded="expanded">
-            <tr>
-              <td>
-                <button type="button" pButton pRipple [pRowToggler]="mod" class="p-button-text p-button-rounded p-button-plain" [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"></button>
-              </td>
-              <td class="fw-bold">{{mod.code}}</td>
-              <td>{{mod.name}}</td>
-              <td>
-                <button pButton icon="pi pi-pencil" class="p-button-text p-button-sm p-button-warning me-2" title="Sửa"></button>
-                <button pButton icon="pi pi-trash" class="p-button-text p-button-sm p-button-danger" title="Xóa"></button>
-              </td>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="rowexpansion" let-mod>
-            <tr>
-              <td colspan="4" class="p-3 bg-light">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h6 class="mb-0 text-muted"><i class="pi pi-list me-2"></i>Danh sách chức năng thuộc {{mod.name}}</h6>
-                  <button pButton icon="pi pi-plus" label="Thêm Chức năng" class="p-button-sm p-button-success p-button-outlined"></button>
-                </div>
-                <p-table [value]="getFunctions(mod.id)" [tableStyle]="{'min-width': '50rem'}">
-                  <ng-template pTemplate="header">
-                    <tr>
-                      <th>Mã</th>
-                      <th>Tên chức năng</th>
-                      <th>URL</th>
-                      <th>Icon</th>
-                      <th>Thứ tự</th>
-                    </tr>
-                  </ng-template>
-                  <ng-template pTemplate="body" let-func>
-                    <tr>
-                      <td><code>{{func.code}}</code></td>
-                      <td>{{func.name}}</td>
-                      <td>{{func.url}}</td>
-                      <td><i [class]="func.icon"></i> {{func.icon}}</td>
-                      <td>{{func.sortOrder}}</td>
-                    </tr>
-                  </ng-template>
-                  <ng-template pTemplate="emptymessage">
-                    <tr>
-                      <td colspan="5" class="text-center text-muted py-3">Chưa có chức năng nào</td>
-                    </tr>
-                  </ng-template>
-                </p-table>
-              </td>
-            </tr>
-          </ng-template>
-        </p-table>
-      </div>
-    </div>
-  `
+  imports: [
+    CommonModule, FormsModule, TreeTableModule, ContextMenuModule,
+    DialogModule, ButtonModule, InputTextModule, CheckboxModule, ToastModule
+  ],
+  providers: [MessageService],
+  templateUrl: './module-management.html',
+  styleUrl: './module-management.css'
 })
 export class ModuleManagementComponent implements OnInit {
-  modules: AppModule[] = [];
-  allFunctions: AppFunction[] = [];
-  expandedRows: any = {};
+  nodes: TreeNode[] = [];
+  selectedNode: TreeNode | null = null;
+  items: MenuItem[] = [];
+  
+  displayDialog: boolean = false;
+  dialogMode: 'add' | 'edit' = 'add';
+  isModule: boolean = false; // true if editing/adding a module, false if function
+  
+  formData: any = {
+    id: null,
+    name: '',
+    code: '',
+    url: '',
+    icon: '',
+    svg: '',
+    bullet: '',
+    sortOrder: 0,
+    isRoot: false,
+    isSection: false,
+    lockClient: false,
+    isLocked: false,
+    moduleId: null // only for function
+  };
 
-  constructor(private http: HttpClient) {}
+  private http = inject(HttpClient);
+  private messageService = inject(MessageService);
 
   ngOnInit() {
     this.loadData();
+    this.items = [
+      { label: 'Thêm trang', icon: 'pi pi-plus', command: () => this.showDialogToAdd() },
+      { label: 'Chỉnh sửa trang', icon: 'pi pi-pencil', command: () => this.showDialogToEdit() },
+      { label: 'Xóa trang', icon: 'pi pi-times', command: () => this.deleteNode() },
+      { separator: true },
+      { label: 'Di chuyển xuống', icon: 'pi pi-arrow-down', command: () => this.moveNode(1) },
+      { label: 'Di chuyển lên', icon: 'pi pi-arrow-up', command: () => this.moveNode(-1) }
+    ];
   }
 
   loadData() {
-    this.http.get<AppModule[]>('http://localhost:8080/api/modules').subscribe(res => {
-      this.modules = res;
-      // expand all rows by default
-      res.forEach(m => this.expandedRows[m.id] = true);
-    });
-    this.http.get<AppFunction[]>('http://localhost:8080/api/functions').subscribe(res => {
-      this.allFunctions = res;
+    // API returns all functions, we map it on client for simplicity
+    this.http.get<AppModule[]>('http://localhost:8080/api/modules').subscribe(modules => {
+      this.http.get<AppFunction[]>('http://localhost:8080/api/functions').subscribe(functions => {
+        this.nodes = modules.map(m => {
+          const children = functions
+            .filter(f => f.moduleId === m.id)
+            .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+            .map(f => ({
+              data: { ...f, type: 'function' },
+              key: `func-${f.id}`
+            }));
+            
+          return {
+            data: { ...m, type: 'module' },
+            key: `mod-${m.id}`,
+            expanded: true,
+            children: children
+          };
+        });
+      });
     });
   }
 
-  getFunctions(moduleId: number): AppFunction[] {
-    // API returns all functions, we map it on client for simplicity since it's small data
-    // In real app, we might get them nested.
-    // Wait, the API I wrote returns flat array. Wait, my AppModuleDto doesn't load functions.
-    // So we fetch all functions and filter here.
-    return this.allFunctions.filter((f: any) => f.moduleId === moduleId);
+  showDialogToAdd() {
+    if (!this.selectedNode) return;
+    this.dialogMode = 'add';
+    const type = this.selectedNode.data.type;
+    this.isModule = type === 'module'; // Wait, if I add page to a module, I'm adding a function
+    
+    this.formData = {
+      name: '', code: '', url: '', icon: '', sortOrder: 0,
+      svg: 'Settings-2.svg', bullet: 'Dot', isRoot: false, isSection: false,
+      lockClient: false, isLocked: false,
+      moduleId: type === 'module' ? this.selectedNode.data.id : this.selectedNode.data.moduleId
+    };
+    
+    this.displayDialog = true;
+  }
+
+  showDialogToEdit() {
+    if (!this.selectedNode) return;
+    this.dialogMode = 'edit';
+    const data = this.selectedNode.data;
+    this.isModule = data.type === 'module';
+    
+    this.formData = {
+      id: data.id,
+      name: data.name,
+      code: data.code,
+      url: data.url || '',
+      icon: data.icon || '',
+      sortOrder: data.sortOrder || 0,
+      svg: 'Settings-2.svg', bullet: 'Dot', isRoot: false, isSection: false,
+      lockClient: false, isLocked: false,
+      moduleId: data.moduleId || null
+    };
+    
+    this.displayDialog = true;
+  }
+
+  save() {
+    if (!this.formData.name || !this.formData.code) {
+        this.messageService.add({severity:'error', summary: 'Lỗi', detail: 'Vui lòng nhập tên và mã trang'});
+        return;
+    }
+
+    if (this.isModule) {
+      const apiCall = this.dialogMode === 'add' 
+        ? this.http.post('http://localhost:8080/api/modules', this.formData)
+        : this.http.put(`http://localhost:8080/api/modules/${this.formData.id}`, this.formData);
+        
+      apiCall.subscribe(() => {
+        this.displayDialog = false;
+        this.loadData();
+        this.messageService.add({severity:'success', summary: 'Thành công', detail: 'Đã lưu cấu hình'});
+      });
+    } else {
+      const apiCall = this.dialogMode === 'add' 
+        ? this.http.post('http://localhost:8080/api/functions', this.formData)
+        : this.http.put(`http://localhost:8080/api/functions/${this.formData.id}`, this.formData);
+        
+      apiCall.subscribe(() => {
+        this.displayDialog = false;
+        this.loadData();
+        this.messageService.add({severity:'success', summary: 'Thành công', detail: 'Đã lưu cấu hình'});
+      });
+    }
+  }
+
+  deleteNode() {
+    if (!this.selectedNode) return;
+    const data = this.selectedNode.data;
+    const endpoint = data.type === 'module' ? 'modules' : 'functions';
+    
+    if(confirm(`Bạn có chắc chắn muốn xóa ${data.name}?`)) {
+      this.http.delete(`http://localhost:8080/api/${endpoint}/${data.id}`).subscribe(() => {
+        this.loadData();
+        this.messageService.add({severity:'success', summary: 'Thành công', detail: 'Đã xóa thành công'});
+      });
+    }
+  }
+
+  moveNode(direction: number) {
+    this.messageService.add({severity:'info', summary: 'Thông báo', detail: 'Chức năng di chuyển đang được cập nhật'});
   }
 }

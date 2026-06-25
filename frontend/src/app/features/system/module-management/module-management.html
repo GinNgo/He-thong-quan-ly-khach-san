@@ -1,0 +1,107 @@
+<p-toast></p-toast>
+<p-contextMenu #cm [model]="items"></p-contextMenu>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold text-primary"><i class="pi pi-cog me-2"></i>Khai báo trang</h5>
+        <button pButton icon="pi pi-plus" label="Thêm mới" class="p-button-sm p-button-primary" (click)="selectedNode = nodes[0]; isModule = true; showDialogToAdd();"></button>
+    </div>
+    
+    <div class="card-body p-0">
+        <p-treeTable [value]="nodes" [contextMenu]="cm" [(contextMenuSelection)]="selectedNode" styleClass="p-treetable-sm">
+            <ng-template pTemplate="header">
+                <tr>
+                    <th>Danh sách trang</th>
+                </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-rowNode let-rowData="rowData">
+                <tr [ttContextMenuRow]="rowNode" class="tree-table-row">
+                    <td>
+                        <div class="d-flex align-items-center justify-content-between w-100">
+                            <div>
+                                <p-treeTableToggler [rowNode]="rowNode"></p-treeTableToggler>
+                                <i [class]="rowData.icon + ' me-2 text-muted'" *ngIf="rowData.icon"></i>
+                                <span [class.fw-bold]="rowData.type === 'module'">{{rowData.name}}</span>
+                                <span class="ms-2 text-muted small" *ngIf="rowData.type === 'module'"><i class="pi pi-cog" (click)="selectedNode = rowNode; cm.show($event)"></i></span>
+                            </div>
+                            <div class="text-end" *ngIf="rowData.type === 'function'">
+                                <i class="pi pi-cog text-muted cursor-pointer context-icon" (click)="selectedNode = rowNode; cm.show($event)"></i>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </ng-template>
+            <ng-template pTemplate="emptymessage">
+                <tr>
+                    <td class="text-center p-4">Không có dữ liệu</td>
+                </tr>
+            </ng-template>
+        </p-treeTable>
+    </div>
+</div>
+
+<p-dialog [(visible)]="displayDialog" [modal]="true" [style]="{width: '600px'}" 
+    [header]="'Cập nhật trang \'' + (selectedNode?.data?.name || '') + '\''" [draggable]="false" [resizable]="false">
+    
+    <div class="d-flex flex-column gap-3 p-3">
+        <div class="field">
+            <label class="fw-bold mb-1">Tên trang <span class="text-danger">*</span></label>
+            <input type="text" pInputText [(ngModel)]="formData.name" class="w-100" />
+        </div>
+        
+        <div class="field">
+            <label class="fw-bold mb-1">Mã <span class="text-danger">*</span></label>
+            <input type="text" pInputText [(ngModel)]="formData.code" class="w-100" />
+        </div>
+        
+        <div class="field">
+            <label class="fw-bold mb-1">Url</label>
+            <input type="text" pInputText [(ngModel)]="formData.url" class="w-100" />
+        </div>
+        
+        <div class="field">
+            <label class="fw-bold mb-1">Icon</label>
+            <input type="text" pInputText [(ngModel)]="formData.icon" class="w-100" />
+        </div>
+        
+        <div class="field">
+            <label class="fw-bold mb-1">Svg</label>
+            <textarea pInputTextarea rows="3" [(ngModel)]="formData.svg" class="w-100"></textarea>
+        </div>
+        
+        <div class="field">
+            <label class="fw-bold mb-1">Bullet</label>
+            <input type="text" pInputText [(ngModel)]="formData.bullet" class="w-100" />
+        </div>
+        
+        <div class="field">
+            <label class="fw-bold mb-1">Thứ tự</label>
+            <input type="number" pInputText [(ngModel)]="formData.sortOrder" class="w-100" />
+        </div>
+        
+        <div class="field-checkbox d-flex align-items-center gap-2 mt-2">
+            <p-checkbox [(ngModel)]="formData.isRoot" [binary]="true" inputId="isRoot"></p-checkbox>
+            <label for="isRoot" class="mb-0">Root</label>
+        </div>
+        
+        <div class="field-checkbox d-flex align-items-center gap-2">
+            <p-checkbox [(ngModel)]="formData.isSection" [binary]="true" inputId="isSection"></p-checkbox>
+            <label for="isSection" class="mb-0">Section</label>
+        </div>
+        
+        <div class="field-checkbox d-flex align-items-center gap-2">
+            <p-checkbox [(ngModel)]="formData.lockClient" [binary]="true" inputId="lockClient"></p-checkbox>
+            <label for="lockClient" class="mb-0">Khóa client</label>
+        </div>
+        
+        <div class="field-checkbox d-flex align-items-center gap-2">
+            <p-checkbox [(ngModel)]="formData.isLocked" [binary]="true" inputId="isLocked"></p-checkbox>
+            <label for="isLocked" class="mb-0">Khóa</label>
+        </div>
+    </div>
+    
+    <ng-template pTemplate="footer">
+        <button pButton label="Hủy" class="p-button-secondary p-button-text" (click)="displayDialog = false"></button>
+        <button pButton label="Cập nhật" class="p-button-primary" (click)="save()"></button>
+    </ng-template>
+</p-dialog>
