@@ -17,6 +17,8 @@ export interface AppModuleDto {
   functions: AppFunctionDto[];
 }
 
+import { ChangeDetectorRef } from '@angular/core';
+
 @Component({
   selector: 'app-sidebar',
   imports: [RouterLink, RouterLinkActive],
@@ -26,12 +28,14 @@ export interface AppModuleDto {
 export class Sidebar implements OnInit {
   @Input() isCollapsed = false;
   http = inject(HttpClient);
+  cdr = inject(ChangeDetectorRef);
   
   menuItems: AppModuleDto[] = [];
 
   ngOnInit() {
     this.http.get<AppModuleDto[]>('http://localhost:8080/api/auth/my-menu').subscribe(res => {
       this.menuItems = res;
+      this.cdr.detectChanges();
     });
   }
 }
