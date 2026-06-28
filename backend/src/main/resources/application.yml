@@ -6,7 +6,7 @@ spring:
 
   datasource:
     # SQL Server Configuration
-    url: jdbc:sqlserver://DESKTOP-JLPTS26:1433;databaseName=HotelDB;encrypt=false;trustServerCertificate=true
+    url: jdbc:sqlserver://127.0.0.1:1433;databaseName=HotelDB;encrypt=true;trustServerCertificate=true
     username: sa
     password: HotelAdmin@2026!
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver

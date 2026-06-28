@@ -29,14 +29,20 @@ erDiagram
         varchar updated_by
     }
 
-    permissions {
+    app_module {
         bigint id PK
         varchar code UK
         varchar name
-        datetime created_at
-        datetime updated_at
-        varchar created_by
-        varchar updated_by
+    }
+
+    app_function {
+        bigint id PK
+        bigint module_id FK
+        varchar code UK
+        varchar name
+        varchar url
+        varchar icon
+        int sort_order
     }
 
     user_roles {
@@ -44,15 +50,18 @@ erDiagram
         bigint role_id FK
     }
 
-    role_permissions {
+    app_role_permission {
+        bigint id PK
         bigint role_id FK
-        bigint permission_id FK
+        bigint function_id FK
+        int action_mask
     }
 
     users ||--o{ user_roles : has
     roles ||--o{ user_roles : belongs_to
-    roles ||--o{ role_permissions : has
-    permissions ||--o{ role_permissions : belongs_to
+    app_module ||--o{ app_function : contains
+    roles ||--o{ app_role_permission : has
+    app_function ||--o{ app_role_permission : belongs_to
 ```
 
 ## Toàn bộ cấu trúc các bảng (Legacy Text Format)
@@ -80,22 +89,29 @@ erDiagram
 * created_by
 * updated_by
 
-### permissions
-* id
+### app_module
+* id (PK)
 * code
 * name
-* created_at
-* updated_at
-* created_by
-* updated_by
+
+### app_function
+* id (PK)
+* module_id (FK)
+* code
+* name
+* url
+* icon
+* sort_order
 
 ### user_roles
-* user_id
-* role_id
+* user_id (FK)
+* role_id (FK)
 
-### role_permissions
-* role_id
-* permission_id
+### app_role_permission
+* id (PK)
+* role_id (FK)
+* function_id (FK)
+* action_mask
 
 ### room_types
 * id

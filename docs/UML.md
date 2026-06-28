@@ -22,7 +22,8 @@ rectangle "Phân hệ Xác thực (Auth)" {
   usecase "Đăng nhập" as UC1
   usecase "Đổi mật khẩu" as UC2
   usecase "Quản lý Vai trò" as UC3
-  usecase "Phân quyền động" as UC4
+  usecase "Quản lý Module & Chức năng" as UC4
+  usecase "Phân quyền (Action Mask)" as UC5
 }
 
 Guest --> UC1
@@ -32,6 +33,7 @@ Admin --> UC1
 Admin --> UC2
 Admin --> UC3
 Admin --> UC4
+Admin --> UC5
 @enduml
 ```
 
@@ -108,13 +110,27 @@ classDiagram
         +Long id
         +String code
         +String name
-        +Set~Permission~ permissions
+        +Set~RolePermission~ rolePermissions
     }
 
-    class Permission {
+    class AppModule {
         +Long id
         +String code
         +String name
+    }
+
+    class AppFunction {
+        +Long id
+        +String code
+        +String name
+        +String url
+        +String icon
+        +Integer sortOrder
+    }
+
+    class RolePermission {
+        +Long id
+        +Integer actionMask
     }
 
     class CustomUserDetailsService {
@@ -127,12 +143,16 @@ classDiagram
     }
 
     User "1" --> "*" Role : has
-    Role "1" --> "*" Permission : has
+    Role "1" --> "*" RolePermission : has
+    AppModule "1" --> "*" AppFunction : contains
+    AppFunction "1" <-- "*" RolePermission : applies to
     CustomUserDetailsService --> User : loads
 
     style User fill:#f9d0c4,stroke:#333,stroke-width:1px
     style Role fill:#d4e1f9,stroke:#333,stroke-width:1px
-    style Permission fill:#ffe6cc,stroke:#333,stroke-width:1px
+    style AppModule fill:#ffe6cc,stroke:#333,stroke-width:1px
+    style AppFunction fill:#ffe6cc,stroke:#333,stroke-width:1px
+    style RolePermission fill:#e6ccff,stroke:#333,stroke-width:1px
     style CustomUserDetailsService fill:#fdf2d0,stroke:#333,stroke-width:1px
     style JwtTokenProvider fill:#fdf2d0,stroke:#333,stroke-width:1px
 ```

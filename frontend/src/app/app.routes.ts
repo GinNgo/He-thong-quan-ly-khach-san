@@ -13,9 +13,25 @@ import { authGuard } from './core/guards/auth-guard';
 import { permissionGuard } from './core/guards/permission.guard';
 import { FunctionCode, ActionCode } from './core/services/permission.service';
 
+import { ClientLayout } from './layout/client-layout/client-layout';
+import { HomeComponent } from './features/client/home/home';
+
+import { RoomSearchComponent } from './features/client/room-search/room-search.component';
+import { RegisterComponent } from './features/auth/register/register.component';
+import { AdminLoginComponent } from './features/auth/admin-login/admin-login.component';
+
 export const routes: Routes = [
-  { path: '', redirectTo: 'login', pathMatch: 'full' },
+  {
+    path: '',
+    component: ClientLayout,
+    children: [
+      { path: '', component: HomeComponent, pathMatch: 'full' },
+      { path: 'search', component: RoomSearchComponent }
+    ]
+  },
   { path: 'login', component: LoginComponent },
+  { path: 'register', component: RegisterComponent },
+  { path: 'admin/login', component: AdminLoginComponent },
   {
     path: 'admin',
     component: AdminLayout,
@@ -38,5 +54,5 @@ export const routes: Routes = [
     ]
   },
   { path: '403', loadComponent: () => import('./features/error/forbidden/forbidden.component').then(m => m.ForbiddenComponent) },
-  { path: '**', redirectTo: 'login' }
+  { path: '**', redirectTo: '' }
 ];

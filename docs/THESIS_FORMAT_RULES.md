@@ -235,3 +235,17 @@ Generate:
 6. Testing explanation
 
 Use academic Vietnamese writing style.
+
+---
+
+## Required Chapters
+
+Chapter 1: TỔNG QUAN ĐỀ TÀI (Introduction)
+
+Chapter 2: CƠ SỞ LÝ THUYẾT (Theoretical Background)
+
+Chapter 3: PHÂN TÍCH VÀ THIẾT KẾ HỆ THỐNG (Analysis and Design)
+
+Chapter 4: CÀI ĐẶT VÀ KIỂM THỬ HỆ THỐNG (Implementation)
+
+Chapter 5: KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN (Conclusion)

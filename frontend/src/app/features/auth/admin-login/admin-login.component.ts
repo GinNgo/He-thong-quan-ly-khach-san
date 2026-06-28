@@ -1,17 +1,17 @@
 import { Component, ChangeDetectionStrategy, inject, ChangeDetectorRef, OnInit } from '@angular/core';
 import { SharedModule } from '@app/shared/shared.module';
 import { AuthService } from '@app/core/services/auth';
-import { Router, RouterModule } from '@angular/router';
+import { Router } from '@angular/router';
 
 @Component({
   standalone: true,
-  imports: [SharedModule, RouterModule],
-  selector: 'app-login',
-  templateUrl: './login.component.html',
+  imports: [SharedModule],
+  selector: 'app-admin-login',
+  templateUrl: './admin-login.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrls: ['./login.component.css'],
+  styleUrls: ['./admin-login.component.css'],
 })
-export class LoginComponent implements OnInit {
+export class AdminLoginComponent implements OnInit {
   loginObj = {
     username: '',
     password: '',

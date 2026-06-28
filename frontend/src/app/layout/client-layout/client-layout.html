@@ -1,0 +1,65 @@
+<!-- Header / Navbar -->
+<header class="bg-white sticky top-0 z-50 border-b border-gray-100 shadow-sm">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between items-center h-20">
+      
+      <!-- Logo -->
+      <a routerLink="/" class="flex items-center gap-2 no-underline text-gray-900">
+        <div class="flex flex-col items-center justify-center border-2 border-gray-900 p-1">
+          <div class="flex gap-1">
+            <div class="w-1 h-3 bg-gray-900"></div>
+            <div class="w-1 h-4 bg-gray-900"></div>
+            <div class="w-1 h-5 bg-gray-900"></div>
+          </div>
+        </div>
+        <div class="flex flex-col leading-tight">
+          <span class="text-xl font-black tracking-widest uppercase">Luxstay</span>
+          <span class="text-xs font-semibold tracking-widest uppercase text-gray-500">Hotels</span>
+        </div>
+      </a>
+
+      <!-- Navigation -->
+      <nav class="hidden md:flex space-x-8">
+        <a routerLink="/" class="text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors no-underline">Phòng nghỉ</a>
+        <a routerLink="/" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors no-underline">Ẩm thực</a>
+        <a routerLink="/" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors no-underline">Ưu đãi</a>
+        <a routerLink="/" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors no-underline">Giới thiệu</a>
+        <a routerLink="/" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors no-underline">Liên hệ</a>
+      </nav>
+
+      <!-- Actions -->
+      <div class="flex items-center space-x-6">
+        <div class="hidden sm:flex items-center space-x-1 cursor-pointer group">
+          <span class="text-sm font-medium text-gray-700 group-hover:text-blue-600">VN</span>
+          <span class="material-symbols-outlined text-[18px] leading-none text-gray-500 group-hover:text-blue-600 flex items-center">expand_more</span>
+        </div>
+        <a routerLink="/login" class="bg-[#1a56db] text-white px-6 py-2.5 rounded-md text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm shadow-blue-500/30 no-underline">
+          Đăng nhập/Đăng ký
+        </a>
+      </div>
+      
+    </div>
+  </div>
+</header>
+
+<!-- Main Content -->
+<main class="min-h-screen bg-[#f8f9fc] font-sans">
+  <router-outlet></router-outlet>
+</main>
+
+<!-- Footer -->
+<footer class="bg-gray-900 text-gray-300 py-12">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+    <div class="flex items-center gap-2">
+      <div class="flex flex-col leading-tight text-white">
+        <span class="text-xl font-black tracking-widest uppercase">Luxstay</span>
+        <span class="text-xs font-semibold tracking-widest uppercase text-gray-400">Hotels</span>
+      </div>
+    </div>
+    <div class="flex space-x-6">
+      <a href="#" class="text-sm hover:text-white transition-colors no-underline">Privacy Policy</a>
+      <a href="#" class="text-sm hover:text-white transition-colors no-underline">Terms of Service</a>
+    </div>
+    <p class="text-sm text-gray-500 m-0">&copy; 2026 Luxstay Hotels. All rights reserved.</p>
+  </div>
+</footer>

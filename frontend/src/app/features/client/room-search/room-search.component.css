@@ -1,0 +1,7 @@
+/* Customize primeNG slider color to match booking style */
+::ng-deep .p-slider .p-slider-range {
+  background: #0071c2 !important;
+}
+::ng-deep .p-slider .p-slider-handle {
+  border: 2px solid #0071c2 !important;
+}

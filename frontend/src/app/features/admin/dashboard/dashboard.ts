@@ -1,5 +1,6 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { AnalyticsService, AnalyticsData } from '../../../core/services/analytics';
 import { StatCard } from '../../../shared/components/stat-card/stat-card';
 import { RevenueChart } from '../../../shared/components/charts/revenue-chart/revenue-chart';
@@ -15,6 +16,29 @@ import { PageRequest, SortRequest, FilterRequest } from '../../../shared/models/
   styleUrl: './dashboard.css'
 })
 export class Dashboard implements OnInit {
+  // Onboarding Phase 1 State
+  isPhase1 = true;
+  onboardingProgress = {
+    profileCompleted: true,
+    roomsCompleted: false,
+    servicesCompleted: false,
+    policiesCompleted: false,
+    isApproved: false
+  };
+
+  get completedSteps(): number {
+    let count = 0;
+    if (this.onboardingProgress.profileCompleted) count++;
+    if (this.onboardingProgress.roomsCompleted) count++;
+    if (this.onboardingProgress.servicesCompleted) count++;
+    if (this.onboardingProgress.policiesCompleted) count++;
+    return count;
+  }
+
+  get progressPercentage(): number {
+    return (this.completedSteps / 4) * 100;
+  }
+
   data: AnalyticsData | null = null;
   revenueChartData: any;
   occupancyChartData: any;
@@ -34,7 +58,15 @@ export class Dashboard implements OnInit {
   totalWorkOrders = 0;
   loadingWorkOrders = false;
 
-  constructor(private analyticsService: AnalyticsService, private cdr: ChangeDetectorRef) {}
+  constructor(
+    private analyticsService: AnalyticsService, 
+    private cdr: ChangeDetectorRef,
+    private router: Router
+  ) {}
+
+  navigateTo(route: string) {
+    this.router.navigate([route]);
+  }
 
   ngOnInit() {
     this.analyticsService.getDashboardData().subscribe((res) => {

@@ -1,0 +1,162 @@
+<div class="min-h-screen bg-gray-50 flex flex-col font-sans">
+  
+  <!-- Header / Search Bar Section -->
+  <div class="bg-[#003b95] pt-4 pb-6 px-4 md:px-8">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-4">
+      <div class="text-white font-bold text-xl md:w-1/4 whitespace-nowrap hidden md:block">
+        Persist search
+      </div>
+      
+      <!-- Search Inputs Container -->
+      <div class="flex-grow flex flex-col md:flex-row gap-1 w-full bg-[#febb02] p-1 rounded">
+        <!-- Destination -->
+        <div class="relative flex-grow bg-white rounded-sm flex items-center px-3 py-2">
+          <i class="pi pi-map-marker text-gray-500 mr-2"></i>
+          <input type="text" placeholder="Destination" class="w-full focus:outline-none text-gray-800" [(ngModel)]="destination">
+        </div>
+        
+        <!-- Check-in / Check-out -->
+        <div class="relative flex-grow bg-white rounded-sm flex items-center px-3 py-2">
+          <i class="pi pi-calendar text-gray-500 mr-2"></i>
+          <input type="text" placeholder="Check-in - Check-out" class="w-full focus:outline-none text-gray-800" [(ngModel)]="dateRange">
+        </div>
+        
+        <!-- Guests -->
+        <div class="relative w-full md:w-48 bg-white rounded-sm flex items-center px-3 py-2">
+          <i class="pi pi-user text-gray-500 mr-2"></i>
+          <input type="text" placeholder="Guests" class="w-full focus:outline-none text-gray-800" [(ngModel)]="guests">
+          <i class="pi pi-chevron-down text-gray-500 ml-2"></i>
+        </div>
+        
+        <!-- Search Button -->
+        <button class="bg-[#0071c2] hover:bg-[#005999] text-white font-bold py-2 px-8 rounded-sm transition-colors" (click)="search()">
+          Search
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Area -->
+  <div class="max-w-7xl mx-auto w-full px-4 md:px-8 py-6 flex flex-col md:flex-row gap-6">
+    
+    <!-- Left Sidebar: Filters -->
+    <div class="w-full md:w-64 flex-shrink-0">
+      <h2 class="text-xl font-bold text-gray-900 mb-4">Filter Results</h2>
+      
+      <div class="bg-white border border-gray-200 rounded p-4 mb-4">
+        <!-- Price Range -->
+        <div class="mb-6">
+          <div class="flex justify-between items-center mb-3 cursor-pointer">
+            <h3 class="font-bold text-gray-800">Price Range</h3>
+            <i class="pi pi-minus text-gray-500 text-sm"></i>
+          </div>
+          
+          <div class="px-2 mb-4">
+            <p-slider [(ngModel)]="priceRange" [range]="true" [min]="0" [max]="2000"></p-slider>
+          </div>
+          
+          <div class="flex items-center gap-2">
+            <div class="relative border border-gray-300 rounded px-2 py-1 w-full bg-white flex items-center">
+              <span class="text-gray-500 mr-1">$</span>
+              <input type="number" [(ngModel)]="priceRange[0]" class="w-full focus:outline-none text-sm bg-transparent">
+            </div>
+            <span class="text-gray-500">-</span>
+            <div class="relative border border-gray-300 rounded px-2 py-1 w-full bg-white flex items-center">
+              <span class="text-gray-500 mr-1">$</span>
+              <input type="number" [(ngModel)]="priceRange[1]" class="w-full focus:outline-none text-sm bg-transparent">
+            </div>
+          </div>
+        </div>
+
+        <hr class="border-gray-200 my-4">
+
+        <!-- Room Type -->
+        <div class="mb-6">
+          <h3 class="font-bold text-gray-800 mb-3">Room Type</h3>
+          <div class="space-y-2">
+            <label class="flex items-center gap-2 cursor-pointer" *ngFor="let type of roomTypes">
+              <input type="checkbox" [(ngModel)]="type.checked" class="w-4 h-4 rounded border-gray-300 text-[#0071c2] focus:ring-[#0071c2]">
+              <span class="text-gray-700 text-sm">{{ type.label }}</span>
+            </label>
+          </div>
+        </div>
+
+        <hr class="border-gray-200 my-4">
+
+        <!-- Amenities -->
+        <div>
+          <div class="flex justify-between items-center mb-3 cursor-pointer">
+            <h3 class="font-bold text-gray-800">Amenities</h3>
+            <i class="pi pi-chevron-up text-gray-500 text-sm"></i>
+          </div>
+          <div class="space-y-2">
+            <label class="flex items-center gap-2 cursor-pointer" *ngFor="let amenity of amenities">
+              <input type="checkbox" [(ngModel)]="amenity.checked" class="w-4 h-4 rounded border-gray-300 text-[#0071c2] focus:ring-[#0071c2]">
+              <span class="text-gray-700 text-sm">{{ amenity.label }}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Side: Room Grid -->
+    <div class="flex-grow">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Room Card -->
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col hover:shadow-lg transition-shadow duration-300" *ngFor="let room of rooms">
+          <!-- Image -->
+          <div class="h-48 w-full overflow-hidden relative">
+            <img [src]="room.image" [alt]="room.name" class="w-full h-full object-cover">
+          </div>
+          
+          <!-- Content -->
+          <div class="p-4 flex flex-col flex-grow">
+            <!-- Header (Title & Rating) -->
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="text-lg font-bold text-gray-900 leading-tight">{{ room.name }}</h3>
+              <div class="flex items-center gap-1 text-sm font-semibold">
+                <i class="pi pi-star-fill text-[#febb02]"></i>
+                <span>{{ room.rating }}/5</span>
+              </div>
+            </div>
+            
+            <!-- Stars purely aesthetic -->
+            <div class="flex text-[#febb02] text-xs mb-3">
+              <i class="pi pi-star-fill"></i>
+              <i class="pi pi-star-fill"></i>
+              <i class="pi pi-star-fill"></i>
+              <i class="pi pi-star-fill"></i>
+              <i class="pi pi-star-fill"></i>
+            </div>
+            
+            <!-- Features/Amenities -->
+            <div class="flex items-center flex-wrap gap-x-3 gap-y-1 text-sm text-gray-600 mb-4">
+              <div class="flex items-center gap-1" *ngFor="let feature of room.features">
+                <i class="pi pi-wifi text-xs" *ngIf="feature === 'WiFi'"></i>
+                <i class="pi pi-stop-circle text-xs" *ngIf="feature === 'AC'"></i>
+                <i class="pi pi-verified text-xs" *ngIf="feature === 'Breakfast Included'"></i>
+                <span>{{ feature }}</span>
+              </div>
+            </div>
+            
+            <div class="mt-auto">
+              <!-- Price -->
+              <div class="mb-3">
+                <span class="text-xl font-bold text-gray-900">${{ room.price }}</span>
+                <span class="text-sm text-gray-500 font-normal"> / night</span>
+              </div>
+              
+              <!-- Action Button -->
+              <button class="w-full bg-[#003b95] hover:bg-[#002255] text-white font-medium py-2 rounded transition-colors">
+                View Details
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    
+  </div>
+</div>

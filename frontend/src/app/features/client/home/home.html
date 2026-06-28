@@ -1,0 +1,208 @@
+<!-- Hero Section -->
+<section class="relative h-[600px] flex items-center justify-center">
+  <!-- Background Image -->
+  <div class="absolute inset-0 z-0">
+    <img src="https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=1920&q=80" alt="Resort" class="w-full h-full object-cover">
+    <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60"></div>
+  </div>
+
+  <!-- Hero Content -->
+  <div class="relative z-10 text-center px-4 mt-[-100px]">
+    <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 drop-shadow-lg tracking-tight leading-tight">
+      Trải nghiệm Đẳng cấp<br>Không giới hạn
+    </h1>
+  </div>
+
+  <!-- Search Bar Overlay -->
+  <div class="absolute bottom-10 left-0 right-0 z-20 px-4">
+    <div class="max-w-5xl mx-auto bg-white/95 backdrop-blur-md p-4 md:p-6 rounded-2xl shadow-2xl">
+      <div class="flex flex-col md:flex-row gap-4 items-end">
+        
+        <!-- Check-in -->
+        <div class="flex-1 w-full">
+          <label class="block text-sm font-bold text-gray-900 mb-2">Nhận phòng</label>
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px] leading-none text-gray-400">calendar_today</span>
+            <input type="text" placeholder="Nhận phòng" class="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-shadow">
+          </div>
+        </div>
+
+        <!-- Check-out -->
+        <div class="flex-1 w-full">
+          <label class="block text-sm font-bold text-gray-900 mb-2">Trả phòng</label>
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px] leading-none text-gray-400">calendar_today</span>
+            <input type="text" placeholder="Trả phòng" class="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-shadow">
+          </div>
+        </div>
+
+        <!-- Guests -->
+        <div class="flex-1 w-full">
+          <label class="block text-sm font-bold text-gray-900 mb-2">Số khách</label>
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px] leading-none text-gray-400">person</span>
+            <select class="w-full pl-10 pr-10 py-3 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-shadow appearance-none cursor-pointer">
+              <option *ngFor="let opt of guestOptions" [value]="opt.value">{{ opt.label }}</option>
+            </select>
+            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-[20px] leading-none text-gray-400 pointer-events-none">expand_more</span>
+          </div>
+        </div>
+
+        <!-- Search Button -->
+        <div class="w-full md:w-auto">
+          <button class="w-full md:w-[140px] bg-[#2d53d8] hover:bg-blue-800 text-white font-bold py-3 px-6 rounded-lg shadow-lg shadow-blue-500/30 transition-all active:scale-95 flex items-center justify-center h-[46px]">
+            Tìm kiếm
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Destinations Section -->
+<section class="pt-24 pb-10 bg-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between items-end mb-8">
+      <div>
+        <h2 class="text-3xl font-bold text-gray-900 mb-2">Điểm Đến Phổ Biến</h2>
+        <p class="text-gray-500 text-sm">Khám phá các điểm đến được yêu thích nhất cho kỳ nghỉ của bạn</p>
+      </div>
+      <button class="text-[#2d53d8] text-sm font-bold hover:underline hidden sm:block">Xem tất cả</button>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div *ngFor="let dest of destinations; let i = index" class="group cursor-pointer" [ngClass]="{'hidden md:block': i > 3}">
+        <div class="relative w-full h-56 rounded-2xl overflow-hidden mb-3 shadow-md">
+          <img [src]="dest.image" [alt]="dest.name" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+          <div class="absolute bottom-4 left-4">
+            <h3 class="text-white font-bold text-lg mb-0.5 drop-shadow-md">{{ dest.name }}</h3>
+            <p class="text-white/80 text-xs font-medium">{{ dest.properties }} chỗ nghỉ</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Promotions Section -->
+<section class="py-10 bg-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="mb-8">
+      <h2 class="text-3xl font-bold text-gray-900 mb-2">Ưu Đãi Đặc Biệt</h2>
+      <p class="text-gray-500 text-sm">Các chương trình khuyến mãi tốt nhất dành riêng cho bạn</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div *ngFor="let promo of promotions" class="bg-[#f8f9fa] rounded-2xl overflow-hidden flex flex-col sm:flex-row group border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+        <div class="w-full sm:w-2/5 h-48 sm:h-auto relative overflow-hidden">
+          <img [src]="promo.image" alt="Promotion" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+        </div>
+        <div class="w-full sm:w-3/5 p-6 sm:p-8 flex flex-col justify-center relative">
+          <div class="absolute top-0 right-0 w-16 h-16 bg-blue-100 rounded-bl-full flex justify-end p-3 text-blue-600 opacity-50"><span class="material-symbols-outlined">local_offer</span></div>
+          <h3 class="text-xl font-bold text-gray-900 mb-2 relative z-10">{{ promo.title }}</h3>
+          <p class="text-gray-600 text-sm mb-5 leading-relaxed relative z-10">{{ promo.desc }}</p>
+          <div class="flex items-center gap-3 relative z-10 mt-auto">
+            <div class="bg-white text-blue-700 font-mono font-bold px-3 py-2 rounded-lg border border-blue-200 select-all tracking-wider shadow-sm">{{ promo.code }}</div>
+            <button class="bg-[#2d53d8] hover:bg-blue-800 text-white text-sm font-bold py-2.5 px-5 rounded-lg transition-colors shadow-md">Copy mã</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Featured Rooms Section -->
+<section class="py-16 bg-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl font-bold text-gray-900">Phòng Nổi Bật</h2>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div *ngFor="let room of featuredRooms" class="bg-white rounded-2xl overflow-hidden shadow-lg border border-gray-100 group hover:-translate-y-1 transition-transform duration-300">
+        <div class="relative h-48 overflow-hidden">
+          <img [src]="room.image" [alt]="room.name" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+        </div>
+        <div class="p-5">
+          <h3 class="text-lg font-bold text-gray-900 mb-1">{{ room.name }}</h3>
+          <p class="text-xs text-gray-500 mb-4">{{ room.type }}</p>
+          <div class="flex justify-between items-center mt-2">
+            <div class="text-xl font-black text-gray-900">${{ room.price | number:'1.2-2' }}</div>
+            <button class="bg-[#1a56db] hover:bg-blue-700 text-white text-xs font-bold py-2 px-4 rounded transition-colors shadow-sm shadow-blue-500/30">Đặt ngay</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Our Services Section -->
+<section class="py-20 bg-[#f8f9fa]">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl font-bold text-gray-900">Dịch Vụ Nổi Bật</h2>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div *ngFor="let service of services" class="bg-white rounded-3xl p-10 text-center shadow-xl shadow-gray-200/50 hover:shadow-2xl transition-shadow duration-300">
+        <div class="w-16 h-16 mx-auto bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-center mb-6">
+          <i [class]="service.icon + ' text-2xl text-gray-700'"></i>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-4">{{ service.title }}</h3>
+        <p class="text-sm text-gray-500 leading-relaxed">{{ service.desc }}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Customer Reviews Section -->
+<section class="py-20 bg-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl font-bold text-gray-900">Đánh Giá Từ Khách Hàng</h2>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+      
+      <!-- Prev Button Mock -->
+      <button class="absolute left-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center text-gray-600 hover:text-blue-600 z-10 hidden lg:flex transition-colors">
+        <span class="material-symbols-outlined text-lg leading-none">chevron_left</span>
+      </button>
+
+      <!-- Review Cards -->
+      <div *ngFor="let review of reviews" class="bg-white rounded-2xl p-8 border border-gray-100 shadow-lg flex flex-col justify-between">
+        <div>
+          <div class="flex gap-1 mb-4">
+            <i class="pi pi-star-fill text-[#f59e0b] text-sm" *ngFor="let i of [1,2,3,4,5]"></i>
+          </div>
+          <p class="text-sm text-gray-700 font-medium leading-relaxed mb-8 italic">"{{ review.text }}"</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
+             <img [src]="'https://ui-avatars.com/api/?name=' + review.user + '&background=random'" alt="Avatar" class="w-full h-full object-cover">
+          </div>
+          <div class="flex flex-col">
+            <span class="text-sm font-bold text-gray-900">{{ review.user }}</span>
+            <span class="text-[11px] text-gray-500">{{ review.role }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Next Button Mock -->
+      <button class="absolute right-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center text-gray-600 hover:text-blue-600 z-10 hidden lg:flex transition-colors">
+        <span class="material-symbols-outlined text-lg leading-none">chevron_right</span>
+      </button>
+
+    </div>
+
+    <!-- Pagination Dots -->
+    <div class="flex justify-center gap-2 mt-8">
+      <div class="w-2 h-2 rounded-full bg-blue-600"></div>
+      <div class="w-2 h-2 rounded-full bg-gray-200"></div>
+      <div class="w-2 h-2 rounded-full bg-gray-200"></div>
+      <div class="w-2 h-2 rounded-full bg-gray-200"></div>
+    </div>
+  </div>
+</section>
