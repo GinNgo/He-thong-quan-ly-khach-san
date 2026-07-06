@@ -1,7 +1,8 @@
 import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { RouterModule, ActivatedRoute } from '@angular/router';
+import { inject } from '@angular/core';
 import { SliderModule } from 'primeng/slider';
 
 @Component({
@@ -13,6 +14,8 @@ import { SliderModule } from 'primeng/slider';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RoomSearchComponent implements OnInit {
+  private route = inject(ActivatedRoute);
+
   // Search Bar
   destination: string = '';
   dateRange: string = '';
@@ -90,7 +93,12 @@ export class RoomSearchComponent implements OnInit {
 
   constructor() {}
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    this.route.queryParams.subscribe(params => {
+      if (params['checkIn']) this.dateRange = params['checkIn'] + (params['checkOut'] ? ' to ' + params['checkOut'] : '');
+      if (params['guests']) this.guests = params['guests'];
+    });
+  }
 
   search() {
     console.log('Searching with:', {

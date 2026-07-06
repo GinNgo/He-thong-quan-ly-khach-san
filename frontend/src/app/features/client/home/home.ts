@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 import { DatePickerModule } from 'primeng/datepicker';
@@ -6,6 +6,7 @@ import { SelectModule } from 'primeng/select';
 import { FormsModule } from '@angular/forms';
 import { CardModule } from 'primeng/card';
 import { CarouselModule } from 'primeng/carousel';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-home',
@@ -23,6 +24,8 @@ import { CarouselModule } from 'primeng/carousel';
   styleUrls: ['./home.css']
 })
 export class HomeComponent implements OnInit {
+  private router = inject(Router);
+
   checkIn: Date | undefined;
   checkOut: Date | undefined;
   guests: any | undefined;
@@ -52,17 +55,17 @@ export class HomeComponent implements OnInit {
       {
         title: 'Thành viên mới',
         desc: 'Tặng Voucher 500k cho khách hàng đăng ký tài khoản thành viên LuxeStay ngay hôm nay.',
-        image: 'https://images.unsplash.com/photo-1542314831-c6a4d14d837e?auto=format&fit=crop&w=800&q=80',
+        image: 'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?auto=format&fit=crop&w=800&q=80',
         code: 'NEWUSER'
       }
     ];
 
     this.destinations = [
-      { name: 'Đà Lạt', properties: 124, image: 'https://images.unsplash.com/photo-1590001014601-5768cb4ab970?auto=format&fit=crop&w=600&q=80' },
-      { name: 'Nha Trang', properties: 86, image: 'https://images.unsplash.com/photo-1582293041079-7814c2f12063?auto=format&fit=crop&w=600&q=80' },
-      { name: 'Phú Quốc', properties: 152, image: 'https://images.unsplash.com/photo-1596484552834-5a5821c25c68?auto=format&fit=crop&w=600&q=80' },
+      { name: 'Đà Lạt', properties: 124, image: 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=600&q=80' },
+      { name: 'Nha Trang', properties: 86, image: 'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?auto=format&fit=crop&w=600&q=80' },
+      { name: 'Phú Quốc', properties: 152, image: 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=600&q=80' },
       { name: 'Đà Nẵng', properties: 198, image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=600&q=80' },
-      { name: 'Sapa', properties: 95, image: 'https://images.unsplash.com/photo-1563212004-9884589d7008?auto=format&fit=crop&w=600&q=80' }
+      { name: 'Sapa', properties: 95, image: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=600&q=80' }
     ];
 
     this.featuredRooms = [
@@ -130,5 +133,14 @@ export class HomeComponent implements OnInit {
         role: 'Khách hàng'
       }
     ];
+  }
+
+  searchRooms() {
+    const queryParams: any = {};
+    if (this.checkIn) queryParams.checkIn = this.checkIn.toISOString().split('T')[0];
+    if (this.checkOut) queryParams.checkOut = this.checkOut.toISOString().split('T')[0];
+    if (this.guests) queryParams.guests = this.guests; // guests is now bound to the value
+
+    this.router.navigate(['/room-search'], { queryParams });
   }
 }
