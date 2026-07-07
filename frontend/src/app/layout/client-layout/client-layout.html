@@ -41,13 +41,18 @@
         </ng-container>
 
         <ng-container *ngIf="isLoggedIn">
-          <div class="flex items-center gap-3 relative group cursor-pointer">
+          <div class="flex items-center gap-3 relative group cursor-pointer" routerLink="/profile">
             <div class="flex flex-col text-right">
-              <span class="text-sm font-bold text-gray-900">Hi, {{ username }}</span>
-              <a (click)="logout()" class="text-xs text-red-500 hover:text-red-700 transition-colors cursor-pointer no-underline font-medium">Đăng xuất</a>
+              <span class="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition-colors">Hi, {{ username }}</span>
+              <div class="flex gap-2 justify-end mt-0.5">
+                <a routerLink="/profile" class="text-xs text-gray-500 hover:text-blue-600 transition-colors cursor-pointer no-underline font-medium">Trang cá nhân</a>
+                <span class="text-xs text-gray-300">|</span>
+                <a (click)="logout(); $event.stopPropagation()" class="text-xs text-red-500 hover:text-red-700 transition-colors cursor-pointer no-underline font-medium">Đăng xuất</a>
+              </div>
             </div>
-            <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
-              <span class="material-symbols-outlined text-blue-600">person</span>
+            <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center border-2 border-white shadow-sm overflow-hidden group-hover:border-blue-200 transition-colors">
+              <img [src]="'https://ui-avatars.com/api/?name=' + username + '&background=random'" *ngIf="username" alt="Avatar" class="w-full h-full object-cover">
+              <span class="material-symbols-outlined text-blue-600" *ngIf="!username">person</span>
             </div>
           </div>
         </ng-container>

@@ -60,6 +60,8 @@ public class ReservationService {
 
         Reservation reservation = new Reservation();
         reservation.setUser(user);
+        reservation.setRoom(room);
+        reservation.setHotel(room.getRoomType().getHotel());
         reservation.setCheckInDate(request.getCheckInDate());
         reservation.setCheckOutDate(request.getCheckOutDate());
         reservation.setGuests(request.getGuests());

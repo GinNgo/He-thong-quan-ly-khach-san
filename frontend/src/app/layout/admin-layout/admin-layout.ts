@@ -25,6 +25,6 @@ export class AdminLayout {
   }
 
   viewProfile() {
-    alert('Chức năng hồ sơ đang được phát triển!');
+    this.router.navigate(['/admin/profile']);
   }
 }

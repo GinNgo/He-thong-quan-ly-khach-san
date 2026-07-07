@@ -18,6 +18,8 @@ import { HomeComponent } from './features/client/home/home';
 import { RoomSearchComponent } from './features/client/room-search/room-search.component';
 import { RegisterComponent } from './features/auth/register/register.component';
 import { AdminLoginComponent } from './features/auth/admin-login/admin-login.component';
+import { AdminProfileComponent } from './features/admin/profile/profile.component';
+import { ProfileComponent } from './features/client/profile/profile.component';
 import { HotelDetailComponent } from './features/client/hotel-detail/hotel-detail.component';
 import { BookingCheckoutComponent } from './features/client/booking-checkout/booking-checkout.component';
 import { clientAuthGuard } from './core/guards/client-auth.guard';
@@ -30,7 +32,8 @@ export const routes: Routes = [
       { path: '', component: HomeComponent, pathMatch: 'full' },
       { path: 'search', component: RoomSearchComponent },
       { path: 'hotel/:id', component: HotelDetailComponent },
-      { path: 'booking/:roomId', component: BookingCheckoutComponent, canActivate: [clientAuthGuard] }
+      { path: 'booking/:roomId', component: BookingCheckoutComponent, canActivate: [clientAuthGuard] },
+      { path: 'profile', component: ProfileComponent, canActivate: [clientAuthGuard] }
     ]
   },
   { path: 'login', component: LoginComponent },
@@ -42,6 +45,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: 'dashboard', component: Dashboard, canActivate: [permissionGuard], data: { functionCode: FunctionCode.REPORT, actionCode: ActionCode.VIEW } },
+      { path: 'profile', component: AdminProfileComponent },
       { path: 'users', component: UserManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.USER, actionCode: ActionCode.VIEW } },
       { path: 'room-types', component: RoomTypeManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROOM_TYPE, actionCode: ActionCode.VIEW } },
       { path: 'rooms', component: RoomManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROOM, actionCode: ActionCode.VIEW } },

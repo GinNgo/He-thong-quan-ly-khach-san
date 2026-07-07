@@ -22,6 +22,14 @@ public class Reservation extends AuditableEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "room_id", nullable = false)
+    private Room room;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hotel_id", nullable = false)
+    private Hotel hotel;
+
     @Column(name = "check_in_date", nullable = false)
     private LocalDate checkInDate;
 
@@ -60,6 +68,22 @@ public class Reservation extends AuditableEntity {
 
     public void setUser(User user) {
         this.user = user;
+    }
+
+    public Room getRoom() {
+        return room;
+    }
+
+    public void setRoom(Room room) {
+        this.room = room;
+    }
+
+    public Hotel getHotel() {
+        return hotel;
+    }
+
+    public void setHotel(Hotel hotel) {
+        this.hotel = hotel;
     }
 
     public LocalDate getCheckInDate() {
