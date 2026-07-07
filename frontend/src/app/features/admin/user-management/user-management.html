@@ -4,7 +4,7 @@
       <h2 class="mb-1 text-dark fw-bold"><i class="pi pi-users me-2" style="color: var(--hotel-gold);"></i>Quản lý Người dùng</h2>
       <p class="text-muted mb-0">Quản lý tài khoản, phân quyền và trạng thái</p>
     </div>
-    <button pButton label="Thêm người dùng" icon="pi pi-user-plus" class="btn btn-primary-hotel"></button>
+    <button pButton label="Thêm người dùng" icon="pi pi-user-plus" class="btn btn-primary-hotel" (click)="openNew()"></button>
   </div>
 
   <p-card styleClass="shadow-sm border-0 rounded-4" [style]="{'border-radius': '12px'}">
@@ -48,8 +48,8 @@
           </td>
           <td class="text-center">
             <div class="d-flex gap-2 justify-content-center">
-              <button pButton icon="pi pi-pencil" class="p-button-text p-button-secondary p-button-sm"></button>
-              <button pButton icon="pi pi-trash" class="p-button-text p-button-danger p-button-sm"></button>
+              <button pButton icon="pi pi-pencil" class="p-button-text p-button-secondary p-button-sm" (click)="editUser(user)"></button>
+              <button pButton icon="pi pi-trash" class="p-button-text p-button-danger p-button-sm" (click)="deleteUser(user)"></button>
             </div>
           </td>
         </tr>
@@ -61,4 +61,46 @@
       </ng-template>
     </p-table>
   </p-card>
+
+  <p-dialog [(visible)]="displayDialog" [style]="{width: '500px'}" header="{{ userDialogMode === 'create' ? 'Thêm Người dùng mới' : 'Cập nhật Người dùng' }}" [modal]="true" styleClass="p-fluid">
+    <ng-template pTemplate="content">
+      <div class="field mb-3">
+        <label for="username" class="fw-bold">Tên tài khoản (Username) <span class="text-danger">*</span></label>
+        <input type="text" pInputText id="username" [(ngModel)]="userForm.username" [disabled]="userDialogMode === 'edit'" required autofocus />
+      </div>
+      <div class="field mb-3">
+        <label for="email" class="fw-bold">Email <span class="text-danger">*</span></label>
+        <input type="email" pInputText id="email" [(ngModel)]="userForm.email" [disabled]="userDialogMode === 'edit'" required />
+      </div>
+      <div class="field mb-3">
+        <label for="password" class="fw-bold">Mật khẩu <span *ngIf="userDialogMode === 'create'" class="text-danger">*</span></label>
+        <input type="password" pInputText id="password" [(ngModel)]="userForm.password" [placeholder]="userDialogMode === 'edit' ? 'Để trống nếu không muốn đổi' : ''" />
+      </div>
+      <div class="field mb-3">
+        <label for="fullName" class="fw-bold">Họ và Tên</label>
+        <input type="text" pInputText id="fullName" [(ngModel)]="userForm.fullName" />
+      </div>
+      <div class="field mb-3">
+        <label for="phone" class="fw-bold">Số điện thoại</label>
+        <input type="text" pInputText id="phone" [(ngModel)]="userForm.phone" />
+      </div>
+      <div class="field mb-3">
+        <label for="status" class="fw-bold">Trạng thái</label>
+        <p-dropdown [options]="[{label: 'Hoạt động (ACTIVE)', value: 'ACTIVE'}, {label: 'Khóa (INACTIVE)', value: 'INACTIVE'}]" [(ngModel)]="userForm.status" appendTo="body"></p-dropdown>
+      </div>
+      <div class="field mb-3">
+        <label for="roles" class="fw-bold">Vai trò (Roles)</label>
+        <p-multiSelect [options]="roles" [(ngModel)]="userForm.roleIds" optionLabel="name" optionValue="id" defaultLabel="Chọn vai trò" display="chip" appendTo="body"></p-multiSelect>
+      </div>
+      <div class="field mb-3">
+        <label for="hotel" class="fw-bold">Cơ sở (Khách sạn quản lý)</label>
+        <p-dropdown [options]="hotels" [(ngModel)]="userForm.hotelId" optionLabel="nameVi" optionValue="id" [showClear]="true" placeholder="Chọn cơ sở" appendTo="body"></p-dropdown>
+      </div>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+      <button pButton label="Hủy" icon="pi pi-times" class="p-button-text" (click)="displayDialog = false"></button>
+      <button pButton label="Lưu" icon="pi pi-check" class="p-button-primary" (click)="saveUser()"></button>
+    </ng-template>
+  </p-dialog>
 </div>

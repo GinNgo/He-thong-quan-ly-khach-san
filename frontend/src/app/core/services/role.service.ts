@@ -1,0 +1,62 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+export interface Role {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+}
+
+export interface AppModule {
+  id: number;
+  code: string;
+  name: string;
+  functions: AppFunction[];
+}
+
+export interface AppFunction {
+  id: number;
+  code: string;
+  name: string;
+  moduleId: number;
+  actionMask: number;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class RoleService {
+  private http = inject(HttpClient);
+  private apiUrl = 'http://localhost:8080/api/roles';
+  private rolePermUrl = 'http://localhost:8080/api/role-permissions';
+
+  getRoles(): Observable<Role[]> {
+    return this.http.get<Role[]>(this.apiUrl);
+  }
+
+  getRoleById(id: number): Observable<Role> {
+    return this.http.get<Role>(`${this.apiUrl}/${id}`);
+  }
+
+  createRole(role: any): Observable<Role> {
+    return this.http.post<Role>(this.apiUrl, role);
+  }
+
+  updateRole(id: number, role: any): Observable<Role> {
+    return this.http.put<Role>(`${this.apiUrl}/${id}`, role);
+  }
+
+  deleteRole(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
+
+  getRolePermissionsTree(roleId: number): Observable<AppModule[]> {
+    return this.http.get<AppModule[]>(`${this.rolePermUrl}/tree/${roleId}`);
+  }
+
+  updateRolePermissions(roleId: number, data: any): Observable<void> {
+    return this.http.post<void>(`${this.rolePermUrl}/${roleId}`, data);
+  }
+}

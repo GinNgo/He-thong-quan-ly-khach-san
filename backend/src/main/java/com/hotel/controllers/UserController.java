@@ -32,4 +32,37 @@ public class UserController {
         Optional<User> user = userService.getUserById(id);
         return user.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
+
+    @PostMapping
+    @Permission(function = FunctionCode.USER, action = ActionCode.CREATE)
+    public ResponseEntity<User> createUser(@RequestBody com.hotel.dtos.UserRequest request) {
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setPasswordHash(request.getPassword());
+        user.setFullName(request.getFullName());
+        user.setPhone(request.getPhone());
+        user.setStatus(request.getStatus() != null ? request.getStatus() : "ACTIVE");
+        
+        return ResponseEntity.ok(userService.createUser(user, request.getRoleIds(), request.getHotelId()));
+    }
+
+    @PutMapping("/{id}")
+    @Permission(function = FunctionCode.USER, action = ActionCode.UPDATE)
+    public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody com.hotel.dtos.UserRequest request) {
+        User userDetails = new User();
+        userDetails.setFullName(request.getFullName());
+        userDetails.setPhone(request.getPhone());
+        userDetails.setStatus(request.getStatus());
+        userDetails.setPasswordHash(request.getPassword());
+        
+        return ResponseEntity.ok(userService.updateUser(id, userDetails, request.getRoleIds(), request.getHotelId()));
+    }
+
+    @DeleteMapping("/{id}")
+    @Permission(function = FunctionCode.USER, action = ActionCode.DELETE)
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return ResponseEntity.ok().build();
+    }
 }
