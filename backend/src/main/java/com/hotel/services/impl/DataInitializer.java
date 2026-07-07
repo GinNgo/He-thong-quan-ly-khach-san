@@ -71,13 +71,14 @@ public class DataInitializer implements CommandLineRunner {
             financeModule = appModuleRepository.save(financeModule);
         }
 
-        initFunction(sysModule, FunctionCode.USER.name(), "Quản lý Người Dùng", "/admin/users", "pi pi-users", 1);
+        initFunction(sysModule, FunctionCode.USER.name(), "Quản lý Nhân sự", "/admin/users", "pi pi-users", 1);
         initFunction(sysModule, FunctionCode.ROLE.name(), "Quản lý Phân Quyền", "/admin/roles", "pi pi-key", 2);
-        initFunction(hotelModule, FunctionCode.ROOM.name(), "Quản lý Phòng", "/admin/rooms", "pi pi-home", 3);
-        initFunction(hotelModule, FunctionCode.ROOM_TYPE.name(), "Quản lý Loại Phòng", "/admin/room-types", "pi pi-list", 4);
-        initFunction(hotelModule, FunctionCode.RESERVATION.name(), "Quản lý Đặt Phòng", "/admin/reservations", "pi pi-calendar", 5);
-        initFunction(sysModule, FunctionCode.REPORT.name(), "Báo Cáo Thống Kê", "/admin/dashboard", "pi pi-chart-bar", 6);
-        initFunction(financeModule, FunctionCode.INVOICE.name(), "Quản lý Hóa Đơn", "/admin/invoices", "pi pi-file-o", 7);
+        initFunction(hotelModule, FunctionCode.CUSTOMER.name(), "Quản lý Khách hàng", "/admin/customers", "pi pi-id-card", 3);
+        initFunction(hotelModule, FunctionCode.ROOM.name(), "Quản lý Phòng", "/admin/rooms", "pi pi-home", 4);
+        initFunction(hotelModule, FunctionCode.ROOM_TYPE.name(), "Quản lý Loại Phòng", "/admin/room-types", "pi pi-list", 5);
+        initFunction(hotelModule, FunctionCode.RESERVATION.name(), "Quản lý Đặt Phòng", "/admin/reservations", "pi pi-calendar", 6);
+        initFunction(sysModule, FunctionCode.REPORT.name(), "Báo Cáo Thống Kê", "/admin/dashboard", "pi pi-chart-bar", 7);
+        initFunction(financeModule, FunctionCode.INVOICE.name(), "Quản lý Hóa Đơn", "/admin/invoices", "pi pi-file-o", 8);
         initFunction(hotelModule, FunctionCode.HOTEL.name(), "Dịch vụ Khách Sạn", "/admin/services", "pi pi-box", 8);
         initFunction(sysModule, FunctionCode.AI_CHAT.name(), "AI Chatbot", "/ai", "pi pi-android", 9);
         initFunction(financeModule, FunctionCode.FINANCE.name(), "Thanh Toán", "/admin/payments", "pi pi-money-bill", 10);

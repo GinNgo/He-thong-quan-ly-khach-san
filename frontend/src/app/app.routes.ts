@@ -46,7 +46,8 @@ export const routes: Routes = [
     children: [
       { path: 'dashboard', component: Dashboard, canActivate: [permissionGuard], data: { functionCode: FunctionCode.REPORT, actionCode: ActionCode.VIEW } },
       { path: 'profile', component: AdminProfileComponent },
-      { path: 'users', component: UserManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.USER, actionCode: ActionCode.VIEW } },
+      { path: 'users', component: UserManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.USER, actionCode: ActionCode.VIEW, userType: 'STAFF' } },
+      { path: 'customers', component: UserManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.CUSTOMER, actionCode: ActionCode.VIEW, userType: 'CUSTOMER' } },
       { path: 'room-types', component: RoomTypeManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROOM_TYPE, actionCode: ActionCode.VIEW } },
       { path: 'rooms', component: RoomManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROOM, actionCode: ActionCode.VIEW } },
       { path: 'services', component: ServiceManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.HOTEL, actionCode: ActionCode.VIEW } },

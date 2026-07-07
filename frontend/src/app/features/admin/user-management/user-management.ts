@@ -3,9 +3,11 @@ import { SharedModule } from '@app/shared/shared.module';
 import { UserService, User } from '@app/core/services/user';
 import { RoleService, Role } from '@app/core/services/role.service';
 import { ClientApiService, Hotel } from '@app/core/services/client-api.service';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-user-management',
+  standalone: true,
   imports: [SharedModule],
   templateUrl: './user-management.html',
   styleUrl: './user-management.css',
@@ -15,6 +17,7 @@ export class UserManagement implements OnInit {
   roles: Role[] = [];
   hotels: Hotel[] = [];
   loading = true;
+  userType: 'STAFF' | 'CUSTOMER' = 'STAFF';
 
   displayDialog = false;
   userDialogMode: 'create' | 'edit' = 'create';
@@ -33,9 +36,13 @@ export class UserManagement implements OnInit {
   private userService = inject(UserService);
   private roleService = inject(RoleService);
   private hotelService = inject(ClientApiService);
+  private route = inject(ActivatedRoute);
 
   ngOnInit(): void {
-    this.loadUsers();
+    this.route.data.subscribe(data => {
+      this.userType = data['userType'] || 'STAFF';
+      this.loadUsers();
+    });
     this.loadRoles();
     this.loadHotels();
   }
@@ -44,7 +51,11 @@ export class UserManagement implements OnInit {
     this.loading = true;
     this.userService.getUsers().subscribe({
       next: (data) => {
-        this.users = data;
+        if (this.userType === 'CUSTOMER') {
+          this.users = data.filter(u => u.roles && u.roles.some((r: any) => r.code === 'CUSTOMER'));
+        } else {
+          this.users = data.filter(u => !u.roles || !u.roles.some((r: any) => r.code === 'CUSTOMER'));
+        }
         this.loading = false;
       },
       error: (err) => {
@@ -86,6 +97,15 @@ export class UserManagement implements OnInit {
 
   saveUser() {
     const payload = { ...this.userForm };
+    
+    // Automatically assign CUSTOMER role if userType is CUSTOMER
+    if (this.userType === 'CUSTOMER') {
+      const customerRole = this.roles.find(r => r.code === 'CUSTOMER');
+      if (customerRole) {
+        payload.roleIds = [customerRole.id];
+      }
+    }
+
     if (this.userDialogMode === 'create') {
       this.userService.createUser(payload).subscribe(() => {
         this.displayDialog = false;

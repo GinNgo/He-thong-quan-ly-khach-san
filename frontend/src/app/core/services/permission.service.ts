@@ -24,7 +24,8 @@ export enum FunctionCode {
   CHECKOUT = 'CHECKOUT',
   INVOICE = 'INVOICE',
   REPORT = 'REPORT',
-  AI_CHAT = 'AI_CHAT'
+  AI_CHAT = 'AI_CHAT',
+  CUSTOMER = 'CUSTOMER'
 }
 
 @Injectable({
