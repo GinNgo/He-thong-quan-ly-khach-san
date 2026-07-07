@@ -2,6 +2,7 @@ package com.hotel.controllers;
 
 import com.hotel.dtos.AuthResponse;
 import com.hotel.dtos.LoginRequest;
+import com.hotel.dtos.GoogleLoginRequest;
 import com.hotel.dtos.RegisterRequest;
 import com.hotel.services.AuthService;
 import jakarta.validation.Valid;
@@ -23,6 +24,12 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
         AuthResponse response = authService.login(loginRequest);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<AuthResponse> loginWithGoogle(@RequestBody GoogleLoginRequest request) {
+        AuthResponse response = authService.loginWithGoogle(request.getIdToken());
         return ResponseEntity.ok(response);
     }
 

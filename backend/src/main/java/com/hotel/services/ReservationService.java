@@ -35,8 +35,22 @@ public class ReservationService {
 
     @Transactional
     public Reservation createReservation(String username, ReservationRequest request) {
+        if (username == null || username.isEmpty()) {
+            username = "guest";
+        }
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseGet(() -> {
+                    User guest = new User();
+                    guest.setUsername("guest_" + System.currentTimeMillis());
+                    guest.setEmail(guest.getUsername() + "@guest.com");
+                    guest.setPasswordHash("NOPASSWORD");
+                    String fullName = (request.getFirstName() != null ? request.getFirstName() : "") + " " + 
+                                      (request.getLastName() != null ? request.getLastName() : "");
+                    guest.setFullName(fullName.trim().isEmpty() ? "Guest User" : fullName.trim());
+                    guest.setPhone(request.getPhone());
+                    guest.setStatus("GUEST");
+                    return userRepository.save(guest);
+                });
 
         Room room = roomRepository.findById(request.getRoomId())
                 .orElseThrow(() -> new RuntimeException("Room not found"));

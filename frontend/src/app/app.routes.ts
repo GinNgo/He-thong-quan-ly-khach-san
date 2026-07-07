@@ -15,10 +15,12 @@ import { FunctionCode, ActionCode } from './core/services/permission.service';
 
 import { ClientLayout } from './layout/client-layout/client-layout';
 import { HomeComponent } from './features/client/home/home';
-
 import { RoomSearchComponent } from './features/client/room-search/room-search.component';
 import { RegisterComponent } from './features/auth/register/register.component';
 import { AdminLoginComponent } from './features/auth/admin-login/admin-login.component';
+import { HotelDetailComponent } from './features/client/hotel-detail/hotel-detail.component';
+import { BookingCheckoutComponent } from './features/client/booking-checkout/booking-checkout.component';
+import { clientAuthGuard } from './core/guards/client-auth.guard';
 
 export const routes: Routes = [
   {
@@ -26,7 +28,9 @@ export const routes: Routes = [
     component: ClientLayout,
     children: [
       { path: '', component: HomeComponent, pathMatch: 'full' },
-      { path: 'search', component: RoomSearchComponent }
+      { path: 'search', component: RoomSearchComponent },
+      { path: 'hotel/:id', component: HotelDetailComponent },
+      { path: 'booking/:roomId', component: BookingCheckoutComponent, canActivate: [clientAuthGuard] }
     ]
   },
   { path: 'login', component: LoginComponent },

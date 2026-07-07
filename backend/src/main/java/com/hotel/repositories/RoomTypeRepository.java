@@ -9,4 +9,6 @@ import java.util.Optional;
 @Repository
 public interface RoomTypeRepository extends JpaRepository<RoomType, Long> {
     Optional<RoomType> findByCode(String code);
+    java.util.List<RoomType> findByHotelId(Long hotelId);
+    Optional<RoomType> findByCodeAndHotelId(String code, Long hotelId);
 }

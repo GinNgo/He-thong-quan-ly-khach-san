@@ -1,0 +1,105 @@
+<div class="min-h-screen bg-gray-50 pb-12 font-sans">
+  
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="flex justify-center items-center h-64">
+    <i class="pi pi-spin pi-spinner text-4xl text-[#003b95]"></i>
+  </div>
+
+  <ng-container *ngIf="!isLoading && hotel">
+    
+    <!-- Hero Section / Images -->
+    <div class="max-w-7xl mx-auto px-4 md:px-8 pt-6">
+      <div class="flex justify-between items-start mb-4">
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="bg-[#febb02] text-xs font-bold px-2 py-1 rounded">Khách sạn</span>
+            <div class="flex text-[#febb02] text-xs">
+              <i class="pi pi-star-fill" *ngFor="let s of [].constructor(hotel.starRating)"></i>
+            </div>
+          </div>
+          <h1 class="text-2xl md:text-3xl font-bold text-gray-900">{{ hotel.name }}</h1>
+          <p class="text-sm text-[#0071c2] mt-1">
+            <i class="pi pi-map-marker text-xs mr-1"></i>
+            {{ hotel.address }}, {{ hotel.city }}, {{ hotel.country }}
+          </p>
+        </div>
+      </div>
+      
+      <!-- Main Image -->
+      <div class="h-64 md:h-96 w-full rounded-lg overflow-hidden mb-8">
+        <img [src]="hotel.mainImage || 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&q=80&w=1200'" 
+             [alt]="hotel.name" class="w-full h-full object-cover">
+      </div>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Left Col: Description -->
+        <div class="lg:col-span-2">
+          <h2 class="text-xl font-bold text-gray-900 mb-4">Mô tả Khách sạn</h2>
+          <p class="text-gray-700 whitespace-pre-line leading-relaxed">
+            {{ hotel.description || 'Chưa có mô tả cho khách sạn này.' }}
+          </p>
+          
+          <hr class="my-8 border-gray-200">
+          
+          <!-- Room Types Selection -->
+          <h2 class="text-xl font-bold text-gray-900 mb-6" id="rooms">Chọn phòng của bạn</h2>
+          
+          <div class="space-y-4">
+            <div *ngIf="roomTypes.length === 0" class="text-gray-500 py-4">
+              Khách sạn này hiện chưa có loại phòng nào.
+            </div>
+
+            <div class="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col md:flex-row shadow-sm" *ngFor="let roomType of roomTypes">
+              
+              <div class="p-5 flex-grow border-b md:border-b-0 md:border-r border-gray-200">
+                <h3 class="text-lg font-bold text-[#0071c2] underline cursor-pointer hover:text-blue-800">{{ roomType.nameVi }}</h3>
+                <div class="text-xs text-gray-500 mb-3">{{ roomType.nameEn }} ({{ roomType.code }})</div>
+                
+                <div class="flex items-center gap-4 text-sm text-gray-700 mb-3">
+                  <div class="flex items-center gap-1">
+                    <i class="pi pi-user text-gray-500"></i>
+                    <span>Tối đa {{ roomType.maxGuest }} khách</span>
+                  </div>
+                </div>
+                
+                <p class="text-sm text-gray-600 leading-relaxed">{{ roomType.descriptionVi }}</p>
+              </div>
+              
+              <div class="p-5 w-full md:w-48 bg-gray-50 flex flex-col justify-center items-center">
+                <div class="text-sm text-gray-500 mb-1">Giá mỗi đêm từ</div>
+                <div class="text-2xl font-bold text-gray-900 mb-3">${{ roomType.basePrice }}</div>
+                
+                <button class="w-full bg-[#0071c2] hover:bg-[#005999] text-white font-bold py-2 px-4 rounded transition-colors" [routerLink]="['/booking', roomType.id]">
+                  Đặt ngay
+                </button>
+              </div>
+              
+            </div>
+          </div>
+        </div>
+        
+        <!-- Right Col: Booking Widget -->
+        <div class="lg:col-span-1">
+          <div class="bg-[#ebf3ff] border border-[#a8cbf4] rounded p-5 sticky top-6">
+            <h3 class="font-bold text-gray-900 mb-2">Điểm nổi bật của chỗ nghỉ</h3>
+            <ul class="text-sm text-gray-700 space-y-2 mb-4">
+              <li class="flex items-start gap-2">
+                <i class="pi pi-heart-fill text-red-500 mt-1 text-xs"></i>
+                <span>Nằm ở trung tâm {{ hotel.city }}</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i class="pi pi-check text-green-600 mt-1 text-xs"></i>
+                <span>Hoàn toàn miễn phí hủy phòng!</span>
+              </li>
+            </ul>
+            <button class="w-full bg-[#0071c2] hover:bg-[#005999] text-white font-bold py-3 rounded transition-colors shadow-sm" (click)="scrollToRooms()">
+              Đặt ngay
+            </button>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+  </ng-container>
+</div>

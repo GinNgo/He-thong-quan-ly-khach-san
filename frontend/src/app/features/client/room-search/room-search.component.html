@@ -103,52 +103,43 @@
     <div class="flex-grow">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        <!-- Room Card -->
-        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col hover:shadow-lg transition-shadow duration-300" *ngFor="let room of rooms">
+        <!-- Loading State -->
+        <div *ngIf="isLoading" class="col-span-1 md:col-span-2 flex justify-center py-10">
+          <i class="pi pi-spin pi-spinner text-4xl text-[#003b95]"></i>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="!isLoading && hotels.length === 0" class="col-span-1 md:col-span-2 text-center py-10 text-gray-500">
+          No hotels found matching your criteria. Try adjusting your search.
+        </div>
+
+        <!-- Hotel Card -->
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col hover:shadow-lg transition-shadow duration-300" *ngFor="let hotel of hotels">
           <!-- Image -->
           <div class="h-48 w-full overflow-hidden relative">
-            <img [src]="room.image" [alt]="room.name" class="w-full h-full object-cover">
+            <img [src]="hotel.mainImage || 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&q=80&w=800'" [alt]="hotel.name" class="w-full h-full object-cover">
           </div>
           
           <!-- Content -->
           <div class="p-4 flex flex-col flex-grow">
             <!-- Header (Title & Rating) -->
             <div class="flex justify-between items-start mb-2">
-              <h3 class="text-lg font-bold text-gray-900 leading-tight">{{ room.name }}</h3>
+              <h3 class="text-lg font-bold text-gray-900 leading-tight">{{ hotel.name }}</h3>
               <div class="flex items-center gap-1 text-sm font-semibold">
                 <i class="pi pi-star-fill text-[#febb02]"></i>
-                <span>{{ room.rating }}/5</span>
+                <span>{{ hotel.starRating }}/5</span>
               </div>
             </div>
             
-            <!-- Stars purely aesthetic -->
-            <div class="flex text-[#febb02] text-xs mb-3">
-              <i class="pi pi-star-fill"></i>
-              <i class="pi pi-star-fill"></i>
-              <i class="pi pi-star-fill"></i>
-              <i class="pi pi-star-fill"></i>
-              <i class="pi pi-star-fill"></i>
+            <div class="text-sm text-gray-600 mb-2">
+              <i class="pi pi-map-marker text-xs mr-1"></i> {{ hotel.address }}, {{ hotel.city }}
             </div>
             
-            <!-- Features/Amenities -->
-            <div class="flex items-center flex-wrap gap-x-3 gap-y-1 text-sm text-gray-600 mb-4">
-              <div class="flex items-center gap-1" *ngFor="let feature of room.features">
-                <i class="pi pi-wifi text-xs" *ngIf="feature === 'WiFi'"></i>
-                <i class="pi pi-stop-circle text-xs" *ngIf="feature === 'AC'"></i>
-                <i class="pi pi-verified text-xs" *ngIf="feature === 'Breakfast Included'"></i>
-                <span>{{ feature }}</span>
-              </div>
-            </div>
+            <p class="text-sm text-gray-500 mb-4 line-clamp-2">{{ hotel.description }}</p>
             
             <div class="mt-auto">
-              <!-- Price -->
-              <div class="mb-3">
-                <span class="text-xl font-bold text-gray-900">${{ room.price }}</span>
-                <span class="text-sm text-gray-500 font-normal"> / night</span>
-              </div>
-              
               <!-- Action Button -->
-              <button class="w-full bg-[#003b95] hover:bg-[#002255] text-white font-medium py-2 rounded transition-colors">
+              <button class="w-full bg-[#003b95] hover:bg-[#002255] text-white font-medium py-2 rounded transition-colors" [routerLink]="['/hotel', hotel.id]">
                 View Details
               </button>
             </div>

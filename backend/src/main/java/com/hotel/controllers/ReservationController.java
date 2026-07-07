@@ -56,4 +56,19 @@ public class ReservationController {
     public ResponseEntity<Reservation> updateStatus(@PathVariable Long id, @RequestParam String status) {
         return ResponseEntity.ok(reservationService.updateReservationStatus(id, status));
     }
+
+    @PostMapping("/public/book")
+    public ResponseEntity<Reservation> createPublicReservation(@RequestBody ReservationRequest request) {
+        // Null username indicates a guest booking
+        Reservation reservation = reservationService.createReservation(null, request);
+        return new ResponseEntity<>(reservation, HttpStatus.CREATED);
+    }
+
+    @PostMapping("/book")
+    @PreAuthorize("hasAuthority('CUSTOMER')")
+    public ResponseEntity<Reservation> createCustomerReservation(Authentication authentication, @RequestBody ReservationRequest request) {
+        String username = authentication.getName();
+        Reservation reservation = reservationService.createReservation(username, request);
+        return new ResponseEntity<>(reservation, HttpStatus.CREATED);
+    }
 }

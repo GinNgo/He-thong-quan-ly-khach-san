@@ -1,0 +1,81 @@
+<div class="min-h-screen bg-gray-50 pb-12 font-sans pt-8">
+  <div class="max-w-3xl mx-auto px-4 md:px-0">
+    
+    <!-- Success State -->
+    <div *ngIf="bookingSuccess" class="bg-white p-8 rounded-lg shadow-md text-center">
+      <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="pi pi-check text-green-600 text-3xl"></i>
+      </div>
+      <h2 class="text-2xl font-bold text-gray-900 mb-2">Đặt phòng thành công!</h2>
+      <p class="text-gray-600 mb-6">Mã đặt phòng của bạn là: <span class="font-bold text-gray-900">#{{ reservationDetails?.id }}</span></p>
+      <p class="text-gray-600 mb-8">Vui lòng thanh toán tại quầy lễ tân khi nhận phòng.</p>
+      <button class="bg-[#0071c2] hover:bg-[#005999] text-white font-bold py-3 px-8 rounded transition-colors" (click)="goHome()">
+        Trở về Trang chủ
+      </button>
+    </div>
+
+    <!-- Booking Form -->
+    <div *ngIf="!bookingSuccess" class="bg-white p-6 md:p-8 rounded-lg shadow-md">
+      <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-4">Thông tin Đặt phòng</h2>
+      
+      <form (ngSubmit)="submitBooking()" #bookingForm="ngForm">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">Họ</label>
+            <input type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#0071c2]" 
+                   [(ngModel)]="bookingData.lastName" name="lastName" required>
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">Tên</label>
+            <input type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#0071c2]" 
+                   [(ngModel)]="bookingData.firstName" name="firstName" required>
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <label class="block text-sm font-bold text-gray-700 mb-2">Số điện thoại</label>
+          <input type="tel" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#0071c2]" 
+                 [(ngModel)]="bookingData.phone" name="phone" required>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">Ngày nhận phòng</label>
+            <input type="date" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#0071c2]" 
+                   [(ngModel)]="bookingData.checkInDate" name="checkInDate" required>
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">Ngày trả phòng</label>
+            <input type="date" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#0071c2]" 
+                   [(ngModel)]="bookingData.checkOutDate" name="checkOutDate" required>
+          </div>
+        </div>
+
+        <div class="mb-8">
+          <label class="block text-sm font-bold text-gray-700 mb-2">Số khách</label>
+          <input type="number" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#0071c2]" 
+                 [(ngModel)]="bookingData.guests" name="guests" min="1" required>
+        </div>
+        
+        <div class="bg-blue-50 border border-blue-100 rounded p-4 mb-8">
+          <div class="flex items-start gap-3">
+            <i class="pi pi-info-circle text-[#0071c2] mt-1"></i>
+            <div>
+              <h4 class="font-bold text-[#0071c2]">Thanh toán tại chỗ</h4>
+              <p class="text-sm text-gray-600 mt-1">Bạn không cần thẻ tín dụng để đặt phòng. Vui lòng thanh toán trực tiếp tại khách sạn khi nhận phòng.</p>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" 
+                class="w-full bg-[#0071c2] hover:bg-[#005999] text-white font-bold py-4 rounded transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
+                [disabled]="!bookingForm.valid || isSubmitting">
+          <i class="pi pi-spin pi-spinner" *ngIf="isSubmitting"></i>
+          <span>Hoàn tất Đặt phòng</span>
+        </button>
+
+      </form>
+    </div>
+  </div>
+</div>

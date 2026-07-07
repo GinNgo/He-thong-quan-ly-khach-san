@@ -44,6 +44,10 @@ public class User extends AuditableEntity {
     )
     private Set<Role> roles;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hotel_id")
+    private Hotel hotel;
+
     // Getters and Setters omitted for brevity but required in production
 
     public Long getId() {
@@ -116,5 +120,13 @@ public class User extends AuditableEntity {
 
     public void setRoles(Set<Role> roles) {
         this.roles = roles;
+    }
+
+    public Hotel getHotel() {
+        return hotel;
+    }
+
+    public void setHotel(Hotel hotel) {
+        this.hotel = hotel;
     }
 }

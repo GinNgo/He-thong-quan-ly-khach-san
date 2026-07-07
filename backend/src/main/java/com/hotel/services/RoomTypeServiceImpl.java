@@ -15,10 +15,18 @@ import java.util.stream.Collectors;
 public class RoomTypeServiceImpl implements RoomTypeService {
 
     private final RoomTypeRepository roomTypeRepository;
+    private final com.hotel.repositories.HotelRepository hotelRepository;
 
     @Override
     public List<RoomTypeDTO> getAllRoomTypes() {
         return roomTypeRepository.findAll().stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<RoomTypeDTO> getRoomTypesByHotelId(Long hotelId) {
+        return roomTypeRepository.findByHotelId(hotelId).stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
@@ -35,6 +43,11 @@ public class RoomTypeServiceImpl implements RoomTypeService {
     public RoomTypeDTO createRoomType(RoomTypeDTO dto) {
         RoomType roomType = new RoomType();
         mapToEntity(dto, roomType);
+        
+        // Temporarily set to default hotel if not provided
+        com.hotel.entities.Hotel hotel = hotelRepository.findAll().stream().findFirst().orElseThrow(() -> new RuntimeException("No hotel found"));
+        roomType.setHotel(hotel);
+
         roomType = roomTypeRepository.save(roomType);
         return mapToDTO(roomType);
     }

@@ -10,6 +10,10 @@ import com.hotel.repositories.AppFunctionRepository;
 import com.hotel.repositories.RoleRepository;
 import com.hotel.repositories.RolePermissionRepository;
 import com.hotel.repositories.UserRepository;
+import com.hotel.repositories.HotelRepository;
+import com.hotel.repositories.RoomTypeRepository;
+import com.hotel.entities.Hotel;
+import com.hotel.entities.RoomType;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.ActionCode;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +32,8 @@ public class DataInitializer implements CommandLineRunner {
     private final RoleRepository roleRepository;
     private final AppModuleRepository appModuleRepository;
     private final AppFunctionRepository appFunctionRepository;
+    private final HotelRepository hotelRepository;
+    private final RoomTypeRepository roomTypeRepository;
     private final RolePermissionRepository rolePermissionRepository;
     private final PasswordEncoder passwordEncoder;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
@@ -97,6 +103,34 @@ public class DataInitializer implements CommandLineRunner {
             receptionistRole.setCode("RECEPTIONIST");
             receptionistRole.setName("RECEPTIONIST");
             roleRepository.save(receptionistRole);
+        }
+
+        if (roleRepository.findByCode("HOTEL_MANAGER").isEmpty()) {
+            Role managerRole = new Role();
+            managerRole.setCode("HOTEL_MANAGER");
+            managerRole.setName("HOTEL MANAGER");
+            roleRepository.save(managerRole);
+        }
+
+        // Seed default Hotel if none exists
+        Hotel defaultHotel = hotelRepository.findAll().stream().findFirst().orElse(null);
+        if (defaultHotel == null) {
+            defaultHotel = new Hotel();
+            defaultHotel.setName("Đà Lạt Grand Hotel");
+            defaultHotel.setAddress("123 Trần Phú");
+            defaultHotel.setCity("Đà Lạt");
+            defaultHotel.setCountry("Việt Nam");
+            defaultHotel.setStarRating(5);
+            defaultHotel.setStatus("ACTIVE");
+            defaultHotel = hotelRepository.save(defaultHotel);
+        }
+
+        // Map existing RoomTypes to default hotel
+        for (RoomType rt : roomTypeRepository.findAll()) {
+            if (rt.getHotel() == null) {
+                rt.setHotel(defaultHotel);
+                roomTypeRepository.save(rt);
+            }
         }
 
         // Assign permissions to SUPER_ADMIN

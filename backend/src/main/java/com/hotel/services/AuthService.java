@@ -18,6 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class AuthService {
@@ -29,6 +34,9 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final com.hotel.repositories.AppModuleRepository appModuleRepository;
     private final com.hotel.repositories.AppFunctionRepository appFunctionRepository;
+
+    @Value("${google.client.id:YOUR_GOOGLE_CLIENT_ID_HERE}")
+    private String googleClientId;
 
     public AuthService(AuthenticationManager authenticationManager, UserRepository userRepository,
                        RoleRepository roleRepository, PasswordEncoder passwordEncoder,
@@ -95,6 +103,50 @@ public class AuthService {
         userRepository.save(user);
 
         return "User registered successfully!";
+    }
+
+    public AuthResponse loginWithGoogle(String idTokenString) {
+        try {
+            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
+                    .setAudience(Collections.singletonList(googleClientId))
+                    .build();
+
+            GoogleIdToken idToken = verifier.verify(idTokenString);
+            if (idToken != null) {
+                GoogleIdToken.Payload payload = idToken.getPayload();
+                String email = payload.getEmail();
+                String name = (String) payload.get("name");
+
+                User user = userRepository.findByUsername(email).orElse(null);
+                if (user == null) {
+                    user = new User();
+                    user.setUsername(email);
+                    user.setEmail(email);
+                    user.setFullName(name);
+                    user.setPasswordHash(passwordEncoder.encode(java.util.UUID.randomUUID().toString())); // Random password
+                    user.setStatus("ACTIVE");
+                    user.setCreatedAt(LocalDateTime.now());
+                    Role customerRole = roleRepository.findByCode("CUSTOMER")
+                            .orElseThrow(() -> new RuntimeException("Error: Role CUSTOMER is not found."));
+                    user.setRoles(Collections.singleton(customerRole));
+                    user = userRepository.save(user);
+                }
+
+                Authentication authentication = new UsernamePasswordAuthenticationToken(
+                        user.getUsername(), null, user.getRoles().stream()
+                        .map(r -> new org.springframework.security.core.authority.SimpleGrantedAuthority(r.getCode()))
+                        .collect(java.util.stream.Collectors.toList()));
+                
+                String token = jwtTokenProvider.generateToken(authentication);
+                java.util.List<String> roles = user.getRoles().stream().map(Role::getCode).collect(java.util.stream.Collectors.toList());
+                java.util.List<com.hotel.dtos.PermissionDTO> permissions = new java.util.ArrayList<>();
+                return new AuthResponse(token, user.getUsername(), roles, permissions);
+            } else {
+                throw new RuntimeException("Invalid Google ID token.");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Google authentication failed", e);
+        }
     }
 
     @Transactional(readOnly = true)

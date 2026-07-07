@@ -46,11 +46,15 @@ public class CustomUserDetailsService implements UserDetailsService {
             }
         });
 
+        Long hotelId = user.getHotel() != null ? user.getHotel().getId() : null;
+
         return new CustomUserDetails(
                 user.getUsername(),
                 user.getPasswordHash(),
                 authorities,
-                permissionMasks
+                permissionMasks,
+                user.getId(),
+                hotelId
         );
     }
 }

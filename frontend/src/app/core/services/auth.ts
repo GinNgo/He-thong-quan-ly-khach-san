@@ -13,6 +13,15 @@ export class AuthService {
     return this.http.post(`${this.apiUrl}/login`, credentials);
   }
 
+  register(userData: any): Observable<any> {
+    // Note: API returns text, so we use responseType: 'text'
+    return this.http.post(`${this.apiUrl}/register`, userData, { responseType: 'text' });
+  }
+
+  googleLogin(idToken: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/google`, { idToken });
+  }
+
   logout(): void {
     localStorage.removeItem('token');
     localStorage.removeItem('user');

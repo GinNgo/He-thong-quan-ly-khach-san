@@ -9,4 +9,5 @@ public interface RoomTypeService {
     RoomTypeDTO createRoomType(RoomTypeDTO roomTypeDTO);
     RoomTypeDTO updateRoomType(Long id, RoomTypeDTO roomTypeDTO);
     void deleteRoomType(Long id);
+    List<RoomTypeDTO> getRoomTypesByHotelId(Long hotelId);
 }

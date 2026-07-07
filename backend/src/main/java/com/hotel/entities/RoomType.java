@@ -17,7 +17,11 @@ public class RoomType extends AuditableEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hotel_id", nullable = false)
+    private Hotel hotel;
+
+    @Column(nullable = false)
     private String code; // e.g., STANDARD, DELUXE, SUITE, VIP
 
     @Column(name = "name_vi", nullable = false)
@@ -49,6 +53,14 @@ public class RoomType extends AuditableEntity {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Hotel getHotel() {
+        return hotel;
+    }
+
+    public void setHotel(Hotel hotel) {
+        this.hotel = hotel;
     }
 
     public String getCode() {

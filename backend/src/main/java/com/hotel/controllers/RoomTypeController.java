@@ -58,4 +58,10 @@ public class RoomTypeController {
         roomTypeService.deleteRoomType(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/public/hotel/{hotelId}")
+    @Operation(summary = "Get all room types by hotel ID (Public)")
+    public ResponseEntity<List<RoomTypeDTO>> getRoomTypesByHotelId(@PathVariable Long hotelId) {
+        return ResponseEntity.ok(roomTypeService.getRoomTypesByHotelId(hotelId));
+    }
 }
