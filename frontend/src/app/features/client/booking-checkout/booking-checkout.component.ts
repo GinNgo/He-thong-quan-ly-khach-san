@@ -16,10 +16,10 @@ export class BookingCheckoutComponent implements OnInit {
   private router = inject(Router);
   private clientApi = inject(ClientApiService);
 
-  roomId: number = 0;
+  roomTypeId: number = 0;
   
   bookingData: ReservationRequest = {
-    roomId: 0,
+    roomTypeId: 0,
     checkInDate: new Date().toISOString().split('T')[0], // Default today
     checkOutDate: new Date(new Date().getTime() + 86400000).toISOString().split('T')[0], // Default tomorrow
     guests: 2,
@@ -35,10 +35,10 @@ export class BookingCheckoutComponent implements OnInit {
 
   ngOnInit(): void {
     this.route.paramMap.subscribe(params => {
-      const id = params.get('roomId');
+      const id = params.get('roomTypeId');
       if (id) {
-        this.roomId = Number(id);
-        this.bookingData.roomId = this.roomId;
+        this.roomTypeId = Number(id);
+        this.bookingData.roomTypeId = this.roomTypeId;
       }
     });
   }

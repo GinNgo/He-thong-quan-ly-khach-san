@@ -4,7 +4,7 @@ import java.time.LocalDate;
 
 public class ReservationRequest {
 
-    private Long roomId;
+    private Long roomTypeId;
     private LocalDate checkInDate;
     private LocalDate checkOutDate;
     private Integer guests;
@@ -15,8 +15,8 @@ public class ReservationRequest {
     private String phone;
 
     // Getters and Setters omitted for brevity
-    public Long getRoomId() { return roomId; }
-    public void setRoomId(Long roomId) { this.roomId = roomId; }
+    public Long getRoomTypeId() { return roomTypeId; }
+    public void setRoomTypeId(Long roomTypeId) { this.roomTypeId = roomTypeId; }
 
     public LocalDate getCheckInDate() { return checkInDate; }
     public void setCheckInDate(LocalDate checkInDate) { this.checkInDate = checkInDate; }

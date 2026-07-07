@@ -32,7 +32,7 @@ export const routes: Routes = [
       { path: '', component: HomeComponent, pathMatch: 'full' },
       { path: 'search', component: RoomSearchComponent },
       { path: 'hotel/:id', component: HotelDetailComponent },
-      { path: 'booking/:roomId', component: BookingCheckoutComponent, canActivate: [clientAuthGuard] },
+      { path: 'booking/:roomTypeId', component: BookingCheckoutComponent, canActivate: [clientAuthGuard] },
       { path: 'profile', component: ProfileComponent, canActivate: [clientAuthGuard] }
     ]
   },

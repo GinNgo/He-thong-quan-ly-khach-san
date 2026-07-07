@@ -26,7 +26,7 @@ export interface RoomType {
 }
 
 export interface ReservationRequest {
-  roomId: number;
+  roomTypeId: number;
   checkInDate: string;
   checkOutDate: string;
   guests: number;

@@ -52,8 +52,11 @@ public class ReservationService {
                     return userRepository.save(guest);
                 });
 
-        Room room = roomRepository.findById(request.getRoomId())
-                .orElseThrow(() -> new RuntimeException("Room not found"));
+        java.util.List<Room> rooms = roomRepository.findByRoomTypeId(request.getRoomTypeId());
+        Room room = rooms.stream()
+                .filter(r -> "AVAILABLE".equals(r.getStatus()))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Rất tiếc, loại phòng này đã hết chỗ. Vui lòng chọn loại phòng khác."));
 
         // Simplistic total calculation for mockup: price * 1 night (should calculate difference in days)
         BigDecimal totalAmount = room.getRoomType().getBasePrice().multiply(BigDecimal.valueOf(1.15)); // adding taxes
@@ -65,7 +68,7 @@ public class ReservationService {
         reservation.setCheckInDate(request.getCheckInDate());
         reservation.setCheckOutDate(request.getCheckOutDate());
         reservation.setGuests(request.getGuests());
-        reservation.setStatus("CONFIRMED"); // For mockup. Real app might be PENDING_PAYMENT
+        reservation.setStatus("PENDING_PAYMENT"); // Await payment
         reservation.setPaymentMethod(request.getPaymentMethod());
         reservation.setSpecialRequests(request.getSpecialRequests());
         reservation.setTotalAmount(totalAmount);
