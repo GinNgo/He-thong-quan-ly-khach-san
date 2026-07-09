@@ -121,3 +121,30 @@
     </div>
   </div>
 </div>
+
+<!-- Change Password Dialog -->
+<p-dialog header="Đổi mật khẩu" [(visible)]="displayPasswordDialog" [modal]="true" [style]="{width: '400px'}" [draggable]="false" [resizable]="false">
+  <div class="space-y-4 pt-2">
+    <div class="space-y-2">
+      <label class="text-sm font-bold text-gray-700">Mật khẩu hiện tại</label>
+      <p-password [(ngModel)]="passwordData.currentPassword" [toggleMask]="true" styleClass="w-full" inputStyleClass="w-full px-4 py-2 border border-gray-300 rounded-lg" [feedback]="false"></p-password>
+    </div>
+    
+    <div class="space-y-2">
+      <label class="text-sm font-bold text-gray-700">Mật khẩu mới</label>
+      <p-password [(ngModel)]="passwordData.newPassword" [toggleMask]="true" styleClass="w-full" inputStyleClass="w-full px-4 py-2 border border-gray-300 rounded-lg" [feedback]="true"></p-password>
+    </div>
+    
+    <div class="space-y-2">
+      <label class="text-sm font-bold text-gray-700">Xác nhận mật khẩu mới</label>
+      <p-password [(ngModel)]="passwordData.confirmPassword" [toggleMask]="true" styleClass="w-full" inputStyleClass="w-full px-4 py-2 border border-gray-300 rounded-lg" [feedback]="false"></p-password>
+    </div>
+  </div>
+  
+  <ng-template pTemplate="footer">
+    <div class="flex justify-end gap-2 mt-4">
+      <p-button label="Hủy" icon="pi pi-times" (onClick)="displayPasswordDialog = false" styleClass="p-button-text p-button-secondary"></p-button>
+      <p-button label="Lưu mật khẩu" icon="pi pi-check" (onClick)="savePassword()" styleClass="p-button-primary"></p-button>
+    </div>
+  </ng-template>
+</p-dialog>

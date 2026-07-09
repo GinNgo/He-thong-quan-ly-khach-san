@@ -38,4 +38,16 @@ export class UserService {
   deleteUser(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
+
+  getProfile(): Observable<User> {
+    return this.http.get<User>(`${this.apiUrl}/me`);
+  }
+
+  updateProfile(user: any): Observable<User> {
+    return this.http.put<User>(`${this.apiUrl}/me`, user);
+  }
+
+  changePassword(data: any): Observable<void> {
+    return this.http.put<void>(`${this.apiUrl}/me/password`, data);
+  }
 }
