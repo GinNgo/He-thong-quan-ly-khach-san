@@ -31,6 +31,7 @@ export class BookingCheckoutComponent implements OnInit {
 
   isSubmitting = false;
   bookingSuccess = false;
+  errorMessage = '';
   reservationDetails: any = null;
 
   ngOnInit(): void {
@@ -41,9 +42,27 @@ export class BookingCheckoutComponent implements OnInit {
         this.bookingData.roomTypeId = this.roomTypeId;
       }
     });
+
+    this.route.queryParams.subscribe((params) => {
+      if (params['checkIn']) this.bookingData.checkInDate = params['checkIn'];
+      if (params['checkOut']) this.bookingData.checkOutDate = params['checkOut'];
+      if (params['guests']) this.bookingData.guests = Number(params['guests']) || this.bookingData.guests;
+    });
+
+    this.prefillUserInfo();
   }
 
   submitBooking() {
+    this.errorMessage = '';
+    if (this.bookingData.checkOutDate <= this.bookingData.checkInDate) {
+      this.errorMessage = 'Ngày trả phòng phải sau ngày nhận phòng.';
+      return;
+    }
+    if (this.bookingData.guests < 1) {
+      this.errorMessage = 'Số khách phải lớn hơn 0.';
+      return;
+    }
+
     this.isSubmitting = true;
     this.clientApi.bookRoom(this.bookingData).subscribe({
       next: (res) => {
@@ -54,12 +73,35 @@ export class BookingCheckoutComponent implements OnInit {
       error: (err) => {
         console.error('Error submitting booking', err);
         this.isSubmitting = false;
-        alert('Có lỗi xảy ra khi đặt phòng. Vui lòng thử lại.');
+        if (err?.error?.message) {
+          this.errorMessage = err.error.message;
+          return;
+        }
+        this.errorMessage = 'Có lỗi xảy ra khi đặt phòng. Vui lòng kiểm tra thông tin và thử lại.';
       }
     });
   }
 
   goHome() {
     this.router.navigate(['/']);
+  }
+
+  goToProfileBookings() {
+    this.router.navigate(['/profile'], { queryParams: { tab: 'bookings' } });
+  }
+
+  private prefillUserInfo() {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) return;
+
+    try {
+      const user = JSON.parse(userStr);
+      const displayName = user.fullName || user.username || '';
+      const parts = displayName.trim().split(' ').filter(Boolean);
+      this.bookingData.firstName = parts.length > 1 ? parts.pop() || '' : displayName;
+      this.bookingData.lastName = parts.join(' ');
+    } catch {
+      return;
+    }
   }
 }

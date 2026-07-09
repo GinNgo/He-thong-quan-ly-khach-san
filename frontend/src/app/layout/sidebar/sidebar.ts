@@ -1,6 +1,7 @@
-import { Component, OnInit, inject, Input } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject, Input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 export interface AppFunctionDto {
   id: number;
@@ -17,8 +18,6 @@ export interface AppModuleDto {
   functions: AppFunctionDto[];
 }
 
-import { ChangeDetectorRef } from '@angular/core';
-
 @Component({
   selector: 'app-sidebar',
   imports: [RouterLink, RouterLinkActive],
@@ -33,9 +32,29 @@ export class Sidebar implements OnInit {
   menuItems: AppModuleDto[] = [];
 
   ngOnInit() {
-    this.http.get<AppModuleDto[]>('http://localhost:8080/api/auth/my-menu').subscribe(res => {
-      this.menuItems = res;
-      this.cdr.detectChanges();
+    this.http.get<AppModuleDto[]>(`${environment.apiUrl}/auth/my-menu`).subscribe({
+      next: (res) => {
+        this.menuItems = res;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.menuItems = this.getFallbackMenu();
+        this.cdr.detectChanges();
+      }
     });
+  }
+
+  private getFallbackMenu(): AppModuleDto[] {
+    return [
+      {
+        id: 1,
+        code: 'SYSTEM',
+        name: 'Tổng quan',
+        functions: [
+          { id: 1, code: 'DASHBOARD', name: 'Bảng điều khiển', url: '/admin/dashboard', icon: 'pi pi-chart-bar' },
+          { id: 2, code: 'PROFILE', name: 'Hồ sơ', url: '/admin/profile', icon: 'pi pi-user' },
+        ],
+      },
+    ];
   }
 }

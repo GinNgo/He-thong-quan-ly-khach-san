@@ -20,15 +20,15 @@
 
       <!-- Navigation -->
       <nav class="hidden md:flex space-x-8">
-        <a routerLink="/" class="text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors no-underline">Phòng nghỉ</a>
-        <a routerLink="/" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors no-underline">Ẩm thực</a>
-        <a routerLink="/" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors no-underline">Ưu đãi</a>
-        <a routerLink="/" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors no-underline">Giới thiệu</a>
-        <a routerLink="/" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors no-underline">Liên hệ</a>
+        <a routerLink="/" fragment="rooms" class="text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors no-underline">Phòng nghỉ</a>
+        <a routerLink="/" fragment="services" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors no-underline">Dịch vụ</a>
+        <a routerLink="/" fragment="offers" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors no-underline">Ưu đãi</a>
+        <a routerLink="/search" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors no-underline">Tìm khách sạn</a>
+        <a routerLink="/" fragment="reviews" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors no-underline">Đánh giá</a>
       </nav>
 
       <!-- Actions -->
-      <div class="flex items-center space-x-6">
+      <div class="flex items-center space-x-3 sm:space-x-6">
         <div class="hidden sm:flex items-center space-x-1 cursor-pointer group">
           <span class="text-sm font-medium text-gray-700 group-hover:text-blue-600">VN</span>
           <span class="material-symbols-outlined text-[18px] leading-none text-gray-500 group-hover:text-blue-600 flex items-center">expand_more</span>
@@ -56,9 +56,21 @@
             </div>
           </div>
         </ng-container>
+
+        <button type="button" class="md:hidden w-10 h-10 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-700" (click)="toggleMobileMenu()" aria-label="Mở menu">
+          <span class="material-symbols-outlined text-[22px]">{{ isMobileMenuOpen ? 'close' : 'menu' }}</span>
+        </button>
       </div>
       
     </div>
+
+    <nav *ngIf="isMobileMenuOpen" class="md:hidden border-t border-gray-100 py-3 flex flex-col gap-1">
+      <a routerLink="/" fragment="rooms" (click)="closeMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-900 hover:bg-gray-50 no-underline">Phòng nghỉ</a>
+      <a routerLink="/" fragment="services" (click)="closeMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 no-underline">Dịch vụ</a>
+      <a routerLink="/" fragment="offers" (click)="closeMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 no-underline">Ưu đãi</a>
+      <a routerLink="/search" (click)="closeMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 no-underline">Tìm khách sạn</a>
+      <a routerLink="/" fragment="reviews" (click)="closeMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 no-underline">Đánh giá</a>
+    </nav>
   </div>
 </header>
 

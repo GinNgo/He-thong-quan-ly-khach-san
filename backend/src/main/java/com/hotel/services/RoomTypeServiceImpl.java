@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -16,8 +17,10 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 
     private final RoomTypeRepository roomTypeRepository;
     private final com.hotel.repositories.HotelRepository hotelRepository;
+    private final RoomAvailabilityService roomAvailabilityService;
 
     @Override
+    @Transactional(readOnly = true)
     public List<RoomTypeDTO> getAllRoomTypes() {
         return roomTypeRepository.findAll().stream()
                 .map(this::mapToDTO)
@@ -26,12 +29,27 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 
     @Override
     public List<RoomTypeDTO> getRoomTypesByHotelId(Long hotelId) {
+        return getRoomTypesByHotelId(hotelId, null, null, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RoomTypeDTO> getRoomTypesByHotelId(Long hotelId, LocalDate checkIn, LocalDate checkOut, Integer guests) {
+        boolean hasStayDates = checkIn != null && checkOut != null;
+
         return roomTypeRepository.findByHotelId(hotelId).stream()
-                .map(this::mapToDTO)
+                .filter(roomType -> roomAvailabilityService.canHost(roomType, guests))
+                .map(roomType -> {
+                    RoomTypeDTO dto = mapToDTO(roomType);
+                    roomAvailabilityService.enrich(dto, roomType, checkIn, checkOut);
+                    return dto;
+                })
+                .filter(dto -> !hasStayDates || (dto.getAvailableRooms() != null && dto.getAvailableRooms() > 0))
                 .collect(Collectors.toList());
     }
 
     @Override
+    @Transactional(readOnly = true)
     public RoomTypeDTO getRoomTypeById(Long id) {
         RoomType roomType = roomTypeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Room type not found"));
@@ -73,6 +91,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
     private RoomTypeDTO mapToDTO(RoomType entity) {
         RoomTypeDTO dto = new RoomTypeDTO();
         dto.setId(entity.getId());
+        dto.setHotelId(entity.getHotel() != null ? entity.getHotel().getId() : null);
         dto.setCode(entity.getCode());
         dto.setNameVi(entity.getNameVi());
         dto.setNameEn(entity.getNameEn());

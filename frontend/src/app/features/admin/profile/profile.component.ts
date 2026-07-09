@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '@app/core/services/auth';
+import { MessageService } from 'primeng/api';
 
 @Component({
   selector: 'app-admin-profile',
@@ -14,7 +15,8 @@ export class AdminProfileComponent implements OnInit {
   user: any = null;
   facility: any = null;
 
-  constructor(private authService: AuthService) {}
+  private authService = inject(AuthService);
+  private messageService = inject(MessageService);
 
   ngOnInit() {
     const authState = this.authService.getAuthState();
@@ -28,8 +30,6 @@ export class AdminProfileComponent implements OnInit {
       role: roles.includes('SUPER_ADMIN') ? 'Quản trị viên Hệ thống' : 'Quản lý Chi nhánh'
     };
 
-    // Mocking facility logic based on roles.
-    // In real app, we fetch facility info via API if the user has hotelId.
     if (!roles.includes('SUPER_ADMIN')) {
       this.facility = {
         name: 'LuxeStay Đà Lạt',
@@ -41,10 +41,10 @@ export class AdminProfileComponent implements OnInit {
   }
 
   saveProfile() {
-    alert('Đã cập nhật thông tin thành công!');
+    this.messageService.add({severity: 'success', summary: 'Thành công', detail: 'Đã cập nhật thông tin thành công!'});
   }
 
   changePassword() {
-    alert('Chức năng đổi mật khẩu đang được tích hợp.');
+    this.messageService.add({severity: 'info', summary: 'Thông báo', detail: 'Chức năng đổi mật khẩu đang được tích hợp.'});
   }
 }

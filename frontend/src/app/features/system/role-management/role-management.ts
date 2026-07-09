@@ -5,6 +5,7 @@ import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { RouterModule } from '@angular/router';
+import { environment } from '../../../../environments/environment';
 
 interface Role {
   id: number;
@@ -56,6 +57,7 @@ interface Role {
 })
 export class RoleManagementComponent implements OnInit {
   roles: Role[] = [];
+  private apiUrl = environment.apiUrl;
 
   constructor(private http: HttpClient) {}
 
@@ -64,7 +66,7 @@ export class RoleManagementComponent implements OnInit {
   }
 
   loadRoles() {
-    this.http.get<Role[]>('http://localhost:8080/api/roles').subscribe(res => {
+    this.http.get<Role[]>(`${this.apiUrl}/roles`).subscribe(res => {
       this.roles = res;
     });
   }

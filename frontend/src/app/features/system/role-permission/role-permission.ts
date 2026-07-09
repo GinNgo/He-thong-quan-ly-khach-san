@@ -8,6 +8,7 @@ import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { SelectModule } from 'primeng/select';
 import { ToastModule } from 'primeng/toast';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-role-permission',
@@ -80,6 +81,7 @@ export class RolePermissionComponent implements OnInit {
 
   private http = inject(HttpClient);
   private messageService = inject(MessageService);
+  private apiUrl = environment.apiUrl;
 
   ngOnInit() {
     // Only View, Create(Add), Update(Edit), Delete based on user's screenshot
@@ -94,7 +96,7 @@ export class RolePermissionComponent implements OnInit {
   }
   
   loadRoles() {
-    this.http.get<any[]>('http://localhost:8080/api/roles').subscribe(res => {
+    this.http.get<any[]>(`${this.apiUrl}/roles`).subscribe(res => {
       this.roles = res;
       if (this.roles.length > 0) {
         this.selectedRoleId = this.roles[0].id;
@@ -106,7 +108,7 @@ export class RolePermissionComponent implements OnInit {
   loadPermissions() {
     if (!this.selectedRoleId) return;
     
-    this.http.get<any[]>(`http://localhost:8080/api/role-permissions/tree/${this.selectedRoleId}`).subscribe(modules => {
+    this.http.get<any[]>(`${this.apiUrl}/role-permissions/tree/${this.selectedRoleId}`).subscribe(modules => {
       this.treeData = modules.map(m => {
         
         let allView = true, allUpdate = true, allDelete = true;
@@ -214,7 +216,7 @@ export class RolePermissionComponent implements OnInit {
       });
     });
 
-    this.http.post(`http://localhost:8080/api/role-permissions/${this.selectedRoleId}`, { permissions: payload }).subscribe(() => {
+    this.http.post(`${this.apiUrl}/role-permissions/${this.selectedRoleId}`, { permissions: payload }).subscribe(() => {
       this.messageService.add({severity:'success', summary: 'Thành công', detail: 'Đã lưu phân quyền'});
     });
   }

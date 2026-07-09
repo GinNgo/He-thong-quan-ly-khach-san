@@ -1,38 +1,29 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { jwtInterceptor } from './core/interceptors/jwt-interceptor';
 import { errorInterceptor } from './core/interceptors/error-interceptor';
 import { providePrimeNG } from 'primeng/config';
 import { HotelPreset } from './core/theme';
-import { SocialLoginModule, SocialAuthServiceConfig, GoogleLoginProvider } from '@abacritt/angularx-social-login';
+import { MessageService, ConfirmationService } from 'primeng/api';
 
 import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes),
+    provideRouter(
+      routes,
+      withInMemoryScrolling({
+        anchorScrolling: 'enabled',
+        scrollPositionRestoration: 'enabled',
+      })
+    ),
     provideHttpClient(withInterceptors([jwtInterceptor, errorInterceptor])),
     provideAnimations(),
-    {
-      provide: 'SocialAuthServiceConfig',
-      useValue: {
-        autoLogin: false,
-        providers: [
-          {
-            id: GoogleLoginProvider.PROVIDER_ID,
-            provider: new GoogleLoginProvider(
-              'YOUR_GOOGLE_CLIENT_ID_HERE'
-            )
-          }
-        ],
-        onError: (err) => {
-          console.error(err);
-        }
-      } as SocialAuthServiceConfig,
-    },
+    MessageService,
+    ConfirmationService,
     providePrimeNG({
         theme: {
             preset: HotelPreset,

@@ -11,7 +11,7 @@ import { ReservationService, Reservation } from '../../../core/services/reservat
 import { RoomService, Room } from '../../../core/services/room.service';
 import { UserService, User } from '../../../core/services/user.service';
 import { Router } from '@angular/router';
-
+import { MessageService } from 'primeng/api';
 @Component({
   selector: 'app-reservation-create',
   standalone: true,
@@ -35,12 +35,11 @@ export class ReservationCreate implements OnInit {
     { label: 'Chuyển khoản', value: 'BANK_TRANSFER' }
   ];
 
-  constructor(
-    private reservationService: ReservationService,
-    private roomService: RoomService,
-    private userService: UserService,
-    private router: Router
-  ) {}
+  private reservationService = inject(ReservationService);
+  private roomService = inject(RoomService);
+  private userService = inject(UserService);
+  private router = inject(Router);
+  private messageService = inject(MessageService);
 
   ngOnInit() {
     this.userService.getAllUsers().subscribe(data => this.users = data);
@@ -60,10 +59,11 @@ export class ReservationCreate implements OnInit {
       this.reservation.checkOutDate = checkOut.toISOString().split('T')[0];
 
       this.reservationService.createReservation(this.reservation as Reservation).subscribe(() => {
+        this.messageService.add({severity: 'success', summary: 'Thành công', detail: 'Tạo đặt phòng thành công'});
         this.router.navigate(['/admin/reservations']);
       });
     } else {
-      alert("Vui lòng điền đầy đủ thông tin bắt buộc.");
+      this.messageService.add({severity: 'warn', summary: 'Cảnh báo', detail: 'Vui lòng điền đầy đủ thông tin bắt buộc.'});
     }
   }
 

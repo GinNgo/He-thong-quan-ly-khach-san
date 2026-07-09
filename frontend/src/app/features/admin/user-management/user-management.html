@@ -89,7 +89,7 @@
       </div>
       <div class="field mb-3">
         <label for="status" class="fw-bold">Trạng thái</label>
-        <p-dropdown [options]="[{label: 'Hoạt động (ACTIVE)', value: 'ACTIVE'}, {label: 'Khóa (INACTIVE)', value: 'INACTIVE'}]" [(ngModel)]="userForm.status" appendTo="body"></p-dropdown>
+        <p-select [options]="[{label: 'Hoạt động (ACTIVE)', value: 'ACTIVE'}, {label: 'Khóa (INACTIVE)', value: 'INACTIVE'}]" [(ngModel)]="userForm.status" appendTo="body"></p-select>
       </div>
       <ng-container *ngIf="userType === 'STAFF'">
         <div class="field mb-3">
@@ -98,7 +98,7 @@
         </div>
         <div class="field mb-3">
           <label for="hotel" class="fw-bold">Cơ sở (Khách sạn quản lý)</label>
-          <p-dropdown [options]="hotels" [(ngModel)]="userForm.hotelId" optionLabel="nameVi" optionValue="id" [showClear]="true" placeholder="Chọn cơ sở" appendTo="body"></p-dropdown>
+          <p-select [options]="hotels" [(ngModel)]="userForm.hotelId" optionLabel="name" optionValue="id" [showClear]="true" placeholder="Chọn cơ sở" appendTo="body"></p-select>
         </div>
       </ng-container>
     </ng-template>

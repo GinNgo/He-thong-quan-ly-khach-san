@@ -1,7 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { SharedModule } from '@app/shared/shared.module';
 import { RoleService, Role, AppModule, AppFunction } from '@app/core/services/role.service';
-
+import { MessageService } from 'primeng/api';
 @Component({
   selector: 'app-role-permission',
   standalone: true,
@@ -28,6 +28,7 @@ export class RolePermissionComponent implements OnInit {
   ];
 
   private roleService = inject(RoleService);
+  private messageService = inject(MessageService);
 
   ngOnInit(): void {
     this.loadRoles();
@@ -99,11 +100,11 @@ export class RolePermissionComponent implements OnInit {
     this.roleService.updateRolePermissions(this.selectedRole.id, payload).subscribe({
       next: () => {
         this.saving = false;
-        alert('Cập nhật quyền thành công!');
+        this.messageService.add({severity: 'success', summary: 'Thành công', detail: 'Cập nhật quyền thành công!'});
       },
       error: () => {
         this.saving = false;
-        alert('Có lỗi xảy ra khi lưu quyền.');
+        this.messageService.add({severity: 'error', summary: 'Lỗi', detail: 'Có lỗi xảy ra khi lưu quyền.'});
       }
     });
   }

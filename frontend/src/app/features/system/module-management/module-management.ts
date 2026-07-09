@@ -2,7 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { TreeNode, MenuItem, MessageService } from 'primeng/api';
+import { TreeNode, MenuItem, MessageService, ConfirmationService } from 'primeng/api';
 import { TreeTableModule } from 'primeng/treetable';
 import { ContextMenuModule } from 'primeng/contextmenu';
 import { DialogModule } from 'primeng/dialog';
@@ -10,6 +10,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { CheckboxModule } from 'primeng/checkbox';
 import { ToastModule } from 'primeng/toast';
+import { environment } from '../../../../environments/environment';
 
 interface AppFunction {
   id: number;
@@ -66,6 +67,8 @@ export class ModuleManagementComponent implements OnInit {
 
   private http = inject(HttpClient);
   private messageService = inject(MessageService);
+  private confirmationService = inject(ConfirmationService);
+  private apiUrl = environment.apiUrl;
 
   ngOnInit() {
     this.loadData();
@@ -81,8 +84,8 @@ export class ModuleManagementComponent implements OnInit {
 
   loadData() {
     // API returns all functions, we map it on client for simplicity
-    this.http.get<AppModule[]>('http://localhost:8080/api/modules').subscribe(modules => {
-      this.http.get<AppFunction[]>('http://localhost:8080/api/functions').subscribe(functions => {
+    this.http.get<AppModule[]>(`${this.apiUrl}/modules`).subscribe(modules => {
+      this.http.get<AppFunction[]>(`${this.apiUrl}/functions`).subscribe(functions => {
         this.nodes = modules.map(m => {
           const children = functions
             .filter(f => f.moduleId === m.id)
@@ -148,8 +151,8 @@ export class ModuleManagementComponent implements OnInit {
 
     if (this.isModule) {
       const apiCall = this.dialogMode === 'add' 
-        ? this.http.post('http://localhost:8080/api/modules', this.formData)
-        : this.http.put(`http://localhost:8080/api/modules/${this.formData.id}`, this.formData);
+        ? this.http.post(`${this.apiUrl}/modules`, this.formData)
+        : this.http.put(`${this.apiUrl}/modules/${this.formData.id}`, this.formData);
         
       apiCall.subscribe(() => {
         this.displayDialog = false;
@@ -158,8 +161,16 @@ export class ModuleManagementComponent implements OnInit {
       });
     } else {
       const apiCall = this.dialogMode === 'add' 
-        ? this.http.post('http://localhost:8080/api/functions', this.formData)
-        : this.http.put(`http://localhost:8080/api/functions/${this.formData.id}`, this.formData);
+        ? this.http.post(`${this.apiUrl}/functions`, this.formData)
+        : this.http.put(`${this.apiUrl}/functions/${this.formData.id}`, this.formData);
+        
+      apiCall.subscribe(() => {
+        this.displayDialog = false;
+        this.loadData();
+        this.messageService.add({severity:'success', summary: 'Thành công', detail: 'Đã lưu cấu hình'});
+      });
+    }
+  }
         
       apiCall.subscribe(() => {
         this.displayDialog = false;
@@ -174,12 +185,17 @@ export class ModuleManagementComponent implements OnInit {
     const data = this.selectedNode.data;
     const endpoint = data.type === 'module' ? 'modules' : 'functions';
     
-    if(confirm(`Bạn có chắc chắn muốn xóa ${data.name}?`)) {
-      this.http.delete(`http://localhost:8080/api/${endpoint}/${data.id}`).subscribe(() => {
-        this.loadData();
-        this.messageService.add({severity:'success', summary: 'Thành công', detail: 'Đã xóa thành công'});
-      });
-    }
+    this.confirmationService.confirm({
+      message: `Bạn có chắc chắn muốn xóa ${data.name}?`,
+      header: 'Xác nhận xóa',
+      icon: 'pi pi-exclamation-triangle',
+      accept: () => {
+        this.http.delete(`${this.apiUrl}/${endpoint}/${data.id}`).subscribe(() => {
+          this.loadData();
+          this.messageService.add({severity:'success', summary: 'Thành công', detail: 'Đã xóa thành công'});
+        });
+      }
+    });
   }
 
   moveNode(direction: number) {

@@ -2,11 +2,14 @@ package com.hotel.controllers;
 
 import com.hotel.entities.Hotel;
 import com.hotel.services.HotelManagementService;
+import com.hotel.services.RoomTypeService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -16,14 +19,23 @@ public class HotelController {
     @Autowired
     private HotelManagementService hotelService;
 
+    @Autowired
+    private RoomTypeService roomTypeService;
+
     @GetMapping("/public/search")
     public ResponseEntity<List<Hotel>> searchHotels(
             @RequestParam(required = false) String city,
-            @RequestParam(required = false) String checkIn,
-            @RequestParam(required = false) String checkOut,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkIn,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkOut,
             @RequestParam(required = false) Integer guests) {
         
         List<Hotel> hotels = hotelService.searchHotels(city, "ACTIVE");
+        if (checkIn != null || checkOut != null || guests != null) {
+            hotels = hotels.stream()
+                    .filter(hotel -> !roomTypeService.getRoomTypesByHotelId(hotel.getId(), checkIn, checkOut, guests).isEmpty())
+                    .toList();
+        }
+
         return ResponseEntity.ok(hotels);
     }
 

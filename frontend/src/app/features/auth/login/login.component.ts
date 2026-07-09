@@ -2,11 +2,10 @@ import { Component, ChangeDetectionStrategy, inject, ChangeDetectorRef, OnInit }
 import { SharedModule } from '@app/shared/shared.module';
 import { AuthService } from '@app/core/services/auth';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
-import { SocialAuthService, SocialUser, GoogleSigninButtonModule } from '@abacritt/angularx-social-login';
 
 @Component({
   standalone: true,
-  imports: [SharedModule, RouterModule, GoogleSigninButtonModule],
+  imports: [SharedModule, RouterModule],
   selector: 'app-login',
   templateUrl: './login.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -25,19 +24,11 @@ export class LoginComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
-  private socialAuthService = inject(SocialAuthService);
 
   returnUrl: string = '/';
 
   ngOnInit() {
     this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
-    
-    // Subscribe to Google auth state
-    this.socialAuthService.authState.subscribe((user: SocialUser) => {
-      if (user && user.idToken) {
-        this.loginWithGoogle(user.idToken);
-      }
-    });
 
     if (this.authService.isLoggedIn()) {
       const userStr = localStorage.getItem('user');
@@ -84,33 +75,6 @@ export class LoginComponent implements OnInit {
       },
       error: (err) => {
         this.errorMessage = 'Sai tài khoản hoặc mật khẩu.';
-        this.isLoading = false;
-        this.cdr.markForCheck();
-      }
-    });
-  }
-
-  loginWithGoogle(idToken: string) {
-    this.isLoading = true;
-    this.errorMessage = '';
-    this.cdr.markForCheck();
-
-    this.authService.googleLogin(idToken).subscribe({
-      next: (res) => {
-        if (res && res.accessToken) {
-          localStorage.setItem('token', res.accessToken);
-          localStorage.setItem('user', JSON.stringify({
-            username: res.username,
-            roles: res.roles,
-            permissions: res.permissions
-          }));
-          this.router.navigateByUrl(this.returnUrl);
-        }
-        this.isLoading = false;
-        this.cdr.markForCheck();
-      },
-      error: (err) => {
-        this.errorMessage = 'Đăng nhập Google thất bại.';
         this.isLoading = false;
         this.cdr.markForCheck();
       }

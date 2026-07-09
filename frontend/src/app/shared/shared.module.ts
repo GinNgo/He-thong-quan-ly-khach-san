@@ -11,9 +11,12 @@ import { DialogModule } from 'primeng/dialog';
 import { TabsModule } from 'primeng/tabs';
 import { SliderModule } from 'primeng/slider';
 import { SelectModule } from 'primeng/select';
+import { MultiSelectModule } from 'primeng/multiselect';
 import { CheckboxModule } from 'primeng/checkbox';
 import { PasswordModule } from 'primeng/password';
 import { CardModule } from 'primeng/card';
+import { ToastModule } from 'primeng/toast';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 
 @NgModule({
   imports: [
@@ -29,9 +32,12 @@ import { CardModule } from 'primeng/card';
     TabsModule,
     SliderModule,
     SelectModule,
+    MultiSelectModule,
     CheckboxModule,
     PasswordModule,
-    CardModule
+    CardModule,
+    ToastModule,
+    ConfirmDialogModule
   ],
   exports: [
     CommonModule,
@@ -46,9 +52,12 @@ import { CardModule } from 'primeng/card';
     TabsModule,
     SliderModule,
     SelectModule,
+    MultiSelectModule,
     CheckboxModule,
     PasswordModule,
-    CardModule
+    CardModule,
+    ToastModule,
+    ConfirmDialogModule
   ]
 })
 export class SharedModule { }

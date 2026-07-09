@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 
 public class RoomTypeDTO {
     private Long id;
+    private Long hotelId;
     private String code;
     private String nameVi;
     private String nameEn;
@@ -12,6 +13,9 @@ public class RoomTypeDTO {
     private BigDecimal basePrice;
     private String descriptionVi;
     private String descriptionEn;
+    private Long availableRooms;
+    private Long nights;
+    private BigDecimal totalPrice;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -21,6 +25,14 @@ public class RoomTypeDTO {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getHotelId() {
+        return hotelId;
+    }
+
+    public void setHotelId(Long hotelId) {
+        this.hotelId = hotelId;
     }
 
     public String getCode() {
@@ -77,6 +89,30 @@ public class RoomTypeDTO {
 
     public void setDescriptionEn(String descriptionEn) {
         this.descriptionEn = descriptionEn;
+    }
+
+    public Long getAvailableRooms() {
+        return availableRooms;
+    }
+
+    public void setAvailableRooms(Long availableRooms) {
+        this.availableRooms = availableRooms;
+    }
+
+    public Long getNights() {
+        return nights;
+    }
+
+    public void setNights(Long nights) {
+        this.nights = nights;
+    }
+
+    public BigDecimal getTotalPrice() {
+        return totalPrice;
+    }
+
+    public void setTotalPrice(BigDecimal totalPrice) {
+        this.totalPrice = totalPrice;
     }
 
     public LocalDateTime getCreatedAt() {

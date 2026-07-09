@@ -29,6 +29,8 @@ export class HomeComponent implements OnInit {
   checkIn: Date | undefined;
   checkOut: Date | undefined;
   guests: any | undefined;
+  searchError = '';
+  copiedCode = '';
   guestOptions: any[] = [];
 
   featuredRooms: any[] = [];
@@ -136,11 +138,36 @@ export class HomeComponent implements OnInit {
   }
 
   searchRooms() {
-    const queryParams: any = {};
-    if (this.checkIn) queryParams.checkIn = this.checkIn.toISOString().split('T')[0];
-    if (this.checkOut) queryParams.checkOut = this.checkOut.toISOString().split('T')[0];
-    if (this.guests) queryParams.guests = this.guests; // guests is now bound to the value
+    this.searchError = '';
+    if (this.checkIn && this.checkOut && this.checkOut <= this.checkIn) {
+      this.searchError = 'Ngày trả phòng phải sau ngày nhận phòng.';
+      return;
+    }
 
-    this.router.navigate(['/room-search'], { queryParams });
+    const queryParams: any = {};
+    if (this.checkIn) queryParams.checkIn = this.formatDate(this.checkIn);
+    if (this.checkOut) queryParams.checkOut = this.formatDate(this.checkOut);
+    if (this.guests) queryParams.guests = this.guests;
+
+    this.router.navigate(['/search'], { queryParams });
+  }
+
+  goToSearch() {
+    this.router.navigate(['/search']);
+  }
+
+  copyPromoCode(code: string) {
+    navigator.clipboard.writeText(code);
+    this.copiedCode = code;
+    setTimeout(() => {
+      this.copiedCode = '';
+    }, 1800);
+  }
+
+  private formatDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

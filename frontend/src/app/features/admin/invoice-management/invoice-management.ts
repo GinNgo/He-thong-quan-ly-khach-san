@@ -7,6 +7,7 @@ import { DialogModule } from 'primeng/dialog';
 import { ReservationService, Reservation } from '../../../core/services/reservation.service';
 import { InvoiceService, Invoice } from '../../../core/services/invoice.service';
 import { CardModule } from 'primeng/card';
+import { ConfirmationService } from 'primeng/api';
 
 @Component({
   selector: 'app-invoice-management',
@@ -22,7 +23,8 @@ export class InvoiceManagement implements OnInit {
 
   constructor(
     private reservationService: ReservationService,
-    private invoiceService: InvoiceService
+    private invoiceService: InvoiceService,
+    private confirmationService: ConfirmationService
   ) {}
 
   ngOnInit() {
@@ -45,13 +47,17 @@ export class InvoiceManagement implements OnInit {
           this.displayInvoiceDialog = true;
         },
         error: () => {
-          // If invoice doesn't exist, prompt to generate
-          if (confirm('Chưa có hóa đơn cho Booking này. Tạo hóa đơn mới?')) {
-            this.invoiceService.generateInvoice(res.id!).subscribe(newInvoice => {
-              this.currentInvoice = newInvoice;
-              this.displayInvoiceDialog = true;
-            });
-          }
+          this.confirmationService.confirm({
+            message: 'Chưa có hóa đơn cho Booking này. Tạo hóa đơn mới?',
+            header: 'Xác nhận',
+            icon: 'pi pi-exclamation-triangle',
+            accept: () => {
+              this.invoiceService.generateInvoice(res.id!).subscribe(newInvoice => {
+                this.currentInvoice = newInvoice;
+                this.displayInvoiceDialog = true;
+              });
+            }
+          });
         }
       });
     }

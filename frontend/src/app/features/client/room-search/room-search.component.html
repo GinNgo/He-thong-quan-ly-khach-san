@@ -1,153 +1,161 @@
-<div class="min-h-screen bg-gray-50 flex flex-col font-sans">
-  
-  <!-- Header / Search Bar Section -->
-  <div class="bg-[#003b95] pt-4 pb-6 px-4 md:px-8">
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-4">
-      <div class="text-white font-bold text-xl md:w-1/4 whitespace-nowrap hidden md:block">
-        Persist search
+<div class="min-h-screen bg-gray-50 font-sans">
+  <section class="bg-[#003b95] px-4 py-5 md:px-8">
+    <div class="max-w-7xl mx-auto">
+      <div class="mb-3 text-white">
+        <h1 class="text-2xl font-bold mb-1">T&igrave;m kh&aacute;ch s&#7841;n ph&ugrave; h&#7907;p</h1>
+        <p class="text-sm text-blue-100 mb-0">So s&aacute;nh h&#7841;ng ph&ograve;ng, gi&aacute; v&agrave; s&#7913;c ch&#7913;a tr&#432;&#7899;c khi &#273;&#7863;t.</p>
       </div>
-      
-      <!-- Search Inputs Container -->
-      <div class="flex-grow flex flex-col md:flex-row gap-1 w-full bg-[#febb02] p-1 rounded">
-        <!-- Destination -->
-        <div class="relative flex-grow bg-white rounded-sm flex items-center px-3 py-2">
-          <i class="pi pi-map-marker text-gray-500 mr-2"></i>
-          <input type="text" placeholder="Destination" class="w-full focus:outline-none text-gray-800" [(ngModel)]="destination">
-        </div>
-        
-        <!-- Check-in / Check-out -->
-        <div class="relative flex-grow bg-white rounded-sm flex items-center px-3 py-2">
-          <i class="pi pi-calendar text-gray-500 mr-2"></i>
-          <input type="text" placeholder="Check-in - Check-out" class="w-full focus:outline-none text-gray-800" [(ngModel)]="dateRange">
-        </div>
-        
-        <!-- Guests -->
-        <div class="relative w-full md:w-48 bg-white rounded-sm flex items-center px-3 py-2">
-          <i class="pi pi-user text-gray-500 mr-2"></i>
-          <input type="text" placeholder="Guests" class="w-full focus:outline-none text-gray-800" [(ngModel)]="guests">
-          <i class="pi pi-chevron-down text-gray-500 ml-2"></i>
-        </div>
-        
-        <!-- Search Button -->
-        <button class="bg-[#0071c2] hover:bg-[#005999] text-white font-bold py-2 px-8 rounded-sm transition-colors" (click)="search()">
-          Search
+
+      <div class="grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr_0.6fr_auto] gap-2 bg-[#febb02] p-2 rounded-lg">
+        <label class="bg-white rounded-md px-3 py-2 flex items-center gap-2">
+          <i class="pi pi-map-marker text-gray-500"></i>
+          <input type="text" placeholder="Th&agrave;nh ph&#7889; ho&#7863;c khu v&#7921;c" class="w-full focus:outline-none text-gray-800" [(ngModel)]="destination">
+        </label>
+
+        <label class="bg-white rounded-md px-3 py-2 flex items-center gap-2">
+          <i class="pi pi-calendar text-gray-500"></i>
+          <input type="date" class="w-full focus:outline-none text-gray-800" [(ngModel)]="checkInDate">
+        </label>
+
+        <label class="bg-white rounded-md px-3 py-2 flex items-center gap-2">
+          <i class="pi pi-calendar-times text-gray-500"></i>
+          <input type="date" class="w-full focus:outline-none text-gray-800" [(ngModel)]="checkOutDate">
+        </label>
+
+        <label class="bg-white rounded-md px-3 py-2 flex items-center gap-2">
+          <i class="pi pi-user text-gray-500"></i>
+          <input type="number" min="1" class="w-full focus:outline-none text-gray-800" [(ngModel)]="guests">
+        </label>
+
+        <button class="bg-[#0071c2] hover:bg-[#005999] text-white font-bold px-6 py-3 rounded-md transition-colors" (click)="search()">
+          T&igrave;m ki&#7871;m
         </button>
       </div>
-    </div>
-  </div>
 
-  <!-- Main Content Area -->
-  <div class="max-w-7xl mx-auto w-full px-4 md:px-8 py-6 flex flex-col md:flex-row gap-6">
-    
-    <!-- Left Sidebar: Filters -->
-    <div class="w-full md:w-64 flex-shrink-0">
-      <h2 class="text-xl font-bold text-gray-900 mb-4">Filter Results</h2>
-      
-      <div class="bg-white border border-gray-200 rounded p-4 mb-4">
-        <!-- Price Range -->
+      <p *ngIf="searchError" class="text-sm text-red-100 font-semibold mt-3 mb-0">{{ searchError }}</p>
+    </div>
+  </section>
+
+  <section class="max-w-7xl mx-auto w-full px-4 md:px-8 py-6 flex flex-col lg:flex-row gap-6">
+    <aside class="w-full lg:w-72 flex-shrink-0">
+      <div class="bg-white border border-gray-200 rounded-lg p-5 sticky top-24">
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h2 class="text-lg font-bold text-gray-900 mb-1">B&#7897; l&#7885;c</h2>
+            <p class="text-xs text-gray-500 mb-0">{{ activeFiltersCount }} &#273;i&#7873;u ki&#7879;n &#273;ang ch&#7885;n</p>
+          </div>
+          <button class="text-sm font-semibold text-[#0071c2] hover:text-[#005999]" (click)="clearFilters()">X&oacute;a</button>
+        </div>
+
         <div class="mb-6">
-          <div class="flex justify-between items-center mb-3 cursor-pointer">
-            <h3 class="font-bold text-gray-800">Price Range</h3>
-            <i class="pi pi-minus text-gray-500 text-sm"></i>
-          </div>
-          
+          <h3 class="font-bold text-gray-800 mb-3">Kho&#7843;ng gi&aacute; m&#7895;i &#273;&ecirc;m</h3>
           <div class="px-2 mb-4">
-            <p-slider [(ngModel)]="priceRange" [range]="true" [min]="0" [max]="2000"></p-slider>
+            <p-slider [(ngModel)]="priceRange" [range]="true" [min]="0" [max]="maxPriceLimit" (ngModelChange)="applyFilters()"></p-slider>
           </div>
-          
-          <div class="flex items-center gap-2">
-            <div class="relative border border-gray-300 rounded px-2 py-1 w-full bg-white flex items-center">
-              <span class="text-gray-500 mr-1">$</span>
-              <input type="number" [(ngModel)]="priceRange[0]" class="w-full focus:outline-none text-sm bg-transparent">
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <div class="border border-gray-300 rounded-md px-2 py-2 bg-white">
+              <span class="block text-[11px] text-gray-500 mb-1">T&#7915;</span>
+              <input type="number" [(ngModel)]="priceRange[0]" (ngModelChange)="applyFilters()" class="w-full focus:outline-none bg-transparent">
             </div>
-            <span class="text-gray-500">-</span>
-            <div class="relative border border-gray-300 rounded px-2 py-1 w-full bg-white flex items-center">
-              <span class="text-gray-500 mr-1">$</span>
-              <input type="number" [(ngModel)]="priceRange[1]" class="w-full focus:outline-none text-sm bg-transparent">
+            <div class="border border-gray-300 rounded-md px-2 py-2 bg-white">
+              <span class="block text-[11px] text-gray-500 mb-1">&#272;&#7871;n</span>
+              <input type="number" [(ngModel)]="priceRange[1]" (ngModelChange)="applyFilters()" class="w-full focus:outline-none bg-transparent">
             </div>
           </div>
         </div>
 
         <hr class="border-gray-200 my-4">
 
-        <!-- Room Type -->
-        <div class="mb-6">
-          <h3 class="font-bold text-gray-800 mb-3">Room Type</h3>
+        <div>
+          <h3 class="font-bold text-gray-800 mb-3">Lo&#7841;i ph&ograve;ng</h3>
           <div class="space-y-2">
             <label class="flex items-center gap-2 cursor-pointer" *ngFor="let type of roomTypes">
-              <input type="checkbox" [(ngModel)]="type.checked" class="w-4 h-4 rounded border-gray-300 text-[#0071c2] focus:ring-[#0071c2]">
+              <input type="checkbox" [(ngModel)]="type.checked" (ngModelChange)="applyFilters()" class="w-4 h-4 rounded border-gray-300 text-[#0071c2] focus:ring-[#0071c2]">
               <span class="text-gray-700 text-sm">{{ type.label }}</span>
             </label>
           </div>
         </div>
-
-        <hr class="border-gray-200 my-4">
-
-        <!-- Amenities -->
-        <div>
-          <div class="flex justify-between items-center mb-3 cursor-pointer">
-            <h3 class="font-bold text-gray-800">Amenities</h3>
-            <i class="pi pi-chevron-up text-gray-500 text-sm"></i>
-          </div>
-          <div class="space-y-2">
-            <label class="flex items-center gap-2 cursor-pointer" *ngFor="let amenity of amenities">
-              <input type="checkbox" [(ngModel)]="amenity.checked" class="w-4 h-4 rounded border-gray-300 text-[#0071c2] focus:ring-[#0071c2]">
-              <span class="text-gray-700 text-sm">{{ amenity.label }}</span>
-            </label>
-          </div>
-        </div>
       </div>
-    </div>
+    </aside>
 
-    <!-- Right Side: Room Grid -->
-    <div class="flex-grow">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        <!-- Loading State -->
-        <div *ngIf="isLoading" class="col-span-1 md:col-span-2 flex justify-center py-10">
-          <i class="pi pi-spin pi-spinner text-4xl text-[#003b95]"></i>
+    <main class="flex-grow">
+      <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900 mb-1">
+            {{ isLoading ? 'Dang tai ket qua...' : hotels.length + ' khach san phu hop' }}
+          </h2>
+          <p class="text-sm text-gray-500 mb-0" *ngIf="destination">Khu v&#7921;c: {{ destination }}</p>
         </div>
+        <p-select [options]="sortOptions" [(ngModel)]="sortBy" (ngModelChange)="applyFilters()" optionLabel="label" optionValue="value" styleClass="w-full md:w-60"></p-select>
+      </div>
 
-        <!-- Empty State -->
-        <div *ngIf="!isLoading && hotels.length === 0" class="col-span-1 md:col-span-2 text-center py-10 text-gray-500">
-          No hotels found matching your criteria. Try adjusting your search.
+      <div *ngIf="isLoading" class="bg-white border border-gray-200 rounded-lg flex justify-center py-16">
+        <i class="pi pi-spin pi-spinner text-4xl text-[#003b95]"></i>
+      </div>
+
+      <div *ngIf="!isLoading && hotels.length === 0" class="bg-white border border-gray-200 rounded-lg text-center py-16 px-6">
+        <div class="w-16 h-16 rounded-full bg-blue-50 text-[#003b95] flex items-center justify-center mx-auto mb-4">
+          <i class="pi pi-search text-2xl"></i>
         </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Kh&ocirc;ng t&igrave;m th&#7845;y kh&aacute;ch s&#7841;n ph&ugrave; h&#7907;p</h3>
+        <p class="text-gray-500 mb-5">H&atilde;y th&#7917; &#273;&#7893;i ng&agrave;y, th&agrave;nh ph&#7889; ho&#7863;c x&oacute;a b&#7899;t b&#7897; l&#7885;c.</p>
+        <button class="bg-[#0071c2] hover:bg-[#005999] text-white font-bold px-5 py-2 rounded-md" (click)="clearFilters()">X&oacute;a b&#7897; l&#7885;c</button>
+      </div>
 
-        <!-- Hotel Card -->
-        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col hover:shadow-lg transition-shadow duration-300" *ngFor="let hotel of hotels">
-          <!-- Image -->
-          <div class="h-48 w-full overflow-hidden relative">
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-5" *ngIf="!isLoading && hotels.length > 0">
+        <article class="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col hover:shadow-lg transition-shadow duration-300" *ngFor="let hotel of hotels">
+          <div class="h-52 w-full overflow-hidden relative">
             <img [src]="hotel.mainImage || 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&q=80&w=800'" [alt]="hotel.name" class="w-full h-full object-cover">
+            <div class="absolute top-3 left-3 bg-white/95 text-gray-900 text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+              {{ hotel.starRating }}/5 <i class="pi pi-star-fill text-[#febb02] ml-1"></i>
+            </div>
           </div>
-          
-          <!-- Content -->
-          <div class="p-4 flex flex-col flex-grow">
-            <!-- Header (Title & Rating) -->
-            <div class="flex justify-between items-start mb-2">
-              <h3 class="text-lg font-bold text-gray-900 leading-tight">{{ hotel.name }}</h3>
-              <div class="flex items-center gap-1 text-sm font-semibold">
-                <i class="pi pi-star-fill text-[#febb02]"></i>
-                <span>{{ hotel.starRating }}/5</span>
+
+          <div class="p-5 flex flex-col flex-grow">
+            <div class="mb-3">
+              <h3 class="text-xl font-bold text-gray-900 leading-tight mb-2">{{ hotel.name }}</h3>
+              <div class="text-sm text-gray-600">
+                <i class="pi pi-map-marker text-xs mr-1"></i> {{ hotel.address }}, {{ hotel.city }}
               </div>
             </div>
-            
-            <div class="text-sm text-gray-600 mb-2">
-              <i class="pi pi-map-marker text-xs mr-1"></i> {{ hotel.address }}, {{ hotel.city }}
-            </div>
-            
-            <p class="text-sm text-gray-500 mb-4 line-clamp-2">{{ hotel.description }}</p>
-            
-            <div class="mt-auto">
-              <!-- Action Button -->
-              <button class="w-full bg-[#003b95] hover:bg-[#002255] text-white font-medium py-2 rounded transition-colors" [routerLink]="['/hotel', hotel.id]">
-                View Details
-              </button>
-            </div>
-          </div>
-        </div>
 
+            <p class="text-sm text-gray-500 mb-4 line-clamp-2">{{ hotel.description || 'Khach san chua cap nhat mo ta.' }}</p>
+
+            <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+              <div class="bg-gray-50 rounded-md px-3 py-2">
+                <span class="block text-gray-500 text-xs">Gi&aacute; t&#7915;</span>
+                <strong class="text-gray-900">
+                  {{ hotel.minPrice !== null ? (hotel.minPrice | currency:'VND':'symbol':'1.0-0') : 'Dang cap nhat' }}
+                </strong>
+              </div>
+              <div class="bg-gray-50 rounded-md px-3 py-2">
+                <span class="block text-gray-500 text-xs">S&#7913;c ch&#7913;a</span>
+                <strong class="text-gray-900">{{ hotel.maxGuests ? 'Toi da ' + hotel.maxGuests + ' khach' : 'Dang cap nhat' }}</strong>
+              </div>
+            </div>
+
+            <div class="mb-3 flex flex-wrap gap-2 text-xs font-semibold">
+              <span class="rounded-full bg-green-50 border border-green-100 px-3 py-1 text-green-800">
+                C&ograve;n {{ hotel.availableRoomCount || 0 }} ph&ograve;ng
+              </span>
+              <span class="rounded-full bg-blue-50 border border-blue-100 px-3 py-1 text-[#003b95]" *ngIf="hotel.minTotalPrice && hotel.nights">
+                T&#7893;ng {{ hotel.nights }} &#273;&ecirc;m t&#7915; {{ hotel.minTotalPrice | currency:'VND':'symbol':'1.0-0' }}
+              </span>
+            </div>
+
+            <div class="text-xs text-gray-500 mb-4" *ngIf="hotel.roomTypeSummary">
+              H&#7841;ng ph&ograve;ng: {{ hotel.roomTypeSummary }}
+            </div>
+
+            <button
+              class="w-full bg-[#003b95] hover:bg-[#002255] text-white font-semibold py-2.5 rounded-md transition-colors mt-auto"
+              [routerLink]="['/hotel', hotel.id]"
+              [queryParams]="{ checkIn: checkInDate || null, checkOut: checkOutDate || null, guests: guests || null }">
+              Xem chi ti&#7871;t v&agrave; ch&#7885;n ph&ograve;ng
+            </button>
+          </div>
+        </article>
       </div>
-    </div>
-    
-  </div>
+    </main>
+  </section>
 </div>

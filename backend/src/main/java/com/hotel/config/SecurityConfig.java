@@ -35,7 +35,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/hotels/public/**").permitAll()
+                .requestMatchers("/api/v1/hotels/public/**").permitAll()
                 .requestMatchers("/api/room-types/public/**").permitAll()
                 .requestMatchers("/api/reservations/public/**").permitAll()
                 .requestMatchers("/api/rooms/search").permitAll()

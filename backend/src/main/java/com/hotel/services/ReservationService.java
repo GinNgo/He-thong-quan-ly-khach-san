@@ -1,5 +1,7 @@
 package com.hotel.services;
 
+import com.hotel.dtos.ReservationDTO;
+import com.hotel.dtos.ReservationDetailDTO;
 import com.hotel.dtos.ReservationRequest;
 import com.hotel.entities.Reservation;
 import com.hotel.entities.ReservationDetail;
@@ -14,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ReservationService {
@@ -22,44 +26,40 @@ public class ReservationService {
     private final ReservationDetailRepository reservationDetailRepository;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
+    private final RoomAvailabilityService roomAvailabilityService;
 
     public ReservationService(ReservationRepository reservationRepository,
                               ReservationDetailRepository reservationDetailRepository,
                               RoomRepository roomRepository,
-                              UserRepository userRepository) {
+                              UserRepository userRepository,
+                              RoomAvailabilityService roomAvailabilityService) {
         this.reservationRepository = reservationRepository;
         this.reservationDetailRepository = reservationDetailRepository;
         this.roomRepository = roomRepository;
         this.userRepository = userRepository;
+        this.roomAvailabilityService = roomAvailabilityService;
     }
 
     @Transactional
     public Reservation createReservation(String username, ReservationRequest request) {
+        validateReservationRequest(request);
+
         if (username == null || username.isEmpty()) {
             username = "guest";
         }
+
         User user = userRepository.findByUsername(username)
-                .orElseGet(() -> {
-                    User guest = new User();
-                    guest.setUsername("guest_" + System.currentTimeMillis());
-                    guest.setEmail(guest.getUsername() + "@guest.com");
-                    guest.setPasswordHash("NOPASSWORD");
-                    String fullName = (request.getFirstName() != null ? request.getFirstName() : "") + " " + 
-                                      (request.getLastName() != null ? request.getLastName() : "");
-                    guest.setFullName(fullName.trim().isEmpty() ? "Guest User" : fullName.trim());
-                    guest.setPhone(request.getPhone());
-                    guest.setStatus("GUEST");
-                    return userRepository.save(guest);
-                });
+                .orElseGet(() -> createGuestUser(request));
 
-        java.util.List<Room> rooms = roomRepository.findByRoomTypeId(request.getRoomTypeId());
-        Room room = rooms.stream()
-                .filter(r -> "AVAILABLE".equals(r.getStatus()))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Rất tiếc, loại phòng này đã hết chỗ. Vui lòng chọn loại phòng khác."));
+        Room room = roomAvailabilityService.findFirstAvailableRoomForBooking(
+                request.getRoomTypeId(),
+                request.getCheckInDate(),
+                request.getCheckOutDate(),
+                request.getGuests()
+        );
 
-        // Simplistic total calculation for mockup: price * 1 night (should calculate difference in days)
-        BigDecimal totalAmount = room.getRoomType().getBasePrice().multiply(BigDecimal.valueOf(1.15)); // adding taxes
+        long nights = roomAvailabilityService.getNights(request.getCheckInDate(), request.getCheckOutDate());
+        BigDecimal totalAmount = roomAvailabilityService.calculateTotal(room.getRoomType().getBasePrice(), nights);
 
         Reservation reservation = new Reservation();
         reservation.setUser(user);
@@ -68,7 +68,7 @@ public class ReservationService {
         reservation.setCheckInDate(request.getCheckInDate());
         reservation.setCheckOutDate(request.getCheckOutDate());
         reservation.setGuests(request.getGuests());
-        reservation.setStatus("PENDING_PAYMENT"); // Await payment
+        reservation.setStatus("PENDING_PAYMENT");
         reservation.setPaymentMethod(request.getPaymentMethod());
         reservation.setSpecialRequests(request.getSpecialRequests());
         reservation.setTotalAmount(totalAmount);
@@ -82,52 +82,83 @@ public class ReservationService {
         detail.setPrice(room.getRoomType().getBasePrice());
         reservationDetailRepository.save(detail);
 
-        // Update room status
-        room.setStatus("RESERVED");
-        roomRepository.save(room);
-
         return savedReservation;
     }
 
     @Transactional(readOnly = true)
-    public java.util.List<com.hotel.dtos.ReservationDTO> getAllReservations() {
-        return reservationRepository.findAll().stream().map(reservation -> {
-            com.hotel.dtos.ReservationDTO dto = new com.hotel.dtos.ReservationDTO();
-            dto.setId(reservation.getId());
-            dto.setUserId(reservation.getUser().getId());
-            dto.setUsername(reservation.getUser().getUsername());
-            dto.setUserFullName(reservation.getUser().getFullName());
-            dto.setCheckInDate(reservation.getCheckInDate());
-            dto.setCheckOutDate(reservation.getCheckOutDate());
-            dto.setGuests(reservation.getGuests());
-            dto.setTotalAmount(reservation.getTotalAmount());
-            dto.setStatus(reservation.getStatus());
-            dto.setPaymentMethod(reservation.getPaymentMethod());
-            dto.setSpecialRequests(reservation.getSpecialRequests());
-
-            java.util.List<com.hotel.dtos.ReservationDetailDTO> detailDTOs = reservationDetailRepository
-                    .findByReservationId(reservation.getId()).stream()
-                    .map(detail -> {
-                        com.hotel.dtos.ReservationDetailDTO detailDto = new com.hotel.dtos.ReservationDetailDTO();
-                        detailDto.setId(detail.getId());
-                        detailDto.setReservationId(detail.getReservation().getId());
-                        detailDto.setRoomId(detail.getRoom().getId());
-                        detailDto.setRoomNumber(detail.getRoom().getRoomNumber());
-                        detailDto.setPriceAtBooking(detail.getPrice());
-                        return detailDto;
-                    }).collect(java.util.stream.Collectors.toList());
-
-            dto.setDetails(detailDTOs);
-            return dto;
-        }).collect(java.util.stream.Collectors.toList());
+    public List<ReservationDTO> getAllReservations() {
+        return reservationRepository.findAll().stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public com.hotel.dtos.ReservationDTO getReservationById(Long id) {
+    public ReservationDTO getReservationById(Long id) {
         Reservation reservation = reservationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Reservation not found"));
-        // For simplicity, reusing the mapping logic. In real app, extract to a mapper.
-        com.hotel.dtos.ReservationDTO dto = new com.hotel.dtos.ReservationDTO();
+        return mapToDTO(reservation);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReservationDTO> getMyReservations(String username) {
+        return getAllReservations().stream()
+                .filter(r -> r.getUsername().equals(username))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public Reservation updateReservationStatus(Long id, String status) {
+        Reservation reservation = reservationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Reservation not found"));
+
+        reservation.setStatus(status);
+
+        if ("CHECKED_IN".equals(status)) {
+            reservationDetailRepository.findByReservationId(id).forEach(detail -> {
+                Room room = detail.getRoom();
+                room.setStatus("OCCUPIED");
+                roomRepository.save(room);
+            });
+        } else if ("CHECKED_OUT".equals(status) || "CANCELLED".equals(status)) {
+            reservationDetailRepository.findByReservationId(id).forEach(detail -> {
+                Room room = detail.getRoom();
+                room.setStatus("AVAILABLE");
+                roomRepository.save(room);
+            });
+        }
+
+        return reservationRepository.save(reservation);
+    }
+
+    private User createGuestUser(ReservationRequest request) {
+        User guest = new User();
+        guest.setUsername("guest_" + System.currentTimeMillis());
+        guest.setEmail(guest.getUsername() + "@guest.com");
+        guest.setPasswordHash("NOPASSWORD");
+        String fullName = (request.getFirstName() != null ? request.getFirstName() : "") + " "
+                + (request.getLastName() != null ? request.getLastName() : "");
+        guest.setFullName(fullName.trim().isEmpty() ? "Guest User" : fullName.trim());
+        guest.setPhone(request.getPhone());
+        guest.setStatus("GUEST");
+        return userRepository.save(guest);
+    }
+
+    private void validateReservationRequest(ReservationRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Thiếu thông tin đặt phòng.");
+        }
+
+        if (request.getRoomTypeId() == null) {
+            throw new IllegalArgumentException("Vui lòng chọn loại phòng.");
+        }
+
+        if (request.getGuests() == null || request.getGuests() < 1) {
+            throw new IllegalArgumentException("Số khách phải lớn hơn 0.");
+        }
+    }
+
+    private ReservationDTO mapToDTO(Reservation reservation) {
+        ReservationDTO dto = new ReservationDTO();
         dto.setId(reservation.getId());
         dto.setUserId(reservation.getUser().getId());
         dto.setUsername(reservation.getUser().getUsername());
@@ -140,53 +171,22 @@ public class ReservationService {
         dto.setPaymentMethod(reservation.getPaymentMethod());
         dto.setSpecialRequests(reservation.getSpecialRequests());
 
-        java.util.List<com.hotel.dtos.ReservationDetailDTO> detailDTOs = reservationDetailRepository
+        List<ReservationDetailDTO> detailDTOs = reservationDetailRepository
                 .findByReservationId(reservation.getId()).stream()
-                .map(detail -> {
-                    com.hotel.dtos.ReservationDetailDTO detailDto = new com.hotel.dtos.ReservationDetailDTO();
-                    detailDto.setId(detail.getId());
-                    detailDto.setReservationId(detail.getReservation().getId());
-                    detailDto.setRoomId(detail.getRoom().getId());
-                    detailDto.setRoomNumber(detail.getRoom().getRoomNumber());
-                    detailDto.setPriceAtBooking(detail.getPrice());
-                    return detailDto;
-                }).collect(java.util.stream.Collectors.toList());
+                .map(this::mapDetailToDTO)
+                .collect(Collectors.toList());
 
         dto.setDetails(detailDTOs);
         return dto;
     }
 
-    @Transactional(readOnly = true)
-    public java.util.List<com.hotel.dtos.ReservationDTO> getMyReservations(String username) {
-        return getAllReservations().stream()
-                .filter(r -> r.getUsername().equals(username))
-                .collect(java.util.stream.Collectors.toList());
-    }
-
-    @Transactional
-    public Reservation updateReservationStatus(Long id, String status) {
-        Reservation reservation = reservationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Reservation not found"));
-        
-        reservation.setStatus(status);
-        
-        // Handle room status based on reservation status
-        if ("CHECKED_IN".equals(status)) {
-            // update room to OCCUPIED
-            reservationDetailRepository.findByReservationId(id).forEach(detail -> {
-                Room room = detail.getRoom();
-                room.setStatus("OCCUPIED");
-                roomRepository.save(room);
-            });
-        } else if ("CHECKED_OUT".equals(status) || "CANCELLED".equals(status)) {
-            // update room to AVAILABLE
-            reservationDetailRepository.findByReservationId(id).forEach(detail -> {
-                Room room = detail.getRoom();
-                room.setStatus("AVAILABLE");
-                roomRepository.save(room);
-            });
-        }
-        
-        return reservationRepository.save(reservation);
+    private ReservationDetailDTO mapDetailToDTO(ReservationDetail detail) {
+        ReservationDetailDTO detailDto = new ReservationDetailDTO();
+        detailDto.setId(detail.getId());
+        detailDto.setReservationId(detail.getReservation().getId());
+        detailDto.setRoomId(detail.getRoom().getId());
+        detailDto.setRoomNumber(detail.getRoom().getRoomNumber());
+        detailDto.setPriceAtBooking(detail.getPrice());
+        return detailDto;
     }
 }

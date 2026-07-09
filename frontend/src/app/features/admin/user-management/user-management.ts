@@ -4,6 +4,7 @@ import { UserService, User } from '@app/core/services/user';
 import { RoleService, Role } from '@app/core/services/role.service';
 import { ClientApiService, Hotel } from '@app/core/services/client-api.service';
 import { ActivatedRoute } from '@angular/router';
+import { ConfirmationService } from 'primeng/api';
 
 @Component({
   selector: 'app-user-management',
@@ -37,6 +38,7 @@ export class UserManagement implements OnInit {
   private roleService = inject(RoleService);
   private hotelService = inject(ClientApiService);
   private route = inject(ActivatedRoute);
+  private confirmationService = inject(ConfirmationService);
 
   ngOnInit(): void {
     this.route.data.subscribe(data => {
@@ -120,11 +122,21 @@ export class UserManagement implements OnInit {
   }
 
   deleteUser(user: User) {
-    if (confirm(`Bạn có chắc muốn xóa người dùng ${user.username}?`)) {
-      this.userService.deleteUser(user.id).subscribe(() => {
-        this.loadUsers();
-      });
-    }
+    this.confirmationService.confirm({
+      message: `Bạn có chắc muốn xóa người dùng ${user.username}?`,
+      header: 'Xác nhận xóa',
+      icon: 'pi pi-exclamation-triangle',
+      accept: () => {
+        this.userService.deleteUser(user.id!).subscribe({
+          next: () => {
+            this.loadUsers();
+          },
+          error: (err) => {
+            console.error('Error deleting user', err);
+          }
+        });
+      }
+    });
   }
 
   getRolesString(roles: any[]): string {
@@ -132,4 +144,3 @@ export class UserManagement implements OnInit {
     return roles.map(r => r.name).join(', ');
   }
 }
-

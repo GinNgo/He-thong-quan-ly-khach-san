@@ -11,8 +11,10 @@ import com.hotel.repositories.RoleRepository;
 import com.hotel.repositories.RolePermissionRepository;
 import com.hotel.repositories.UserRepository;
 import com.hotel.repositories.HotelRepository;
+import com.hotel.repositories.RoomRepository;
 import com.hotel.repositories.RoomTypeRepository;
 import com.hotel.entities.Hotel;
+import com.hotel.entities.Room;
 import com.hotel.entities.RoomType;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.ActionCode;
@@ -22,6 +24,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 @Component
@@ -33,6 +38,7 @@ public class DataInitializer implements CommandLineRunner {
     private final AppModuleRepository appModuleRepository;
     private final AppFunctionRepository appFunctionRepository;
     private final HotelRepository hotelRepository;
+    private final RoomRepository roomRepository;
     private final RoomTypeRepository roomTypeRepository;
     private final RolePermissionRepository rolePermissionRepository;
     private final PasswordEncoder passwordEncoder;
@@ -44,6 +50,14 @@ public class DataInitializer implements CommandLineRunner {
         try {
             jdbcTemplate.execute("ALTER TABLE app_module ALTER COLUMN name NVARCHAR(255)");
             jdbcTemplate.execute("ALTER TABLE app_function ALTER COLUMN name NVARCHAR(255)");
+            jdbcTemplate.execute("ALTER TABLE hotels ALTER COLUMN name NVARCHAR(255) NOT NULL");
+            jdbcTemplate.execute("ALTER TABLE hotels ALTER COLUMN address NVARCHAR(255) NOT NULL");
+            jdbcTemplate.execute("ALTER TABLE hotels ALTER COLUMN city NVARCHAR(255) NOT NULL");
+            jdbcTemplate.execute("ALTER TABLE hotels ALTER COLUMN country NVARCHAR(255) NOT NULL");
+            jdbcTemplate.execute("ALTER TABLE hotels ALTER COLUMN description NVARCHAR(MAX)");
+            jdbcTemplate.execute("ALTER TABLE room_types ALTER COLUMN name_vi NVARCHAR(255) NOT NULL");
+            jdbcTemplate.execute("ALTER TABLE room_types ALTER COLUMN description_vi NVARCHAR(MAX)");
+            jdbcTemplate.execute("ALTER TABLE users ALTER COLUMN full_name NVARCHAR(255)");
         } catch (Exception e) {
             System.out.println("Could not alter table columns: " + e.getMessage());
         }
@@ -124,6 +138,15 @@ public class DataInitializer implements CommandLineRunner {
             defaultHotel.setStarRating(5);
             defaultHotel.setStatus("ACTIVE");
             defaultHotel = hotelRepository.save(defaultHotel);
+        } else if (hasEncodingNoise(defaultHotel.getName()) || hasEncodingNoise(defaultHotel.getAddress())
+                || hasEncodingNoise(defaultHotel.getCity()) || hasEncodingNoise(defaultHotel.getCountry())) {
+            defaultHotel.setName("Đà Lạt Grand Hotel");
+            defaultHotel.setAddress("123 Trần Phú");
+            defaultHotel.setCity("Đà Lạt");
+            defaultHotel.setCountry("Việt Nam");
+            defaultHotel.setStarRating(5);
+            defaultHotel.setStatus("ACTIVE");
+            defaultHotel = hotelRepository.save(defaultHotel);
         }
 
         // Map existing RoomTypes to default hotel
@@ -133,6 +156,8 @@ public class DataInitializer implements CommandLineRunner {
                 roomTypeRepository.save(rt);
             }
         }
+
+        ensureDefaultInventory(defaultHotel);
 
         // Assign permissions to SUPER_ADMIN
         int allActions = ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.DELETE | ActionCode.EXPORT | ActionCode.APPROVE;
@@ -174,5 +199,57 @@ public class DataInitializer implements CommandLineRunner {
             func.setSortOrder(order);
             appFunctionRepository.save(func);
         }
+    }
+
+    private void ensureDefaultInventory(Hotel hotel) {
+        List<RoomType> hotelRoomTypes = roomTypeRepository.findByHotelId(hotel.getId());
+        if (hotelRoomTypes.isEmpty()) {
+            hotelRoomTypes = new ArrayList<>();
+            hotelRoomTypes.add(createRoomType(hotel, "STANDARD", "Phong tieu chuan", "Standard Room", 2, "850000",
+                    "Lua chon gon gang cho chuyen di ngan ngay."));
+            hotelRoomTypes.add(createRoomType(hotel, "DELUXE", "Phong Deluxe", "Deluxe Room", 3, "1250000",
+                    "Phong rong hon, phu hop cap doi hoac gia dinh nho."));
+            hotelRoomTypes.add(createRoomType(hotel, "SUITE", "Phong Suite", "Suite Room", 4, "2200000",
+                    "Khong gian rieng tu voi khu tiep khach va tam nhin dep."));
+        }
+
+        for (RoomType roomType : hotelRoomTypes) {
+            if (roomRepository.findByRoomTypeId(roomType.getId()).isEmpty()) {
+                for (int i = 1; i <= 3; i++) {
+                    Room room = new Room();
+                    room.setRoomNumber(String.format("%d-%s-%02d", hotel.getId(), roomType.getCode(), i));
+                    room.setRoomType(roomType);
+                    room.setFloor(i);
+                    room.setStatus("AVAILABLE");
+                    room.setDescriptionVi(roomType.getDescriptionVi());
+                    room.setDescriptionEn(roomType.getDescriptionEn());
+                    roomRepository.save(room);
+                }
+            }
+        }
+    }
+
+    private RoomType createRoomType(Hotel hotel, String code, String nameVi, String nameEn, Integer maxGuest,
+                                    String basePrice, String description) {
+        RoomType roomType = new RoomType();
+        roomType.setHotel(hotel);
+        roomType.setCode(code);
+        roomType.setNameVi(nameVi);
+        roomType.setNameEn(nameEn);
+        roomType.setMaxGuest(maxGuest);
+        roomType.setBasePrice(new BigDecimal(basePrice));
+        roomType.setDescriptionVi(description);
+        roomType.setDescriptionEn(description);
+        return roomTypeRepository.save(roomType);
+    }
+
+    private boolean hasEncodingNoise(String value) {
+        if (value == null) {
+            return false;
+        }
+        if (value.contains("Ã") || value.contains("Â") || value.contains("Ä")) {
+            return true;
+        }
+        return value != null && (value.contains("Ã") || value.contains("Â") || value.contains("?"));
     }
 }

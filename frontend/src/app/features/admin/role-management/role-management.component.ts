@@ -1,6 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { SharedModule } from '@app/shared/shared.module';
 import { RoleService, Role } from '@app/core/services/role.service';
+import { ConfirmationService } from 'primeng/api';
 
 @Component({
   selector: 'app-role-management',
@@ -22,6 +23,7 @@ export class RoleManagementComponent implements OnInit {
   };
 
   private roleService = inject(RoleService);
+  private confirmationService = inject(ConfirmationService);
 
   ngOnInit(): void {
     this.loadRoles();
@@ -68,10 +70,15 @@ export class RoleManagementComponent implements OnInit {
   }
 
   deleteRole(role: Role) {
-    if (confirm(`Bạn có chắc muốn xóa vai trò ${role.name}?`)) {
-      this.roleService.deleteRole(role.id).subscribe(() => {
-        this.loadRoles();
-      });
-    }
+    this.confirmationService.confirm({
+      message: `Bạn có chắc muốn xóa vai trò ${role.name}?`,
+      header: 'Xác nhận xóa',
+      icon: 'pi pi-exclamation-triangle',
+      accept: () => {
+        this.roleService.deleteRole(role.id).subscribe(() => {
+          this.loadRoles();
+        });
+      }
+    });
   }
 }

@@ -17,9 +17,23 @@ export class HotelDetailComponent implements OnInit {
   hotel: Hotel | null = null;
   roomTypes: RoomType[] = [];
   isLoading = true;
+  roomError = '';
+  bookingQueryParams: { checkIn?: string; checkOut?: string; guests?: number } = {};
 
   ngOnInit(): void {
-    this.route.paramMap.subscribe(params => {
+    this.route.queryParams.subscribe((params) => {
+      this.bookingQueryParams = {
+        checkIn: params['checkIn'] || undefined,
+        checkOut: params['checkOut'] || undefined,
+        guests: Number(params['guests']) || undefined,
+      };
+
+      if (this.hotel?.id) {
+        this.loadRoomTypes(this.hotel.id);
+      }
+    });
+
+    this.route.paramMap.subscribe((params) => {
       const id = params.get('id');
       if (id) {
         this.loadHotelData(Number(id));
@@ -29,29 +43,39 @@ export class HotelDetailComponent implements OnInit {
 
   loadHotelData(hotelId: number) {
     this.isLoading = true;
-    
-    // Load Hotel info
     this.clientApi.getHotelById(hotelId).subscribe({
       next: (hotelData) => {
         this.hotel = hotelData;
-        
-        // Load Room Types for this hotel
-        this.clientApi.getRoomTypesByHotel(hotelId).subscribe({
-          next: (roomTypesData) => {
-            this.roomTypes = roomTypesData;
-            this.isLoading = false;
-          },
-          error: (err) => {
-            console.error('Error fetching room types:', err);
-            this.isLoading = false;
-          }
-        });
+        this.loadRoomTypes(hotelId);
       },
       error: (err) => {
         console.error('Error fetching hotel details:', err);
         this.isLoading = false;
       }
     });
+  }
+
+  loadRoomTypes(hotelId: number) {
+    this.roomError = '';
+    this.clientApi
+      .getRoomTypesByHotel(
+        hotelId,
+        this.bookingQueryParams.checkIn,
+        this.bookingQueryParams.checkOut,
+        this.bookingQueryParams.guests
+      )
+      .subscribe({
+        next: (roomTypesData) => {
+          this.roomTypes = roomTypesData;
+          this.isLoading = false;
+        },
+        error: (err) => {
+          console.error('Error fetching room types:', err);
+          this.roomTypes = [];
+          this.roomError = 'Khong the tai tinh trang phong. Vui long thu lai.';
+          this.isLoading = false;
+        }
+      });
   }
 
   scrollToRooms() {

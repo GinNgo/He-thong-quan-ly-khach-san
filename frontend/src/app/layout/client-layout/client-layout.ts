@@ -17,6 +17,7 @@ export class ClientLayout implements OnInit {
 
   isLoggedIn = false;
   username = '';
+  isMobileMenuOpen = false;
 
   ngOnInit() {
     this.isLoggedIn = this.authService.isLoggedIn();
@@ -32,6 +33,15 @@ export class ClientLayout implements OnInit {
     this.authService.logout();
     this.isLoggedIn = false;
     this.username = '';
+    this.isMobileMenuOpen = false;
     this.router.navigate(['/']);
+  }
+
+  toggleMobileMenu() {
+    this.isMobileMenuOpen = !this.isMobileMenuOpen;
+  }
+
+  closeMobileMenu() {
+    this.isMobileMenuOpen = false;
   }
 }

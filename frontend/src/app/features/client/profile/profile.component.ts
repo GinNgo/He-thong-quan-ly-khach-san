@@ -2,17 +2,23 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '@app/core/services/auth';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { ClientApiService, ReservationSummary } from '@app/core/services/client-api.service';
+import { MessageService } from 'primeng/api';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './profile.component.html',
   styleUrls: ['./profile.component.css']
 })
 export class ProfileComponent implements OnInit {
   user: any = null;
   activeTab = 'profile'; // 'profile', 'vouchers', 'bookings'
+  bookings: ReservationSummary[] = [];
+  bookingsLoading = false;
+  bookingsError = '';
 
   // Mock data for Membership
   membership = {
@@ -49,14 +55,19 @@ export class ProfileComponent implements OnInit {
     }
   ];
 
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private clientApi: ClientApiService,
+    private route: ActivatedRoute,
+    private router: Router,
+    private messageService: MessageService
+  ) {}
 
   ngOnInit() {
-    // Mock user data or get from auth service
     const authState = this.authService.getAuthState();
     if (authState.isAuthenticated) {
       this.user = {
-        fullName: 'Lina Isan',
+        fullName: authState.username,
         email: authState.username,
         phone: '+84 901 234 567',
         dob: '1995-08-15',
@@ -71,6 +82,16 @@ export class ProfileComponent implements OnInit {
         address: 'Quận 1, TP. Hồ Chí Minh'
       };
     }
+
+    this.route.queryParams.subscribe((params) => {
+      const tab = params['tab'];
+      if (['profile', 'vouchers', 'bookings'].includes(tab)) {
+        this.activeTab = tab;
+      }
+      if (this.activeTab === 'bookings') {
+        this.loadBookings();
+      }
+    });
   }
 
   get progressPercentage(): number {
@@ -79,6 +100,47 @@ export class ProfileComponent implements OnInit {
 
   copyCode(code: string) {
     navigator.clipboard.writeText(code);
-    alert('Đã copy mã: ' + code);
+    this.messageService.add({severity: 'success', summary: 'Thành công', detail: 'Đã copy mã: ' + code});
+  }
+
+  setActiveTab(tab: 'profile' | 'vouchers' | 'bookings') {
+    this.activeTab = tab;
+    if (tab === 'bookings') {
+      this.loadBookings();
+    }
+  }
+
+  loadBookings() {
+    if (!this.authService.isLoggedIn() || this.bookingsLoading) return;
+
+    this.bookingsLoading = true;
+    this.bookingsError = '';
+    this.clientApi.getMyBookings().subscribe({
+      next: (bookings) => {
+        this.bookings = bookings;
+        this.bookingsLoading = false;
+      },
+      error: (err) => {
+        console.error('Error loading bookings', err);
+        this.bookingsError = 'Không thể tải danh sách chuyến đi. Vui lòng thử lại sau.';
+        this.bookingsLoading = false;
+      },
+    });
+  }
+
+  logout() {
+    this.authService.logout();
+    this.router.navigate(['/']);
+  }
+
+  getStatusLabel(status: string): string {
+    const statusMap: Record<string, string> = {
+      PENDING: 'Chờ xác nhận',
+      CONFIRMED: 'Đã xác nhận',
+      CHECKED_IN: 'Đã nhận phòng',
+      CHECKED_OUT: 'Đã trả phòng',
+      CANCELLED: 'Đã hủy',
+    };
+    return statusMap[status] || status;
   }
 }

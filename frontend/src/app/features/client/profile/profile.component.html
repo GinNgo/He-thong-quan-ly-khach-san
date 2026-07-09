@@ -17,27 +17,27 @@
 
         <!-- Navigation Menu -->
         <nav class="p-4 flex flex-col gap-1">
-          <a (click)="activeTab = 'profile'" 
+          <a (click)="setActiveTab('profile')" 
              class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors cursor-pointer"
              [ngClass]="activeTab === 'profile' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'">
             <span class="material-symbols-outlined text-[20px]">person</span>
             Thông tin cá nhân
           </a>
-          <a (click)="activeTab = 'vouchers'" 
+          <a (click)="setActiveTab('vouchers')" 
              class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors cursor-pointer"
              [ngClass]="activeTab === 'vouchers' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'">
             <span class="material-symbols-outlined text-[20px]">local_activity</span>
             Kho Voucher & Ưu đãi
             <span class="ml-auto bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">{{vouchers.length}}</span>
           </a>
-          <a (click)="activeTab = 'bookings'" 
+          <a (click)="setActiveTab('bookings')" 
              class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors cursor-pointer"
              [ngClass]="activeTab === 'bookings' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'">
             <span class="material-symbols-outlined text-[20px]">luggage</span>
             Chuyến đi của tôi
           </a>
           <div class="h-px bg-gray-100 my-2"></div>
-          <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer">
+          <a (click)="logout()" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer">
             <span class="material-symbols-outlined text-[20px]">logout</span>
             Đăng xuất
           </a>
@@ -148,15 +148,60 @@
       </div>
 
       <!-- Tab: Bookings -->
-      <div *ngIf="activeTab === 'bookings'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center py-16">
-        <div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
-          <span class="material-symbols-outlined text-[48px]">luggage</span>
+      <div *ngIf="activeTab === 'bookings'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <div>
+            <h3 class="text-2xl font-bold text-gray-900 mb-1">Chuyến đi của tôi</h3>
+            <p class="text-gray-500 mb-0">Theo dõi các đặt phòng và trạng thái lưu trú của bạn.</p>
+          </div>
+          <button class="bg-[#2d53d8] hover:bg-blue-800 text-white font-bold py-2.5 px-5 rounded-lg shadow-md transition-colors" routerLink="/search">
+            Tìm khách sạn
+          </button>
         </div>
-        <h3 class="text-xl font-bold text-gray-900 mb-2">Chưa có chuyến đi nào</h3>
-        <p class="text-gray-500 mb-6 max-w-md mx-auto">Bạn chưa thực hiện bất kỳ đặt phòng nào. Hãy khám phá các khách sạn tuyệt vời của chúng tôi và lên kế hoạch cho kỳ nghỉ của bạn.</p>
-        <button class="bg-[#2d53d8] hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-lg shadow-md transition-colors" routerLink="/search">
-          Tìm khách sạn ngay
-        </button>
+
+        <div *ngIf="bookingsLoading" class="flex justify-center py-12">
+          <i class="pi pi-spin pi-spinner text-3xl text-blue-700"></i>
+        </div>
+
+        <div *ngIf="bookingsError && !bookingsLoading" class="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 text-sm font-medium">
+          {{ bookingsError }}
+        </div>
+
+        <div *ngIf="!bookingsLoading && !bookingsError && bookings.length === 0" class="text-center py-12">
+          <div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
+            <span class="material-symbols-outlined text-[48px]">luggage</span>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-2">Chưa có chuyến đi nào</h3>
+          <p class="text-gray-500 mb-0 max-w-md mx-auto">Bạn chưa thực hiện bất kỳ đặt phòng nào. Hãy khám phá khách sạn và lên kế hoạch cho kỳ nghỉ của bạn.</p>
+        </div>
+
+        <div *ngIf="!bookingsLoading && bookings.length > 0" class="space-y-4">
+          <article *ngFor="let booking of bookings" class="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow">
+            <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+              <div>
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Mã đặt phòng #{{ booking.id }}</span>
+                  <span class="text-xs font-bold px-2 py-1 rounded-full"
+                        [ngClass]="booking.status === 'CANCELLED' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'">
+                    {{ getStatusLabel(booking.status) }}
+                  </span>
+                </div>
+                <h4 class="text-lg font-bold text-gray-900 mb-2">
+                  {{ booking.checkInDate | date:'dd/MM/yyyy' }} - {{ booking.checkOutDate | date:'dd/MM/yyyy' }}
+                </h4>
+                <div class="flex flex-wrap gap-3 text-sm text-gray-600">
+                  <span><i class="pi pi-user mr-1"></i>{{ booking.guests }} khách</span>
+                  <span *ngIf="booking.details?.length"><i class="pi pi-home mr-1"></i>Phòng {{ booking.details?.[0]?.roomNumber }}</span>
+                  <span><i class="pi pi-wallet mr-1"></i>{{ booking.paymentMethod }}</span>
+                </div>
+              </div>
+              <div class="text-left md:text-right">
+                <p class="text-xs text-gray-500 mb-1">Tổng tiền</p>
+                <strong class="text-xl text-gray-900">{{ booking.totalAmount | currency:'VND':'symbol':'1.0-0' }}</strong>
+              </div>
+            </div>
+          </article>
+        </div>
       </div>
 
     </div>

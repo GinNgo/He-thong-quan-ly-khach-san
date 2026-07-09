@@ -1,13 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
   private http = inject(HttpClient);
-  private apiUrl = 'http://localhost:8080/api/auth';
+  private apiUrl = `${environment.apiUrl}/auth`;
 
   login(credentials: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/login`, credentials);
@@ -31,12 +32,26 @@ export class AuthService {
     return !!localStorage.getItem('token');
   }
 
-  getRoles(): string[] {
+  getAuthState(): { isAuthenticated: boolean; username: string; roles: string[]; permissions: string[] } {
     const userStr = localStorage.getItem('user');
-    if (userStr) {
-      const user = JSON.parse(userStr);
-      return user.roles || [];
+    if (!userStr) {
+      return { isAuthenticated: false, username: '', roles: [], permissions: [] };
     }
-    return [];
+
+    try {
+      const user = JSON.parse(userStr);
+      return {
+        isAuthenticated: this.isLoggedIn(),
+        username: user.username || '',
+        roles: user.roles || [],
+        permissions: user.permissions || [],
+      };
+    } catch {
+      return { isAuthenticated: false, username: '', roles: [], permissions: [] };
+    }
+  }
+
+  getRoles(): string[] {
+    return this.getAuthState().roles;
   }
 }
