@@ -40,63 +40,65 @@
     </div>
 </div>
 
-<p-dialog [(visible)]="displayDialog" [modal]="true" [style]="{width: '600px'}" 
+<p-dialog [(visible)]="displayDialog" [modal]="true" [style]="{width: '800px'}" 
     [header]="'Cập nhật trang \'' + (selectedNode?.data?.name || '') + '\''" [draggable]="false" [resizable]="false">
     
-    <div class="d-flex flex-column gap-3 p-3">
-        <div class="field">
+    <div class="row pt-2 p-3">
+        <div class="col-12 col-md-6 field mb-3">
             <label class="fw-bold mb-1">Tên trang <span class="text-danger">*</span></label>
             <input type="text" pInputText [(ngModel)]="formData.name" class="w-100" />
         </div>
         
-        <div class="field">
+        <div class="col-12 col-md-6 field mb-3">
             <label class="fw-bold mb-1">Mã <span class="text-danger">*</span></label>
             <input type="text" pInputText [(ngModel)]="formData.code" class="w-100" />
         </div>
         
-        <div class="field">
+        <div class="col-12 col-md-6 field mb-3">
             <label class="fw-bold mb-1">Url</label>
             <input type="text" pInputText [(ngModel)]="formData.url" class="w-100" />
         </div>
         
-        <div class="field">
+        <div class="col-12 col-md-6 field mb-3">
             <label class="fw-bold mb-1">Icon</label>
             <input type="text" pInputText [(ngModel)]="formData.icon" class="w-100" />
         </div>
         
-        <div class="field">
+        <div class="col-12 field mb-3">
             <label class="fw-bold mb-1">Svg</label>
-            <textarea pInputTextarea rows="3" [(ngModel)]="formData.svg" class="w-100"></textarea>
+            <textarea pInputTextarea rows="2" [(ngModel)]="formData.svg" class="w-100"></textarea>
         </div>
         
-        <div class="field">
+        <div class="col-12 col-md-6 field mb-3">
             <label class="fw-bold mb-1">Bullet</label>
             <input type="text" pInputText [(ngModel)]="formData.bullet" class="w-100" />
         </div>
         
-        <div class="field">
+        <div class="col-12 col-md-6 field mb-3">
             <label class="fw-bold mb-1">Thứ tự</label>
             <input type="number" pInputText [(ngModel)]="formData.sortOrder" class="w-100" />
         </div>
         
-        <div class="field-checkbox d-flex align-items-center gap-2 mt-2">
-            <p-checkbox [(ngModel)]="formData.isRoot" [binary]="true" inputId="isRoot"></p-checkbox>
-            <label for="isRoot" class="mb-0">Root</label>
-        </div>
-        
-        <div class="field-checkbox d-flex align-items-center gap-2">
-            <p-checkbox [(ngModel)]="formData.isSection" [binary]="true" inputId="isSection"></p-checkbox>
-            <label for="isSection" class="mb-0">Section</label>
-        </div>
-        
-        <div class="field-checkbox d-flex align-items-center gap-2">
-            <p-checkbox [(ngModel)]="formData.lockClient" [binary]="true" inputId="lockClient"></p-checkbox>
-            <label for="lockClient" class="mb-0">Khóa client</label>
-        </div>
-        
-        <div class="field-checkbox d-flex align-items-center gap-2">
-            <p-checkbox [(ngModel)]="formData.isLocked" [binary]="true" inputId="isLocked"></p-checkbox>
-            <label for="isLocked" class="mb-0">Khóa</label>
+        <div class="col-12 d-flex flex-wrap gap-4 mt-2">
+            <div class="field-checkbox d-flex align-items-center gap-2">
+                <p-checkbox [(ngModel)]="formData.isRoot" [binary]="true" inputId="isRoot"></p-checkbox>
+                <label for="isRoot" class="mb-0">Root</label>
+            </div>
+            
+            <div class="field-checkbox d-flex align-items-center gap-2">
+                <p-checkbox [(ngModel)]="formData.isSection" [binary]="true" inputId="isSection"></p-checkbox>
+                <label for="isSection" class="mb-0">Section</label>
+            </div>
+            
+            <div class="field-checkbox d-flex align-items-center gap-2">
+                <p-checkbox [(ngModel)]="formData.lockClient" [binary]="true" inputId="lockClient"></p-checkbox>
+                <label for="lockClient" class="mb-0">Khóa client</label>
+            </div>
+            
+            <div class="field-checkbox d-flex align-items-center gap-2">
+                <p-checkbox [(ngModel)]="formData.isLocked" [binary]="true" inputId="isLocked"></p-checkbox>
+                <label for="isLocked" class="mb-0">Khóa</label>
+            </div>
         </div>
     </div>
     

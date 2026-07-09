@@ -1,23 +1,23 @@
 package com.hotel.services.impl;
 
-import com.hotel.entities.AppModule;
 import com.hotel.entities.AppFunction;
+import com.hotel.entities.AppModule;
+import com.hotel.entities.Hotel;
 import com.hotel.entities.Role;
 import com.hotel.entities.RolePermission;
-import com.hotel.entities.User;
-import com.hotel.repositories.AppModuleRepository;
-import com.hotel.repositories.AppFunctionRepository;
-import com.hotel.repositories.RoleRepository;
-import com.hotel.repositories.RolePermissionRepository;
-import com.hotel.repositories.UserRepository;
-import com.hotel.repositories.HotelRepository;
-import com.hotel.repositories.RoomRepository;
-import com.hotel.repositories.RoomTypeRepository;
-import com.hotel.entities.Hotel;
 import com.hotel.entities.Room;
 import com.hotel.entities.RoomType;
-import com.hotel.security.FunctionCode;
+import com.hotel.entities.User;
+import com.hotel.repositories.AppFunctionRepository;
+import com.hotel.repositories.AppModuleRepository;
+import com.hotel.repositories.HotelRepository;
+import com.hotel.repositories.RolePermissionRepository;
+import com.hotel.repositories.RoleRepository;
+import com.hotel.repositories.RoomRepository;
+import com.hotel.repositories.RoomTypeRepository;
+import com.hotel.repositories.UserRepository;
 import com.hotel.security.ActionCode;
+import com.hotel.security.FunctionCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -46,10 +46,58 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     @Transactional
-    public void run(String... args) throws Exception {
+    public void run(String... args) {
+        repairSchema();
+
+        AppModule systemModule = initModule("SYSTEM", "Hệ thống");
+        AppModule hotelModule = initModule("HOTEL", "Khách sạn");
+        AppModule financeModule = initModule("FINANCE", "Tài chính");
+
+        initFunction(systemModule, FunctionCode.REPORT.name(), "Bảng điều khiển", "/admin/dashboard", "pi pi-chart-bar", 1);
+        initFunction(systemModule, FunctionCode.SYSTEM.name(), "Khai báo trang", "/admin/modules", "pi pi-sitemap", 2);
+        initFunction(systemModule, FunctionCode.ROLE.name(), "Vai trò", "/admin/roles", "pi pi-key", 3);
+        initFunction(systemModule, FunctionCode.ROLE_PERMISSION.name(), "Phân quyền", "/admin/role-permissions", "pi pi-shield", 4);
+        initFunction(systemModule, FunctionCode.USER.name(), "Người dùng", "/admin/users", "pi pi-users", 5);
+        initFunction(systemModule, FunctionCode.AI_CHAT.name(), "AI Chatbot", "/ai", "pi pi-android", 6);
+
+        initFunction(hotelModule, FunctionCode.CUSTOMER.name(), "Khách hàng", "/admin/customers", "pi pi-id-card", 1);
+        initFunction(hotelModule, FunctionCode.ROOM_TYPE.name(), "Loại phòng", "/admin/room-types", "pi pi-list", 2);
+        initFunction(hotelModule, FunctionCode.ROOM.name(), "Phòng", "/admin/rooms", "pi pi-home", 3);
+        initFunction(hotelModule, FunctionCode.RESERVATION.name(), "Đặt phòng", "/admin/reservations", "pi pi-calendar", 4);
+        initFunction(hotelModule, FunctionCode.HOTEL.name(), "Dịch vụ khách sạn", "/admin/services", "pi pi-box", 5);
+
+        initFunction(financeModule, FunctionCode.INVOICE.name(), "Hóa đơn", "/admin/invoices", "pi pi-file-o", 1);
+        initFunction(financeModule, FunctionCode.FINANCE.name(), "Thanh toán", "/admin/payments", "pi pi-money-bill", 2);
+
+        Role superAdminRole = initRole("SUPER_ADMIN", "Quản trị hệ thống", "Toàn quyền hệ thống.");
+        Role adminRole = initRole("ADMIN", "Quản trị viên", "Toàn quyền hệ thống.");
+        Role hotelAdminRole = initRole("HOTEL_ADMIN", "Quản lý khách sạn", "Quản lý vận hành khách sạn.");
+        Role hotelManagerRole = initRole("HOTEL_MANAGER", "Quản lý chi nhánh", "Quản lý vận hành theo chi nhánh.");
+        Role receptionistRole = initRole("RECEPTIONIST", "Lễ tân", "Tiếp nhận khách và xử lý đặt phòng.");
+        Role accountantRole = initRole("ACCOUNTANT", "Kế toán", "Theo dõi hóa đơn và thanh toán.");
+        initRole("CUSTOMER", "Khách hàng", "Tài khoản khách đặt phòng.");
+
+        Hotel defaultHotel = ensureDefaultHotel();
+        mapExistingRoomTypesToDefaultHotel(defaultHotel);
+        ensureDefaultInventory(defaultHotel);
+
+        int allActions = ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.DELETE | ActionCode.EXPORT | ActionCode.APPROVE;
+        syncAllPermissions(superAdminRole, allActions);
+        syncAllPermissions(adminRole, allActions);
+        seedDefaultRolePermissions(hotelAdminRole);
+        seedDefaultRolePermissions(hotelManagerRole);
+        seedReceptionistPermissions(receptionistRole);
+        seedAccountantPermissions(accountantRole);
+
+        ensureAdminUser(superAdminRole);
+    }
+
+    private void repairSchema() {
         try {
             jdbcTemplate.execute("ALTER TABLE app_module ALTER COLUMN name NVARCHAR(255)");
             jdbcTemplate.execute("ALTER TABLE app_function ALTER COLUMN name NVARCHAR(255)");
+            jdbcTemplate.execute("ALTER TABLE app_role ALTER COLUMN name NVARCHAR(255) NOT NULL");
+            jdbcTemplate.execute("IF COL_LENGTH('app_role', 'description') IS NULL ALTER TABLE app_role ADD description NVARCHAR(500)");
             jdbcTemplate.execute("ALTER TABLE hotels ALTER COLUMN name NVARCHAR(255) NOT NULL");
             jdbcTemplate.execute("ALTER TABLE hotels ALTER COLUMN address NVARCHAR(255) NOT NULL");
             jdbcTemplate.execute("ALTER TABLE hotels ALTER COLUMN city NVARCHAR(255) NOT NULL");
@@ -61,84 +109,47 @@ public class DataInitializer implements CommandLineRunner {
         } catch (Exception e) {
             System.out.println("Could not alter table columns: " + e.getMessage());
         }
-        AppModule sysModule = appModuleRepository.findByCode("SYSTEM");
-        if (sysModule == null) {
-            sysModule = appModuleRepository.save(new AppModule(null, "SYSTEM", "Hệ Thống"));
-        } else {
-            sysModule.setName("Hệ Thống");
-            sysModule = appModuleRepository.save(sysModule);
-        }
-        
-        AppModule hotelModule = appModuleRepository.findByCode("HOTEL");
-        if (hotelModule == null) {
-            hotelModule = appModuleRepository.save(new AppModule(null, "HOTEL", "Khách Sạn"));
-        } else {
-            hotelModule.setName("Khách Sạn");
-            hotelModule = appModuleRepository.save(hotelModule);
-        }
-        
-        AppModule financeModule = appModuleRepository.findByCode("FINANCE");
-        if (financeModule == null) {
-            financeModule = appModuleRepository.save(new AppModule(null, "FINANCE", "Tài Chính"));
-        } else {
-            financeModule.setName("Tài Chính");
-            financeModule = appModuleRepository.save(financeModule);
-        }
+    }
 
-        initFunction(sysModule, FunctionCode.USER.name(), "Quản lý Nhân sự", "/admin/users", "pi pi-users", 1);
-        initFunction(sysModule, FunctionCode.ROLE.name(), "Quản lý Phân Quyền", "/admin/roles", "pi pi-key", 2);
-        initFunction(hotelModule, FunctionCode.CUSTOMER.name(), "Quản lý Khách hàng", "/admin/customers", "pi pi-id-card", 3);
-        initFunction(hotelModule, FunctionCode.ROOM.name(), "Quản lý Phòng", "/admin/rooms", "pi pi-home", 4);
-        initFunction(hotelModule, FunctionCode.ROOM_TYPE.name(), "Quản lý Loại Phòng", "/admin/room-types", "pi pi-list", 5);
-        initFunction(hotelModule, FunctionCode.RESERVATION.name(), "Quản lý Đặt Phòng", "/admin/reservations", "pi pi-calendar", 6);
-        initFunction(sysModule, FunctionCode.REPORT.name(), "Báo Cáo Thống Kê", "/admin/dashboard", "pi pi-chart-bar", 7);
-        initFunction(financeModule, FunctionCode.INVOICE.name(), "Quản lý Hóa Đơn", "/admin/invoices", "pi pi-file-o", 8);
-        initFunction(hotelModule, FunctionCode.HOTEL.name(), "Dịch vụ Khách Sạn", "/admin/services", "pi pi-box", 8);
-        initFunction(sysModule, FunctionCode.AI_CHAT.name(), "AI Chatbot", "/ai", "pi pi-android", 9);
-        initFunction(financeModule, FunctionCode.FINANCE.name(), "Thanh Toán", "/admin/payments", "pi pi-money-bill", 10);
-        initFunction(sysModule, FunctionCode.SYSTEM.name(), "Cấu hình Trang", "/admin/modules", "pi pi-cog", 11);
-
-        Role adminRole = roleRepository.findByCode("SUPER_ADMIN").orElse(null);
-        if (adminRole == null) {
-            adminRole = new Role();
-            adminRole.setCode("SUPER_ADMIN");
-            adminRole.setName("ADMIN");
-            adminRole = roleRepository.save(adminRole);
+    private AppModule initModule(String code, String name) {
+        AppModule module = appModuleRepository.findByCode(code);
+        if (module == null) {
+            module = new AppModule();
+            module.setCode(code);
         }
+        module.setName(name);
+        return appModuleRepository.save(module);
+    }
 
-        if (roleRepository.findByCode("CUSTOMER").isEmpty()) {
-            Role customerRole = new Role();
-            customerRole.setCode("CUSTOMER");
-            customerRole.setName("CUSTOMER");
-            roleRepository.save(customerRole);
+    private void initFunction(AppModule module, String code, String name, String url, String icon, int order) {
+        AppFunction function = appFunctionRepository.findByCode(code);
+        if (function == null) {
+            function = new AppFunction();
+            function.setCode(code);
         }
+        function.setModule(module);
+        function.setName(name);
+        function.setUrl(url);
+        function.setIcon(icon);
+        function.setSortOrder(order);
+        appFunctionRepository.save(function);
+    }
 
-        if (roleRepository.findByCode("RECEPTIONIST").isEmpty()) {
-            Role receptionistRole = new Role();
-            receptionistRole.setCode("RECEPTIONIST");
-            receptionistRole.setName("RECEPTIONIST");
-            roleRepository.save(receptionistRole);
-        }
+    private Role initRole(String code, String name, String description) {
+        Role role = roleRepository.findByCode(code).orElseGet(Role::new);
+        role.setCode(code);
+        role.setName(name);
+        role.setDescription(description);
+        return roleRepository.save(role);
+    }
 
-        if (roleRepository.findByCode("HOTEL_MANAGER").isEmpty()) {
-            Role managerRole = new Role();
-            managerRole.setCode("HOTEL_MANAGER");
-            managerRole.setName("HOTEL MANAGER");
-            roleRepository.save(managerRole);
-        }
-
-        // Seed default Hotel if none exists
+    private Hotel ensureDefaultHotel() {
         Hotel defaultHotel = hotelRepository.findAll().stream().findFirst().orElse(null);
         if (defaultHotel == null) {
             defaultHotel = new Hotel();
-            defaultHotel.setName("Đà Lạt Grand Hotel");
-            defaultHotel.setAddress("123 Trần Phú");
-            defaultHotel.setCity("Đà Lạt");
-            defaultHotel.setCountry("Việt Nam");
-            defaultHotel.setStarRating(5);
-            defaultHotel.setStatus("ACTIVE");
-            defaultHotel = hotelRepository.save(defaultHotel);
-        } else if (hasEncodingNoise(defaultHotel.getName()) || hasEncodingNoise(defaultHotel.getAddress())
+        }
+
+        if (defaultHotel.getId() == null || hasEncodingNoise(defaultHotel.getName()) || hasEncodingNoise(defaultHotel.getAddress())
                 || hasEncodingNoise(defaultHotel.getCity()) || hasEncodingNoise(defaultHotel.getCountry())) {
             defaultHotel.setName("Đà Lạt Grand Hotel");
             defaultHotel.setAddress("123 Trần Phú");
@@ -149,55 +160,15 @@ public class DataInitializer implements CommandLineRunner {
             defaultHotel = hotelRepository.save(defaultHotel);
         }
 
-        // Map existing RoomTypes to default hotel
-        for (RoomType rt : roomTypeRepository.findAll()) {
-            if (rt.getHotel() == null) {
-                rt.setHotel(defaultHotel);
-                roomTypeRepository.save(rt);
-            }
-        }
-
-        ensureDefaultInventory(defaultHotel);
-
-        // Assign permissions to SUPER_ADMIN
-        int allActions = ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.DELETE | ActionCode.EXPORT | ActionCode.APPROVE;
-        for (AppFunction func : appFunctionRepository.findAll()) {
-            RolePermission existing = rolePermissionRepository.findByRoleIdAndFunctionId(adminRole.getId(), func.getId());
-            if (existing == null) {
-                RolePermission rp = new RolePermission(null, adminRole, func, allActions);
-                rolePermissionRepository.save(rp);
-            } else {
-                existing.setActionMask(allActions);
-                rolePermissionRepository.save(existing);
-            }
-        }
-
-        User admin = userRepository.findByUsername("admin").orElse(null);
-        if (admin == null) {
-            admin = new User();
-            admin.setUsername("admin");
-            admin.setPasswordHash(passwordEncoder.encode("admin"));
-            admin.setFullName("System Admin");
-            admin.setEmail("admin@hotel.com");
-            admin.setStatus("ACTIVE");
-        }
-        
-        if (admin.getRoles() == null || admin.getRoles().stream().noneMatch(r -> r.getCode().equals("SUPER_ADMIN"))) {
-            admin.setRoles(new java.util.HashSet<>(Set.of(adminRole)));
-            userRepository.save(admin);
-        }
+        return defaultHotel;
     }
 
-    private void initFunction(AppModule module, String code, String name, String url, String icon, int order) {
-        AppFunction func = appFunctionRepository.findByCode(code);
-        if (func == null) {
-            appFunctionRepository.save(new AppFunction(null, module, code, name, url, icon, order));
-        } else {
-            func.setName(name);
-            func.setUrl(url);
-            func.setIcon(icon);
-            func.setSortOrder(order);
-            appFunctionRepository.save(func);
+    private void mapExistingRoomTypesToDefaultHotel(Hotel defaultHotel) {
+        for (RoomType roomType : roomTypeRepository.findAll()) {
+            if (roomType.getHotel() == null) {
+                roomType.setHotel(defaultHotel);
+                roomTypeRepository.save(roomType);
+            }
         }
     }
 
@@ -205,12 +176,12 @@ public class DataInitializer implements CommandLineRunner {
         List<RoomType> hotelRoomTypes = roomTypeRepository.findByHotelId(hotel.getId());
         if (hotelRoomTypes.isEmpty()) {
             hotelRoomTypes = new ArrayList<>();
-            hotelRoomTypes.add(createRoomType(hotel, "STANDARD", "Phong tieu chuan", "Standard Room", 2, "850000",
-                    "Lua chon gon gang cho chuyen di ngan ngay."));
-            hotelRoomTypes.add(createRoomType(hotel, "DELUXE", "Phong Deluxe", "Deluxe Room", 3, "1250000",
-                    "Phong rong hon, phu hop cap doi hoac gia dinh nho."));
-            hotelRoomTypes.add(createRoomType(hotel, "SUITE", "Phong Suite", "Suite Room", 4, "2200000",
-                    "Khong gian rieng tu voi khu tiep khach va tam nhin dep."));
+            hotelRoomTypes.add(createRoomType(hotel, "STANDARD", "Phòng tiêu chuẩn", "Standard Room", 2, "850000",
+                    "Lựa chọn gọn gàng cho chuyến đi ngắn ngày."));
+            hotelRoomTypes.add(createRoomType(hotel, "DELUXE", "Phòng Deluxe", "Deluxe Room", 3, "1250000",
+                    "Phòng rộng hơn, phù hợp cặp đôi hoặc gia đình nhỏ."));
+            hotelRoomTypes.add(createRoomType(hotel, "SUITE", "Phòng Suite", "Suite Room", 4, "2200000",
+                    "Không gian riêng tư với khu tiếp khách và tầm nhìn đẹp."));
         }
 
         for (RoomType roomType : hotelRoomTypes) {
@@ -243,13 +214,82 @@ public class DataInitializer implements CommandLineRunner {
         return roomTypeRepository.save(roomType);
     }
 
+    private void syncAllPermissions(Role role, int actionMask) {
+        for (AppFunction function : appFunctionRepository.findAll()) {
+            setPermission(role, function, actionMask);
+        }
+    }
+
+    private void seedDefaultRolePermissions(Role role) {
+        int manage = ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.DELETE;
+        int manageAndExport = manage | ActionCode.EXPORT;
+        ensurePermission(role, FunctionCode.REPORT, ActionCode.VIEW);
+        ensurePermission(role, FunctionCode.CUSTOMER, manage);
+        ensurePermission(role, FunctionCode.ROOM_TYPE, manage);
+        ensurePermission(role, FunctionCode.ROOM, manage);
+        ensurePermission(role, FunctionCode.RESERVATION, manage | ActionCode.APPROVE);
+        ensurePermission(role, FunctionCode.HOTEL, manage);
+        ensurePermission(role, FunctionCode.INVOICE, manageAndExport);
+        ensurePermission(role, FunctionCode.FINANCE, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE);
+    }
+
+    private void seedReceptionistPermissions(Role role) {
+        ensurePermission(role, FunctionCode.REPORT, ActionCode.VIEW);
+        ensurePermission(role, FunctionCode.CUSTOMER, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE);
+        ensurePermission(role, FunctionCode.ROOM_TYPE, ActionCode.VIEW);
+        ensurePermission(role, FunctionCode.ROOM, ActionCode.VIEW | ActionCode.UPDATE);
+        ensurePermission(role, FunctionCode.RESERVATION, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE);
+        ensurePermission(role, FunctionCode.INVOICE, ActionCode.VIEW | ActionCode.CREATE);
+    }
+
+    private void seedAccountantPermissions(Role role) {
+        int invoiceMask = ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.DELETE | ActionCode.EXPORT;
+        ensurePermission(role, FunctionCode.REPORT, ActionCode.VIEW);
+        ensurePermission(role, FunctionCode.INVOICE, invoiceMask);
+        ensurePermission(role, FunctionCode.FINANCE, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.EXPORT);
+    }
+
+    private void ensurePermission(Role role, FunctionCode functionCode, int actionMask) {
+        AppFunction function = appFunctionRepository.findByCode(functionCode.name());
+        if (function == null) {
+            return;
+        }
+        RolePermission existing = rolePermissionRepository.findByRoleIdAndFunctionId(role.getId(), function.getId());
+        if (existing == null) {
+            setPermission(role, function, actionMask);
+        }
+    }
+
+    private void setPermission(Role role, AppFunction function, int actionMask) {
+        RolePermission existing = rolePermissionRepository.findByRoleIdAndFunctionId(role.getId(), function.getId());
+        if (existing == null) {
+            existing = new RolePermission();
+            existing.setRole(role);
+            existing.setFunction(function);
+        }
+        existing.setActionMask(actionMask);
+        rolePermissionRepository.save(existing);
+    }
+
+    private void ensureAdminUser(Role superAdminRole) {
+        User admin = userRepository.findByUsername("admin").orElse(null);
+        if (admin == null) {
+            admin = new User();
+            admin.setUsername("admin");
+            admin.setPasswordHash(passwordEncoder.encode("admin"));
+            admin.setFullName("System Admin");
+            admin.setEmail("admin@hotel.com");
+            admin.setStatus("ACTIVE");
+        }
+
+        if (admin.getRoles() == null || admin.getRoles().stream().noneMatch(r -> r.getCode().equals("SUPER_ADMIN"))) {
+            admin.setRoles(new java.util.HashSet<>(Set.of(superAdminRole)));
+        }
+        userRepository.save(admin);
+    }
+
     private boolean hasEncodingNoise(String value) {
-        if (value == null) {
-            return false;
-        }
-        if (value.contains("Ã") || value.contains("Â") || value.contains("Ä")) {
-            return true;
-        }
-        return value != null && (value.contains("Ã") || value.contains("Â") || value.contains("?"));
+        return value != null && (value.indexOf('\u00C3') >= 0 || value.indexOf('\u00C2') >= 0
+                || value.indexOf('\u00C4') >= 0 || value.contains("?"));
     }
 }

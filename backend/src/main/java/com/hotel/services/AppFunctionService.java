@@ -5,9 +5,12 @@ import com.hotel.entities.AppFunction;
 import com.hotel.entities.AppModule;
 import com.hotel.repositories.AppFunctionRepository;
 import com.hotel.repositories.AppModuleRepository;
+import com.hotel.repositories.RolePermissionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,15 +22,22 @@ public class AppFunctionService {
     @Autowired
     private AppModuleRepository appModuleRepository;
 
+    @Autowired
+    private RolePermissionRepository rolePermissionRepository;
+
     public List<AppFunctionDto> getAllFunctions() {
-        return appFunctionRepository.findAll().stream().map(this::convertToDto).collect(Collectors.toList());
+        return appFunctionRepository.findAll().stream()
+                .sorted(Comparator
+                        .comparing((AppFunction f) -> f.getModule().getId())
+                        .thenComparing(f -> f.getSortOrder() != null ? f.getSortOrder() : 999)
+                        .thenComparing(AppFunction::getId))
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
     }
 
     public List<AppFunctionDto> getFunctionsByModuleId(Long moduleId) {
-        AppModule module = appModuleRepository.findById(moduleId).orElseThrow(() -> new RuntimeException("Module not found"));
-        // Assuming AppFunctionRepository has a method findByModule, but since it might not be defined, we can just filter all
-        return appFunctionRepository.findAll().stream()
-                .filter(f -> f.getModule().getId().equals(moduleId))
+        appModuleRepository.findById(moduleId).orElseThrow(() -> new RuntimeException("Module not found"));
+        return appFunctionRepository.findByModuleIdOrderBySortOrderAsc(moduleId).stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
@@ -63,7 +73,9 @@ public class AppFunctionService {
         return convertToDto(saved);
     }
 
+    @Transactional
     public void deleteFunction(Long id) {
+        rolePermissionRepository.deleteByFunctionId(id);
         appFunctionRepository.deleteById(id);
     }
 

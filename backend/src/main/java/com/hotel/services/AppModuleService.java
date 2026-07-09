@@ -2,11 +2,16 @@ package com.hotel.services;
 
 import com.hotel.dtos.AppFunctionDto;
 import com.hotel.dtos.AppModuleDto;
+import com.hotel.entities.AppFunction;
 import com.hotel.entities.AppModule;
+import com.hotel.repositories.AppFunctionRepository;
 import com.hotel.repositories.AppModuleRepository;
+import com.hotel.repositories.RolePermissionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -15,8 +20,17 @@ public class AppModuleService {
     @Autowired
     private AppModuleRepository appModuleRepository;
 
+    @Autowired
+    private AppFunctionRepository appFunctionRepository;
+
+    @Autowired
+    private RolePermissionRepository rolePermissionRepository;
+
     public List<AppModuleDto> getAllModules() {
-        return appModuleRepository.findAll().stream().map(this::convertToDto).collect(Collectors.toList());
+        return appModuleRepository.findAll().stream()
+                .sorted(Comparator.comparing(AppModule::getId))
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
     }
 
     public AppModuleDto getModuleById(Long id) {
@@ -40,7 +54,13 @@ public class AppModuleService {
         return convertToDto(saved);
     }
 
+    @Transactional
     public void deleteModule(Long id) {
+        List<AppFunction> functions = appFunctionRepository.findByModuleId(id);
+        for (AppFunction function : functions) {
+            rolePermissionRepository.deleteByFunctionId(function.getId());
+            appFunctionRepository.delete(function);
+        }
         appModuleRepository.deleteById(id);
     }
 

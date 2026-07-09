@@ -8,6 +8,7 @@ public enum FunctionCode {
     AI,
     USER,
     ROLE,
+    ROLE_PERMISSION,
     ROOM,
     ROOM_TYPE,
     RESERVATION,

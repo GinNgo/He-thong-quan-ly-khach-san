@@ -48,19 +48,21 @@
     </p-table>
   </p-card>
 
-  <p-dialog [(visible)]="displayDialog" [style]="{width: '500px'}" header="{{ roleDialogMode === 'create' ? 'Thêm Vai trò mới' : 'Cập nhật Vai trò' }}" [modal]="true" styleClass="p-fluid">
+  <p-dialog [(visible)]="displayDialog" [style]="{width: '650px'}" header="{{ roleDialogMode === 'create' ? 'Thêm Vai trò mới' : 'Cập nhật Vai trò' }}" [modal]="true" styleClass="p-fluid">
     <ng-template pTemplate="content">
-      <div class="field mb-3">
-        <label for="code" class="fw-bold">Mã vai trò (Code) <span class="text-danger">*</span></label>
-        <input type="text" pInputText id="code" [(ngModel)]="roleForm.code" required autofocus placeholder="VD: ACCOUNTANT" style="text-transform: uppercase;" />
-      </div>
-      <div class="field mb-3">
-        <label for="name" class="fw-bold">Tên vai trò <span class="text-danger">*</span></label>
-        <input type="text" pInputText id="name" [(ngModel)]="roleForm.name" required placeholder="VD: Kế toán" />
-      </div>
-      <div class="field mb-3">
-        <label for="description" class="fw-bold">Mô tả</label>
-        <textarea pInputTextarea id="description" [(ngModel)]="roleForm.description" rows="3"></textarea>
+      <div class="p-3">
+        <div class="field mb-4">
+          <label for="code" class="fw-bold mb-2">Mã vai trò (Code) <span class="text-danger">*</span></label>
+          <input type="text" pInputText id="code" [(ngModel)]="roleForm.code" required autofocus placeholder="VD: ACCOUNTANT" style="text-transform: uppercase;" />
+        </div>
+        <div class="field mb-4">
+          <label for="name" class="fw-bold mb-2">Tên vai trò <span class="text-danger">*</span></label>
+          <input type="text" pInputText id="name" [(ngModel)]="roleForm.name" required placeholder="VD: Kế toán" />
+        </div>
+        <div class="field mb-4">
+          <label for="description" class="fw-bold mb-2">Mô tả</label>
+          <textarea pInputTextarea id="description" [(ngModel)]="roleForm.description" rows="3"></textarea>
+        </div>
       </div>
     </ng-template>
 

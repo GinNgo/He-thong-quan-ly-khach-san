@@ -162,9 +162,20 @@ public class AuthService {
         boolean isBypass = isAdminRole || isAdminUser;
 
         java.util.Map<String, Integer> userMasks = new java.util.HashMap<>();
-        if (!isBypass && authentication.getPrincipal() instanceof com.hotel.security.CustomUserDetails) {
-            com.hotel.security.CustomUserDetails userDetails = (com.hotel.security.CustomUserDetails) authentication.getPrincipal();
-            userDetails.getPermissionMasks().forEach((k, v) -> userMasks.put(k.name(), v));
+        if (!isBypass) {
+            userRepository.findByUsername(authentication.getName()).ifPresent(user -> {
+                if (user.getRoles() != null) {
+                    user.getRoles().forEach(role -> {
+                        if (role.getRolePermissions() != null) {
+                            role.getRolePermissions().forEach(rolePermission -> {
+                                String functionCode = rolePermission.getFunction().getCode();
+                                Integer actionMask = rolePermission.getActionMask();
+                                userMasks.merge(functionCode, actionMask != null ? actionMask : 0, (left, right) -> left | right);
+                            });
+                        }
+                    });
+                }
+            });
         }
 
         java.util.List<com.hotel.entities.AppModule> allModules = appModuleRepository.findAll();

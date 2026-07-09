@@ -65,42 +65,44 @@
     </p-table>
   </p-card>
 
-  <p-dialog [(visible)]="displayDialog" [style]="{width: '500px'}" [header]="(userDialogMode === 'create' ? 'Thêm ' : 'Cập nhật ') + (userType === 'CUSTOMER' ? 'Khách hàng' : 'Nhân sự')" [modal]="true" styleClass="p-fluid">
+  <p-dialog [(visible)]="displayDialog" [style]="{width: '750px'}" [header]="(userDialogMode === 'create' ? 'Thêm ' : 'Cập nhật ') + (userType === 'CUSTOMER' ? 'Khách hàng' : 'Nhân sự')" [modal]="true" styleClass="p-fluid">
     <ng-template pTemplate="content">
-      <div class="field mb-3">
-        <label for="username" class="fw-bold">Tên tài khoản (Username) <span class="text-danger">*</span></label>
-        <input type="text" pInputText id="username" [(ngModel)]="userForm.username" [disabled]="userDialogMode === 'edit'" required autofocus />
-      </div>
-      <div class="field mb-3">
-        <label for="email" class="fw-bold">Email <span class="text-danger">*</span></label>
-        <input type="email" pInputText id="email" [(ngModel)]="userForm.email" [disabled]="userDialogMode === 'edit'" required />
-      </div>
-      <div class="field mb-3">
-        <label for="password" class="fw-bold">Mật khẩu <span *ngIf="userDialogMode === 'create'" class="text-danger">*</span></label>
-        <input type="password" pInputText id="password" [(ngModel)]="userForm.password" [placeholder]="userDialogMode === 'edit' ? 'Để trống nếu không muốn đổi' : ''" />
-      </div>
-      <div class="field mb-3">
-        <label for="fullName" class="fw-bold">Họ và Tên</label>
-        <input type="text" pInputText id="fullName" [(ngModel)]="userForm.fullName" />
-      </div>
-      <div class="field mb-3">
-        <label for="phone" class="fw-bold">Số điện thoại</label>
-        <input type="text" pInputText id="phone" [(ngModel)]="userForm.phone" />
-      </div>
-      <div class="field mb-3">
-        <label for="status" class="fw-bold">Trạng thái</label>
-        <p-select [options]="[{label: 'Hoạt động (ACTIVE)', value: 'ACTIVE'}, {label: 'Khóa (INACTIVE)', value: 'INACTIVE'}]" [(ngModel)]="userForm.status" appendTo="body"></p-select>
-      </div>
-      <ng-container *ngIf="userType === 'STAFF'">
-        <div class="field mb-3">
-          <label for="roles" class="fw-bold">Vai trò (Roles)</label>
-          <p-multiSelect [options]="roles" [(ngModel)]="userForm.roleIds" optionLabel="name" optionValue="id" defaultLabel="Chọn vai trò" display="chip" appendTo="body"></p-multiSelect>
+      <div class="row pt-2">
+        <div class="col-12 col-md-6 field mb-4">
+          <label for="username" class="fw-bold mb-2">Tên tài khoản (Username) <span class="text-danger">*</span></label>
+          <input type="text" pInputText id="username" [(ngModel)]="userForm.username" [disabled]="userDialogMode === 'edit'" required autofocus />
         </div>
-        <div class="field mb-3">
-          <label for="hotel" class="fw-bold">Cơ sở (Khách sạn quản lý)</label>
-          <p-select [options]="hotels" [(ngModel)]="userForm.hotelId" optionLabel="name" optionValue="id" [showClear]="true" placeholder="Chọn cơ sở" appendTo="body"></p-select>
+        <div class="col-12 col-md-6 field mb-4">
+          <label for="email" class="fw-bold mb-2">Email <span class="text-danger">*</span></label>
+          <input type="email" pInputText id="email" [(ngModel)]="userForm.email" [disabled]="userDialogMode === 'edit'" required />
         </div>
-      </ng-container>
+        <div class="col-12 col-md-6 field mb-4">
+          <label for="password" class="fw-bold mb-2">Mật khẩu <span *ngIf="userDialogMode === 'create'" class="text-danger">*</span></label>
+          <input type="password" pInputText id="password" [(ngModel)]="userForm.password" [placeholder]="userDialogMode === 'edit' ? 'Để trống nếu không muốn đổi' : ''" />
+        </div>
+        <div class="col-12 col-md-6 field mb-4">
+          <label for="fullName" class="fw-bold mb-2">Họ và Tên</label>
+          <input type="text" pInputText id="fullName" [(ngModel)]="userForm.fullName" />
+        </div>
+        <div class="col-12 col-md-6 field mb-4">
+          <label for="phone" class="fw-bold mb-2">Số điện thoại</label>
+          <input type="text" pInputText id="phone" [(ngModel)]="userForm.phone" />
+        </div>
+        <div class="col-12 col-md-6 field mb-4">
+          <label for="status" class="fw-bold mb-2">Trạng thái</label>
+          <p-select [options]="[{label: 'Hoạt động (ACTIVE)', value: 'ACTIVE'}, {label: 'Khóa (INACTIVE)', value: 'INACTIVE'}]" [(ngModel)]="userForm.status" appendTo="body"></p-select>
+        </div>
+        <ng-container *ngIf="userType === 'STAFF'">
+          <div class="col-12 col-md-6 field mb-4">
+            <label for="roles" class="fw-bold mb-2">Vai trò (Roles)</label>
+            <p-multiSelect [options]="roles" [(ngModel)]="userForm.roleIds" optionLabel="name" optionValue="id" defaultLabel="Chọn vai trò" display="chip" appendTo="body"></p-multiSelect>
+          </div>
+          <div class="col-12 col-md-6 field mb-4">
+            <label for="hotel" class="fw-bold mb-2">Cơ sở (Khách sạn quản lý)</label>
+            <p-select [options]="hotels" [(ngModel)]="userForm.hotelId" optionLabel="name" optionValue="id" [showClear]="true" placeholder="Chọn cơ sở" appendTo="body"></p-select>
+          </div>
+        </ng-container>
+      </div>
     </ng-template>
 
     <ng-template pTemplate="footer">
