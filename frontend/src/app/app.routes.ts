@@ -56,7 +56,7 @@ export const routes: Routes = [
       { path: 'invoices', component: InvoiceManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.INVOICE, actionCode: ActionCode.VIEW } },
       { path: 'modules', loadComponent: () => import('./features/system/module-management/module-management').then(m => m.ModuleManagementComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.SYSTEM, actionCode: ActionCode.VIEW } },
       { path: 'roles', loadComponent: () => import('./features/admin/role-management/role-management.component').then(m => m.RoleManagementComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROLE, actionCode: ActionCode.VIEW } },
-      { path: 'role-permissions', loadComponent: () => import('./features/admin/role-permission/role-permission.component').then(m => m.RolePermissionComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROLE, actionCode: ActionCode.UPDATE } },
+      { path: 'role-permissions', loadComponent: () => import('./features/admin/role-permission/role-permission.component').then(m => m.RolePermissionComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROLE_PERMISSION, actionCode: ActionCode.VIEW } },
       { path: '404', loadComponent: () => import('./features/error/not-found/not-found.component').then(m => m.NotFoundComponent) },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: '**', redirectTo: '404' }

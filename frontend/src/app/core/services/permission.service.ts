@@ -17,6 +17,7 @@ export enum FunctionCode {
   AI = 'AI',
   USER = 'USER',
   ROLE = 'ROLE',
+  ROLE_PERMISSION = 'ROLE_PERMISSION',
   ROOM = 'ROOM',
   ROOM_TYPE = 'ROOM_TYPE',
   RESERVATION = 'RESERVATION',

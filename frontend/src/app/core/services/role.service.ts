@@ -22,7 +22,17 @@ export interface AppFunction {
   code: string;
   name: string;
   moduleId: number;
+  url?: string;
+  icon?: string;
+  sortOrder?: number;
   actionMask: number;
+}
+
+export interface UpdateRolePermissionsRequest {
+  permissions: Array<{
+    functionId: number;
+    actionMask: number;
+  }>;
 }
 
 @Injectable({
@@ -57,7 +67,7 @@ export class RoleService {
     return this.http.get<AppModule[]>(`${this.rolePermUrl}/tree/${roleId}`);
   }
 
-  updateRolePermissions(roleId: number, data: any): Observable<void> {
+  updateRolePermissions(roleId: number, data: UpdateRolePermissionsRequest): Observable<void> {
     return this.http.post<void>(`${this.rolePermUrl}/${roleId}`, data);
   }
 }

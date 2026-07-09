@@ -1,74 +1,82 @@
+<p-toast></p-toast>
+<p-confirmDialog></p-confirmDialog>
+
 <div class="m-3">
-  <div class="d-flex justify-content-between align-items-center mb-4">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
     <div>
-      <h2 class="mb-1 text-dark fw-bold"><i class="pi pi-id-card me-2" style="color: var(--hotel-gold);"></i>Quản lý Vai trò</h2>
-      <p class="text-muted mb-0">Quản lý danh sách vai trò hệ thống</p>
+      <h2 class="mb-1 text-dark fw-bold"><i class="pi pi-id-card me-2" style="color: var(--hotel-gold);"></i>Qu&#7843;n l&yacute; vai tr&ograve;</h2>
+      <p class="text-muted mb-0">T&#7841;o vai tr&ograve; v&agrave; g&aacute;n quy&#7873;n truy c&#7853;p theo trang.</p>
     </div>
-    <button pButton label="Thêm vai trò" icon="pi pi-plus" class="btn btn-primary-hotel" (click)="openNew()"></button>
+    <button pButton label="Th&ecirc;m vai tr&ograve;" icon="pi pi-plus" class="btn btn-primary-hotel" (click)="openNew()"></button>
   </div>
 
   <p-card styleClass="shadow-sm border-0 rounded-4" [style]="{'border-radius': '12px'}">
-    <p-table 
-      [value]="roles" 
-      [paginator]="true" 
-      [rows]="10" 
+    <p-table
+      [value]="roles"
+      [paginator]="true"
+      [rows]="10"
       [loading]="loading"
-      [rowHover]="true" 
+      [rowHover]="true"
       responsiveLayout="scroll"
-      styleClass="p-datatable-striped p-datatable-sm border-top"
-    >
+      styleClass="p-datatable-striped p-datatable-sm border-top">
       <ng-template pTemplate="header">
         <tr>
-          <th pSortableColumn="id" class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">ID <p-sortIcon field="id"></p-sortIcon></th>
-          <th pSortableColumn="code" class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">Mã vai trò <p-sortIcon field="code"></p-sortIcon></th>
-          <th pSortableColumn="name" class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">Tên vai trò <p-sortIcon field="name"></p-sortIcon></th>
-          <th class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">Mô tả</th>
-          <th class="text-muted fw-bold border-bottom text-center" style="font-size: 0.85rem; text-transform: uppercase;">Thao tác</th>
+          <th pSortableColumn="id" class="text-muted fw-bold border-bottom text-uppercase small">ID <p-sortIcon field="id"></p-sortIcon></th>
+          <th pSortableColumn="code" class="text-muted fw-bold border-bottom text-uppercase small">M&atilde; <p-sortIcon field="code"></p-sortIcon></th>
+          <th pSortableColumn="name" class="text-muted fw-bold border-bottom text-uppercase small">T&ecirc;n vai tr&ograve; <p-sortIcon field="name"></p-sortIcon></th>
+          <th class="text-muted fw-bold border-bottom text-uppercase small">M&ocirc; t&#7843;</th>
+          <th class="text-muted fw-bold border-bottom text-center text-uppercase small">Thao t&aacute;c</th>
         </tr>
       </ng-template>
+
       <ng-template pTemplate="body" let-role>
         <tr>
           <td class="text-muted fw-bold">#{{ role.id }}</td>
           <td class="text-dark fw-bold"><span class="badge bg-secondary">{{ role.code }}</span></td>
           <td class="text-dark fw-bold">{{ role.name }}</td>
-          <td class="text-muted">{{ role.description }}</td>
+          <td class="text-muted">{{ role.description || '-' }}</td>
           <td class="text-center">
-            <div class="d-flex gap-2 justify-content-center">
-              <button pButton icon="pi pi-pencil" class="p-button-text p-button-secondary p-button-sm" (click)="editRole(role)"></button>
-              <button pButton icon="pi pi-trash" class="p-button-text p-button-danger p-button-sm" (click)="deleteRole(role)"></button>
+            <div class="d-flex flex-wrap gap-1 justify-content-center">
+              <button pButton icon="pi pi-shield" class="p-button-text p-button-info p-button-sm" title="Phan quyen" (click)="openPermissions(role)"></button>
+              <button pButton icon="pi pi-pencil" class="p-button-text p-button-secondary p-button-sm" title="Sua" (click)="editRole(role)"></button>
+              <button pButton icon="pi pi-trash" class="p-button-text p-button-danger p-button-sm" title="Xoa" (click)="deleteRole(role)"></button>
             </div>
           </td>
         </tr>
       </ng-template>
+
       <ng-template pTemplate="emptymessage">
         <tr>
-          <td colspan="5" class="text-center p-4 text-muted">Không tìm thấy dữ liệu vai trò.</td>
+          <td colspan="5" class="text-center p-4 text-muted">Ch&#432;a c&oacute; vai tr&ograve;.</td>
         </tr>
       </ng-template>
     </p-table>
   </p-card>
 
-  <p-dialog [(visible)]="displayDialog" [style]="{width: '650px'}" header="{{ roleDialogMode === 'create' ? 'Thêm Vai trò mới' : 'Cập nhật Vai trò' }}" [modal]="true" styleClass="p-fluid">
+  <p-dialog
+    [(visible)]="displayDialog"
+    [style]="{width: '500px'}"
+    [header]="roleDialogMode === 'create' ? 'Them vai tro' : 'Cap nhat vai tro'"
+    [modal]="true"
+    styleClass="p-fluid">
     <ng-template pTemplate="content">
-      <div class="p-3">
-        <div class="field mb-4">
-          <label for="code" class="fw-bold mb-2">Mã vai trò (Code) <span class="text-danger">*</span></label>
-          <input type="text" pInputText id="code" [(ngModel)]="roleForm.code" required autofocus placeholder="VD: ACCOUNTANT" style="text-transform: uppercase;" />
-        </div>
-        <div class="field mb-4">
-          <label for="name" class="fw-bold mb-2">Tên vai trò <span class="text-danger">*</span></label>
-          <input type="text" pInputText id="name" [(ngModel)]="roleForm.name" required placeholder="VD: Kế toán" />
-        </div>
-        <div class="field mb-4">
-          <label for="description" class="fw-bold mb-2">Mô tả</label>
-          <textarea pInputTextarea id="description" [(ngModel)]="roleForm.description" rows="3"></textarea>
-        </div>
+      <div class="field mb-3">
+        <label for="code" class="fw-bold">M&atilde; vai tr&ograve; <span class="text-danger">*</span></label>
+        <input type="text" pInputText id="code" [(ngModel)]="roleForm.code" required autofocus placeholder="VD: ACCOUNTANT" class="text-uppercase" />
+      </div>
+      <div class="field mb-3">
+        <label for="name" class="fw-bold">T&ecirc;n vai tr&ograve; <span class="text-danger">*</span></label>
+        <input type="text" pInputText id="name" [(ngModel)]="roleForm.name" required placeholder="VD: K&#7871; to&aacute;n" />
+      </div>
+      <div class="field mb-3">
+        <label for="description" class="fw-bold">M&ocirc; t&#7843;</label>
+        <textarea pInputTextarea id="description" [(ngModel)]="roleForm.description" rows="3"></textarea>
       </div>
     </ng-template>
 
     <ng-template pTemplate="footer">
-      <button pButton label="Hủy" icon="pi pi-times" class="p-button-text" (click)="displayDialog = false"></button>
-      <button pButton label="Lưu" icon="pi pi-check" class="p-button-primary" (click)="saveRole()"></button>
+      <button pButton label="H&#7911;y" icon="pi pi-times" class="p-button-text" (click)="displayDialog = false"></button>
+      <button pButton label="L&#432;u" icon="pi pi-check" class="p-button-primary" (click)="saveRole()"></button>
     </ng-template>
   </p-dialog>
 </div>

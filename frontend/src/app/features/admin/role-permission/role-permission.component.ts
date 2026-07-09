@@ -1,7 +1,9 @@
 import { Component, inject, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { SharedModule } from '@app/shared/shared.module';
-import { RoleService, Role, AppModule, AppFunction } from '@app/core/services/role.service';
+import { AppFunction, AppModule, Role, RoleService } from '@app/core/services/role.service';
 import { MessageService } from 'primeng/api';
+
 @Component({
   selector: 'app-role-permission',
   standalone: true,
@@ -11,24 +13,22 @@ import { MessageService } from 'primeng/api';
 export class RolePermissionComponent implements OnInit {
   roles: Role[] = [];
   selectedRole: Role | null = null;
-  
   modules: AppModule[] = [];
   loading = false;
   saving = false;
 
-  // Mask mapping
-  // VIEW = 1, CREATE = 2, UPDATE = 4, DELETE = 8, EXPORT = 16, APPROVE = 32
   actions = [
     { label: 'Xem', value: 1 },
-    { label: 'Thêm', value: 2 },
-    { label: 'Sửa', value: 4 },
-    { label: 'Xóa', value: 8 },
-    { label: 'Xuất', value: 16 },
-    { label: 'Duyệt', value: 32 }
+    { label: 'Them', value: 2 },
+    { label: 'Sua', value: 4 },
+    { label: 'Xoa', value: 8 },
+    { label: 'Xuat', value: 16 },
+    { label: 'Duyet', value: 32 }
   ];
 
   private roleService = inject(RoleService);
   private messageService = inject(MessageService);
+  private route = inject(ActivatedRoute);
 
   ngOnInit(): void {
     this.loadRoles();
@@ -38,22 +38,27 @@ export class RolePermissionComponent implements OnInit {
     this.roleService.getRoles().subscribe({
       next: (data) => {
         this.roles = data;
-        if (this.roles.length > 0) {
-          this.selectedRole = this.roles[0];
-          this.loadPermissions();
-        }
+        const requestedRoleId = Number(this.route.snapshot.queryParamMap.get('roleId'));
+        this.selectedRole = this.roles.find((role) => role.id === requestedRoleId) || this.roles[0] || null;
+        this.loadPermissions();
+      },
+      error: () => {
+        this.messageService.add({ severity: 'error', summary: 'Loi', detail: 'Khong the tai danh sach vai tro.' });
       }
     });
   }
 
-  onRoleChange() {
-    if (this.selectedRole) {
-      this.loadPermissions();
-    }
+  onRoleChange(role: Role) {
+    this.selectedRole = role;
+    this.loadPermissions();
   }
 
   loadPermissions(): void {
-    if (!this.selectedRole) return;
+    if (!this.selectedRole) {
+      this.modules = [];
+      return;
+    }
+
     this.loading = true;
     this.roleService.getRolePermissionsTree(this.selectedRole.id).subscribe({
       next: (data) => {
@@ -62,49 +67,47 @@ export class RolePermissionComponent implements OnInit {
       },
       error: () => {
         this.loading = false;
+        this.messageService.add({ severity: 'error', summary: 'Loi', detail: 'Khong the tai ma tran phan quyen.' });
       }
     });
   }
 
   hasPermission(func: AppFunction, actionValue: number): boolean {
-    return (func.actionMask & actionValue) === actionValue;
+    return ((func.actionMask || 0) & actionValue) === actionValue;
   }
 
-  togglePermission(func: AppFunction, actionValue: number, event: any) {
-    const isChecked = event.checked;
-    if (isChecked) {
-      func.actionMask = func.actionMask | actionValue;
-    } else {
-      func.actionMask = func.actionMask & ~actionValue;
-    }
+  togglePermission(func: AppFunction, actionValue: number, checked: boolean) {
+    const currentMask = func.actionMask || 0;
+    func.actionMask = checked ? currentMask | actionValue : currentMask & ~actionValue;
+  }
+
+  toggleModule(module: AppModule, actionValue: number, checked: boolean) {
+    module.functions.forEach((func) => this.togglePermission(func, actionValue, checked));
+  }
+
+  moduleHasPermission(module: AppModule, actionValue: number): boolean {
+    return module.functions.length > 0 && module.functions.every((func) => this.hasPermission(func, actionValue));
   }
 
   savePermissions() {
     if (!this.selectedRole) return;
+
+    const permissions = this.modules.flatMap((module) =>
+      module.functions.map((func) => ({
+        functionId: func.id,
+        actionMask: func.actionMask || 0
+      }))
+    );
+
     this.saving = true;
-
-    // Flatten functions to send to backend
-    const functionMasks: { [key: string]: number } = {};
-    this.modules.forEach(m => {
-      m.functions.forEach(f => {
-        if (f.actionMask > 0) {
-          functionMasks[f.code] = f.actionMask;
-        }
-      });
-    });
-
-    const payload = {
-      functionMasks: functionMasks
-    };
-
-    this.roleService.updateRolePermissions(this.selectedRole.id, payload).subscribe({
+    this.roleService.updateRolePermissions(this.selectedRole.id, { permissions }).subscribe({
       next: () => {
         this.saving = false;
-        this.messageService.add({severity: 'success', summary: 'Thành công', detail: 'Cập nhật quyền thành công!'});
+        this.messageService.add({ severity: 'success', summary: 'Thanh cong', detail: 'Da cap nhat phan quyen.' });
       },
       error: () => {
         this.saving = false;
-        this.messageService.add({severity: 'error', summary: 'Lỗi', detail: 'Có lỗi xảy ra khi lưu quyền.'});
+        this.messageService.add({ severity: 'error', summary: 'Loi', detail: 'Khong the luu phan quyen.' });
       }
     });
   }

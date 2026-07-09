@@ -41,6 +41,9 @@ public class DataInitializer implements CommandLineRunner {
     private final RoomRepository roomRepository;
     private final RoomTypeRepository roomTypeRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    private final com.hotel.repositories.HotelServiceRepository hotelServiceRepository;
+    private final com.hotel.repositories.ReservationRepository reservationRepository;
+    private final com.hotel.repositories.InvoiceRepository invoiceRepository;
     private final PasswordEncoder passwordEncoder;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
@@ -90,6 +93,9 @@ public class DataInitializer implements CommandLineRunner {
         seedAccountantPermissions(accountantRole);
 
         ensureAdminUser(superAdminRole);
+        
+        Role customerRole = roleRepository.findByCode("CUSTOMER").orElse(null);
+        ensureMockData(defaultHotel, hotelManagerRole, receptionistRole, customerRole);
     }
 
     private void repairSchema() {
@@ -291,5 +297,104 @@ public class DataInitializer implements CommandLineRunner {
     private boolean hasEncodingNoise(String value) {
         return value != null && (value.indexOf('\u00C3') >= 0 || value.indexOf('\u00C2') >= 0
                 || value.indexOf('\u00C4') >= 0 || value.contains("?"));
+    }
+
+    private void ensureMockData(Hotel hotel, Role managerRole, Role receptionistRole, Role customerRole) {
+        ensureMockUser("manager1", "manager1", "Manager One", "manager1@hotel.com", "ACTIVE", managerRole, hotel);
+        ensureMockUser("receptionist1", "receptionist1", "Receptionist One", "receptionist1@hotel.com", "ACTIVE", receptionistRole, hotel);
+        
+        User customer1 = ensureMockUser("customer1", "customer1", "Nguyen Van A", "nva@hotel.com", "ACTIVE", customerRole, null);
+        User customer2 = ensureMockUser("customer2", "customer2", "Le Thi B", "ltb@hotel.com", "ACTIVE", customerRole, null);
+        
+        com.hotel.entities.HotelService breakfast = ensureMockService("SVC_BREAKFAST", "Ăn sáng Buffet", "Buffet sáng tiêu chuẩn quốc tế", new BigDecimal("150000"));
+        com.hotel.entities.HotelService laundry = ensureMockService("SVC_LAUNDRY", "Dịch vụ giặt ủi", "Giặt sấy lấy ngay trong ngày", new BigDecimal("50000"));
+        com.hotel.entities.HotelService airportTransfer = ensureMockService("SVC_TRANSFER", "Đưa đón sân bay", "Xe 4 chỗ đưa đón sân bay 2 chiều", new BigDecimal("350000"));
+
+        ensureMockReservations(hotel, customer1, customer2);
+    }
+
+    private User ensureMockUser(String username, String password, String fullName, String email, String status, Role role, Hotel hotel) {
+        User user = userRepository.findByUsername(username).orElse(null);
+        if (user == null) {
+            user = new User();
+            user.setUsername(username);
+            user.setPasswordHash(passwordEncoder.encode(password));
+            user.setFullName(fullName);
+            user.setEmail(email);
+            user.setStatus(status);
+            if (role != null) {
+                user.setRoles(new java.util.HashSet<>(Set.of(role)));
+            }
+            if (hotel != null) {
+                user.setHotel(hotel);
+            }
+            userRepository.save(user);
+        }
+        return user;
+    }
+
+    private com.hotel.entities.HotelService ensureMockService(String code, String name, String description, BigDecimal price) {
+        return hotelServiceRepository.findAll().stream()
+                .filter(s -> s.getCode().equals(code))
+                .findFirst()
+                .orElseGet(() -> {
+                    com.hotel.entities.HotelService service = new com.hotel.entities.HotelService();
+                    service.setCode(code);
+                    service.setNameVi(name);
+                    service.setNameEn(name);
+                    service.setDescriptionVi(description);
+                    service.setDescriptionEn(description);
+                    service.setPrice(price);
+                    service.setStatus("ACTIVE");
+                    return hotelServiceRepository.save(service);
+                });
+    }
+
+    private void ensureMockReservations(Hotel hotel, User customer1, User customer2) {
+        List<com.hotel.entities.Reservation> existingReservations = reservationRepository.findAll();
+        if (existingReservations.isEmpty()) {
+            List<Room> rooms = roomRepository.findAll();
+            if (rooms.size() >= 2) {
+                // Reservation 1
+                com.hotel.entities.Reservation res1 = new com.hotel.entities.Reservation();
+                res1.setUser(customer1);
+                res1.setHotel(hotel);
+                res1.setRoom(rooms.get(0));
+                res1.setCheckInDate(java.time.LocalDate.now().minusDays(1));
+                res1.setCheckOutDate(java.time.LocalDate.now().plusDays(2));
+                res1.setStatus("CHECKED_IN");
+                res1.setTotalAmount(new BigDecimal("2500000"));
+                res1.setGuests(2);
+                res1 = reservationRepository.save(res1);
+
+                com.hotel.entities.Invoice inv1 = new com.hotel.entities.Invoice();
+                inv1.setInvoiceCode("INV-MOCK-001");
+                inv1.setReservation(res1);
+                inv1.setIssueDate(java.time.LocalDate.now());
+                inv1.setTotalAmount(res1.getTotalAmount());
+                inv1.setStatus("PENDING");
+                invoiceRepository.save(inv1);
+
+                // Reservation 2
+                com.hotel.entities.Reservation res2 = new com.hotel.entities.Reservation();
+                res2.setUser(customer2);
+                res2.setHotel(hotel);
+                res2.setRoom(rooms.get(1));
+                res2.setCheckInDate(java.time.LocalDate.now().minusDays(5));
+                res2.setCheckOutDate(java.time.LocalDate.now().minusDays(3));
+                res2.setStatus("COMPLETED");
+                res2.setTotalAmount(new BigDecimal("1850000"));
+                res2.setGuests(1);
+                res2 = reservationRepository.save(res2);
+
+                com.hotel.entities.Invoice inv2 = new com.hotel.entities.Invoice();
+                inv2.setInvoiceCode("INV-MOCK-002");
+                inv2.setReservation(res2);
+                inv2.setIssueDate(java.time.LocalDate.now().minusDays(3));
+                inv2.setTotalAmount(res2.getTotalAmount());
+                inv2.setStatus("PAID");
+                invoiceRepository.save(inv2);
+            }
+        }
     }
 }

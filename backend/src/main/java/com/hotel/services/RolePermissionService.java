@@ -48,7 +48,11 @@ public class RolePermissionService {
                 .collect(Collectors.toList());
         
         Map<Long, Integer> permissionMap = permissions.stream()
-                .collect(Collectors.toMap(rp -> rp.getFunction().getId(), RolePermission::getActionMask));
+                .collect(Collectors.toMap(
+                        rp -> rp.getFunction().getId(),
+                        rp -> rp.getActionMask() != null ? rp.getActionMask() : 0,
+                        (left, right) -> left | right
+                ));
 
         List<AppModule> allModules = appModuleRepository.findAll().stream()
                 .sorted(Comparator.comparing(AppModule::getId))

@@ -1,44 +1,51 @@
+<p-toast></p-toast>
+
 <div class="m-3">
-  <div class="d-flex justify-content-between align-items-center mb-4">
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
     <div>
-      <h2 class="mb-1 text-dark fw-bold"><i class="pi pi-shield me-2" style="color: var(--hotel-gold);"></i>Phân quyền Hệ thống</h2>
-      <p class="text-muted mb-0">Cấp quyền truy cập và thao tác cho các vai trò</p>
+      <h2 class="mb-1 text-dark fw-bold"><i class="pi pi-shield me-2" style="color: var(--hotel-gold);"></i>Ph&acirc;n quy&#7873;n</h2>
+      <p class="text-muted mb-0">C&#7845;p quy&#7873;n xem, th&ecirc;m, s&#7917;a, x&oacute;a cho t&#7915;ng vai tr&ograve; theo trang.</p>
     </div>
+    <button
+      pButton
+      label="L&#432;u ph&acirc;n quy&#7873;n"
+      icon="pi pi-save"
+      class="btn btn-primary-hotel"
+      [disabled]="!selectedRole || saving"
+      [loading]="saving"
+      (click)="savePermissions()">
+    </button>
   </div>
 
-  <div class="row">
-    <!-- Cột trái: Danh sách Role -->
-    <div class="col-md-3 mb-3">
+  <div class="row g-3">
+    <div class="col-lg-3">
       <p-card styleClass="shadow-sm border-0 rounded-4 h-100" [style]="{'border-radius': '12px'}">
-        <h5 class="fw-bold mb-3 border-bottom pb-2">Chọn Vai trò</h5>
+        <h5 class="fw-bold mb-3 border-bottom pb-2">Vai tr&ograve;</h5>
         <div class="list-group list-group-flush">
-          <button 
-            type="button" 
-            class="list-group-item list-group-item-action border-0 rounded mb-1" 
+          <button
+            type="button"
+            class="list-group-item list-group-item-action border-0 rounded mb-1"
             *ngFor="let role of roles"
             [class.active]="selectedRole?.id === role.id"
             [class.bg-primary-hotel]="selectedRole?.id === role.id"
             [class.text-white]="selectedRole?.id === role.id"
-            (click)="selectedRole = role; onRoleChange()">
+            (click)="onRoleChange(role)">
             <i class="pi pi-user me-2"></i> {{ role.name }}
+            <small class="d-block opacity-75">{{ role.code }}</small>
           </button>
         </div>
       </p-card>
     </div>
 
-    <!-- Cột phải: Ma trận quyền -->
-    <div class="col-md-9 mb-3">
+    <div class="col-lg-9">
       <p-card styleClass="shadow-sm border-0 rounded-4" [style]="{'border-radius': '12px'}">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h5 class="fw-bold mb-0 text-primary-hotel" *ngIf="selectedRole">
-            Ma trận quyền của: {{ selectedRole.name }}
+            Ma tr&#7853;n quy&#7873;n: {{ selectedRole.name }}
           </h5>
           <h5 class="fw-bold mb-0 text-muted" *ngIf="!selectedRole">
-            Vui lòng chọn vai trò
+            Vui l&ograve;ng ch&#7885;n vai tr&ograve;
           </h5>
-          <button pButton label="Lưu thay đổi" icon="pi pi-save" class="btn btn-primary-hotel" 
-                  [disabled]="!selectedRole || saving" [loading]="saving" (click)="savePermissions()">
-          </button>
         </div>
 
         <div *ngIf="loading" class="text-center py-5">
@@ -49,22 +56,44 @@
           <p-table [value]="modules" responsiveLayout="scroll" styleClass="p-datatable-sm p-datatable-gridlines">
             <ng-template pTemplate="header">
               <tr>
-                <th class="fw-bold bg-light" style="width: 25%">Module / Chức năng</th>
-                <th *ngFor="let act of actions" class="text-center fw-bold bg-light" style="width: 12.5%">{{ act.label }}</th>
+                <th class="fw-bold bg-light" style="min-width: 240px">Nh&oacute;m / Trang</th>
+                <th *ngFor="let act of actions" class="text-center fw-bold bg-light" style="min-width: 92px">{{ act.label }}</th>
               </tr>
             </ng-template>
+
             <ng-template pTemplate="body" let-module>
               <tr class="bg-light">
-                <td colspan="7" class="fw-bold text-dark"><i class="pi pi-folder-open me-2 text-warning"></i> {{ module.name }}</td>
+                <td class="fw-bold text-dark">
+                  <i class="pi pi-folder-open me-2 text-warning"></i> {{ module.name }}
+                </td>
+                <td *ngFor="let act of actions" class="text-center">
+                  <p-checkbox
+                    [binary]="true"
+                    [ngModel]="moduleHasPermission(module, act.value)"
+                    (onChange)="toggleModule(module, act.value, $event.checked)">
+                  </p-checkbox>
+                </td>
               </tr>
               <tr *ngFor="let func of module.functions">
-                <td class="ps-4"><i class="pi {{ func.icon || 'pi-file' }} me-2 text-muted"></i> {{ func.name }}</td>
+                <td class="ps-4">
+                  <i [class]="(func.icon || 'pi pi-file') + ' me-2 text-muted'"></i>
+                  <span>{{ func.name }}</span>
+                  <small class="text-muted d-block ms-4">{{ func.code }} - {{ func.url || '-' }}</small>
+                </td>
                 <td *ngFor="let act of actions" class="text-center">
-                  <p-checkbox 
-                    [binary]="true" 
+                  <p-checkbox
+                    [binary]="true"
                     [ngModel]="hasPermission(func, act.value)"
-                    (onChange)="togglePermission(func, act.value, $event)">
+                    (onChange)="togglePermission(func, act.value, $event.checked)">
                   </p-checkbox>
+                </td>
+              </tr>
+            </ng-template>
+
+            <ng-template pTemplate="emptymessage">
+              <tr>
+                <td [attr.colspan]="actions.length + 1" class="text-center p-4 text-muted">
+                  Ch&#432;a c&oacute; trang/ch&#7913;c n&#259;ng &#273;&#7875; ph&acirc;n quy&#7873;n.
                 </td>
               </tr>
             </ng-template>

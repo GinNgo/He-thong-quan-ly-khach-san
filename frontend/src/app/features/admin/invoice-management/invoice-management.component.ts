@@ -2,6 +2,7 @@ import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { SharedModule } from '@app/shared/shared.module';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { InvoiceService } from '@app/core/services/invoice.service';
 
 @Component({
   standalone: true,
@@ -16,33 +17,25 @@ export class InvoiceManagementComponent implements OnInit {
   displayModal: boolean = false;
   selectedInvoice: any = null;
 
-  constructor() {}
+  constructor(private invoiceService: InvoiceService) {}
 
   ngOnInit(): void {
-    // Mock data based on the screen.png template
-    this.invoices = [
-      {
-        invoiceCode: 'INV-2024-001',
-        customerName: 'John Smith',
-        issueDate: '2024-06-15',
-        totalAmount: '$450.00',
-        status: 'Paid',
+    this.invoiceService.getAllInvoices().subscribe({
+      next: (data) => {
+        // Map backend data to frontend format if necessary
+        this.invoices = data.map(inv => ({
+          invoiceCode: inv.invoiceCode,
+          customerName: inv.reservation?.user?.fullName || 'N/A',
+          issueDate: inv.issueDate,
+          totalAmount: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(inv.totalAmount || 0),
+          status: inv.status === 'PAID' || inv.status === 'Paid' ? 'Paid' : 'Pending',
+          raw: inv
+        }));
       },
-      {
-        invoiceCode: 'INV-2024-002',
-        customerName: 'Emily Davis',
-        issueDate: '2024-06-16',
-        totalAmount: '$1,200.50',
-        status: 'Pending',
-      },
-      {
-        invoiceCode: 'INV-2024-003',
-        customerName: 'Michael Brown',
-        issueDate: '2024-06-17',
-        totalAmount: '$890.75',
-        status: 'Paid',
-      },
-    ];
+      error: (err) => {
+        console.error('Lỗi khi tải danh sách hóa đơn:', err);
+      }
+    });
   }
 
   showPreview(invoice: any) {

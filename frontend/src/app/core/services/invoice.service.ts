@@ -20,6 +20,10 @@ export class InvoiceService {
 
   constructor(private http: HttpClient) {}
 
+  getAllInvoices(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl);
+  }
+
   getInvoiceByReservation(reservationId: number): Observable<Invoice> {
     return this.http.get<Invoice>(`${this.apiUrl}/reservation/${reservationId}`);
   }
