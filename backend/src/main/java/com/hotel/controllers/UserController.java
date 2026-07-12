@@ -1,6 +1,7 @@
 package com.hotel.controllers;
 
 import com.hotel.entities.User;
+import com.hotel.dtos.UserDto;
 import com.hotel.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -22,20 +23,20 @@ public class UserController {
 
     @GetMapping
     @Permission(function = FunctionCode.USER, action = ActionCode.VIEW)
-    public ResponseEntity<List<User>> getAllUsers() {
+    public ResponseEntity<List<UserDto>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
     @GetMapping("/{id}")
     @Permission(function = FunctionCode.USER, action = ActionCode.VIEW)
-    public ResponseEntity<User> getUserById(@PathVariable Long id) {
-        Optional<User> user = userService.getUserById(id);
+    public ResponseEntity<UserDto> getUserById(@PathVariable Long id) {
+        Optional<UserDto> user = userService.getUserById(id);
         return user.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping
     @Permission(function = FunctionCode.USER, action = ActionCode.CREATE)
-    public ResponseEntity<User> createUser(@RequestBody com.hotel.dtos.UserRequest request) {
+    public ResponseEntity<UserDto> createUser(@RequestBody com.hotel.dtos.UserRequest request) {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
@@ -49,7 +50,7 @@ public class UserController {
 
     @PutMapping("/{id}")
     @Permission(function = FunctionCode.USER, action = ActionCode.UPDATE)
-    public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody com.hotel.dtos.UserRequest request) {
+    public ResponseEntity<UserDto> updateUser(@PathVariable Long id, @RequestBody com.hotel.dtos.UserRequest request) {
         User userDetails = new User();
         userDetails.setFullName(request.getFullName());
         userDetails.setPhone(request.getPhone());
@@ -67,21 +68,21 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<User> getCurrentUser() {
+    public ResponseEntity<UserDto> getCurrentUser() {
         com.hotel.security.CustomUserDetails userDetails = (com.hotel.security.CustomUserDetails) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Optional<User> user = userService.getUserById(userDetails.getUserId());
+        Optional<UserDto> user = userService.getUserById(userDetails.getUserId());
         return user.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PutMapping("/me")
-    public ResponseEntity<User> updateCurrentUser(@RequestBody com.hotel.dtos.UserRequest request) {
+    public ResponseEntity<UserDto> updateCurrentUser(@RequestBody com.hotel.dtos.UserRequest request) {
         com.hotel.security.CustomUserDetails userDetails = (com.hotel.security.CustomUserDetails) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         User user = new User();
         user.setFullName(request.getFullName());
         user.setPhone(request.getPhone());
         
         // Ensure status and roles are not modified by the user themselves through this endpoint
-        User existingUser = userService.getUserById(userDetails.getUserId()).orElseThrow();
+        User existingUser = userService.getEntityById(userDetails.getUserId()).orElseThrow();
         user.setStatus(existingUser.getStatus());
         
         return ResponseEntity.ok(userService.updateUser(userDetails.getUserId(), user, null, userDetails.getHotelId()));

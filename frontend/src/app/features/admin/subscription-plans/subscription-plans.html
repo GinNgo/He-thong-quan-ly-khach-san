@@ -1,0 +1,70 @@
+<p-toast></p-toast>
+<div class="surface-ground px-4 py-8 md:px-6 lg:px-8 text-center">
+    <div class="mb-5 font-bold text-900 text-4xl">Gói dịch vụ cho Chủ cơ sở</div>
+    <div class="text-700 text-xl mb-8 line-height-3">Nâng cấp để quản lý nhiều cơ sở lưu trú và mở khóa tính năng cao cấp.</div>
+
+    <div class="grid">
+        <div class="col-12 lg:col-4 p-3" *ngFor="let plan of plans">
+            <p-card styleClass="plan-card shadow-2">
+                <ng-template pTemplate="title">
+                    <div class="text-center text-900 text-3xl font-bold mb-2">{{ plan.nameVi }}</div>
+                    <div class="text-center plan-price">
+                        {{ plan.price | currency:'VND' }}
+                        <span class="text-sm font-normal text-600">
+                            / {{ plan.billingType === 'MONTHLY' ? 'Tháng' : plan.billingType === 'YEARLY' ? 'Năm' : 'Vĩnh viễn' }}
+                        </span>
+                    </div>
+                </ng-template>
+                
+                <div class="plan-features text-left mt-4 mb-4">
+                    <div class="feature-item">
+                        <i class="pi pi-check-circle"></i>
+                        <span>Quản lý cơ sở lưu trú</span>
+                    </div>
+                    <div class="feature-item" *ngIf="plan.code !== 'FREE'">
+                        <i class="pi pi-check-circle"></i>
+                        <span>Hỗ trợ 24/7 ưu tiên</span>
+                    </div>
+                    <div class="feature-item" *ngIf="plan.code === 'PREMIUM'">
+                        <i class="pi pi-check-circle"></i>
+                        <span>Không giới hạn phòng</span>
+                    </div>
+                </div>
+
+                <ng-template pTemplate="footer">
+                    <button pButton pRipple 
+                            [label]="isCurrentPlan(plan) ? 'Đang sử dụng' : 'Mua ngay'" 
+                            [disabled]="isCurrentPlan(plan)"
+                            (click)="purchase(plan)"
+                            class="w-full"
+                            [ngClass]="{'p-button-outlined': plan.code === 'FREE', 'p-button-success': plan.code === 'PREMIUM'}">
+                    </button>
+                </ng-template>
+            </p-card>
+        </div>
+    </div>
+
+    <div class="mt-8 text-left" *ngIf="mySubscriptions.length > 0">
+        <h3 class="text-900 text-2xl font-bold mb-4">Gói đang sử dụng</h3>
+        <p-table [value]="mySubscriptions" [tableStyle]="{'min-width': '50rem'}">
+            <ng-template pTemplate="header">
+                <tr>
+                    <th>Gói dịch vụ</th>
+                    <th>Ngày đăng ký</th>
+                    <th>Ngày hết hạn</th>
+                    <th>Trạng thái</th>
+                </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-sub>
+                <tr>
+                    <td>{{ sub.plan.nameVi }}</td>
+                    <td>{{ sub.startAt | date:'dd/MM/yyyy' }}</td>
+                    <td>{{ sub.isLifetime ? 'Vĩnh viễn' : (sub.endAt | date:'dd/MM/yyyy') }}</td>
+                    <td>
+                        <p-tag [severity]="sub.status === 'ACTIVE' ? 'success' : 'danger'" [value]="sub.status"></p-tag>
+                    </td>
+                </tr>
+            </ng-template>
+        </p-table>
+    </div>
+</div>

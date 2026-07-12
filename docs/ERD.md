@@ -1,6 +1,6 @@
 # BẢN ĐỒ THỰC THỂ KẾT HỢP (ERD)
 
-## Phase 1: Authentication, RBAC, User Management
+## Hệ thống Quản lý Đa Cơ sở & Gói Dịch vụ
 
 ```mermaid
 erDiagram
@@ -13,20 +13,21 @@ erDiagram
         varchar phone
         varchar avatar_url
         varchar status
+        bigint hotel_id FK "Legacy/Default property"
         datetime created_at
         datetime updated_at
-        varchar created_by
-        varchar updated_by
     }
 
-    roles {
+    app_role {
         bigint id PK
         varchar code UK
         varchar name
-        datetime created_at
-        datetime updated_at
-        varchar created_by
-        varchar updated_by
+        varchar description
+    }
+
+    app_user_role {
+        bigint user_id FK
+        bigint role_id FK
     }
 
     app_module {
@@ -40,14 +41,6 @@ erDiagram
         bigint module_id FK
         varchar code UK
         varchar name
-        varchar url
-        varchar icon
-        int sort_order
-    }
-
-    user_roles {
-        bigint user_id FK
-        bigint role_id FK
     }
 
     app_role_permission {
@@ -57,167 +50,268 @@ erDiagram
         int action_mask
     }
 
-    users ||--o{ user_roles : has
-    roles ||--o{ user_roles : belongs_to
+    locations {
+        bigint id PK
+        bigint parent_id FK
+        varchar code UK
+        varchar source_code
+        varchar name_vi
+        varchar name_en
+        varchar normalized_name
+        varchar location_type "PROVINCE/WARD/LANDMARK"
+        varchar full_path
+        varchar legacy_parent_name
+        float latitude
+        float longitude
+        varchar status
+        int sort_order
+        varchar slug
+        datetime created_at
+        datetime updated_at
+        varchar created_by
+        varchar updated_by
+    }
+
+    hotels {
+        bigint id PK
+        varchar name
+        text description
+        varchar address
+        varchar city
+        varchar country
+        int star_rating
+        varchar main_image
+        varchar status "ACTIVE/INACTIVE/DRAFT/PENDING"
+        bigint province_id FK
+        bigint ward_id FK
+        varchar address_line
+        float latitude
+        float longitude
+        datetime created_at
+        datetime updated_at
+        varchar approval_status
+        varchar external_provider
+        varchar external_id
+        varchar property_type
+        varchar phone
+        varchar website
+        float average_rating
+        int review_count
+    }
+
+    property_import_batches {
+        bigint id PK
+        varchar provider
+        bigint province_id
+        bigint ward_id
+        varchar search_keyword
+        float radius_km
+        varchar status
+        int total_found
+        int total_new
+        int total_duplicate
+        int total_selected
+        int total_imported
+        int total_failed
+        datetime started_at
+        datetime completed_at
+    }
+
+    property_import_items {
+        bigint id PK
+        bigint batch_id FK
+        varchar external_provider
+        varchar external_id
+        varchar raw_name
+        varchar normalized_name
+        varchar raw_address
+        bigint province_id
+        bigint ward_id
+        float latitude
+        float longitude
+        varchar duplicate_status
+        bigint duplicate_property_id
+        varchar import_status
+    }
+
+    property_external_photos {
+        bigint id PK
+        bigint property_id FK
+        varchar provider
+        varchar external_photo_id
+        varchar photo_reference
+        varchar display_url
+    }
+
+    property_claim_requests {
+        bigint id PK
+        bigint property_id FK
+        bigint requester_user_id FK
+        varchar verification_method
+        varchar status
+        datetime created_at
+    }
+
+    property_images {
+        bigint id PK
+        bigint hotel_id FK
+        varchar image_url
+        bit is_primary
+    }
+
+    user_properties {
+        bigint id PK
+        bigint user_id FK
+        bigint hotel_id FK
+        varchar relationship_type "OWNER/STAFF"
+    }
+
+    room_types {
+        bigint id PK
+        bigint hotel_id FK
+        varchar code
+        varchar name_vi
+        varchar name_en
+        int max_guest
+        decimal base_price
+    }
+
+    rooms {
+        bigint id PK
+        bigint room_type_id FK
+        varchar room_number
+        int floor
+        varchar status
+    }
+
+    room_images {
+        bigint id PK
+        bigint room_id FK
+        varchar image_url
+        bit is_primary
+    }
+
+    services {
+        bigint id PK
+        varchar code UK
+        varchar name_vi
+        varchar name_en
+        decimal price
+        varchar status
+    }
+
+    reservations {
+        bigint id PK
+        bigint user_id FK
+        bigint room_id FK
+        bigint hotel_id FK
+        date check_in_date
+        date check_out_date
+        int guests
+        decimal total_amount
+        varchar status
+    }
+
+    reservation_details {
+        bigint id PK
+        bigint reservation_id FK
+        bigint room_id FK
+        decimal price
+    }
+
+    invoices {
+        bigint id PK
+        varchar invoice_code UK
+        bigint reservation_id FK
+        date issue_date
+        decimal total_amount
+        varchar status
+    }
+
+    payments {
+        bigint id PK
+        bigint reservation_id FK
+        decimal amount
+        varchar payment_method
+        varchar status
+    }
+
+    subscription_plans {
+        bigint id PK
+        varchar code UK
+        varchar name_vi
+        varchar name_en
+        varchar billing_type
+        decimal price
+        bit is_lifetime
+        varchar status
+    }
+
+    plan_features {
+        bigint id PK
+        bigint plan_id FK
+        varchar feature_code
+        int limit_value
+    }
+
+    account_subscriptions {
+        bigint id PK
+        bigint user_id FK
+        bigint plan_id FK
+        datetime start_at
+        datetime end_at
+        bit is_lifetime
+        varchar status
+    }
+
+    users ||--o{ app_user_role : has
+    app_role ||--o{ app_user_role : belongs_to
     app_module ||--o{ app_function : contains
-    roles ||--o{ app_role_permission : has
+    app_role ||--o{ app_role_permission : has
     app_function ||--o{ app_role_permission : belongs_to
+    
+    locations ||--o{ locations : "parent-child"
+    hotels ||--o{ property_images : has
+    hotels ||--o{ user_properties : managed_by
+    users ||--o{ user_properties : manages
+    
+    property_import_batches ||--o{ property_import_items : contains
+    hotels ||--o{ property_external_photos : has
+    hotels ||--o{ property_claim_requests : receives
+    users ||--o{ property_claim_requests : requests
+    
+    hotels ||--o{ room_types : has
+    room_types ||--o{ rooms : contains
+    rooms ||--o{ room_images : has
+    
+    users ||--o{ reservations : makes
+    rooms ||--o{ reservations : booked_in
+    hotels ||--o{ reservations : belongs_to
+    reservations ||--o{ reservation_details : contains
+    rooms ||--o{ reservation_details : included_in
+    
+    reservations ||--o| invoices : generates
+    reservations ||--o{ payments : has
+    
+    subscription_plans ||--o{ plan_features : provides
+    users ||--o{ account_subscriptions : subscribes_to
+    subscription_plans ||--o{ account_subscriptions : active_for
 ```
 
-## Toàn bộ cấu trúc các bảng (Legacy Text Format)
+## Giải thích mở rộng (Multi-Property & Subscriptions)
 
-### users
-* id (PK)
-* username
-* email
-* password_hash
-* full_name
-* phone
-* avatar_url
-* status
-* created_at
-* updated_at
-* created_by
-* updated_by
+### 1. Quản lý Địa điểm & Cơ sở
+- **`locations`**: Quản lý cây địa điểm hành chính (Tỉnh/Thành -> Quận/Huyện -> Phường/Xã).
+- **`hotels` (đóng vai trò Property)**: Entity lõi quản lý thông tin cơ sở lưu trú. Đã bổ sung liên kết đến `locations`.
+- **`user_properties`**: Mapping giữa người dùng và cơ sở lưu trú, xác định ai là chủ (OWNER), ai là nhân viên (STAFF).
 
-### roles
-* id
-* code
-* name
-* created_at
-* updated_at
-* created_by
-* updated_by
+### 2. Gói dịch vụ (Subscription Feature Gate)
+- **`subscription_plans`**: Các gói dịch vụ cung cấp (Free, Standard, Premium, Lifetime).
+- **`plan_features`**: Cấu hình các tính năng và giới hạn (ví dụ: tối đa 10 phòng, tối đa 5 ảnh).
+- **`account_subscriptions`**: Gói dịch vụ hiện tại mà một người dùng (Owner) đang kích hoạt. Hệ thống sẽ kết hợp giữa RBAC (app_role_permission) và bảng này để quyết định có cho phép thực hiện thao tác hay không.
 
-### app_module
-* id (PK)
-* code
-* name
-
-### app_function
-* id (PK)
-* module_id (FK)
-* code
-* name
-* url
-* icon
-* sort_order
-
-### user_roles
-* user_id (FK)
-* role_id (FK)
-
-### app_role_permission
-* id (PK)
-* role_id (FK)
-* function_id (FK)
-* action_mask
-
-### room_types
-* id
-* code
-* name_vi
-* name_en
-* max_guest
-* base_price
-* description_vi
-* description_en
-
-### rooms
-* id
-* room_number
-* room_type_id
-* floor
-* status
-* description_vi
-* description_en
-
-### room_images
-* id
-* room_id
-* image_url
-
-### customers
-* id
-* user_id
-* identity_number
-* nationality
-* address
-
-### reservations
-* id
-* reservation_code
-* customer_id
-* room_id
-* checkin_date
-* checkout_date
-* guest_count
-* status
-* total_amount
-
-### services
-* id
-* code
-* name_vi
-* name_en
-* price
-
-### reservation_services
-* id
-* reservation_id
-* service_id
-* quantity
-* amount
-
-### payments
-* id
-* reservation_id
-* payment_method
-* amount
-* transaction_code
-* payment_status
-
-### invoices
-* id
-* invoice_no
-* reservation_id
-* subtotal
-* tax_amount
-* total_amount
-* pdf_url
-* created_at
-
-### subscriptions
-* id
-* code
-* name
-* monthly_price
-
-### user_subscriptions
-* id
-* user_id
-* subscription_id
-* start_date
-* end_date
-* status
-
-### ai_conversations
-* id
-* user_id
-* title
-* created_at
-
-### ai_messages
-* id
-* conversation_id
-* role
-* content
-* created_at
-
-### audit_logs
-* id
-* user_id
-* action
-* entity_name
-* entity_id
-* created_at
+### 3. Tự động Nhập dữ liệu (Automated Property Import)
+- **`property_import_batches`**: Các phiên tìm kiếm và thu thập dữ liệu khách sạn từ API ngoài.
+- **`property_import_items`**: Dữ liệu thô từ API ngoài trước khi duyệt, được kiểm tra deduplication.
+- **`property_external_photos`**: Lưu trữ URL hình ảnh của API ngoài.
+- **`property_claim_requests`**: Yêu cầu xác nhận chủ sở hữu từ phía người dùng cho cơ sở đã được hệ thống nhập tự động.

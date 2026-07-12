@@ -69,3 +69,15 @@ npm install
 npm start
 # Frontend sáº½ khá»Ÿi cháº¡y táº¡i http://localhost:4200
 ```
+### C?u hình Import D? Li?u (Property Import)
+H? th?ng h? tr? l?y d? li?u m? t? các provider bên th? ba. B?n có th? c?u hình thông qua pplication.yml:
+`yaml
+app:
+  accommodation-import:
+    enabled: true
+    provider: NOMINATIM
+    max-results-per-batch: 100
+    request-delay-ms: 1000
+    auto-publish: false
+`
+Luu ý: Tuân th? API Rate Limit c?a nhà cung c?p, ví d? Nominatim gi?i h?n 1 request/giây.

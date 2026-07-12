@@ -63,6 +63,19 @@ public class PermissionInterceptor implements HandlerInterceptor {
             return false;
         }
 
+        RequireFeature requireFeature = handlerMethod.getMethodAnnotation(RequireFeature.class);
+        if (requireFeature == null) {
+            requireFeature = handlerMethod.getBeanType().getAnnotation(RequireFeature.class);
+        }
+
+        if (requireFeature != null) {
+            Map<String, Integer> featureLimits = userDetails.getFeatureLimits();
+            if (featureLimits == null || !featureLimits.containsKey(requireFeature.value())) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden: Upgrade your subscription to use this feature (" + requireFeature.value() + ")");
+                return false;
+            }
+        }
+
         return true;
     }
 }

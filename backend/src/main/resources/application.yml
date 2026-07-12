@@ -19,6 +19,18 @@ spring:
       hibernate:
         format_sql: true
 
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:your-email@gmail.com}
+    password: ${MAIL_PASSWORD:your-app-password}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
 server:
   port: 8080
 
@@ -26,3 +38,11 @@ jwt:
   secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
   expiration: 86400000 # 24 hours
   refresh-expiration: 604800000 # 7 days
+
+app:
+  accommodation-import:
+    enabled: true
+    provider: NOMINATIM
+    max-results-per-batch: 100
+    request-delay-ms: 1000
+    auto-publish: false

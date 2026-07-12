@@ -1,7 +1,9 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 import { ConfirmationService, MessageService, TreeNode } from 'primeng/api';
 import { TreeTableModule } from 'primeng/treetable';
 import { DialogModule } from 'primeng/dialog';
@@ -69,6 +71,7 @@ export class ModuleManagementComponent implements OnInit {
   private http = inject(HttpClient);
   private messageService = inject(MessageService);
   private confirmationService = inject(ConfirmationService);
+  private cdr = inject(ChangeDetectorRef);
   private apiUrl = environment.apiUrl;
 
   ngOnInit() {
@@ -77,29 +80,22 @@ export class ModuleManagementComponent implements OnInit {
 
   loadData() {
     this.loading = true;
-    this.http.get<AppModule[]>(`${this.apiUrl}/modules`).subscribe({
-      next: (modules) => {
-        this.http.get<AppFunction[]>(`${this.apiUrl}/functions`).subscribe({
-          next: (functions) => {
-            this.nodes = modules.map((module) => ({
-              data: { ...module, type: 'module' },
-              key: `module-${module.id}`,
-              expanded: true,
-              children: functions
-                .filter((func) => func.moduleId === module.id)
-                .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
-                .map((func) => ({
-                  data: { ...func, type: 'function' },
-                  key: `function-${func.id}`
-                }))
-            }));
-            this.loading = false;
-          },
-          error: () => this.handleLoadError()
-        });
-      },
-      error: () => this.handleLoadError()
-    });
+    this.nodes = [];
+
+    forkJoin({
+      modules: this.http.get<AppModule[]>(`${this.apiUrl}/modules`),
+      functions: this.http.get<AppFunction[]>(`${this.apiUrl}/functions`)
+    })
+      .pipe(finalize(() => {
+        this.loading = false;
+        this.cdr.detectChanges();
+      }))
+      .subscribe({
+        next: ({ modules, functions }) => {
+          this.nodes = this.buildTreeNodes(modules, functions);
+        },
+        error: () => this.handleLoadError()
+      });
   }
 
   selectNode(rowNode: TreeNode) {
@@ -224,6 +220,25 @@ export class ModuleManagementComponent implements OnInit {
       icon: 'pi pi-circle',
       sortOrder: 0
     };
+  }
+
+  private buildTreeNodes(modules: AppModule[], functions: AppFunction[]): TreeNode[] {
+    return modules
+      .slice()
+      .sort((a, b) => a.id - b.id)
+      .map((module) => ({
+        data: { ...module, type: 'module' },
+        key: `module-${module.id}`,
+        expanded: true,
+        children: functions
+          .filter((func) => func.moduleId === module.id)
+          .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0) || a.id - b.id)
+          .map((func) => ({
+            data: { ...func, type: 'function' },
+            key: `function-${func.id}`,
+            leaf: true
+          }))
+      }));
   }
 
   private handleLoadError() {

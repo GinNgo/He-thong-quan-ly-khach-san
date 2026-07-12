@@ -1,12 +1,15 @@
 package com.hotel.services;
 
 import com.hotel.entities.User;
+import com.hotel.dtos.UserDto;
 import com.hotel.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -23,15 +26,21 @@ public class UserService {
     @Autowired
     private com.hotel.repositories.HotelRepository hotelRepository;
 
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    public List<UserDto> getAllUsers() {
+        return userRepository.findAll().stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
     }
 
-    public Optional<User> getUserById(Long id) {
+    public Optional<UserDto> getUserById(Long id) {
+        return userRepository.findById(id).map(this::convertToDto);
+    }
+
+    public Optional<User> getEntityById(Long id) {
         return userRepository.findById(id);
     }
 
-    public User createUser(User user, java.util.Set<Long> roleIds, Long hotelId) {
+    public UserDto createUser(User user, java.util.Set<Long> roleIds, Long hotelId) {
         if (userRepository.existsByUsername(user.getUsername())) {
             throw new RuntimeException("Username is already taken!");
         }
@@ -50,10 +59,10 @@ public class UserService {
             user.setHotel(hotelRepository.findById(hotelId).orElse(null));
         }
 
-        return userRepository.save(user);
+        return convertToDto(userRepository.save(user));
     }
 
-    public User updateUser(Long id, User userDetails, java.util.Set<Long> roleIds, Long hotelId) {
+    public UserDto updateUser(Long id, User userDetails, java.util.Set<Long> roleIds, Long hotelId) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -75,7 +84,7 @@ public class UserService {
             user.setHotel(null);
         }
 
-        return userRepository.save(user);
+        return convertToDto(userRepository.save(user));
     }
 
     public void deleteUser(Long id) {
@@ -92,5 +101,39 @@ public class UserService {
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+    }
+
+    private UserDto convertToDto(User user) {
+        UserDto dto = new UserDto();
+        dto.setId(user.getId());
+        dto.setUsername(user.getUsername());
+        dto.setEmail(user.getEmail());
+        dto.setFullName(user.getFullName());
+        dto.setPhone(user.getPhone());
+        dto.setAvatarUrl(user.getAvatarUrl());
+        dto.setStatus(user.getStatus());
+        dto.setCreatedAt(user.getCreatedAt());
+
+        if (user.getRoles() != null) {
+            dto.setRoles(user.getRoles().stream()
+                    .sorted(Comparator.comparing(role -> role.getCode() == null ? "" : role.getCode()))
+                    .map(role -> {
+                        UserDto.RoleSummary summary = new UserDto.RoleSummary();
+                        summary.setId(role.getId());
+                        summary.setCode(role.getCode());
+                        summary.setName(role.getName());
+                        return summary;
+                    })
+                    .collect(Collectors.toList()));
+        }
+
+        if (user.getHotel() != null) {
+            UserDto.HotelSummary hotel = new UserDto.HotelSummary();
+            hotel.setId(user.getHotel().getId());
+            hotel.setName(user.getHotel().getName());
+            dto.setHotel(hotel);
+        }
+
+        return dto;
     }
 }

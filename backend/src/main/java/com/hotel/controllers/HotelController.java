@@ -25,11 +25,25 @@ public class HotelController {
     @GetMapping("/public/search")
     public ResponseEntity<List<Hotel>> searchHotels(
             @RequestParam(required = false) String city,
+            @RequestParam(required = false) Long provinceId,
+            @RequestParam(required = false) Long districtId,
+            @RequestParam(required = false) Long wardId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkIn,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkOut,
             @RequestParam(required = false) Integer guests) {
         
         List<Hotel> hotels = hotelService.searchHotels(city, "ACTIVE");
+        
+        if (provinceId != null) {
+            hotels = hotels.stream().filter(h -> provinceId.equals(h.getProvinceId())).toList();
+        }
+        if (districtId != null) {
+            hotels = hotels.stream().filter(h -> districtId.equals(h.getDistrictId())).toList();
+        }
+        if (wardId != null) {
+            hotels = hotels.stream().filter(h -> wardId.equals(h.getWardId())).toList();
+        }
+
         if (checkIn != null || checkOut != null || guests != null) {
             hotels = hotels.stream()
                     .filter(hotel -> !roomTypeService.getRoomTypesByHotelId(hotel.getId(), checkIn, checkOut, guests).isEmpty())
@@ -58,6 +72,8 @@ public class HotelController {
         return ResponseEntity.ok(hotelService.createHotel(hotel));
     }
 
+
+
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<Hotel> updateHotel(@PathVariable Long id, @RequestBody Hotel hotel) {
@@ -69,5 +85,31 @@ public class HotelController {
     public ResponseEntity<Void> deleteHotel(@PathVariable Long id) {
         hotelService.deleteHotel(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/submit")
+    public ResponseEntity<Hotel> submitHotel(@PathVariable Long id) {
+        return hotelService.getHotelById(id).map(hotel -> {
+            hotel.setStatus("PENDING");
+            return ResponseEntity.ok(hotelService.updateHotel(id, hotel));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PostMapping("/{id}/approve")
+    public ResponseEntity<Hotel> approveHotel(@PathVariable Long id) {
+        return hotelService.getHotelById(id).map(hotel -> {
+            hotel.setStatus("ACTIVE");
+            return ResponseEntity.ok(hotelService.updateHotel(id, hotel));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PostMapping("/{id}/reject")
+    public ResponseEntity<Hotel> rejectHotel(@PathVariable Long id) {
+        return hotelService.getHotelById(id).map(hotel -> {
+            hotel.setStatus("REJECTED");
+            return ResponseEntity.ok(hotelService.updateHotel(id, hotel));
+        }).orElse(ResponseEntity.notFound().build());
     }
 }

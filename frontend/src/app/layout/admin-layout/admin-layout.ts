@@ -1,19 +1,25 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, RouterOutlet, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { Sidebar } from '../sidebar/sidebar';
 import { AuthService } from '../../core/services/auth';
 import { AiAssistant } from '../../features/ai-assistant/ai-assistant';
+import { NotificationService, AppNotification } from '../../core/services/notification.service';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-admin-layout',
-  imports: [CommonModule, FormsModule, RouterOutlet, Sidebar, AiAssistant],
+  standalone: true,
+  imports: [CommonModule, FormsModule, RouterOutlet, Sidebar, AiAssistant, ToastModule],
+  providers: [MessageService],
   templateUrl: './admin-layout.html',
   styleUrl: './admin-layout.css'
 })
-export class AdminLayout {
+export class AdminLayout implements OnInit, OnDestroy {
   isSidebarCollapsed = false;
   isNotificationOpen = false;
   isUserMenuOpen = false;
@@ -33,7 +39,16 @@ export class AdminLayout {
     { label: 'Phân quyền', url: '/admin/role-permissions' },
   ];
 
-  constructor(private authService: AuthService, private router: Router) {
+  notifications: AppNotification[] = [];
+  unreadCount = 0;
+  private notifSub?: Subscription;
+
+  constructor(
+    private authService: AuthService, 
+    private router: Router,
+    private notificationService: NotificationService,
+    private messageService: MessageService
+  ) {
     const authState = this.authService.getAuthState();
     this.currentUserName = authState.username || 'Admin';
     this.currentRoleLabel = this.toRoleLabel(authState.roles[0]);
@@ -42,6 +57,50 @@ export class AdminLayout {
     this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe((event) => this.updatePageTitle(event.urlAfterRedirects));
+  }
+
+  ngOnInit() {
+    this.notificationService.connect();
+    
+    // Tải thông báo cũ
+    this.notificationService.getAdminNotifications().subscribe({
+      next: (data) => {
+        this.notifications = data;
+        this.updateUnreadCount();
+      }
+    });
+
+    // Lắng nghe thông báo mới realtime
+    this.notifSub = this.notificationService.notifications$.subscribe((notif) => {
+      this.notifications.unshift(notif);
+      this.updateUnreadCount();
+      
+      // Hiển thị Toast
+      this.messageService.add({
+        severity: 'info',
+        summary: notif.title,
+        detail: notif.message,
+        life: 5000
+      });
+    });
+  }
+
+  ngOnDestroy() {
+    this.notifSub?.unsubscribe();
+    this.notificationService.disconnect();
+  }
+
+  updateUnreadCount() {
+    this.unreadCount = this.notifications.filter(n => !n.isRead).length;
+  }
+
+  markAsRead(notif: AppNotification) {
+    if (!notif.isRead) {
+      this.notificationService.markAsRead(notif.id).subscribe(() => {
+        notif.isRead = true;
+        this.updateUnreadCount();
+      });
+    }
   }
 
   toggleSidebar() {

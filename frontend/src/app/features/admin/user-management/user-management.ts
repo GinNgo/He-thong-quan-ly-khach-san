@@ -1,10 +1,11 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { SharedModule } from '@app/shared/shared.module';
 import { UserService, User } from '@app/core/services/user';
 import { RoleService, Role } from '@app/core/services/role.service';
 import { ClientApiService, Hotel } from '@app/core/services/client-api.service';
 import { ActivatedRoute } from '@angular/router';
 import { ConfirmationService } from 'primeng/api';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-user-management',
@@ -39,11 +40,18 @@ export class UserManagement implements OnInit {
   private hotelService = inject(ClientApiService);
   private route = inject(ActivatedRoute);
   private confirmationService = inject(ConfirmationService);
+  private cdr = inject(ChangeDetectorRef);
 
   ngOnInit(): void {
+    this.userType = this.route.snapshot.data['userType'] || 'STAFF';
+    this.loadUsers();
+
     this.route.data.subscribe(data => {
-      this.userType = data['userType'] || 'STAFF';
-      this.loadUsers();
+      const nextUserType = data['userType'] || 'STAFF';
+      if (nextUserType !== this.userType) {
+        this.userType = nextUserType;
+        this.loadUsers();
+      }
     });
     this.loadRoles();
     this.loadHotels();
@@ -51,18 +59,22 @@ export class UserManagement implements OnInit {
 
   loadUsers(): void {
     this.loading = true;
-    this.userService.getUsers().subscribe({
+    this.users = [];
+    this.userService.getUsers()
+      .pipe(finalize(() => {
+        this.loading = false;
+        this.cdr.detectChanges();
+      }))
+      .subscribe({
       next: (data) => {
         if (this.userType === 'CUSTOMER') {
           this.users = data.filter(u => u.roles && u.roles.some((r: any) => r.code === 'CUSTOMER'));
         } else {
           this.users = data.filter(u => !u.roles || !u.roles.some((r: any) => r.code === 'CUSTOMER'));
         }
-        this.loading = false;
       },
       error: (err) => {
         console.error('Error fetching users', err);
-        this.loading = false;
       }
     });
   }

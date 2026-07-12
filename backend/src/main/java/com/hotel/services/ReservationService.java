@@ -27,17 +27,23 @@ public class ReservationService {
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final RoomAvailabilityService roomAvailabilityService;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
     public ReservationService(ReservationRepository reservationRepository,
                               ReservationDetailRepository reservationDetailRepository,
                               RoomRepository roomRepository,
                               UserRepository userRepository,
-                              RoomAvailabilityService roomAvailabilityService) {
+                              RoomAvailabilityService roomAvailabilityService,
+                              NotificationService notificationService,
+                              EmailService emailService) {
         this.reservationRepository = reservationRepository;
         this.reservationDetailRepository = reservationDetailRepository;
         this.roomRepository = roomRepository;
         this.userRepository = userRepository;
         this.roomAvailabilityService = roomAvailabilityService;
+        this.notificationService = notificationService;
+        this.emailService = emailService;
     }
 
     @Transactional
@@ -68,7 +74,7 @@ public class ReservationService {
         reservation.setCheckInDate(request.getCheckInDate());
         reservation.setCheckOutDate(request.getCheckOutDate());
         reservation.setGuests(request.getGuests());
-        reservation.setStatus("PENDING_PAYMENT");
+        reservation.setStatus("PENDING");
         reservation.setPaymentMethod(request.getPaymentMethod());
         reservation.setSpecialRequests(request.getSpecialRequests());
         reservation.setTotalAmount(totalAmount);
@@ -81,6 +87,13 @@ public class ReservationService {
         detail.setRoom(room);
         detail.setPrice(room.getRoomType().getBasePrice());
         reservationDetailRepository.save(detail);
+
+        // Đẩy thông báo thời gian thực cho Admin/Staff
+        notificationService.sendSystemNotification(
+            "BOOKING", 
+            "Có đặt phòng mới!", 
+            "Khách hàng " + user.getFullName() + " vừa đặt phòng " + room.getRoomNumber() + " từ " + request.getCheckInDate() + " đến " + request.getCheckOutDate()
+        );
 
         return savedReservation;
     }
@@ -125,6 +138,16 @@ public class ReservationService {
                 room.setStatus("AVAILABLE");
                 roomRepository.save(room);
             });
+        } else if ("CONFIRMED".equals(status)) {
+            if (reservation.getUser().getEmail() != null) {
+                emailService.sendBookingConfirmation(
+                        reservation.getUser().getEmail(),
+                        reservation.getUser().getFullName(),
+                        reservation.getId(),
+                        reservation.getCheckInDate().toString(),
+                        reservation.getCheckOutDate().toString()
+                );
+            }
         }
 
         return reservationRepository.save(reservation);

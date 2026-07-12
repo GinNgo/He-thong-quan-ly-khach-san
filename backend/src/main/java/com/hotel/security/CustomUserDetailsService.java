@@ -16,9 +16,11 @@ import java.util.stream.Collectors;
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final com.hotel.services.SubscriptionFeatureService subscriptionFeatureService;
 
-    public CustomUserDetailsService(UserRepository userRepository) {
+    public CustomUserDetailsService(UserRepository userRepository, com.hotel.services.SubscriptionFeatureService subscriptionFeatureService) {
         this.userRepository = userRepository;
+        this.subscriptionFeatureService = subscriptionFeatureService;
     }
 
     @Override
@@ -47,6 +49,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         });
 
         Long hotelId = user.getHotel() != null ? user.getHotel().getId() : null;
+        java.util.Map<String, Integer> featureLimits = subscriptionFeatureService.getActiveFeaturesForUser(user.getId());
 
         return new CustomUserDetails(
                 user.getUsername(),
@@ -54,7 +57,8 @@ public class CustomUserDetailsService implements UserDetailsService {
                 authorities,
                 permissionMasks,
                 user.getId(),
-                hotelId
+                hotelId,
+                featureLimits
         );
     }
 }

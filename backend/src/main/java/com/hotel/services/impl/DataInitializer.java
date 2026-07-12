@@ -44,6 +44,7 @@ public class DataInitializer implements CommandLineRunner {
     private final com.hotel.repositories.HotelServiceRepository hotelServiceRepository;
     private final com.hotel.repositories.ReservationRepository reservationRepository;
     private final com.hotel.repositories.InvoiceRepository invoiceRepository;
+    private final com.hotel.repositories.SubscriptionPlanRepository subscriptionPlanRepository;
     private final PasswordEncoder passwordEncoder;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
@@ -96,6 +97,8 @@ public class DataInitializer implements CommandLineRunner {
         
         Role customerRole = roleRepository.findByCode("CUSTOMER").orElse(null);
         ensureMockData(defaultHotel, hotelManagerRole, receptionistRole, customerRole);
+        
+        seedSubscriptionPlans();
     }
 
     private void repairSchema() {
@@ -395,6 +398,40 @@ public class DataInitializer implements CommandLineRunner {
                 inv2.setStatus("PAID");
                 invoiceRepository.save(inv2);
             }
+        }
+    }
+
+    private void seedSubscriptionPlans() {
+        if (subscriptionPlanRepository.count() == 0) {
+            com.hotel.entities.SubscriptionPlan freePlan = new com.hotel.entities.SubscriptionPlan();
+            freePlan.setCode("FREE");
+            freePlan.setNameVi("Gói Miễn phí");
+            freePlan.setNameEn("Free Plan");
+            freePlan.setBillingType("MONTHLY");
+            freePlan.setPrice(BigDecimal.ZERO);
+            freePlan.setIsLifetime(true);
+            freePlan.setStatus("ACTIVE");
+            subscriptionPlanRepository.save(freePlan);
+
+            com.hotel.entities.SubscriptionPlan standardPlan = new com.hotel.entities.SubscriptionPlan();
+            standardPlan.setCode("STANDARD");
+            standardPlan.setNameVi("Gói Tiêu chuẩn");
+            standardPlan.setNameEn("Standard Plan");
+            standardPlan.setBillingType("MONTHLY");
+            standardPlan.setPrice(new BigDecimal("500000"));
+            standardPlan.setIsLifetime(false);
+            standardPlan.setStatus("ACTIVE");
+            subscriptionPlanRepository.save(standardPlan);
+            
+            com.hotel.entities.SubscriptionPlan premiumPlan = new com.hotel.entities.SubscriptionPlan();
+            premiumPlan.setCode("PREMIUM");
+            premiumPlan.setNameVi("Gói Cao cấp");
+            premiumPlan.setNameEn("Premium Plan");
+            premiumPlan.setBillingType("YEARLY");
+            premiumPlan.setPrice(new BigDecimal("5000000"));
+            premiumPlan.setIsLifetime(false);
+            premiumPlan.setStatus("ACTIVE");
+            subscriptionPlanRepository.save(premiumPlan);
         }
     }
 }

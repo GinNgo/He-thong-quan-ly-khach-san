@@ -1,12 +1,13 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { ClientApiService, Hotel, RoomType } from '../../../core/services/client-api.service';
 
 @Component({
   selector: 'app-hotel-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   templateUrl: './hotel-detail.component.html',
   styleUrls: ['./hotel-detail.component.css']
 })
@@ -19,6 +20,13 @@ export class HotelDetailComponent implements OnInit {
   isLoading = true;
   roomError = '';
   bookingQueryParams: { checkIn?: string; checkOut?: string; guests?: number } = {};
+
+  showClaimModal = false;
+  claimForm = {
+    verificationMethod: 'BUSINESS_LICENSE',
+    verificationData: '',
+    note: ''
+  };
 
   ngOnInit(): void {
     this.route.queryParams.subscribe((params) => {

@@ -40,6 +40,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/reservations/public/**").permitAll()
                 .requestMatchers("/api/rooms/search").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .requestMatchers("/ws/**").permitAll()
+                .requestMatchers("/api/notifications/**").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

@@ -2,35 +2,59 @@
   <section class="bg-[#003b95] px-4 py-5 md:px-8">
     <div class="max-w-7xl mx-auto">
       <div class="mb-3 text-white">
-        <h1 class="text-2xl font-bold mb-1">T&igrave;m kh&aacute;ch s&#7841;n ph&ugrave; h&#7907;p</h1>
-        <p class="text-sm text-blue-100 mb-0">So s&aacute;nh h&#7841;ng ph&ograve;ng, gi&aacute; v&agrave; s&#7913;c ch&#7913;a tr&#432;&#7899;c khi &#273;&#7863;t.</p>
+        <h1 class="text-2xl font-bold mb-1">Tìm khách sạn phù hợp</h1>
+        <p class="text-sm text-blue-100 mb-0">Tìm theo khu vực, khoảng cách, và so sánh giá tốt nhất.</p>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr_0.6fr_auto] gap-2 bg-[#febb02] p-2 rounded-lg">
-        <label class="bg-white rounded-md px-3 py-2 flex items-center gap-2">
-          <i class="pi pi-map-marker text-gray-500"></i>
-          <input type="text" placeholder="Th&agrave;nh ph&#7889; ho&#7863;c khu v&#7921;c" class="w-full focus:outline-none text-gray-800" [(ngModel)]="destination">
-        </label>
+      <form [formGroup]="searchForm" (ngSubmit)="search()" class="grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr_0.6fr_auto_auto] gap-2 bg-[#febb02] p-2 rounded-lg">
+        <div class="bg-white rounded-md flex items-center p-field mb-0">
+          <i class="pi pi-map-marker text-gray-500 pl-3"></i>
+          <p-autoComplete
+            formControlName="keyword"
+            [suggestions]="filteredLocations"
+            (completeMethod)="filterLocation($event)"
+            (onSelect)="onLocationSelect($event)"
+            field="nameVi"
+            placeholder="Thành phố, địa danh..."
+            [dropdown]="false"
+            styleClass="w-full search-autocomplete"
+            inputStyleClass="w-full border-none shadow-none focus:ring-0 focus:outline-none"
+            class="w-full">
+            <ng-template let-location pTemplate="item">
+              <div class="flex items-center gap-2">
+                <i class="pi pi-map-marker text-gray-400"></i>
+                <div>
+                  <div class="font-bold">{{ location.nameVi }}</div>
+                  <div class="text-xs text-gray-500">{{ location.locationType === 'PROVINCE' ? 'Tỉnh/Thành phố' : 'Phường/Xã' }}</div>
+                </div>
+              </div>
+            </ng-template>
+          </p-autoComplete>
+        </div>
 
         <label class="bg-white rounded-md px-3 py-2 flex items-center gap-2">
           <i class="pi pi-calendar text-gray-500"></i>
-          <input type="date" class="w-full focus:outline-none text-gray-800" [(ngModel)]="checkInDate">
+          <input type="date" class="w-full focus:outline-none text-gray-800" formControlName="checkInDate">
         </label>
 
         <label class="bg-white rounded-md px-3 py-2 flex items-center gap-2">
           <i class="pi pi-calendar-times text-gray-500"></i>
-          <input type="date" class="w-full focus:outline-none text-gray-800" [(ngModel)]="checkOutDate">
+          <input type="date" class="w-full focus:outline-none text-gray-800" formControlName="checkOutDate">
         </label>
 
         <label class="bg-white rounded-md px-3 py-2 flex items-center gap-2">
           <i class="pi pi-user text-gray-500"></i>
-          <input type="number" min="1" class="w-full focus:outline-none text-gray-800" [(ngModel)]="guests">
+          <input type="number" min="1" class="w-full focus:outline-none text-gray-800" formControlName="adultCount">
         </label>
 
-        <button class="bg-[#0071c2] hover:bg-[#005999] text-white font-bold px-6 py-3 rounded-md transition-colors" (click)="search()">
-          T&igrave;m ki&#7871;m
+        <button type="button" class="bg-blue-100 hover:bg-blue-200 text-[#003b95] font-bold px-4 py-3 rounded-md transition-colors flex items-center justify-center gap-2" (click)="getUserLocation()" title="Tìm gần tôi">
+          <i class="pi pi-compass text-xl"></i>
         </button>
-      </div>
+
+        <button type="submit" class="bg-[#0071c2] hover:bg-[#005999] text-white font-bold px-6 py-3 rounded-md transition-colors disabled:opacity-50" [disabled]="searchForm.invalid || isLoading">
+          Tìm kiếm
+        </button>
+      </form>
 
       <p *ngIf="searchError" class="text-sm text-red-100 font-semibold mt-3 mb-0">{{ searchError }}</p>
     </div>
@@ -41,24 +65,24 @@
       <div class="bg-white border border-gray-200 rounded-lg p-5 sticky top-24">
         <div class="flex items-center justify-between mb-5">
           <div>
-            <h2 class="text-lg font-bold text-gray-900 mb-1">B&#7897; l&#7885;c</h2>
-            <p class="text-xs text-gray-500 mb-0">{{ activeFiltersCount }} &#273;i&#7873;u ki&#7879;n &#273;ang ch&#7885;n</p>
+            <h2 class="text-lg font-bold text-gray-900 mb-1">Bộ lọc</h2>
+            <p class="text-xs text-gray-500 mb-0">{{ activeFiltersCount }} điều kiện đang chọn</p>
           </div>
-          <button class="text-sm font-semibold text-[#0071c2] hover:text-[#005999]" (click)="clearFilters()">X&oacute;a</button>
+          <button class="text-sm font-semibold text-[#0071c2] hover:text-[#005999]" (click)="clearFilters()">Xóa</button>
         </div>
 
         <div class="mb-6">
-          <h3 class="font-bold text-gray-800 mb-3">Kho&#7843;ng gi&aacute; m&#7895;i &#273;&ecirc;m</h3>
+          <h3 class="font-bold text-gray-800 mb-3">Khoảng giá mỗi đêm</h3>
           <div class="px-2 mb-4">
             <p-slider [(ngModel)]="priceRange" [range]="true" [min]="0" [max]="maxPriceLimit" (ngModelChange)="applyFilters()"></p-slider>
           </div>
           <div class="grid grid-cols-2 gap-2 text-sm">
             <div class="border border-gray-300 rounded-md px-2 py-2 bg-white">
-              <span class="block text-[11px] text-gray-500 mb-1">T&#7915;</span>
+              <span class="block text-[11px] text-gray-500 mb-1">Từ</span>
               <input type="number" [(ngModel)]="priceRange[0]" (ngModelChange)="applyFilters()" class="w-full focus:outline-none bg-transparent">
             </div>
             <div class="border border-gray-300 rounded-md px-2 py-2 bg-white">
-              <span class="block text-[11px] text-gray-500 mb-1">&#272;&#7871;n</span>
+              <span class="block text-[11px] text-gray-500 mb-1">Đến</span>
               <input type="number" [(ngModel)]="priceRange[1]" (ngModelChange)="applyFilters()" class="w-full focus:outline-none bg-transparent">
             </div>
           </div>
@@ -67,9 +91,9 @@
         <hr class="border-gray-200 my-4">
 
         <div>
-          <h3 class="font-bold text-gray-800 mb-3">Lo&#7841;i ph&ograve;ng</h3>
+          <h3 class="font-bold text-gray-800 mb-3">Loại phòng</h3>
           <div class="space-y-2">
-            <label class="flex items-center gap-2 cursor-pointer" *ngFor="let type of roomTypes">
+            <label class="flex items-center gap-2 cursor-pointer" *ngFor="let type of roomTypesFilter">
               <input type="checkbox" [(ngModel)]="type.checked" (ngModelChange)="applyFilters()" class="w-4 h-4 rounded border-gray-300 text-[#0071c2] focus:ring-[#0071c2]">
               <span class="text-gray-700 text-sm">{{ type.label }}</span>
             </label>
@@ -82,11 +106,13 @@
       <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h2 class="text-lg font-bold text-gray-900 mb-1">
-            {{ isLoading ? 'Dang tai ket qua...' : hotels.length + ' khach san phu hop' }}
+            {{ isLoading ? 'Đang tải kết quả...' : hotels.length + ' khách sạn phù hợp' }}
           </h2>
-          <p class="text-sm text-gray-500 mb-0" *ngIf="destination">Khu v&#7921;c: {{ destination }}</p>
+          <p class="text-sm text-gray-500 mb-0" *ngIf="searchForm.value.keyword">Khu vực: {{ searchForm.value.keyword }}</p>
         </div>
-        <p-select [options]="sortOptions" [(ngModel)]="sortBy" (ngModelChange)="applyFilters()" optionLabel="label" optionValue="value" styleClass="w-full md:w-60"></p-select>
+        <div [formGroup]="searchForm" class="w-full md:w-60">
+            <p-select [options]="sortOptions" formControlName="sortBy" (ngModelChange)="searchHotels()" optionLabel="label" optionValue="value" styleClass="w-full"></p-select>
+        </div>
       </div>
 
       <div *ngIf="isLoading" class="bg-white border border-gray-200 rounded-lg flex justify-center py-16">
@@ -97,9 +123,9 @@
         <div class="w-16 h-16 rounded-full bg-blue-50 text-[#003b95] flex items-center justify-center mx-auto mb-4">
           <i class="pi pi-search text-2xl"></i>
         </div>
-        <h3 class="text-xl font-bold text-gray-900 mb-2">Kh&ocirc;ng t&igrave;m th&#7845;y kh&aacute;ch s&#7841;n ph&ugrave; h&#7907;p</h3>
-        <p class="text-gray-500 mb-5">H&atilde;y th&#7917; &#273;&#7893;i ng&agrave;y, th&agrave;nh ph&#7889; ho&#7863;c x&oacute;a b&#7899;t b&#7897; l&#7885;c.</p>
-        <button class="bg-[#0071c2] hover:bg-[#005999] text-white font-bold px-5 py-2 rounded-md" (click)="clearFilters()">X&oacute;a b&#7897; l&#7885;c</button>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Không tìm thấy khách sạn phù hợp</h3>
+        <p class="text-gray-500 mb-5">Hãy thử thay đổi ngày, địa điểm hoặc thu nhỏ bộ lọc.</p>
+        <button class="bg-[#0071c2] hover:bg-[#005999] text-white font-bold px-5 py-2 rounded-md" (click)="clearFilters()">Xóa bộ lọc</button>
       </div>
 
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-5" *ngIf="!isLoading && hotels.length > 0">
@@ -109,49 +135,49 @@
             <div class="absolute top-3 left-3 bg-white/95 text-gray-900 text-xs font-bold px-3 py-1 rounded-full shadow-sm">
               {{ hotel.starRating }}/5 <i class="pi pi-star-fill text-[#febb02] ml-1"></i>
             </div>
+            <div class="absolute top-3 right-3 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm" *ngIf="hotel.distanceKm != null">
+              <i class="pi pi-map-marker"></i> {{ hotel.distanceKm | number:'1.1-1' }} km
+            </div>
           </div>
 
           <div class="p-5 flex flex-col flex-grow">
             <div class="mb-3">
               <h3 class="text-xl font-bold text-gray-900 leading-tight mb-2">{{ hotel.name }}</h3>
               <div class="text-sm text-gray-600">
-                <i class="pi pi-map-marker text-xs mr-1"></i> {{ hotel.address }}, {{ hotel.city }}
+                <i class="pi pi-map-marker text-xs mr-1"></i> {{ hotel.addressLine }}
               </div>
             </div>
 
-            <p class="text-sm text-gray-500 mb-4 line-clamp-2">{{ hotel.description || 'Khach san chua cap nhat mo ta.' }}</p>
+            <p class="text-sm text-gray-500 mb-4 line-clamp-2" *ngIf="hotel.distanceText">{{ hotel.distanceText }}</p>
 
             <div class="grid grid-cols-2 gap-3 text-sm mb-4">
               <div class="bg-gray-50 rounded-md px-3 py-2">
-                <span class="block text-gray-500 text-xs">Gi&aacute; t&#7915;</span>
+                <span class="block text-gray-500 text-xs">Giá từ</span>
                 <strong class="text-gray-900">
-                  {{ hotel.minPrice !== null ? (hotel.minPrice | currency:'VND':'symbol':'1.0-0') : 'Dang cap nhat' }}
+                  {{ hotel.minPrice !== null ? (hotel.minPrice | currency:'VND':'symbol':'1.0-0') : 'Đang cập nhật' }}
                 </strong>
               </div>
               <div class="bg-gray-50 rounded-md px-3 py-2">
-                <span class="block text-gray-500 text-xs">S&#7913;c ch&#7913;a</span>
-                <strong class="text-gray-900">{{ hotel.maxGuests ? 'Toi da ' + hotel.maxGuests + ' khach' : 'Dang cap nhat' }}</strong>
+                <span class="block text-gray-500 text-xs">Sức chứa</span>
+                <strong class="text-gray-900">{{ hotel.maxGuests ? 'Tối đa ' + hotel.maxGuests + ' khách' : 'Đang cập nhật' }}</strong>
               </div>
             </div>
 
             <div class="mb-3 flex flex-wrap gap-2 text-xs font-semibold">
-              <span class="rounded-full bg-green-50 border border-green-100 px-3 py-1 text-green-800">
-                C&ograve;n {{ hotel.availableRoomCount || 0 }} ph&ograve;ng
-              </span>
-              <span class="rounded-full bg-blue-50 border border-blue-100 px-3 py-1 text-[#003b95]" *ngIf="hotel.minTotalPrice && hotel.nights">
-                T&#7893;ng {{ hotel.nights }} &#273;&ecirc;m t&#7915; {{ hotel.minTotalPrice | currency:'VND':'symbol':'1.0-0' }}
+              <span class="rounded-full bg-green-50 border border-green-100 px-3 py-1 text-green-800" *ngIf="hotel.availableRoomCount > 0">
+                Còn {{ hotel.availableRoomCount }} phòng
               </span>
             </div>
 
             <div class="text-xs text-gray-500 mb-4" *ngIf="hotel.roomTypeSummary">
-              H&#7841;ng ph&ograve;ng: {{ hotel.roomTypeSummary }}
+              Hạng phòng: {{ hotel.roomTypeSummary }}
             </div>
 
             <button
               class="w-full bg-[#003b95] hover:bg-[#002255] text-white font-semibold py-2.5 rounded-md transition-colors mt-auto"
               [routerLink]="['/hotel', hotel.id]"
-              [queryParams]="{ checkIn: checkInDate || null, checkOut: checkOutDate || null, guests: guests || null }">
-              Xem chi ti&#7871;t v&agrave; ch&#7885;n ph&ograve;ng
+              [queryParams]="{ checkIn: searchForm.value.checkInDate, checkOut: searchForm.value.checkOutDate, guests: searchForm.value.adultCount }">
+              Xem chi tiết và chọn phòng
             </button>
           </div>
         </article>

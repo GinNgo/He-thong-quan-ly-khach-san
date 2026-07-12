@@ -21,14 +21,14 @@ public class Hotel extends AuditableEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false)
-    private String address;
+    @Column(name = "address_line", nullable = false)
+    private String addressLine;
 
-    @Column(nullable = false)
-    private String city;
+    @Column(name = "latitude")
+    private Double latitude;
 
-    @Column(nullable = false)
-    private String country;
+    @Column(name = "longitude")
+    private Double longitude;
 
     @Column(name = "star_rating")
     private Integer starRating;
@@ -37,7 +37,43 @@ public class Hotel extends AuditableEntity {
     private String mainImage;
 
     @Column(nullable = false)
-    private String status = "ACTIVE"; // ACTIVE, INACTIVE
+    private String status = "ACTIVE"; // ACTIVE, INACTIVE, PENDING, REJECTED
+
+    @Column(name = "province_id")
+    private Long provinceId;
+
+    @Column(name = "ward_id")
+    private Long wardId;
+
+    @Column(name = "approval_status")
+    private String approvalStatus = "ACTIVE"; // ACTIVE, IMPORTED_PENDING_REVIEW, REJECTED
+
+    @Column(name = "external_provider")
+    private String externalProvider;
+
+    @Column(name = "external_id")
+    private String externalId;
+
+    @Column(name = "property_type")
+    private String propertyType = "HOTEL"; // HOTEL, HOMESTAY, RESORT, VILLA, APARTMENT...
+
+    @Column(name = "phone")
+    private String phone;
+
+    @Column(name = "website")
+    private String website;
+
+    @Column(name = "average_rating")
+    private Double averageRating;
+
+    @Column(name = "review_count")
+    private Integer reviewCount;
+
+    @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.Set<PropertyImage> images;
+
+    @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.Set<UserProperty> userProperties;
 
     public Long getId() {
         return id;
@@ -63,28 +99,28 @@ public class Hotel extends AuditableEntity {
         this.description = description;
     }
 
-    public String getAddress() {
-        return address;
+    public String getAddressLine() {
+        return addressLine;
     }
 
-    public void setAddress(String address) {
-        this.address = address;
+    public void setAddressLine(String addressLine) {
+        this.addressLine = addressLine;
     }
 
-    public String getCity() {
-        return city;
+    public Double getLatitude() {
+        return latitude;
     }
 
-    public void setCity(String city) {
-        this.city = city;
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
     }
 
-    public String getCountry() {
-        return country;
+    public Double getLongitude() {
+        return longitude;
     }
 
-    public void setCountry(String country) {
-        this.country = country;
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
     }
 
     public Integer getStarRating() {
@@ -109,5 +145,101 @@ public class Hotel extends AuditableEntity {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Long getProvinceId() {
+        return provinceId;
+    }
+
+    public void setProvinceId(Long provinceId) {
+        this.provinceId = provinceId;
+    }
+
+    public Long getWardId() {
+        return wardId;
+    }
+
+    public void setWardId(Long wardId) {
+        this.wardId = wardId;
+    }
+
+    public java.util.Set<PropertyImage> getImages() {
+        return images;
+    }
+
+    public void setImages(java.util.Set<PropertyImage> images) {
+        this.images = images;
+    }
+
+    public java.util.Set<UserProperty> getUserProperties() {
+        return userProperties;
+    }
+
+    public void setUserProperties(java.util.Set<UserProperty> userProperties) {
+        this.userProperties = userProperties;
+    }
+
+    public String getApprovalStatus() {
+        return approvalStatus;
+    }
+
+    public void setApprovalStatus(String approvalStatus) {
+        this.approvalStatus = approvalStatus;
+    }
+
+    public String getExternalProvider() {
+        return externalProvider;
+    }
+
+    public void setExternalProvider(String externalProvider) {
+        this.externalProvider = externalProvider;
+    }
+
+    public String getExternalId() {
+        return externalId;
+    }
+
+    public void setExternalId(String externalId) {
+        this.externalId = externalId;
+    }
+
+    public String getPropertyType() {
+        return propertyType;
+    }
+
+    public void setPropertyType(String propertyType) {
+        this.propertyType = propertyType;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getWebsite() {
+        return website;
+    }
+
+    public void setWebsite(String website) {
+        this.website = website;
+    }
+
+    public Double getAverageRating() {
+        return averageRating;
+    }
+
+    public void setAverageRating(Double averageRating) {
+        this.averageRating = averageRating;
+    }
+
+    public Integer getReviewCount() {
+        return reviewCount;
+    }
+
+    public void setReviewCount(Integer reviewCount) {
+        this.reviewCount = reviewCount;
     }
 }

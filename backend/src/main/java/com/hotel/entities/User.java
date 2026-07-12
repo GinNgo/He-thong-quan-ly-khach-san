@@ -46,7 +46,13 @@ public class User extends AuditableEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hotel_id")
-    private Hotel hotel;
+    private Hotel hotel; // Legacy or default property
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.Set<UserProperty> userProperties;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.Set<AccountSubscription> subscriptions;
 
     // Getters and Setters omitted for brevity but required in production
 
@@ -128,5 +134,21 @@ public class User extends AuditableEntity {
 
     public void setHotel(Hotel hotel) {
         this.hotel = hotel;
+    }
+
+    public java.util.Set<UserProperty> getUserProperties() {
+        return userProperties;
+    }
+
+    public void setUserProperties(java.util.Set<UserProperty> userProperties) {
+        this.userProperties = userProperties;
+    }
+
+    public java.util.Set<AccountSubscription> getSubscriptions() {
+        return subscriptions;
+    }
+
+    public void setSubscriptions(java.util.Set<AccountSubscription> subscriptions) {
+        this.subscriptions = subscriptions;
     }
 }

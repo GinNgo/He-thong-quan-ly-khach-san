@@ -6,12 +6,23 @@ import { environment } from '../../../environments/environment';
 export interface Hotel {
   id: number;
   name: string;
-  description: string;
-  address: string;
-  city: string;
-  country: string;
-  starRating: number;
+  addressLine: string;
   mainImage: string;
+  starRating: number;
+  latitude: number;
+  longitude: number;
+  distanceKm?: number;
+  distanceText?: string;
+  startingPrice?: number;
+  approvalStatus?: string;
+}
+
+export interface PagedResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
 }
 
 export interface RoomType {
@@ -64,18 +75,36 @@ export class ClientApiService {
   private apiUrl = environment.apiUrl;
   private hotelApiUrl = `${environment.apiUrl}/v1/hotels`;
 
-  searchHotels(city?: string, checkIn?: string, checkOut?: string, guests?: number): Observable<Hotel[]> {
+  searchHotels(paramsObj: any): Observable<PagedResponse<Hotel>> {
     let params = new HttpParams();
-    if (city) params = params.set('city', city);
-    if (checkIn) params = params.set('checkIn', checkIn);
-    if (checkOut) params = params.set('checkOut', checkOut);
-    if (guests) params = params.set('guests', guests);
+    Object.keys(paramsObj).forEach(key => {
+      if (paramsObj[key] !== null && paramsObj[key] !== undefined) {
+        params = params.set(key, String(paramsObj[key]));
+      }
+    });
 
-    return this.http.get<Hotel[]>(`${this.hotelApiUrl}/public/search`, { params });
+    return this.http.get<PagedResponse<Hotel>>(`${environment.apiUrl}/public/properties/search`, { params });
   }
 
   getHotelById(id: number): Observable<Hotel> {
     return this.http.get<Hotel>(`${this.hotelApiUrl}/public/${id}`);
+  }
+
+  getProvinces(): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.apiUrl}/public/locations/provinces`);
+  }
+
+  getAvailableRooms(hotelId: number, checkIn: string, checkOut: string, guests: number): Observable<any[]> {
+    let params = new HttpParams()
+      .set('checkIn', checkIn)
+      .set('checkOut', checkOut)
+      .set('guests', guests.toString());
+
+    return this.http.get<any[]>(`${this.apiUrl}/hotels/${hotelId}/available-rooms`, { params });
+  }
+
+  submitPropertyClaim(propertyId: number, data: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/properties/${propertyId}/claim`, data);
   }
 
   getRoomTypesByHotel(hotelId: number, checkIn?: string, checkOut?: string, guests?: number): Observable<RoomType[]> {
