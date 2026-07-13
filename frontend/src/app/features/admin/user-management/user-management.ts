@@ -4,13 +4,14 @@ import { UserService, User } from '@app/core/services/user';
 import { RoleService, Role } from '@app/core/services/role.service';
 import { ClientApiService, Hotel } from '@app/core/services/client-api.service';
 import { ActivatedRoute } from '@angular/router';
-import { ConfirmationService } from 'primeng/api';
-import { finalize } from 'rxjs/operators';
+import { ConfirmationService, MessageService } from 'primeng/api';
+import { finalize, timeout } from 'rxjs/operators';
 
 @Component({
   selector: 'app-user-management',
   standalone: true,
   imports: [SharedModule],
+  providers: [ConfirmationService, MessageService],
   templateUrl: './user-management.html',
   styleUrl: './user-management.css',
 })
@@ -19,27 +20,20 @@ export class UserManagement implements OnInit {
   roles: Role[] = [];
   hotels: Hotel[] = [];
   loading = true;
+  saving = false;
+  errorMessage = '';
   userType: 'STAFF' | 'CUSTOMER' = 'STAFF';
 
   displayDialog = false;
   userDialogMode: 'create' | 'edit' = 'create';
-  userForm: any = {
-    id: null,
-    username: '',
-    email: '',
-    password: '',
-    fullName: '',
-    phone: '',
-    status: 'ACTIVE',
-    roleIds: [],
-    hotelId: null
-  };
+  userForm: any = this.createEmptyForm();
 
   private userService = inject(UserService);
   private roleService = inject(RoleService);
   private hotelService = inject(ClientApiService);
   private route = inject(ActivatedRoute);
   private confirmationService = inject(ConfirmationService);
+  private messageService = inject(MessageService);
   private cdr = inject(ChangeDetectorRef);
 
   ngOnInit(): void {
@@ -53,19 +47,23 @@ export class UserManagement implements OnInit {
         this.loadUsers();
       }
     });
+
     this.loadRoles();
     this.loadHotels();
   }
 
   loadUsers(): void {
     this.loading = true;
+    this.errorMessage = '';
     this.users = [];
-    this.userService.getUsers()
-      .pipe(finalize(() => {
+
+    this.userService.getUsers().pipe(
+      timeout(10000),
+      finalize(() => {
         this.loading = false;
         this.cdr.detectChanges();
-      }))
-      .subscribe({
+      })
+    ).subscribe({
       next: (data) => {
         if (this.userType === 'CUSTOMER') {
           this.users = data.filter(u => u.roles && u.roles.some((r: any) => r.code === 'CUSTOMER'));
@@ -73,27 +71,44 @@ export class UserManagement implements OnInit {
           this.users = data.filter(u => !u.roles || !u.roles.some((r: any) => r.code === 'CUSTOMER'));
         }
       },
-      error: (err) => {
-        console.error('Error fetching users', err);
+      error: (error) => {
+        this.errorMessage = error?.error?.message || 'Không thể tải danh sách người dùng.';
+        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: this.errorMessage });
       }
     });
   }
 
   loadRoles(): void {
-    this.roleService.getRoles().subscribe(data => this.roles = data);
+    this.roleService.getRoles().pipe(timeout(10000)).subscribe({
+      next: (data) => {
+        this.roles = data;
+      },
+      error: (error) => {
+        const detail = error?.error?.message || 'Không thể tải danh sách vai trò.';
+        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
+      }
+    });
   }
 
   loadHotels(): void {
-    this.hotelService.searchHotels({}).subscribe((data: any) => this.hotels = data.content || []);
+    this.hotelService.searchHotels({}).pipe(timeout(10000)).subscribe({
+      next: (data: any) => {
+        this.hotels = data.content || [];
+      },
+      error: (error) => {
+        const detail = error?.error?.message || 'Không thể tải danh sách cơ sở.';
+        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
+      }
+    });
   }
 
-  openNew() {
-    this.userForm = { id: null, username: '', email: '', password: '', fullName: '', phone: '', status: 'ACTIVE', roleIds: [], hotelId: null };
+  openNew(): void {
+    this.userForm = this.createEmptyForm();
     this.userDialogMode = 'create';
     this.displayDialog = true;
   }
 
-  editUser(user: User) {
+  editUser(user: User): void {
     this.userForm = {
       id: user.id,
       username: user.username,
@@ -109,10 +124,10 @@ export class UserManagement implements OnInit {
     this.displayDialog = true;
   }
 
-  saveUser() {
+  saveUser(): void {
+    if (this.saving) return;
+
     const payload = { ...this.userForm };
-    
-    // Automatically assign CUSTOMER role if userType is CUSTOMER
     if (this.userType === 'CUSTOMER') {
       const customerRole = this.roles.find(r => r.code === 'CUSTOMER');
       if (customerRole) {
@@ -120,31 +135,49 @@ export class UserManagement implements OnInit {
       }
     }
 
-    if (this.userDialogMode === 'create') {
-      this.userService.createUser(payload).subscribe(() => {
+    const request = this.userDialogMode === 'create'
+      ? this.userService.createUser(payload)
+      : this.userService.updateUser(this.userForm.id, payload);
+
+    this.saving = true;
+    request.pipe(
+      timeout(10000),
+      finalize(() => {
+        this.saving = false;
+      })
+    ).subscribe({
+      next: () => {
         this.displayDialog = false;
+        this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã lưu người dùng.' });
         this.loadUsers();
-      });
-    } else {
-      this.userService.updateUser(this.userForm.id, payload).subscribe(() => {
-        this.displayDialog = false;
-        this.loadUsers();
-      });
-    }
+      },
+      error: (error) => {
+        const detail = error?.error?.message || 'Không thể lưu người dùng.';
+        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
+      }
+    });
   }
 
-  deleteUser(user: User) {
+  deleteUser(user: User): void {
     this.confirmationService.confirm({
       message: `Bạn có chắc muốn xóa người dùng ${user.username}?`,
       header: 'Xác nhận xóa',
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
-        this.userService.deleteUser(user.id!).subscribe({
+        this.saving = true;
+        this.userService.deleteUser(user.id!).pipe(
+          timeout(10000),
+          finalize(() => {
+            this.saving = false;
+          })
+        ).subscribe({
           next: () => {
+            this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã xóa người dùng.' });
             this.loadUsers();
           },
-          error: (err) => {
-            console.error('Error deleting user', err);
+          error: (error) => {
+            const detail = error?.error?.message || 'Không thể xóa người dùng.';
+            this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
           }
         });
       }
@@ -154,5 +187,19 @@ export class UserManagement implements OnInit {
   getRolesString(roles: any[]): string {
     if (!roles) return '';
     return roles.map(r => r.name).join(', ');
+  }
+
+  private createEmptyForm(): any {
+    return {
+      id: null,
+      username: '',
+      email: '',
+      password: '',
+      fullName: '',
+      phone: '',
+      status: 'ACTIVE',
+      roleIds: [],
+      hotelId: null
+    };
   }
 }

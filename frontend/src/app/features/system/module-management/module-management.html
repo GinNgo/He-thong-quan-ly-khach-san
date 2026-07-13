@@ -27,7 +27,7 @@
       </ng-template>
 
       <ng-template pTemplate="body" let-rowNode let-rowData="rowData">
-        <tr class="tree-table-row" [class.table-light]="selectedNode?.key === rowNode.key" (click)="selectNode(rowNode)">
+        <tr class="tree-table-row" [class.table-light]="selectedNode?.key === (rowNode.node?.key || rowNode.key)" (click)="selectNode(rowNode, rowData)">
           <td>
             <p-treeTableToggler [rowNode]="rowNode"></p-treeTableToggler>
             <i [class]="(rowData.icon || (rowData.type === 'module' ? 'pi pi-folder' : 'pi pi-file')) + ' me-2 text-muted'"></i>
@@ -40,8 +40,8 @@
           <td class="text-center">{{ rowData.sortOrder || 0 }}</td>
           <td class="text-center">
             <div class="d-flex justify-content-center gap-1">
-              <button pButton type="button" icon="pi pi-pencil" class="p-button-text p-button-sm" (click)="editNode(rowNode); $event.stopPropagation()"></button>
-              <button pButton type="button" icon="pi pi-trash" class="p-button-text p-button-danger p-button-sm" (click)="deleteNode(rowNode); $event.stopPropagation()"></button>
+              <button pButton type="button" icon="pi pi-pencil" class="p-button-text p-button-sm" aria-label="Sửa" title="Sửa" (click)="editNode(rowNode, rowData); $event.stopPropagation()"></button>
+              <button pButton type="button" icon="pi pi-trash" class="p-button-text p-button-danger p-button-sm" aria-label="Xóa" title="Xóa" (click)="deleteNode(rowData); $event.stopPropagation()"></button>
             </div>
           </td>
         </tr>

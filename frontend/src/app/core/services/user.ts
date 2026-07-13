@@ -7,6 +7,9 @@ export interface User {
   id: number;
   username: string;
   email: string;
+  fullName?: string;
+  phone?: string;
+  avatarUrl?: string;
   roles: any[];
   status: string;
   createdAt: string;
@@ -45,6 +48,12 @@ export class UserService {
 
   updateProfile(user: any): Observable<User> {
     return this.http.put<User>(`${this.apiUrl}/me`, user);
+  }
+
+  uploadAvatar(file: File): Observable<{ url: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<{ url: string }>(`${environment.apiUrl}/uploads/image`, formData);
   }
 
   changePassword(data: any): Observable<void> {

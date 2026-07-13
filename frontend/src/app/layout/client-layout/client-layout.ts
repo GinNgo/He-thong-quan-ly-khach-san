@@ -1,9 +1,12 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { AuthService } from '../../core/services/auth';
+import { LayoutStateService } from '../../core/services/layout-state.service';
 import { ChatWidgetComponent } from '../../features/client/chat-widget/chat-widget';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 @Component({
   selector: 'app-client-layout',
@@ -12,28 +15,27 @@ import { ChatWidgetComponent } from '../../features/client/chat-widget/chat-widg
   templateUrl: './client-layout.html',
   styleUrls: ['./client-layout.css']
 })
-export class ClientLayout implements OnInit {
+export class ClientLayout implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private router = inject(Router);
+  layoutState = inject(LayoutStateService);
+  private destroy$ = new Subject<void>();
 
   isLoggedIn = false;
   username = '';
   isMobileMenuOpen = false;
+  isPropertyOwner = false;
 
   ngOnInit() {
-    this.isLoggedIn = this.authService.isLoggedIn();
-    if (this.isLoggedIn) {
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        this.username = JSON.parse(userStr).username;
-      }
-    }
+    this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(state => {
+      this.isLoggedIn = state.isAuthenticated;
+      this.username = state.username;
+      this.isPropertyOwner = state.roles && state.roles.includes('PROPERTY_OWNER');
+    });
   }
 
   logout() {
     this.authService.logout();
-    this.isLoggedIn = false;
-    this.username = '';
     this.isMobileMenuOpen = false;
     this.router.navigate(['/']);
   }
@@ -44,5 +46,10 @@ export class ClientLayout implements OnInit {
 
   closeMobileMenu() {
     this.isMobileMenuOpen = false;
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

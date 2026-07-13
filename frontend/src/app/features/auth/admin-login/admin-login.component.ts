@@ -52,12 +52,11 @@ export class AdminLoginComponent implements OnInit {
     this.authService.login(this.loginObj).subscribe({
       next: (res) => {
         if (res && res.accessToken) {
-          localStorage.setItem('token', res.accessToken);
-          localStorage.setItem('user', JSON.stringify({
+          this.authService.setSession(res.accessToken, {
             username: res.username,
             roles: res.roles,
             permissions: res.permissions
-          }));
+          });
           
           if (res.username === 'admin' || res.roles.includes('SUPER_ADMIN') || res.roles.includes('ADMIN')) {
             this.router.navigate(['/admin/dashboard']);

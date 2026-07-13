@@ -5,19 +5,23 @@
     <p class="text-gray-500">Quản lý thông tin tài khoản và phân quyền cơ sở.</p>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+  <div *ngIf="user; else profileLoading" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
     
     <!-- Left Column: User Summary & Facility -->
     <div class="lg:col-span-1 space-y-6">
       
       <!-- User Summary Card -->
       <div class="glass-card rounded-2xl p-6 shadow-sm flex flex-col items-center text-center">
-        <div class="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center border-4 border-white shadow-md mb-4 overflow-hidden relative group cursor-pointer">
-          <img [src]="'https://ui-avatars.com/api/?name=' + user.username + '&background=random&size=128'" alt="Avatar" class="w-full h-full object-cover">
+        <label for="admin-avatar-upload" class="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center border-4 border-white shadow-md mb-2 overflow-hidden relative group cursor-pointer" title="Thay ảnh đại diện">
+          <img [src]="avatarSrc" alt="Ảnh đại diện" class="w-full h-full object-cover">
           <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             <span class="material-symbols-outlined text-white">photo_camera</span>
           </div>
-        </div>
+        </label>
+        <input #avatarInput id="admin-avatar-upload" type="file" class="hidden" accept="image/png,image/jpeg,image/webp" (change)="onAvatarSelected($event)" [disabled]="uploadingAvatar">
+        <button type="button" class="text-xs font-semibold text-blue-600 hover:text-blue-800 mb-3 disabled:opacity-60" (click)="avatarInput.click()" [disabled]="uploadingAvatar">
+          {{ uploadingAvatar ? 'Đang tải ảnh...' : 'Thay ảnh đại diện' }}
+        </button>
         <h2 class="text-xl font-bold text-gray-900">{{ user.fullName }}</h2>
         <p class="text-sm text-gray-500 mb-4">{{ user.email }}</p>
         
@@ -95,8 +99,8 @@
             </div>
 
             <div class="pt-6 mt-6 border-t border-gray-100 flex justify-end gap-3">
-              <button type="button" class="px-6 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Hủy thay đổi</button>
-              <button type="button" (click)="saveProfile()" class="px-6 py-2.5 text-sm font-semibold text-white bg-[#1a56db] rounded-lg hover:bg-blue-700 shadow-sm transition-colors">Lưu thông tin</button>
+              <button type="button" (click)="cancelChanges()" [disabled]="saving" class="px-6 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-60">Hủy thay đổi</button>
+              <button type="button" (click)="saveProfile()" [disabled]="saving || uploadingAvatar" class="px-6 py-2.5 text-sm font-semibold text-white bg-[#1a56db] rounded-lg hover:bg-blue-700 shadow-sm transition-colors disabled:opacity-60">{{ saving ? 'Đang lưu...' : 'Lưu thông tin' }}</button>
             </div>
           </form>
         </div>
@@ -120,6 +124,10 @@
 
     </div>
   </div>
+
+  <ng-template #profileLoading>
+    <div class="py-16 text-center text-gray-500">Đang tải thông tin hồ sơ...</div>
+  </ng-template>
 </div>
 
 <!-- Change Password Dialog -->

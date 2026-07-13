@@ -16,7 +16,7 @@ import { FunctionCode, ActionCode } from './core/services/permission.service';
 
 import { ClientLayout } from './layout/client-layout/client-layout';
 import { HomeComponent } from './features/client/home/home';
-import { RoomSearchComponent } from './features/client/room-search/room-search.component';
+import { PropertySearchPageComponent } from './features/property-search/pages/property-search-page/property-search-page';
 import { RegisterComponent } from './features/auth/register/register.component';
 import { AdminLoginComponent } from './features/auth/admin-login/admin-login.component';
 import { AdminProfileComponent } from './features/admin/profile/profile.component';
@@ -31,7 +31,7 @@ export const routes: Routes = [
     component: ClientLayout,
     children: [
       { path: '', component: HomeComponent, pathMatch: 'full' },
-      { path: 'search', component: RoomSearchComponent },
+      { path: 'search', component: PropertySearchPageComponent },
       { path: 'hotel/:id', component: HotelDetailComponent },
       { path: 'booking/:roomTypeId', component: BookingCheckoutComponent, canActivate: [clientAuthGuard] },
       { path: 'profile', component: ProfileComponent, canActivate: [clientAuthGuard] }

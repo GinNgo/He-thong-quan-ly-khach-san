@@ -10,6 +10,8 @@ import { NotificationService, AppNotification } from '../../core/services/notifi
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { Subscription } from 'rxjs';
+import { UserService } from '../../core/services/user';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-admin-layout',
@@ -26,6 +28,7 @@ export class AdminLayout implements OnInit, OnDestroy {
   globalSearchTerm = '';
   pageTitle = 'Bảng điều khiển';
   currentUserName = 'Admin';
+  currentAvatarUrl = '';
   currentRoleLabel = 'Quản trị hệ thống';
 
   quickLinks = [
@@ -42,9 +45,12 @@ export class AdminLayout implements OnInit, OnDestroy {
   notifications: AppNotification[] = [];
   unreadCount = 0;
   private notifSub?: Subscription;
+  private authSub?: Subscription;
+  private apiOrigin = environment.apiUrl.replace(/\/api\/?$/, '');
 
   constructor(
-    private authService: AuthService, 
+    private authService: AuthService,
+    private userService: UserService,
     private router: Router,
     private notificationService: NotificationService,
     private messageService: MessageService
@@ -60,6 +66,16 @@ export class AdminLayout implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    this.authSub = this.authService.currentUser$.subscribe((authState) => {
+      this.currentUserName = authState.fullName || authState.username || 'Admin';
+      this.currentAvatarUrl = authState.avatarUrl;
+      this.currentRoleLabel = this.toRoleLabel(authState.roles[0]);
+    });
+
+    this.userService.getProfile().subscribe({
+      next: (profile) => this.authService.updateCurrentUser(profile)
+    });
+
     this.notificationService.connect();
     
     // Tải thông báo cũ
@@ -87,7 +103,20 @@ export class AdminLayout implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.notifSub?.unsubscribe();
+    this.authSub?.unsubscribe();
     this.notificationService.disconnect();
+  }
+
+  get currentAvatarSrc(): string {
+    if (this.currentAvatarUrl.startsWith('http') || this.currentAvatarUrl.startsWith('data:')) {
+      return this.currentAvatarUrl;
+    }
+    if (this.currentAvatarUrl.startsWith('/')) {
+      return `${this.apiOrigin}${this.currentAvatarUrl}`;
+    }
+
+    const name = encodeURIComponent(this.currentUserName || 'Admin');
+    return `https://ui-avatars.com/api/?name=${name}&background=1a56db&color=fff`;
   }
 
   updateUnreadCount() {

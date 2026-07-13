@@ -59,7 +59,7 @@ export class ReservationCreate implements OnInit {
       this.reservation.checkOutDate = checkOut.toISOString().split('T')[0];
 
       this.reservationService.createReservation(this.reservation as Reservation).subscribe(() => {
-        this.messageService.add({ severity: 'success', summary: 'Thanh cong', detail: 'Tao dat phong thanh cong' });
+        this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Tạo đặt phòng thành công' });
         this.router.navigate(['/admin/reservations']);
       });
     } else {

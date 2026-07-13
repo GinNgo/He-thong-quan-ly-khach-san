@@ -13,9 +13,17 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
+import java.util.Map;
 
 @Service
 public class FileUploadService {
+
+    private static final long MAX_IMAGE_SIZE = 5L * 1024 * 1024;
+    private static final Map<String, String> IMAGE_EXTENSIONS = Map.of(
+            "image/jpeg", ".jpg",
+            "image/png", ".png",
+            "image/webp", ".webp"
+    );
 
     @Value("${upload.path:uploads}")
     private String uploadPath;
@@ -37,13 +45,14 @@ public class FileUploadService {
             if (file.isEmpty()) {
                 throw new RuntimeException("Failed to store empty file.");
             }
-            
-            String originalFilename = file.getOriginalFilename();
-            String extension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            if (file.getSize() > MAX_IMAGE_SIZE) {
+                throw new RuntimeException("Image size must not exceed 5 MB.");
             }
-            
+            String extension = IMAGE_EXTENSIONS.get(file.getContentType());
+            if (extension == null) {
+                throw new RuntimeException("Only JPG, PNG and WEBP images are supported.");
+            }
+
             String newFilename = UUID.randomUUID().toString() + extension;
             Path destinationFile = this.rootLocation.resolve(Paths.get(newFilename)).normalize().toAbsolutePath();
             

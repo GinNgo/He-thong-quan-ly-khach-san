@@ -63,7 +63,7 @@
           <div class="position-relative">
             <button type="button" class="btn p-0 d-flex align-items-center text-decoration-none text-dark border-0 bg-transparent" (click)="toggleUserMenu()">
               <div class="rounded-circle bg-light d-flex align-items-center justify-content-center me-2 overflow-hidden" style="width: 40px; height: 40px;">
-                <img [src]="'https://ui-avatars.com/api/?name=' + currentUserName + '&background=1a56db&color=fff'" alt="Avatar" class="w-100 h-100 object-fit-cover">
+                <img [src]="currentAvatarSrc" alt="Ảnh đại diện" class="w-100 h-100 object-fit-cover">
               </div>
               <div class="d-none d-lg-block text-start">
                 <p class="mb-0 fw-semibold text-dark" style="font-size: 0.875rem;">{{ currentUserName }}</p>

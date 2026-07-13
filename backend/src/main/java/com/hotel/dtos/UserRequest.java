@@ -8,6 +8,7 @@ public class UserRequest {
     private String password;
     private String fullName;
     private String phone;
+    private String avatarUrl;
     private String status;
     private Set<Long> roleIds;
     private Long hotelId;
@@ -26,6 +27,9 @@ public class UserRequest {
 
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
+
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

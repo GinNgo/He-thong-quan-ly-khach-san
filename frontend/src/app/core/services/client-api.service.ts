@@ -130,4 +130,35 @@ export class ClientApiService {
   getProfile(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/users/me`);
   }
+
+  searchLocations(keyword: string, type: string = 'WARD', page: number = 0, size: number = 20): Observable<PagedResponse<any>> {
+    let params = new HttpParams()
+      .set('keyword', keyword)
+      .set('type', type)
+      .set('page', page.toString())
+      .set('size', size.toString());
+    return this.http.get<PagedResponse<any>>(`${environment.apiUrl}/public/locations/search`, { params });
+  }
+
+  searchAutocomplete(keyword: string): Observable<{ locations: any[], properties: any[] }> {
+    const locationsReq = this.searchLocations(keyword, 'WARD', 0, 5);
+    const propertiesReq = this.searchHotels({ keyword, pageNumber: 1, pageSize: 5 });
+    
+    return new Observable(observer => {
+      import('rxjs').then(({ forkJoin, of }) => {
+        import('rxjs/operators').then(({ catchError }) => {
+          forkJoin({
+            locations: locationsReq.pipe(catchError(() => of({ content: [] }))),
+            properties: propertiesReq.pipe(catchError(() => of({ content: [] })))
+          }).subscribe(res => {
+            observer.next({
+              locations: res.locations.content || [],
+              properties: res.properties.content || []
+            });
+            observer.complete();
+          });
+        });
+      });
+    });
+  }
 }

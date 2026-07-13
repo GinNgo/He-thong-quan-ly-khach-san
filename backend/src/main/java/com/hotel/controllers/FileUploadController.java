@@ -37,6 +37,8 @@ public class FileUploadController {
             contentType = MediaType.IMAGE_PNG_VALUE;
         } else if (filename.toLowerCase().endsWith(".jpg") || filename.toLowerCase().endsWith(".jpeg")) {
             contentType = MediaType.IMAGE_JPEG_VALUE;
+        } else if (filename.toLowerCase().endsWith(".webp")) {
+            contentType = "image/webp";
         }
 
         return ResponseEntity.ok()

@@ -46,4 +46,22 @@ public class SubscriptionFeatureService {
         
         return featureLimits;
     }
+
+    @Transactional(readOnly = true)
+    public boolean hasFeature(Long userId, String featureCode) {
+        Map<String, Integer> limits = getActiveFeaturesForUser(userId);
+        return limits.containsKey(featureCode) && (limits.get(featureCode) == -1 || limits.get(featureCode) > 0);
+    }
+
+    @Transactional(readOnly = true)
+    public void checkFeatureLimit(Long userId, String featureCode, int currentUsage) {
+        Map<String, Integer> limits = getActiveFeaturesForUser(userId);
+        if (!limits.containsKey(featureCode)) {
+            throw new RuntimeException("Bạn cần nâng cấp gói dịch vụ để sử dụng tính năng này.");
+        }
+        Integer limit = limits.get(featureCode);
+        if (limit != -1 && currentUsage >= limit) {
+            throw new RuntimeException("Bạn đã đạt giới hạn của gói dịch vụ. Vui lòng nâng cấp để tiếp tục.");
+        }
+    }
 }

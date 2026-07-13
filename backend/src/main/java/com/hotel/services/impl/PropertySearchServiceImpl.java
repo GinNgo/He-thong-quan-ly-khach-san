@@ -31,8 +31,9 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         StringBuilder countSql = new StringBuilder();
         Map<String, Object> params = new HashMap<>();
 
-        String selectClause = "SELECT h.id, h.name, h.address_line, h.main_image, h.star_rating, h.latitude, h.longitude";
-        String countClause = "SELECT COUNT(h.id)";
+        // Add additional fields to SELECT
+        String selectClause = "SELECT h.id, h.name, h.address, h.main_image, h.star_rating, h.latitude, h.longitude, h.property_type, h.average_rating, h.review_count";
+        String countClause = "SELECT COUNT(DISTINCT h.id)";
         
         boolean hasLocation = request.getLatitude() != null && request.getLongitude() != null;
         if (hasLocation) {
@@ -45,17 +46,16 @@ public class PropertySearchServiceImpl implements PropertySearchService {
             selectClause += ", NULL AS distance";
         }
 
-        String fromClause = " FROM hotels h";
-        
-        // Add joins if checking availability
-        if (request.getCheckInDate() != null && request.getCheckOutDate() != null) {
-            // Simplified logic: we assume there is a room availability check, but for now we just make sure hotel is active
-            // A full implementation would join rooms and reservations
-            // fromClause += " JOIN rooms r ON r.hotel_id = h.id ... ";
-        }
+        // Subquery for minimum price and max price handling
+        selectClause += ", (SELECT MIN(rt.base_price) FROM room_types rt WHERE rt.hotel_id = h.id) AS min_price";
+        selectClause += ", (SELECT SUM(r.id) FROM room_types rt JOIN rooms r ON r.room_type_id = rt.id WHERE rt.hotel_id = h.id) AS available_rooms"; // Dummy aggregate for now
+        selectClause += ", (SELECT TOP 1 rt.name_vi FROM room_types rt WHERE rt.hotel_id = h.id ORDER BY rt.base_price ASC) AS lowest_room_name";
+        selectClause += ", (SELECT TOP 1 rt.max_guest FROM room_types rt WHERE rt.hotel_id = h.id ORDER BY rt.base_price ASC) AS lowest_room_max_guests";
 
+        String fromClause = " FROM hotels h";
         String whereClause = " WHERE h.status = 'ACTIVE'";
 
+        // Location Filters
         if (request.getProvinceId() != null) {
             whereClause += " AND h.province_id = :provinceId";
             params.put("provinceId", request.getProvinceId());
@@ -67,7 +67,7 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         }
 
         if (request.getKeyword() != null && !request.getKeyword().isBlank()) {
-            whereClause += " AND (LOWER(h.name) LIKE LOWER(:keyword) OR LOWER(h.address_line) LIKE LOWER(:keyword))";
+            whereClause += " AND (LOWER(h.name) LIKE LOWER(:keyword) OR LOWER(h.address) LIKE LOWER(:keyword))";
             params.put("keyword", "%" + request.getKeyword() + "%");
         }
 
@@ -77,11 +77,43 @@ public class PropertySearchServiceImpl implements PropertySearchService {
             params.put("radiusKm", request.getRadiusKm());
         }
 
+        // Phase 2 Filters
+        if (request.getPropertyTypes() != null && !request.getPropertyTypes().isEmpty()) {
+            whereClause += " AND h.property_type IN :propertyTypes";
+            params.put("propertyTypes", request.getPropertyTypes());
+        }
+
+        if (request.getStarRatings() != null && !request.getStarRatings().isEmpty()) {
+            whereClause += " AND h.star_rating IN :starRatings";
+            params.put("starRatings", request.getStarRatings());
+        }
+
+        if (request.getMinReviewScore() != null) {
+            whereClause += " AND h.average_rating >= :minReviewScore";
+            params.put("minReviewScore", request.getMinReviewScore());
+        }
+
+        if (request.getMinPrice() != null) {
+            whereClause += " AND (SELECT MIN(rt.base_price) FROM room_types rt WHERE rt.hotel_id = h.id) >= :minPrice";
+            params.put("minPrice", request.getMinPrice());
+        }
+
+        if (request.getMaxPrice() != null) {
+            whereClause += " AND (SELECT MIN(rt.base_price) FROM room_types rt WHERE rt.hotel_id = h.id) <= :maxPrice";
+            params.put("maxPrice", request.getMaxPrice());
+        }
+
         String orderByClause = "";
         if ("NEAREST".equalsIgnoreCase(request.getSortBy()) && hasLocation) {
             orderByClause = " ORDER BY distance ASC";
+        } else if ("PRICE_ASC".equalsIgnoreCase(request.getSortBy())) {
+            orderByClause = " ORDER BY min_price ASC";
+        } else if ("PRICE_DESC".equalsIgnoreCase(request.getSortBy())) {
+            orderByClause = " ORDER BY min_price DESC";
+        } else if ("RATING".equalsIgnoreCase(request.getSortBy())) {
+            orderByClause = " ORDER BY h.average_rating DESC, h.review_count DESC";
         } else {
-            orderByClause = " ORDER BY h.id DESC"; // Default
+            orderByClause = " ORDER BY h.id DESC"; // Default POPULAR
         }
 
         sql.append(selectClause).append(fromClause).append(whereClause).append(orderByClause);
@@ -111,17 +143,48 @@ public class PropertySearchServiceImpl implements PropertySearchService {
             dto.setId(((Number) row[0]).longValue());
             dto.setName((String) row[1]);
             dto.setAddressLine((String) row[2]);
-            dto.setMainImage((String) row[3]);
+            dto.setThumbnailUrl((String) row[3]);
             dto.setStarRating(row[4] != null ? ((Number) row[4]).intValue() : null);
             dto.setLatitude(row[5] != null ? ((Number) row[5]).doubleValue() : null);
             dto.setLongitude(row[6] != null ? ((Number) row[6]).doubleValue() : null);
+            dto.setPropertyType((String) row[7]);
+            dto.setReviewScore(row[8] != null ? ((Number) row[8]).doubleValue() : null);
+            dto.setReviewCount(row[9] != null ? ((Number) row[9]).intValue() : 0);
             
-            if (row[7] != null) {
-                double dist = ((Number) row[7]).doubleValue();
+            if (row[10] != null) {
+                double dist = ((Number) row[10]).doubleValue();
                 dto.setDistanceKm(dist);
-                dto.setDistanceText(String.format("Cách vị trí tìm kiếm %.1f km", dist));
+                dto.setDistanceText(String.format("Cách trung tâm %.1f km", dist));
             }
+
+            BigDecimal nightlyPrice = row[11] != null ? new BigDecimal(row[11].toString()) : null;
+            dto.setStartingPrice(nightlyPrice != null ? nightlyPrice.doubleValue() : null);
             
+            if (nightlyPrice != null) {
+                PropertySearchResponseDTO.PricingSummary pricing = new PropertySearchResponseDTO.PricingSummary();
+                pricing.setNightlyPrice(nightlyPrice);
+                pricing.setDiscountedPrice(nightlyPrice); // placeholder
+                pricing.setNumberOfNights(1);
+                pricing.setTotalAmount(nightlyPrice);
+                pricing.setCurrency("VND");
+                dto.setPricing(pricing);
+            }
+
+            PropertySearchResponseDTO.RoomTypeSummary lowestRoom = new PropertySearchResponseDTO.RoomTypeSummary();
+            lowestRoom.setName((String) row[13]);
+            lowestRoom.setMaxGuests(row[14] != null ? ((Number) row[14]).intValue() : 2);
+            dto.setLowestRoomType(lowestRoom);
+            
+            dto.setAvailableRoomCount(row[12] != null ? ((Number) row[12]).intValue() : 0);
+
+            // Mocked attributes since they are not in DB schema yet
+            dto.setFreeCancellation(true);
+            dto.setPayAtProperty(false);
+            dto.setBreakfastIncluded(false);
+            dto.setBadges(new ArrayList<>());
+            dto.setGalleryUrls(new ArrayList<>());
+            dto.setAmenities(new ArrayList<>());
+
             content.add(dto);
         }
 

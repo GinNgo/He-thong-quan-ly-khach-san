@@ -11,6 +11,7 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { DialogModule } from 'primeng/dialog';
 import { AuthService } from '../../../core/services/auth';
+import { finalize, timeout } from 'rxjs/operators';
 
 @Component({
   selector: 'app-property-management',
@@ -22,55 +23,70 @@ import { AuthService } from '../../../core/services/auth';
 export class PropertyManagementComponent implements OnInit {
   private propertyService = inject(PropertyService);
   private messageService = inject(MessageService);
-  private confirmationService = inject(ConfirmationService);
   public authService = inject(AuthService);
 
   properties: Hotel[] = [];
-  loading: boolean = false;
-  isAdmin: boolean = false;
+  loading = false;
+  isAdmin = false;
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.isAdmin = this.authService.getRoles().includes('SUPER_ADMIN');
     this.loadProperties();
   }
 
-  loadProperties() {
+  loadProperties(): void {
     this.loading = true;
-    this.propertyService.getAllProperties().subscribe({
+    this.propertyService.getAllProperties().pipe(
+      timeout(10000),
+      finalize(() => {
+        this.loading = false;
+      })
+    ).subscribe({
       next: (data) => {
         this.properties = data;
-        this.loading = false;
       },
-      error: (err) => {
-        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải danh sách cơ sở' });
-        this.loading = false;
+      error: (error) => {
+        const detail = error?.error?.message || 'Không thể tải danh sách cơ sở.';
+        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
       }
     });
   }
 
-  submit(property: Hotel) {
-    this.propertyService.submitProperty(property.id).subscribe({
-      next: (data) => {
-        this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã gửi yêu cầu duyệt' });
+  submit(property: Hotel): void {
+    this.propertyService.submitProperty(property.id).pipe(timeout(10000)).subscribe({
+      next: () => {
+        this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã gửi yêu cầu duyệt.' });
         this.loadProperties();
+      },
+      error: (error) => {
+        const detail = error?.error?.message || 'Không thể gửi yêu cầu duyệt.';
+        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
       }
     });
   }
 
-  approve(property: Hotel) {
-    this.propertyService.approveProperty(property.id).subscribe({
-      next: (data) => {
-        this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã duyệt cơ sở' });
+  approve(property: Hotel): void {
+    this.propertyService.approveProperty(property.id).pipe(timeout(10000)).subscribe({
+      next: () => {
+        this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã duyệt cơ sở.' });
         this.loadProperties();
+      },
+      error: (error) => {
+        const detail = error?.error?.message || 'Không thể duyệt cơ sở.';
+        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
       }
     });
   }
 
-  reject(property: Hotel) {
-    this.propertyService.rejectProperty(property.id).subscribe({
-      next: (data) => {
-        this.messageService.add({ severity: 'warn', summary: 'Thành công', detail: 'Đã từ chối cơ sở' });
+  reject(property: Hotel): void {
+    this.propertyService.rejectProperty(property.id).pipe(timeout(10000)).subscribe({
+      next: () => {
+        this.messageService.add({ severity: 'warn', summary: 'Thành công', detail: 'Đã từ chối cơ sở.' });
         this.loadProperties();
+      },
+      error: (error) => {
+        const detail = error?.error?.message || 'Không thể từ chối cơ sở.';
+        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
       }
     });
   }

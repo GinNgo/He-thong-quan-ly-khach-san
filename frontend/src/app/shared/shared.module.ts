@@ -17,6 +17,7 @@ import { PasswordModule } from 'primeng/password';
 import { CardModule } from 'primeng/card';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { TextareaModule } from 'primeng/textarea';
 
 @NgModule({
   imports: [
@@ -37,7 +38,8 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
     PasswordModule,
     CardModule,
     ToastModule,
-    ConfirmDialogModule
+    ConfirmDialogModule,
+    TextareaModule
   ],
   exports: [
     CommonModule,
@@ -57,7 +59,8 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
     PasswordModule,
     CardModule,
     ToastModule,
-    ConfirmDialogModule
+    ConfirmDialogModule,
+    TextareaModule
   ]
 })
 export class SharedModule { }

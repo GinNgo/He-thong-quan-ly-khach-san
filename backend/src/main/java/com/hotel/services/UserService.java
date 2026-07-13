@@ -67,7 +67,16 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         user.setFullName(userDetails.getFullName());
+        if (userDetails.getEmail() != null && !userDetails.getEmail().equalsIgnoreCase(user.getEmail())) {
+            if (userRepository.existsByEmail(userDetails.getEmail())) {
+                throw new RuntimeException("Email is already taken!");
+            }
+            user.setEmail(userDetails.getEmail());
+        }
         user.setPhone(userDetails.getPhone());
+        if (userDetails.getAvatarUrl() != null) {
+            user.setAvatarUrl(userDetails.getAvatarUrl());
+        }
         user.setStatus(userDetails.getStatus());
 
         if (userDetails.getPasswordHash() != null && !userDetails.getPasswordHash().isEmpty()) {
@@ -89,6 +98,21 @@ public class UserService {
 
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
+    }
+
+    public UserDto updateProfile(Long id, String fullName, String email, String phone, String avatarUrl) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (email != null && !email.equalsIgnoreCase(user.getEmail()) && userRepository.existsByEmail(email)) {
+            throw new RuntimeException("Email is already taken!");
+        }
+
+        user.setFullName(fullName);
+        user.setEmail(email);
+        user.setPhone(phone);
+        user.setAvatarUrl(avatarUrl);
+        return convertToDto(userRepository.save(user));
     }
 
     public void changePassword(Long id, String currentPassword, String newPassword) {
@@ -136,5 +160,56 @@ public class UserService {
         }
 
         return dto;
+    }
+
+    @Autowired
+    private com.hotel.repositories.AccountSubscriptionRepository accountSubscriptionRepository;
+
+    @Autowired
+    private com.hotel.repositories.UserPropertyRepository userPropertyRepository;
+
+    @Autowired
+    private SubscriptionFeatureService subscriptionFeatureService;
+
+    public Optional<UserDto> getUserWithSaaSContext(Long id) {
+        Optional<User> optionalUser = userRepository.findById(id);
+        if (optionalUser.isEmpty()) return Optional.empty();
+
+        User user = optionalUser.get();
+        UserDto dto = convertToDto(user);
+
+        // Fetch assigned properties
+        List<com.hotel.entities.UserProperty> userProperties = userPropertyRepository.findByUserId(id);
+        List<UserDto.HotelSummary> properties = userProperties.stream().map(up -> {
+            UserDto.HotelSummary hs = new UserDto.HotelSummary();
+            hs.setId(up.getHotel().getId());
+            hs.setName(up.getHotel().getName());
+            return hs;
+        }).collect(Collectors.toList());
+        dto.setAssignedProperties(properties);
+
+        // Fetch active subscription
+        List<com.hotel.entities.AccountSubscription> subs = accountSubscriptionRepository.findByUserIdAndStatus(id, "ACTIVE");
+        if (!subs.isEmpty()) {
+            com.hotel.entities.AccountSubscription activeSub = subs.get(0);
+            dto.setPlan(activeSub.getPlan().getCode());
+            dto.setSubscriptionStatus(activeSub.getStatus());
+            dto.setStartAt(activeSub.getStartAt());
+            dto.setEndAt(activeSub.getEndAt());
+            dto.setIsLifetime(activeSub.getIsLifetime());
+
+            // Get limits
+            java.util.Map<String, Integer> limits = subscriptionFeatureService.getActiveFeaturesForUser(id);
+            dto.setLimits(limits);
+
+            // Current usage mock (this would normally calculate from DB based on User limit)
+            java.util.Map<String, Integer> currentUsage = new java.util.HashMap<>();
+            currentUsage.put("MAX_PROPERTIES", userProperties.size());
+            dto.setCurrentUsage(currentUsage);
+        } else {
+            dto.setSubscriptionStatus("FREE");
+        }
+
+        return Optional.of(dto);
     }
 }

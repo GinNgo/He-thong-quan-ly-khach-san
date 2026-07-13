@@ -1,5 +1,6 @@
 <!-- Header / Navbar -->
-<header class="liquid-glass sticky top-0 z-50 shadow-sm transition-all duration-300">
+<header class="liquid-glass sticky top-0 z-50 shadow-sm transition-all duration-300"
+        [style.visibility]="layoutState.hideMainHeader() ? 'hidden' : 'visible'">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex justify-between items-center h-20">
       
@@ -41,18 +42,41 @@
         </ng-container>
 
         <ng-container *ngIf="isLoggedIn">
-          <div class="flex items-center gap-3 relative group cursor-pointer" routerLink="/profile">
-            <div class="flex flex-col text-right">
-              <span class="text-sm font-bold text-gray-900 group-hover:text-accent transition-colors">Hi, {{ username }}</span>
-              <div class="flex gap-2 justify-end mt-0.5">
-                <a routerLink="/profile" class="text-xs text-gray-600 hover:text-accent transition-colors cursor-pointer no-underline font-medium">Trang cá nhân</a>
-                <span class="text-xs text-gray-300">|</span>
-                <a (click)="logout(); $event.stopPropagation()" class="text-xs text-destructive hover:opacity-80 transition-opacity cursor-pointer no-underline font-medium">Đăng xuất</a>
+          <div class="relative group cursor-pointer">
+            <div class="flex items-center gap-3">
+              <div class="flex flex-col text-right">
+                <span class="text-sm font-bold text-gray-900 group-hover:text-accent transition-colors">Hi, {{ username }}</span>
               </div>
+              <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center border-2 border-white shadow-sm overflow-hidden group-hover:border-accent transition-colors">
+                <img [src]="'https://ui-avatars.com/api/?name=' + username + '&background=random'" *ngIf="username" alt="Avatar" class="w-full h-full object-cover">
+                <span class="material-symbols-outlined text-primary" *ngIf="!username">person</span>
+              </div>
+              <span class="material-symbols-outlined text-gray-400 group-hover:text-accent transition-colors">arrow_drop_down</span>
             </div>
-            <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center border-2 border-white shadow-sm overflow-hidden group-hover:border-accent transition-colors">
-              <img [src]="'https://ui-avatars.com/api/?name=' + username + '&background=random'" *ngIf="username" alt="Avatar" class="w-full h-full object-cover">
-              <span class="material-symbols-outlined text-primary" *ngIf="!username">person</span>
+
+            <!-- Dropdown Menu -->
+            <div class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-right group-hover:translate-y-0 translate-y-2">
+              <div class="p-2 flex flex-col gap-1">
+                <a routerLink="/profile" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 hover:text-accent transition-colors no-underline font-medium">
+                  <i class="pi pi-user text-gray-400"></i> Trang cá nhân
+                </a>
+                <a routerLink="/profile" fragment="bookings" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 hover:text-accent transition-colors no-underline font-medium">
+                  <i class="pi pi-calendar text-gray-400"></i> Lịch sử đặt phòng
+                </a>
+                <a routerLink="/profile" fragment="invoices" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 hover:text-accent transition-colors no-underline font-medium">
+                  <i class="pi pi-file text-gray-400"></i> Hóa đơn của tôi
+                </a>
+                <a *ngIf="isPropertyOwner" routerLink="/admin" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 hover:text-accent transition-colors no-underline font-medium border-t border-gray-100 mt-1 pt-2">
+                  <i class="pi pi-building text-gray-400"></i> Quản lý cơ sở
+                </a>
+                <div class="h-px bg-gray-100 my-1"></div>
+                <a routerLink="/profile" fragment="security" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 hover:text-accent transition-colors no-underline font-medium">
+                  <i class="pi pi-lock text-gray-400"></i> Đổi mật khẩu
+                </a>
+                <a (click)="logout(); $event.stopPropagation()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 transition-colors no-underline font-medium cursor-pointer">
+                  <i class="pi pi-sign-out text-red-500"></i> Đăng xuất
+                </a>
+              </div>
             </div>
           </div>
         </ng-container>
@@ -80,7 +104,7 @@
 </main>
 
 <!-- Footer -->
-<footer class="bg-primary text-gray-300 py-12">
+<footer class="bg-gray-900 text-gray-300 py-12">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
     <div class="flex items-center gap-2">
       <div class="flex flex-col leading-tight text-white">
@@ -89,10 +113,10 @@
       </div>
     </div>
     <div class="flex space-x-6">
-      <a href="#" class="text-sm text-gray-300 hover:text-accent transition-colors duration-300 no-underline">Privacy Policy</a>
-      <a href="#" class="text-sm text-gray-300 hover:text-accent transition-colors duration-300 no-underline">Terms of Service</a>
+      <a href="#" class="text-sm text-gray-400 hover:text-white transition-colors duration-300 no-underline">Privacy Policy</a>
+      <a href="#" class="text-sm text-gray-400 hover:text-white transition-colors duration-300 no-underline">Terms of Service</a>
     </div>
-    <p class="text-sm text-gray-400 m-0">&copy; 2026 LuxeStay Hotels. All rights reserved.</p>
+    <p class="text-sm text-gray-500 m-0">&copy; 2026 LuxeStay Hotels. All rights reserved.</p>
   </div>
 </footer>
 

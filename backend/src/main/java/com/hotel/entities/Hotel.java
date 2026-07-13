@@ -18,8 +18,26 @@ public class Hotel extends AuditableEntity {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "name_vi")
+    private String nameVi;
+
+    @Column(name = "name_en")
+    private String nameEn;
+
+    @Column(unique = true)
+    private String code;
+
+    @Column(unique = true)
+    private String slug;
+
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "description_vi", columnDefinition = "NVARCHAR(MAX)")
+    private String descriptionVi;
+
+    @Column(name = "description_en", columnDefinition = "NVARCHAR(MAX)")
+    private String descriptionEn;
 
     @Column(name = "address", nullable = false)
     private String addressLine;
@@ -37,7 +55,10 @@ public class Hotel extends AuditableEntity {
     private String mainImage;
 
     @Column(nullable = false)
-    private String status = "ACTIVE"; // ACTIVE, INACTIVE, PENDING, REJECTED
+    private String status = "DRAFT"; // DRAFT, PENDING_APPROVAL, ACTIVE, INACTIVE, SUSPENDED, CLOSED (Operation Status)
+
+    @Column(name = "operation_status")
+    private String operationStatus = "ACTIVE"; 
 
     @Column(name = "province_id")
     private Long provinceId;
@@ -46,7 +67,7 @@ public class Hotel extends AuditableEntity {
     private Long wardId;
 
     @Column(name = "approval_status")
-    private String approvalStatus = "ACTIVE"; // ACTIVE, IMPORTED_PENDING_REVIEW, REJECTED
+    private String approvalStatus = "DRAFT"; // DRAFT, PENDING_APPROVAL, APPROVED, REJECTED
 
     @Column(name = "external_provider")
     private String externalProvider;
@@ -55,13 +76,28 @@ public class Hotel extends AuditableEntity {
     private String externalId;
 
     @Column(name = "property_type")
-    private String propertyType = "HOTEL"; // HOTEL, HOMESTAY, RESORT, VILLA, APARTMENT...
+    private String propertyType = "HOTEL"; 
 
     @Column(name = "phone")
     private String phone;
 
+    @Column(name = "email")
+    private String email;
+
     @Column(name = "website")
     private String website;
+
+    @Column(name = "min_price")
+    private Double minPrice;
+
+    @Column(name = "max_price")
+    private Double maxPrice;
+
+    @Column(name = "checkin_time")
+    private String checkinTime;
+
+    @Column(name = "checkout_time")
+    private String checkoutTime;
 
     @Column(name = "average_rating")
     private Double averageRating;

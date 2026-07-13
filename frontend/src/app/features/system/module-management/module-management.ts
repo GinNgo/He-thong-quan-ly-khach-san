@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
-import { finalize } from 'rxjs/operators';
+import { finalize, timeout } from 'rxjs/operators';
 import { ConfirmationService, MessageService, TreeNode } from 'primeng/api';
 import { TreeTableModule } from 'primeng/treetable';
 import { DialogModule } from 'primeng/dialog';
@@ -27,6 +27,17 @@ interface AppModule {
   id: number;
   code: string;
   name: string;
+}
+
+interface PageRowData {
+  id: number;
+  code: string;
+  name: string;
+  type: PageEntityType;
+  moduleId?: number;
+  url?: string;
+  icon?: string;
+  sortOrder?: number;
 }
 
 type PageFormMode = 'add' | 'edit';
@@ -86,7 +97,7 @@ export class ModuleManagementComponent implements OnInit {
       modules: this.http.get<AppModule[]>(`${this.apiUrl}/modules`),
       functions: this.http.get<AppFunction[]>(`${this.apiUrl}/functions`)
     })
-      .pipe(finalize(() => {
+      .pipe(timeout(10000), finalize(() => {
         this.loading = false;
         this.cdr.detectChanges();
       }))
@@ -98,8 +109,8 @@ export class ModuleManagementComponent implements OnInit {
       });
   }
 
-  selectNode(rowNode: TreeNode) {
-    this.selectedNode = rowNode;
+  selectNode(rowNode: TreeNode, rowData: PageRowData) {
+    this.selectedNode = this.normalizeTreeNode(rowNode, rowData);
   }
 
   openAddModule() {
@@ -112,7 +123,7 @@ export class ModuleManagementComponent implements OnInit {
   openAddFunction() {
     const moduleId = this.getSelectedModuleId();
     if (!moduleId) {
-      this.messageService.add({ severity: 'warn', summary: 'Chua chon nhom', detail: 'Hay chon mot nhom menu truoc khi them trang.' });
+      this.messageService.add({ severity: 'warn', summary: 'Chưa chọn nhóm', detail: 'Hãy chọn một nhóm menu trước khi thêm trang.' });
       return;
     }
 
@@ -125,9 +136,8 @@ export class ModuleManagementComponent implements OnInit {
     this.displayDialog = true;
   }
 
-  editNode(rowNode: TreeNode) {
-    const data = rowNode.data;
-    this.selectedNode = rowNode;
+  editNode(rowNode: TreeNode, data: PageRowData) {
+    this.selectedNode = this.normalizeTreeNode(rowNode, data);
     this.dialogMode = 'edit';
     this.entityType = data.type;
     this.formData = {
@@ -142,22 +152,21 @@ export class ModuleManagementComponent implements OnInit {
     this.displayDialog = true;
   }
 
-  deleteNode(rowNode: TreeNode) {
-    const data = rowNode.data;
+  deleteNode(data: PageRowData) {
     const endpoint = data.type === 'module' ? 'modules' : 'functions';
-    const label = data.type === 'module' ? 'nhom menu' : 'trang';
+    const label = data.type === 'module' ? 'nhóm menu' : 'trang';
 
     this.confirmationService.confirm({
-      message: `Ban co chac muon xoa ${label} "${data.name}"?`,
-      header: 'Xac nhan xoa',
+      message: `Bạn có chắc muốn xóa ${label} "${data.name}"?`,
+      header: 'Xác nhận xóa',
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
-        this.http.delete(`${this.apiUrl}/${endpoint}/${data.id}`).subscribe({
+        this.http.delete(`${this.apiUrl}/${endpoint}/${data.id}`).pipe(timeout(10000)).subscribe({
           next: () => {
-            this.messageService.add({ severity: 'success', summary: 'Thanh cong', detail: 'Da xoa du lieu.' });
+            this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã xóa dữ liệu.' });
             this.loadData();
           },
-          error: () => this.messageService.add({ severity: 'error', summary: 'Loi', detail: 'Khong the xoa du lieu nay.' })
+          error: () => this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể xóa dữ liệu này.' })
         });
       }
     });
@@ -168,7 +177,7 @@ export class ModuleManagementComponent implements OnInit {
     this.formData.name = this.formData.name.trim();
 
     if (!this.formData.code || !this.formData.name) {
-      this.messageService.add({ severity: 'error', summary: 'Thieu thong tin', detail: 'Vui long nhap ma va ten.' });
+      this.messageService.add({ severity: 'error', summary: 'Thiếu thông tin', detail: 'Vui lòng nhập mã và tên.' });
       return;
     }
 
@@ -188,19 +197,19 @@ export class ModuleManagementComponent implements OnInit {
       ? this.http.post(`${this.apiUrl}/${endpoint}`, payload)
       : this.http.put(`${this.apiUrl}/${endpoint}/${this.formData.id}`, payload);
 
-    request.subscribe({
+    request.pipe(timeout(10000)).subscribe({
       next: () => {
         this.displayDialog = false;
-        this.messageService.add({ severity: 'success', summary: 'Thanh cong', detail: 'Da luu cau hinh trang.' });
+        this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã lưu cấu hình trang.' });
         this.loadData();
       },
-      error: () => this.messageService.add({ severity: 'error', summary: 'Loi', detail: 'Khong the luu cau hinh trang.' })
+      error: () => this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể lưu cấu hình trang.' })
     });
   }
 
   get dialogTitle(): string {
-    const action = this.dialogMode === 'add' ? 'Them' : 'Cap nhat';
-    const target = this.entityType === 'module' ? 'nhom menu' : 'trang';
+    const action = this.dialogMode === 'add' ? 'Thêm' : 'Cập nhật';
+    const target = this.entityType === 'module' ? 'nhóm menu' : 'trang';
     return `${action} ${target}`;
   }
 
@@ -208,6 +217,12 @@ export class ModuleManagementComponent implements OnInit {
     if (!this.selectedNode) return null;
     const data = this.selectedNode.data;
     return data.type === 'module' ? data.id : data.moduleId;
+  }
+
+  private normalizeTreeNode(rowNode: TreeNode, rowData: PageRowData): TreeNode {
+    const wrappedNode = (rowNode as TreeNode & { node?: TreeNode }).node;
+    const node = wrappedNode || rowNode;
+    return { ...node, data: rowData };
   }
 
   private createEmptyForm() {
@@ -243,6 +258,6 @@ export class ModuleManagementComponent implements OnInit {
 
   private handleLoadError() {
     this.loading = false;
-    this.messageService.add({ severity: 'error', summary: 'Loi', detail: 'Khong the tai danh sach trang.' });
+    this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải danh sách trang.' });
   }
 }

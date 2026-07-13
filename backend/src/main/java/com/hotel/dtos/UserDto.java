@@ -74,4 +74,38 @@ public class UserDto {
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
     }
+
+    // SaaS Context Fields
+    private String plan;
+    private String subscriptionStatus;
+    private LocalDateTime startAt;
+    private LocalDateTime endAt;
+    private Boolean isLifetime;
+    private java.util.Map<String, Integer> limits;
+    private java.util.Map<String, Integer> currentUsage;
+    private List<HotelSummary> assignedProperties;
+
+    public String getPlan() { return plan; }
+    public void setPlan(String plan) { this.plan = plan; }
+
+    public String getSubscriptionStatus() { return subscriptionStatus; }
+    public void setSubscriptionStatus(String subscriptionStatus) { this.subscriptionStatus = subscriptionStatus; }
+
+    public LocalDateTime getStartAt() { return startAt; }
+    public void setStartAt(LocalDateTime startAt) { this.startAt = startAt; }
+
+    public LocalDateTime getEndAt() { return endAt; }
+    public void setEndAt(LocalDateTime endAt) { this.endAt = endAt; }
+
+    public Boolean getIsLifetime() { return isLifetime; }
+    public void setIsLifetime(Boolean isLifetime) { this.isLifetime = isLifetime; }
+
+    public java.util.Map<String, Integer> getLimits() { return limits; }
+    public void setLimits(java.util.Map<String, Integer> limits) { this.limits = limits; }
+
+    public java.util.Map<String, Integer> getCurrentUsage() { return currentUsage; }
+    public void setCurrentUsage(java.util.Map<String, Integer> currentUsage) { this.currentUsage = currentUsage; }
+
+    public List<HotelSummary> getAssignedProperties() { return assignedProperties; }
+    public void setAssignedProperties(List<HotelSummary> assignedProperties) { this.assignedProperties = assignedProperties; }
 }

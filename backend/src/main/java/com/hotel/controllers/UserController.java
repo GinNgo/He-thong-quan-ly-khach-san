@@ -70,22 +70,20 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<UserDto> getCurrentUser() {
         com.hotel.security.CustomUserDetails userDetails = (com.hotel.security.CustomUserDetails) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Optional<UserDto> user = userService.getUserById(userDetails.getUserId());
+        Optional<UserDto> user = userService.getUserWithSaaSContext(userDetails.getUserId());
         return user.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PutMapping("/me")
     public ResponseEntity<UserDto> updateCurrentUser(@RequestBody com.hotel.dtos.UserRequest request) {
         com.hotel.security.CustomUserDetails userDetails = (com.hotel.security.CustomUserDetails) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        User user = new User();
-        user.setFullName(request.getFullName());
-        user.setPhone(request.getPhone());
-        
-        // Ensure status and roles are not modified by the user themselves through this endpoint
-        User existingUser = userService.getEntityById(userDetails.getUserId()).orElseThrow();
-        user.setStatus(existingUser.getStatus());
-        
-        return ResponseEntity.ok(userService.updateUser(userDetails.getUserId(), user, null, userDetails.getHotelId()));
+        return ResponseEntity.ok(userService.updateProfile(
+                userDetails.getUserId(),
+                request.getFullName(),
+                request.getEmail(),
+                request.getPhone(),
+                request.getAvatarUrl()
+        ));
     }
 
     @PutMapping("/me/password")

@@ -21,6 +21,9 @@
     <div class="col-lg-3">
       <p-card styleClass="shadow-sm border-0 rounded-4 h-100" [style]="{'border-radius': '12px'}">
         <h5 class="fw-bold mb-3 border-bottom pb-2">Vai tr&ograve;</h5>
+        <div *ngIf="loadingRoles" class="text-center py-4 text-muted">
+          <i class="pi pi-spin pi-spinner me-2"></i> Đang tải vai trò...
+        </div>
         <div class="list-group list-group-flush">
           <button
             type="button"
@@ -39,9 +42,14 @@
 
     <div class="col-lg-9">
       <p-card styleClass="shadow-sm border-0 rounded-4" [style]="{'border-radius': '12px'}">
+        <div *ngIf="errorMessage" class="alert alert-danger d-flex align-items-center justify-content-between gap-3 mb-3">
+          <span><i class="pi pi-exclamation-circle me-2"></i>{{ errorMessage }}</span>
+          <button pButton label="Thử lại" icon="pi pi-refresh" class="p-button-sm p-button-danger p-button-outlined" (click)="selectedRole ? loadPermissions() : loadRoles()" [disabled]="loading || loadingRoles"></button>
+        </div>
+
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h5 class="fw-bold mb-0 text-primary-hotel" *ngIf="selectedRole">
-            Ma tr&#7853;n quy&#7873;n: {{ selectedRole.name }}
+            Ma trận quyền: {{ selectedRole.name }}
           </h5>
           <h5 class="fw-bold mb-0 text-muted" *ngIf="!selectedRole">
             Vui l&ograve;ng ch&#7885;n vai tr&ograve;

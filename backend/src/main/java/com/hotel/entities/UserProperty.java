@@ -13,7 +13,7 @@ import jakarta.persistence.*;
 @Setter
 @Entity
 @Table(name = "user_properties")
-public class UserProperty {
+public class UserProperty extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,5 +28,16 @@ public class UserProperty {
     private Hotel hotel;
 
     @Column(name = "relationship_type", nullable = false)
-    private String relationshipType; // OWNER, STAFF
+    private String relationshipType; // OWNER, ADMIN, RECEPTIONIST, STAFF
+
+    @Column(name = "is_primary_owner")
+    private Boolean isPrimaryOwner = false;
+
+    private String status = "ACTIVE"; // ACTIVE, INACTIVE, SUSPENDED
+
+    @Column(name = "start_date")
+    private java.time.LocalDateTime startDate;
+
+    @Column(name = "end_date")
+    private java.time.LocalDateTime endDate;
 }
