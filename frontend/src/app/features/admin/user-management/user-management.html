@@ -1,113 +1,124 @@
-<div class="m-3">
-  <div class="d-flex justify-content-between align-items-center mb-4">
+<p-toast></p-toast>
+<p-confirmDialog></p-confirmDialog>
+
+<div class="card border-0 shadow-sm m-3">
+  <div class="card-header bg-white border-0 py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
     <div>
-      <h2 class="mb-1 text-dark fw-bold">
-        <i class="pi {{ userType === 'CUSTOMER' ? 'pi-id-card' : 'pi-users' }} me-2" style="color: var(--hotel-gold);"></i>
+      <h5 class="mb-1 fw-bold text-primary">
+        <i class="pi {{ userType === 'CUSTOMER' ? 'pi-id-card' : 'pi-users' }} me-2"></i>
         {{ userType === 'CUSTOMER' ? 'Quản lý Khách hàng' : 'Quản lý Nhân sự' }}
-      </h2>
-      <p class="text-muted mb-0">Quản lý tài khoản, phân quyền và trạng thái</p>
+      </h5>
+      <div class="text-muted small">Quản lý tài khoản, phân quyền và trạng thái.</div>
     </div>
-    <button pButton [label]="userType === 'CUSTOMER' ? 'Thêm khách hàng' : 'Thêm nhân sự'" [icon]="userType === 'CUSTOMER' ? 'pi pi-user-plus' : 'pi pi-user-plus'" class="btn btn-primary-hotel" (click)="openNew()"></button>
+    <div class="d-flex flex-wrap gap-2">
+      <button pButton label="Tải lại" icon="pi pi-refresh" class="p-button-sm p-button-outlined p-button-secondary" (click)="loadUsers()" [disabled]="loading || saving"></button>
+      <button pButton [label]="userType === 'CUSTOMER' ? 'Thêm khách hàng' : 'Thêm nhân sự'" icon="pi pi-user-plus" class="p-button-sm p-button-primary" (click)="openNew()" [disabled]="loading || saving"></button>
+    </div>
   </div>
 
-  <p-card styleClass="shadow-sm border-0 rounded-4" [style]="{'border-radius': '12px'}">
-    <p-table 
-      [value]="users" 
-      [paginator]="true" 
-      [rows]="10" 
+  <div *ngIf="errorMessage" class="alert alert-danger m-3 d-flex align-items-center justify-content-between gap-3">
+    <span><i class="pi pi-exclamation-circle me-2"></i>{{ errorMessage }}</span>
+    <button pButton label="Thử lại" icon="pi pi-refresh" class="p-button-sm p-button-danger p-button-outlined" (click)="loadUsers()" [disabled]="loading"></button>
+  </div>
+
+  <div class="card-body p-0">
+    <p-table
+      [value]="users"
+      [paginator]="true"
+      [rows]="10"
       [loading]="loading"
-      [rowHover]="true" 
+      [rowHover]="true"
       responsiveLayout="scroll"
-      styleClass="p-datatable-striped p-datatable-sm border-top"
+      styleClass="p-datatable-sm"
     >
       <ng-template pTemplate="header">
         <tr>
-          <th pSortableColumn="id" class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">ID <p-sortIcon field="id"></p-sortIcon></th>
-          <th pSortableColumn="username" class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">Tài khoản <p-sortIcon field="username"></p-sortIcon></th>
-          <th pSortableColumn="email" class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">Email <p-sortIcon field="email"></p-sortIcon></th>
-          <th *ngIf="userType === 'STAFF'" class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">Vai trò</th>
-          <th pSortableColumn="status" class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">Trạng thái <p-sortIcon field="status"></p-sortIcon></th>
-          <th class="text-muted fw-bold border-bottom text-center" style="font-size: 0.85rem; text-transform: uppercase;">Thao tác</th>
+          <th pSortableColumn="id" style="width: 10%">ID <p-sortIcon field="id"></p-sortIcon></th>
+          <th pSortableColumn="username" style="width: 20%">Tài khoản <p-sortIcon field="username"></p-sortIcon></th>
+          <th pSortableColumn="email" style="width: 20%">Email <p-sortIcon field="email"></p-sortIcon></th>
+          <th *ngIf="userType === 'STAFF'" style="width: 20%">Vai trò</th>
+          <th pSortableColumn="status" style="width: 15%">Trạng thái <p-sortIcon field="status"></p-sortIcon></th>
+          <th style="width: 15%" class="text-center">Thao tác</th>
         </tr>
       </ng-template>
+
       <ng-template pTemplate="body" let-user>
-        <tr>
+        <tr class="tree-table-row">
           <td class="text-muted fw-bold">#{{ user.id }}</td>
           <td class="text-dark fw-bold">{{ user.username }}</td>
           <td class="text-muted">{{ user.email }}</td>
           <td *ngIf="userType === 'STAFF'">
-            <span class="badge rounded-pill bg-light text-dark border me-1" *ngFor="let role of user.roles" style="font-size: 0.8rem;">
+            <span class="badge bg-light text-dark border me-1" *ngFor="let role of user.roles" style="font-size: 0.8rem;">
               {{ role.name }}
             </span>
           </td>
           <td>
-            <span class="badge rounded-pill badge-status" 
+            <span class="badge"
                   [ngClass]="{
-                    'status-available': user.status === 'ACTIVE', 
-                    'status-maintenance': user.status === 'INACTIVE'
+                    'bg-success': user.status === 'ACTIVE',
+                    'bg-secondary': user.status === 'INACTIVE'
                   }">
-              {{ user.status }}
+              {{ user.status === 'ACTIVE' ? 'Hoạt động' : 'Đã khóa' }}
             </span>
           </td>
           <td class="text-center">
-            <div class="d-flex gap-2 justify-content-center">
-              <button pButton icon="pi pi-pencil" class="p-button-text p-button-secondary p-button-sm" (click)="editUser(user)"></button>
-              <button pButton icon="pi pi-trash" class="p-button-text p-button-danger p-button-sm" (click)="deleteUser(user)"></button>
+            <div class="d-flex justify-content-center gap-1">
+              <button pButton icon="pi pi-pencil" class="p-button-text p-button-secondary p-button-sm" title="Sửa" (click)="editUser(user)" [disabled]="saving"></button>
+              <button pButton icon="pi pi-trash" class="p-button-text p-button-danger p-button-sm" title="Xóa" (click)="deleteUser(user)" [disabled]="saving"></button>
             </div>
           </td>
         </tr>
       </ng-template>
+
       <ng-template pTemplate="emptymessage">
         <tr>
           <td [attr.colspan]="userType === 'STAFF' ? 6 : 5" class="text-center p-4 text-muted">Không tìm thấy dữ liệu người dùng.</td>
         </tr>
       </ng-template>
     </p-table>
-  </p-card>
-
-  <p-dialog [(visible)]="displayDialog" [style]="{width: '750px'}" [header]="(userDialogMode === 'create' ? 'Thêm ' : 'Cập nhật ') + (userType === 'CUSTOMER' ? 'Khách hàng' : 'Nhân sự')" [modal]="true" styleClass="p-fluid">
-    <ng-template pTemplate="content">
-      <div class="row pt-2">
-        <div class="col-12 col-md-6 mb-4 d-flex flex-column gap-2">
-          <label for="username" class="fw-bold mb-0">Tên tài khoản (Username) <span class="text-danger">*</span></label>
-          <input type="text" pInputText id="username" [(ngModel)]="userForm.username" [disabled]="userDialogMode === 'edit'" required autofocus />
-        </div>
-        <div class="col-12 col-md-6 mb-4 d-flex flex-column gap-2">
-          <label for="email" class="fw-bold mb-0">Email <span class="text-danger">*</span></label>
-          <input type="email" pInputText id="email" [(ngModel)]="userForm.email" [disabled]="userDialogMode === 'edit'" required />
-        </div>
-        <div class="col-12 col-md-6 mb-4 d-flex flex-column gap-2">
-          <label for="password" class="fw-bold mb-0">Mật khẩu <span *ngIf="userDialogMode === 'create'" class="text-danger">*</span></label>
-          <input type="password" pInputText id="password" [(ngModel)]="userForm.password" [placeholder]="userDialogMode === 'edit' ? 'Để trống nếu không đổi' : ''" />
-        </div>
-        <div class="col-12 col-md-6 mb-4 d-flex flex-column gap-2">
-          <label for="fullName" class="fw-bold mb-0">Họ và Tên</label>
-          <input type="text" pInputText id="fullName" [(ngModel)]="userForm.fullName" />
-        </div>
-        <div class="col-12 col-md-6 mb-4 d-flex flex-column gap-2">
-          <label for="phone" class="fw-bold mb-0">Số điện thoại</label>
-          <input type="text" pInputText id="phone" [(ngModel)]="userForm.phone" />
-        </div>
-        <div class="col-12 col-md-6 mb-4 d-flex flex-column gap-2">
-          <label for="status" class="fw-bold mb-0">Trạng thái</label>
-          <p-select [options]="[{label: 'Hoạt động (ACTIVE)', value: 'ACTIVE'}, {label: 'Khóa (INACTIVE)', value: 'INACTIVE'}]" [(ngModel)]="userForm.status" appendTo="body" styleClass="w-100"></p-select>
-        </div>
-        <ng-container *ngIf="userType === 'STAFF'">
-          <div class="col-12 col-md-6 mb-4 d-flex flex-column gap-2">
-            <label for="roles" class="fw-bold mb-0">Vai trò (Roles)</label>
-            <p-multiSelect [options]="roles" [(ngModel)]="userForm.roleIds" optionLabel="name" optionValue="id" defaultLabel="Chọn vai trò" display="chip" appendTo="body" styleClass="w-100"></p-multiSelect>
-          </div>
-          <div class="col-12 col-md-6 mb-4 d-flex flex-column gap-2">
-            <label for="hotel" class="fw-bold mb-0">Cơ sở (Khách sạn quản lý)</label>
-            <p-select [options]="hotels" [(ngModel)]="userForm.hotelId" optionLabel="name" optionValue="id" [showClear]="true" placeholder="Chọn cơ sở" appendTo="body" styleClass="w-100"></p-select>
-          </div>
-        </ng-container>
-      </div>
-    </ng-template>
-
-    <ng-template pTemplate="footer">
-      <button pButton label="Hủy" icon="pi pi-times" class="p-button-text" (click)="displayDialog = false"></button>
-      <button pButton label="Lưu" icon="pi pi-check" class="p-button-primary" (click)="saveUser()"></button>
-    </ng-template>
-  </p-dialog>
+  </div>
 </div>
+
+<p-dialog [(visible)]="displayDialog" [modal]="true" [style]="{width: '750px'}" [header]="(userDialogMode === 'create' ? 'Thêm ' : 'Cập nhật ') + (userType === 'CUSTOMER' ? 'Khách hàng' : 'Nhân sự')" [draggable]="false" [resizable]="false" appendTo="body">
+  <div class="row pt-2">
+    <div class="col-12 col-md-6 mb-3 field">
+      <label class="fw-bold mb-1">Tên tài khoản <span class="text-danger">*</span></label>
+      <input type="text" pInputText [(ngModel)]="userForm.username" class="w-100" [disabled]="userDialogMode === 'edit' || saving" required autofocus />
+    </div>
+    <div class="col-12 col-md-6 mb-3 field">
+      <label class="fw-bold mb-1">Email <span class="text-danger">*</span></label>
+      <input type="email" pInputText [(ngModel)]="userForm.email" class="w-100" [disabled]="userDialogMode === 'edit' || saving" required />
+    </div>
+    <div class="col-12 col-md-6 mb-3 field">
+      <label class="fw-bold mb-1">Mật khẩu <span *ngIf="userDialogMode === 'create'" class="text-danger">*</span></label>
+      <input type="password" pInputText [(ngModel)]="userForm.password" class="w-100" [placeholder]="userDialogMode === 'edit' ? 'Để trống nếu không đổi' : ''" [disabled]="saving" />
+    </div>
+    <div class="col-12 col-md-6 mb-3 field">
+      <label class="fw-bold mb-1">Họ và tên</label>
+      <input type="text" pInputText [(ngModel)]="userForm.fullName" class="w-100" [disabled]="saving" />
+    </div>
+    <div class="col-12 col-md-6 mb-3 field">
+      <label class="fw-bold mb-1">Số điện thoại</label>
+      <input type="text" pInputText [(ngModel)]="userForm.phone" class="w-100" [disabled]="saving" />
+    </div>
+    <div class="col-12 col-md-6 mb-3 field">
+      <label class="fw-bold mb-1">Trạng thái</label>
+      <p-select [options]="[{label: 'Hoạt động (ACTIVE)', value: 'ACTIVE'}, {label: 'Khóa (INACTIVE)', value: 'INACTIVE'}]" [(ngModel)]="userForm.status" appendTo="body" styleClass="w-100" [disabled]="saving"></p-select>
+    </div>
+    <ng-container *ngIf="userType === 'STAFF'">
+      <div class="col-12 col-md-6 mb-3 field">
+        <label class="fw-bold mb-1">Vai trò (Roles)</label>
+        <p-multiSelect [options]="roles" [(ngModel)]="userForm.roleIds" optionLabel="name" optionValue="id" defaultLabel="Chọn vai trò" display="chip" appendTo="body" styleClass="w-100" [disabled]="saving"></p-multiSelect>
+      </div>
+      <div class="col-12 col-md-6 mb-3 field">
+        <label class="fw-bold mb-1">Cơ sở lưu trú</label>
+        <p-select [options]="hotels" [(ngModel)]="userForm.hotelId" optionLabel="name" optionValue="id" [showClear]="true" placeholder="Chọn cơ sở quản lý" appendTo="body" styleClass="w-100" [disabled]="saving"></p-select>
+      </div>
+    </ng-container>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button pButton label="Hủy" icon="pi pi-times" class="p-button-text" (click)="displayDialog = false" [disabled]="saving"></button>
+    <button pButton [label]="saving ? 'Đang lưu...' : 'Lưu'" [icon]="saving ? 'pi pi-spin pi-spinner' : 'pi pi-check'" class="p-button-primary" (click)="saveUser()" [disabled]="saving"></button>
+  </ng-template>
+</p-dialog>
