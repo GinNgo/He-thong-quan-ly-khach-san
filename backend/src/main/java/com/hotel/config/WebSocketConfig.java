@@ -12,10 +12,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // Hỗ trợ gửi thông báo tới các client đang lắng nghe trên /topic/...
-        config.enableSimpleBroker("/topic");
-        // Các message từ client gửi lên sẽ bắt đầu bằng /app/... (nếu cần)
+        // Hỗ trợ gửi thông báo tới các client đang lắng nghe trên /topic/... hoặc /user/...
+        config.enableSimpleBroker("/topic", "/user");
+        // Các message từ client gửi lên sẽ bắt đầu bằng /app/...
         config.setApplicationDestinationPrefixes("/app");
+        // Tiền tố dùng để gửi tin nhắn đến user cụ thể
+        config.setUserDestinationPrefix("/user");
     }
 
     @Override

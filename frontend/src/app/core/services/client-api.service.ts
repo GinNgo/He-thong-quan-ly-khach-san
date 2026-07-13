@@ -15,6 +15,9 @@ export interface Hotel {
   distanceText?: string;
   startingPrice?: number;
   approvalStatus?: string;
+  city?: string;
+  country?: string;
+  description?: string;
 }
 
 export interface PagedResponse<T> {
@@ -122,5 +125,9 @@ export class ClientApiService {
 
   getMyBookings(): Observable<ReservationSummary[]> {
     return this.http.get<ReservationSummary[]>(`${this.apiUrl}/reservations/my-bookings`);
+  }
+
+  getProfile(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/users/me`);
   }
 }

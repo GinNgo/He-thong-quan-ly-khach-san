@@ -19,6 +19,7 @@ export interface Payment {
 export class PaymentService {
   private apiUrl = `${environment.apiUrl}/payments`;
 
+
   constructor(private http: HttpClient) {}
 
   getPaymentsByReservation(reservationId: number): Observable<Payment[]> {
@@ -27,5 +28,9 @@ export class PaymentService {
 
   processPayment(payment: Payment): Observable<Payment> {
     return this.http.post<Payment>(this.apiUrl, payment);
+  }
+
+  createPaymentUrl(reservationId: number, method: string, amount: number): Observable<{url: string}> {
+    return this.http.get<{url: string}>(`${this.apiUrl}/create-url?reservationId=${reservationId}&method=${method}&amount=${amount}`);
   }
 }

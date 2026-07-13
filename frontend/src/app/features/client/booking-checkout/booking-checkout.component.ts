@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ClientApiService, ReservationRequest } from '../../../core/services/client-api.service';
+import { PaymentService } from '../../../core/services/payment.service';
 
 @Component({
   selector: 'app-booking-checkout',
@@ -15,6 +16,7 @@ export class BookingCheckoutComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private clientApi = inject(ClientApiService);
+  private paymentService = inject(PaymentService);
 
   roomTypeId: number = 0;
   
@@ -66,9 +68,25 @@ export class BookingCheckoutComponent implements OnInit {
     this.isSubmitting = true;
     this.clientApi.bookRoom(this.bookingData).subscribe({
       next: (res) => {
-        this.isSubmitting = false;
-        this.bookingSuccess = true;
         this.reservationDetails = res;
+        
+        if (this.bookingData.paymentMethod !== 'PAY_AT_HOTEL') {
+          // Redirect to Mock Payment Simulator
+          this.paymentService.createPaymentUrl(res.id, this.bookingData.paymentMethod, res.totalAmount).subscribe({
+            next: (paymentResponse) => {
+              window.location.href = paymentResponse.url;
+            },
+            error: (err) => {
+              console.error('Lỗi khi tạo URL thanh toán', err);
+              this.isSubmitting = false;
+              this.errorMessage = 'Không thể kết nối đến cổng thanh toán.';
+            }
+          });
+        } else {
+          // Pay at hotel: finish immediately
+          this.isSubmitting = false;
+          this.bookingSuccess = true;
+        }
       },
       error: (err) => {
         console.error('Error submitting booking', err);

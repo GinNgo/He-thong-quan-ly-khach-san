@@ -17,5 +17,6 @@ public enum FunctionCode {
     INVOICE,
     REPORT,
     AI_CHAT,
-    CUSTOMER
+    CUSTOMER,
+    CHAT
 }

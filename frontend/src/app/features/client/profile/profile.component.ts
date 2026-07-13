@@ -66,20 +66,28 @@ export class ProfileComponent implements OnInit {
   ngOnInit() {
     const authState = this.authService.getAuthState();
     if (authState.isAuthenticated) {
-      this.user = {
-        fullName: authState.username,
-        email: authState.username,
-        phone: '+84 901 234 567',
-        dob: '1995-08-15',
-        address: 'Quận 1, TP. Hồ Chí Minh'
-      };
+      this.clientApi.getProfile().subscribe({
+        next: (profile) => {
+          this.user = profile;
+          this.membership.points = profile.points || 0;
+        },
+        error: (err) => {
+          this.user = {
+            fullName: authState.username,
+            email: authState.username,
+            phone: '+84 901 234 567',
+            dob: '1995-08-15',
+            address: 'Quận 1, TP. Hồ Chí Minh'
+          };
+        }
+      });
     } else {
       this.user = {
-        fullName: 'Lina Isan',
-        email: 'lina@example.com',
-        phone: '+84 901 234 567',
-        dob: '1995-08-15',
-        address: 'Quận 1, TP. Hồ Chí Minh'
+        fullName: 'Khách',
+        email: 'guest@example.com',
+        phone: '',
+        dob: '',
+        address: ''
       };
     }
 

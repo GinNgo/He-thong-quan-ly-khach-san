@@ -84,7 +84,7 @@ export class UserManagement implements OnInit {
   }
 
   loadHotels(): void {
-    this.hotelService.searchHotels().subscribe(data => this.hotels = data);
+    this.hotelService.searchHotels({}).subscribe((data: any) => this.hotels = data.content || []);
   }
 
   openNew() {

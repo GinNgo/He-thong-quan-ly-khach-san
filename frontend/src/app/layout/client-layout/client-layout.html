@@ -1,5 +1,5 @@
 <!-- Header / Navbar -->
-<header class="bg-white sticky top-0 z-50 border-b border-gray-100 shadow-sm">
+<header class="liquid-glass sticky top-0 z-50 shadow-sm transition-all duration-300">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex justify-between items-center h-20">
       
@@ -20,11 +20,11 @@
 
       <!-- Navigation -->
       <nav class="hidden md:flex space-x-8">
-        <a routerLink="/" fragment="rooms" class="text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors no-underline">Phòng nghỉ</a>
-        <a routerLink="/" fragment="services" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors no-underline">Dịch vụ</a>
-        <a routerLink="/" fragment="offers" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors no-underline">Ưu đãi</a>
-        <a routerLink="/search" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors no-underline">Tìm khách sạn</a>
-        <a routerLink="/" fragment="reviews" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors no-underline">Đánh giá</a>
+        <a routerLink="/" fragment="rooms" class="text-sm font-semibold text-gray-900 hover:text-accent transition-colors duration-300 no-underline">Phòng nghỉ</a>
+        <a routerLink="/" fragment="services" class="text-sm font-medium text-gray-700 hover:text-accent transition-colors duration-300 no-underline">Dịch vụ</a>
+        <a routerLink="/" fragment="offers" class="text-sm font-medium text-gray-700 hover:text-accent transition-colors duration-300 no-underline">Ưu đãi</a>
+        <a routerLink="/search" class="text-sm font-medium text-gray-700 hover:text-accent transition-colors duration-300 no-underline">Tìm khách sạn</a>
+        <a routerLink="/" fragment="reviews" class="text-sm font-medium text-gray-700 hover:text-accent transition-colors duration-300 no-underline">Đánh giá</a>
       </nav>
 
       <!-- Actions -->
@@ -35,7 +35,7 @@
         </div>
         
         <ng-container *ngIf="!isLoggedIn">
-          <a routerLink="/login" class="bg-[#1a56db] text-white px-6 py-2.5 rounded-md text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm shadow-blue-500/30 no-underline">
+          <a routerLink="/login" class="bg-accent text-white px-6 py-2.5 rounded-md text-sm font-semibold hover:-translate-y-1 hover:shadow-xl transition-all duration-300 no-underline">
             Đăng nhập/Đăng ký
           </a>
         </ng-container>
@@ -43,16 +43,16 @@
         <ng-container *ngIf="isLoggedIn">
           <div class="flex items-center gap-3 relative group cursor-pointer" routerLink="/profile">
             <div class="flex flex-col text-right">
-              <span class="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition-colors">Hi, {{ username }}</span>
+              <span class="text-sm font-bold text-gray-900 group-hover:text-accent transition-colors">Hi, {{ username }}</span>
               <div class="flex gap-2 justify-end mt-0.5">
-                <a routerLink="/profile" class="text-xs text-gray-500 hover:text-blue-600 transition-colors cursor-pointer no-underline font-medium">Trang cá nhân</a>
+                <a routerLink="/profile" class="text-xs text-gray-600 hover:text-accent transition-colors cursor-pointer no-underline font-medium">Trang cá nhân</a>
                 <span class="text-xs text-gray-300">|</span>
-                <a (click)="logout(); $event.stopPropagation()" class="text-xs text-red-500 hover:text-red-700 transition-colors cursor-pointer no-underline font-medium">Đăng xuất</a>
+                <a (click)="logout(); $event.stopPropagation()" class="text-xs text-destructive hover:opacity-80 transition-opacity cursor-pointer no-underline font-medium">Đăng xuất</a>
               </div>
             </div>
-            <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center border-2 border-white shadow-sm overflow-hidden group-hover:border-blue-200 transition-colors">
+            <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center border-2 border-white shadow-sm overflow-hidden group-hover:border-accent transition-colors">
               <img [src]="'https://ui-avatars.com/api/?name=' + username + '&background=random'" *ngIf="username" alt="Avatar" class="w-full h-full object-cover">
-              <span class="material-symbols-outlined text-blue-600" *ngIf="!username">person</span>
+              <span class="material-symbols-outlined text-primary" *ngIf="!username">person</span>
             </div>
           </div>
         </ng-container>
@@ -80,18 +80,21 @@
 </main>
 
 <!-- Footer -->
-<footer class="bg-gray-900 text-gray-300 py-12">
+<footer class="bg-primary text-gray-300 py-12">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
     <div class="flex items-center gap-2">
       <div class="flex flex-col leading-tight text-white">
-        <span class="text-xl font-black tracking-widest uppercase">Luxstay</span>
+        <span class="text-xl font-black tracking-widest uppercase font-serif">LuxeStay</span>
         <span class="text-xs font-semibold tracking-widest uppercase text-gray-400">Hotels</span>
       </div>
     </div>
     <div class="flex space-x-6">
-      <a href="#" class="text-sm hover:text-white transition-colors no-underline">Privacy Policy</a>
-      <a href="#" class="text-sm hover:text-white transition-colors no-underline">Terms of Service</a>
+      <a href="#" class="text-sm text-gray-300 hover:text-accent transition-colors duration-300 no-underline">Privacy Policy</a>
+      <a href="#" class="text-sm text-gray-300 hover:text-accent transition-colors duration-300 no-underline">Terms of Service</a>
     </div>
-    <p class="text-sm text-gray-500 m-0">&copy; 2026 Luxstay Hotels. All rights reserved.</p>
+    <p class="text-sm text-gray-400 m-0">&copy; 2026 LuxeStay Hotels. All rights reserved.</p>
   </div>
 </footer>
+
+<!-- Realtime Chat Widget -->
+<app-chat-widget></app-chat-widget>

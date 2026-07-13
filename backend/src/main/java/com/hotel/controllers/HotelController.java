@@ -38,7 +38,7 @@ public class HotelController {
             hotels = hotels.stream().filter(h -> provinceId.equals(h.getProvinceId())).toList();
         }
         if (districtId != null) {
-            hotels = hotels.stream().filter(h -> districtId.equals(h.getDistrictId())).toList();
+            // District is mapped implicitly or no longer used directly in Hotel entity
         }
         if (wardId != null) {
             hotels = hotels.stream().filter(h -> wardId.equals(h.getWardId())).toList();
@@ -52,12 +52,17 @@ public class HotelController {
 
         return ResponseEntity.ok(hotels);
     }
-
     @GetMapping("/public/{id}")
     public ResponseEntity<Hotel> getHotelById(@PathVariable Long id) {
         return hotelService.getHotelById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @com.hotel.security.RequireFeature("HOTEL")
+    @GetMapping("/my-hotels")
+    public ResponseEntity<List<Hotel>> getMyHotels(@org.springframework.security.core.annotation.AuthenticationPrincipal com.hotel.security.CustomUserDetails userDetails) {
+        return ResponseEntity.ok(hotelService.getHotelsByOwnerId(userDetails.getUserId()));
     }
 
     @PreAuthorize("hasRole('SUPER_ADMIN')")

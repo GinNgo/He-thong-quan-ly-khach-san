@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.List;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -28,13 +29,17 @@ public class User extends AuditableEntity {
 
     @Column(name = "full_name")
     private String fullName;
+    
+    @Column(name = "points")
+    private Integer points = 0;
 
     private String phone;
     
     @Column(name = "avatar_url")
     private String avatarUrl;
 
-    private String status;
+    @Column(name = "status")
+    private String status = "ACTIVE";
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -126,6 +131,14 @@ public class User extends AuditableEntity {
 
     public void setRoles(Set<Role> roles) {
         this.roles = roles;
+    }
+
+    public Integer getPoints() {
+        return points;
+    }
+
+    public void setPoints(Integer points) {
+        this.points = points;
     }
 
     public Hotel getHotel() {

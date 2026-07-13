@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, OnDestroy } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { SliderModule } from 'primeng/slider';
 import { SelectModule } from 'primeng/select';
@@ -9,7 +9,7 @@ import { Subject, forkJoin, of } from 'rxjs';
 import { catchError, debounceTime, distinctUntilChanged, map, switchMap, takeUntil } from 'rxjs/operators';
 import { ClientApiService, Hotel, RoomType } from '../../../core/services/client-api.service';
 import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../environments/environment';
+import { environment } from '../../../../environments/environment';
 
 interface HotelSearchResult extends Hotel {
   roomTypes: RoomType[];
@@ -24,7 +24,7 @@ interface HotelSearchResult extends Hotel {
 @Component({
   selector: 'app-room-search',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, SliderModule, SelectModule, AutoCompleteModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, SliderModule, SelectModule, AutoCompleteModule],
   templateUrl: './room-search.component.html',
   styleUrls: ['./room-search.component.css'],
   providers: [DatePipe]

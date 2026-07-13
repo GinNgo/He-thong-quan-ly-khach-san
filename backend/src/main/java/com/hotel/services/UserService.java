@@ -112,6 +112,7 @@ public class UserService {
         dto.setPhone(user.getPhone());
         dto.setAvatarUrl(user.getAvatarUrl());
         dto.setStatus(user.getStatus());
+        dto.setPoints(user.getPoints());
         dto.setCreatedAt(user.getCreatedAt());
 
         if (user.getRoles() != null) {

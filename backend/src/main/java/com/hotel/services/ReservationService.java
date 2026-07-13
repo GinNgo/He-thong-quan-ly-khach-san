@@ -11,6 +11,12 @@ import com.hotel.repositories.ReservationDetailRepository;
 import com.hotel.repositories.ReservationRepository;
 import com.hotel.repositories.RoomRepository;
 import com.hotel.repositories.UserRepository;
+import com.hotel.repositories.ReservationServiceItemRepository;
+import com.hotel.repositories.HotelServiceRepository;
+import com.hotel.entities.HotelService;
+import com.hotel.entities.ReservationServiceItem;
+import com.hotel.dtos.AddServiceRequest;
+import com.hotel.dtos.ReservationServiceItemDTO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +35,8 @@ public class ReservationService {
     private final RoomAvailabilityService roomAvailabilityService;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final ReservationServiceItemRepository reservationServiceItemRepository;
+    private final HotelServiceRepository hotelServiceRepository;
 
     public ReservationService(ReservationRepository reservationRepository,
                               ReservationDetailRepository reservationDetailRepository,
@@ -36,7 +44,9 @@ public class ReservationService {
                               UserRepository userRepository,
                               RoomAvailabilityService roomAvailabilityService,
                               NotificationService notificationService,
-                              EmailService emailService) {
+                              EmailService emailService,
+                              ReservationServiceItemRepository reservationServiceItemRepository,
+                              HotelServiceRepository hotelServiceRepository) {
         this.reservationRepository = reservationRepository;
         this.reservationDetailRepository = reservationDetailRepository;
         this.roomRepository = roomRepository;
@@ -44,6 +54,8 @@ public class ReservationService {
         this.roomAvailabilityService = roomAvailabilityService;
         this.notificationService = notificationService;
         this.emailService = emailService;
+        this.reservationServiceItemRepository = reservationServiceItemRepository;
+        this.hotelServiceRepository = hotelServiceRepository;
     }
 
     @Transactional
@@ -151,6 +163,43 @@ public class ReservationService {
         }
 
         return reservationRepository.save(reservation);
+    }
+
+    @Transactional
+    public ReservationServiceItemDTO addExtraService(Long reservationId, AddServiceRequest request) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new RuntimeException("Reservation not found"));
+
+        if (!"CHECKED_IN".equals(reservation.getStatus())) {
+            throw new RuntimeException("Chỉ có thể thêm dịch vụ khi khách đang ở (CHECKED_IN).");
+        }
+
+        HotelService service = hotelServiceRepository.findById(request.getServiceId())
+                .orElseThrow(() -> new RuntimeException("Service not found"));
+
+        ReservationServiceItem item = new ReservationServiceItem();
+        item.setReservation(reservation);
+        item.setHotelService(service);
+        item.setQuantity(request.getQuantity());
+        item.setPrice(service.getPrice());
+        BigDecimal itemTotal = service.getPrice().multiply(new BigDecimal(request.getQuantity()));
+        item.setTotalAmount(itemTotal);
+
+        ReservationServiceItem savedItem = reservationServiceItemRepository.save(item);
+
+        // Update reservation total amount
+        reservation.setTotalAmount(reservation.getTotalAmount().add(itemTotal));
+        reservationRepository.save(reservation);
+
+        ReservationServiceItemDTO dto = new ReservationServiceItemDTO();
+        dto.setId(savedItem.getId());
+        dto.setReservationId(reservation.getId());
+        dto.setServiceId(service.getId());
+        dto.setServiceNameVi(service.getNameVi());
+        dto.setQuantity(savedItem.getQuantity());
+        dto.setPrice(savedItem.getPrice());
+        dto.setTotalAmount(savedItem.getTotalAmount());
+        return dto;
     }
 
     private User createGuestUser(ReservationRequest request) {

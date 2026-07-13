@@ -2,8 +2,6 @@ spring:
   application:
     name: backend
 
-
-
   datasource:
     # SQL Server Configuration
     url: jdbc:sqlserver://127.0.0.1:1433;databaseName=HotelDB;encrypt=true;trustServerCertificate=true
@@ -31,6 +29,22 @@ spring:
           starttls:
             enable: true
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: "http://localhost:8080" # Placeholder
+
+# Payment Gateway Configurations
+payment:
+  vnpay:
+    tmn-code: Q2ZKXLEV
+    hash-secret: FD29IIR417EN8UBMQWQZR52M6DTN8HKW
+    url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+    return-url: http://localhost:4200/payment-result
+    version: 2.1.0
+    command: pay
+
 server:
   port: 8080
 
@@ -40,6 +54,9 @@ jwt:
   refresh-expiration: 604800000 # 7 days
 
 app:
+  location-import:
+    enabled: true
+    file-path: src/main/resources/data/locations.json
   accommodation-import:
     enabled: true
     provider: NOMINATIM

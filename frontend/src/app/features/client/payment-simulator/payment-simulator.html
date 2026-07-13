@@ -1,0 +1,68 @@
+<div class="min-h-screen bg-gray-100 flex items-center justify-center p-4 font-sans">
+  <div class="max-w-md w-full bg-white rounded-xl shadow-xl overflow-hidden">
+    
+    <!-- Header -->
+    <div class="p-6 flex items-center justify-center border-b"
+         [ngClass]="{
+           'bg-[#A50064] text-white': method === 'MOMO',
+           'bg-[#005BAA] text-white': method === 'VNPAY',
+           'bg-[#635BFF] text-white': method === 'STRIPE'
+         }">
+      <h2 class="text-2xl font-bold flex items-center gap-2">
+        <i class="pi pi-qrcode" *ngIf="method === 'MOMO'"></i>
+        <i class="pi pi-credit-card" *ngIf="method === 'VNPAY' || method === 'STRIPE'"></i>
+        Cổng Thanh Toán Demo {{ method }}
+      </h2>
+    </div>
+
+    <!-- Success Screen -->
+    <div *ngIf="isSuccess" class="p-8 text-center">
+      <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="pi pi-check text-green-600 text-4xl"></i>
+      </div>
+      <h3 class="text-2xl font-bold text-gray-900 mb-2">Thanh toán thành công!</h3>
+      <p class="text-gray-600 mb-6">Đang chuyển hướng về trang lịch sử đặt phòng...</p>
+      <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
+    </div>
+
+    <!-- Payment Form Screen -->
+    <div *ngIf="!isSuccess" class="p-8">
+      
+      <div class="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-4 mb-6 text-sm">
+        <i class="pi pi-info-circle mr-2"></i>
+        Đây là môi trường Demo. Tiền của bạn sẽ không bị trừ. Vui lòng bấm Xác nhận để hoàn tất giả lập.
+      </div>
+
+      <div class="mb-6">
+        <div class="text-gray-500 text-sm mb-1">Mã đơn hàng (Reservation ID)</div>
+        <div class="font-bold text-lg text-gray-900">#{{ reservationId }}</div>
+      </div>
+
+      <div class="mb-8">
+        <div class="text-gray-500 text-sm mb-1">Số tiền thanh toán</div>
+        <div class="font-bold text-3xl text-red-600">{{ amount | number:'1.0-0' }} đ</div>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <button class="w-full py-4 rounded-lg font-bold text-white transition-colors flex items-center justify-center gap-2"
+                [ngClass]="{
+                  'bg-[#A50064] hover:bg-[#80004e]': method === 'MOMO',
+                  'bg-[#005BAA] hover:bg-[#004785]': method === 'VNPAY',
+                  'bg-[#635BFF] hover:bg-[#4e47c7]': method === 'STRIPE'
+                }"
+                (click)="confirmPayment()"
+                [disabled]="isProcessing">
+          <i class="pi pi-spin pi-spinner" *ngIf="isProcessing"></i>
+          <span>Xác nhận Thanh toán</span>
+        </button>
+
+        <button class="w-full py-4 rounded-lg font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                (click)="cancelPayment()"
+                [disabled]="isProcessing">
+          Hủy giao dịch
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>

@@ -1,0 +1,36 @@
+<div class="min-h-screen bg-gray-100 flex items-center justify-center p-4 font-sans">
+  <div class="max-w-md w-full bg-white rounded-xl shadow-xl overflow-hidden p-8 text-center">
+    
+    <!-- Processing -->
+    <div *ngIf="status === 'PROCESSING'">
+      <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="pi pi-spin pi-spinner text-blue-600 text-4xl"></i>
+      </div>
+      <h3 class="text-2xl font-bold text-gray-900 mb-2">Đang xác thực...</h3>
+      <p class="text-gray-600 mb-6">{{ message }}</p>
+    </div>
+
+    <!-- Success -->
+    <div *ngIf="status === 'SUCCESS'">
+      <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="pi pi-check text-green-600 text-4xl"></i>
+      </div>
+      <h3 class="text-2xl font-bold text-gray-900 mb-2">Thành công!</h3>
+      <p class="text-gray-600 mb-6">{{ message }}</p>
+      <p class="text-sm text-gray-500">Đang chuyển hướng về lịch sử đặt phòng...</p>
+    </div>
+
+    <!-- Failed -->
+    <div *ngIf="status === 'FAILED'">
+      <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="pi pi-times text-red-600 text-4xl"></i>
+      </div>
+      <h3 class="text-2xl font-bold text-gray-900 mb-2">Thất bại</h3>
+      <p class="text-gray-600 mb-6">{{ message }}</p>
+      <a routerLink="/" class="inline-block bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-primary/90 transition-colors">
+        Về trang chủ
+      </a>
+    </div>
+
+  </div>
+</div>

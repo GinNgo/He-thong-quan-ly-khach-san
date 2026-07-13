@@ -71,4 +71,12 @@ public class ReservationController {
         Reservation reservation = reservationService.createReservation(username, request);
         return new ResponseEntity<>(reservation, HttpStatus.CREATED);
     }
+
+    @PostMapping("/{id}/services")
+    @PreAuthorize("hasAuthority('RECEPTIONIST') or hasAuthority('HOTEL_ADMIN')")
+    public ResponseEntity<com.hotel.dtos.ReservationServiceItemDTO> addExtraService(
+            @PathVariable Long id, 
+            @RequestBody com.hotel.dtos.AddServiceRequest request) {
+        return ResponseEntity.ok(reservationService.addExtraService(id, request));
+    }
 }

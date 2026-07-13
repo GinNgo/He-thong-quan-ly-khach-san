@@ -41,7 +41,10 @@ export class HomeComponent implements OnInit {
 
   popularDestinations: any[] = [];
 
-  dateRange: Date[] | undefined;
+  dateRange: Date[] | undefined = [
+    new Date(),
+    new Date(new Date().getTime() + 24 * 60 * 60 * 1000)
+  ];
 
   guestInfo = {
     rooms: 1,
@@ -63,33 +66,45 @@ export class HomeComponent implements OnInit {
     this.recentSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
 
     // Load actual locations
-    this.clientApi.getProvinces().subscribe(provinces => {
-      // Find top provinces (Da Nang, Ho Chi Minh, Vung Tau, Ha Noi, Da Lat)
-      const topNames = ['Đà Nẵng', 'Hồ Chí Minh', 'Bà Rịa - Vũng Tàu', 'Hà Nội', 'Lâm Đồng'];
-      const topProvinces = provinces.filter(p => topNames.includes(p.nameVi));
-      
-      const requests = topProvinces.map(p => 
-        this.clientApi.searchHotels({ provinceId: p.id, pageNumber: 1, pageSize: 1 })
-      );
+    this.clientApi.getProvinces().subscribe({
+      next: (provinces) => {
+        const topNames = ['Đà Nẵng', 'Hồ Chí Minh', 'Bà Rịa - Vũng Tàu', 'Hà Nội', 'Lâm Đồng'];
+        let topProvinces = provinces.filter(p => topNames.some(name => p.nameVi.includes(name)));
+        
+        if (topProvinces.length === 0) {
+           this.loadFallbackDestinations();
+           return;
+        }
 
-      if (requests.length > 0) {
-        import('rxjs').then(({ forkJoin }) => {
-          forkJoin(requests).subscribe((results: any[]) => {
-            this.destinations = topProvinces.map((p, index) => {
-              const res = results[index];
-              return {
-                id: p.id,
-                name: p.nameVi.replace('Tỉnh ', '').replace('Thành phố ', ''),
-                properties: res.totalElements || 0,
-                image: this.getImageForProvince(p.nameVi)
-              };
+        const requests = topProvinces.map(p => 
+          this.clientApi.searchHotels({ provinceId: p.id, pageNumber: 1, pageSize: 1 })
+        );
+
+        if (requests.length > 0) {
+          import('rxjs').then(({ forkJoin }) => {
+            forkJoin(requests).subscribe({
+              next: (results: any[]) => {
+                this.destinations = topProvinces.map((p, index) => {
+                  const res = results[index];
+                  return {
+                    id: p.id,
+                    name: p.nameVi.replace('Tỉnh ', '').replace('Thành phố ', ''),
+                    properties: res.totalElements || 0,
+                    image: this.getImageForProvince(p.nameVi)
+                  };
+                });
+                this.popularDestinations = this.destinations.map(d => ({
+                  ...d, count: d.properties.toString(), type: 'Nhiều lựa chọn tốt'
+                }));
+              },
+              error: () => this.loadFallbackDestinations()
             });
-            this.popularDestinations = this.destinations.map(d => ({
-              ...d, count: d.properties.toString(), type: 'Nhiều lựa chọn tốt'
-            }));
           });
-        });
-      }
+        } else {
+           this.loadFallbackDestinations();
+        }
+      },
+      error: () => this.loadFallbackDestinations()
     });
 
     this.promotions = [
@@ -194,12 +209,14 @@ export class HomeComponent implements OnInit {
     const checkOut = this.dateRange[1];
 
     const queryParams: any = {};
-    if (this.location) queryParams.location = this.location;
-    queryParams.checkIn = this.formatDate(checkIn);
-    queryParams.checkOut = this.formatDate(checkOut);
-    queryParams.adults = this.guestInfo.adults;
-    queryParams.children = this.guestInfo.children;
-    queryParams.rooms = this.guestInfo.rooms;
+    if (this.searchQuery) queryParams.keyword = this.searchQuery;
+    else if (this.location) queryParams.keyword = this.location;
+    
+    queryParams.checkInDate = this.formatDate(checkIn);
+    queryParams.checkOutDate = this.formatDate(checkOut);
+    queryParams.adultCount = this.guestInfo.adults;
+    queryParams.childCount = this.guestInfo.children;
+    queryParams.roomCount = this.guestInfo.rooms;
 
     this.router.navigate(['/search'], { queryParams });
   }
@@ -233,9 +250,22 @@ export class HomeComponent implements OnInit {
     return defaultImg;
   }
 
+  private loadFallbackDestinations() {
+    this.destinations = [
+      { id: null, name: 'Đà Nẵng', properties: 120, image: this.getImageForProvince('Đà Nẵng') },
+      { id: null, name: 'Hồ Chí Minh', properties: 350, image: this.getImageForProvince('Hồ Chí Minh') },
+      { id: null, name: 'Vũng Tàu', properties: 95, image: this.getImageForProvince('Vũng Tàu') },
+      { id: null, name: 'Hà Nội', properties: 210, image: this.getImageForProvince('Hà Nội') },
+      { id: null, name: 'Đà Lạt', properties: 150, image: this.getImageForProvince('Đà Lạt') }
+    ];
+    this.popularDestinations = this.destinations.map(d => ({
+      ...d, count: d.properties.toString(), type: 'Nhiều lựa chọn tốt'
+    }));
+  }
+
   // --- Search Bar Helpers ---
   selectLocation(loc: any, op: any) {
-    this.location = loc.nameVi || loc.keyword || loc.name || loc;
+    this.location = loc.displayLocation || loc.nameVi || loc.keyword || loc.name || loc;
     this.searchQuery = loc.displayLocation || loc.nameVi || loc.keyword || loc.name || loc;
     op.hide();
 
@@ -245,9 +275,6 @@ export class HomeComponent implements OnInit {
        this.guestInfo.adults = loc.adultCount || 2;
        this.guestInfo.rooms = loc.roomCount || 1;
        this.guestInfo.children = loc.childCount || 0;
-    } else if (loc.id) {
-       // It's a popular destination with an ID
-       this.router.navigate(['/search'], { queryParams: { provinceId: loc.id, keyword: loc.name } });
     }
   }
 

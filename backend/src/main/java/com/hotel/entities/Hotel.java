@@ -21,7 +21,7 @@ public class Hotel extends AuditableEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "address_line", nullable = false)
+    @Column(name = "address", nullable = false)
     private String addressLine;
 
     @Column(name = "latitude")

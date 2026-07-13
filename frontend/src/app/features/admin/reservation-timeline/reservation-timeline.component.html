@@ -1,0 +1,51 @@
+<div class="card">
+  <h2>Lịch trình Phòng (Timeline)</h2>
+  
+  <div class="flex items-center gap-4 mb-4">
+    <div class="flex items-center gap-2">
+      <label>Từ ngày:</label>
+      <p-datepicker [(ngModel)]="startDate" (onSelect)="onStartDateChange()" [showIcon]="true" dateFormat="dd/mm/yy"></p-datepicker>
+    </div>
+    <div class="flex gap-2">
+      <span class="px-2 py-1 bg-yellow-500 text-white text-xs rounded">Pending</span>
+      <span class="px-2 py-1 bg-green-500 text-white text-xs rounded">Confirmed</span>
+      <span class="px-2 py-1 bg-blue-500 text-white text-xs rounded">Checked In</span>
+      <span class="px-2 py-1 bg-gray-500 text-white text-xs rounded">Checked Out</span>
+    </div>
+  </div>
+
+  <div class="timeline-container overflow-x-auto border rounded bg-white">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="p-3 bg-gray-100 border-r border-b text-left sticky left-0 z-10 w-48">Phòng</th>
+          <th *ngFor="let date of dates" class="p-3 bg-gray-100 border-r border-b text-center w-24">
+            <div class="text-sm font-bold">{{ date | date:'dd/MM' }}</div>
+            <div class="text-xs text-gray-500">{{ date | date:'EEE' }}</div>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let room of rooms" class="border-b">
+          <td class="p-3 font-semibold border-r bg-white sticky left-0 z-10">
+            {{ room.roomNumber }}
+            <div class="text-xs text-gray-500 font-normal">{{ room.roomType.nameVi }}</div>
+          </td>
+          
+          <td *ngFor="let date of dates" class="border-r p-1 relative h-16 min-w-[6rem] bg-gray-50">
+            <ng-container *ngIf="getReservationForCell(room.id, date) as res">
+              <div 
+                *ngIf="isCheckInDate(res, date)"
+                class="absolute top-1 left-1 bottom-1 flex items-center justify-center p-2 rounded shadow text-xs whitespace-nowrap overflow-hidden z-20 cursor-pointer hover:opacity-90"
+                [ngClass]="getSeverityClass(res.status)"
+                [style.width]="'calc(' + getDuration(res) + '00% - 8px)'"
+                [title]="res.userFullName + ' - ' + res.status">
+                <span class="truncate font-medium">{{ res.userFullName }}</span>
+              </div>
+            </ng-container>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

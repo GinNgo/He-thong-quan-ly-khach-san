@@ -38,10 +38,13 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/hotels/public/**").permitAll()
                 .requestMatchers("/api/room-types/public/**").permitAll()
                 .requestMatchers("/api/reservations/public/**").permitAll()
+                .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/api/rooms/search").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/api/notifications/**").permitAll()
+                .requestMatchers("/api/subscriptions/plans").permitAll()
+                .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

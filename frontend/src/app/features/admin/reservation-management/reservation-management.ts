@@ -10,21 +10,32 @@ import { Router } from '@angular/router';
 import { CardModule } from 'primeng/card';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
+import { DialogModule } from 'primeng/dialog';
+import { SelectModule } from 'primeng/select';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { FormsModule } from '@angular/forms';
+import { HotelServiceService, HotelServiceDTO } from '../../../core/services/hotel-service.service';
 
 @Component({
   selector: 'app-reservation-management',
   standalone: true,
-  imports: [CommonModule, TableModule, ButtonModule, TagModule, CardModule, ToastModule],
+  imports: [CommonModule, TableModule, ButtonModule, TagModule, CardModule, ToastModule, DialogModule, SelectModule, InputNumberModule, FormsModule],
   providers: [MessageService],
   templateUrl: './reservation-management.html'
 })
 export class ReservationManagement implements OnInit {
   reservations: Reservation[] = [];
+  services: HotelServiceDTO[] = [];
+  
+  showAddServiceDialog = false;
+  selectedReservationId: number | null = null;
+  newServiceItem = { serviceId: 0, quantity: 1 };
 
   constructor(
     private reservationService: ReservationService, 
     private paymentService: PaymentService,
     private invoiceService: InvoiceService,
+    private hotelServiceService: HotelServiceService,
     private messageService: MessageService,
     private router: Router
   ) {}
@@ -36,6 +47,9 @@ export class ReservationManagement implements OnInit {
   loadReservations() {
     this.reservationService.getAllReservations().subscribe(data => {
       this.reservations = data;
+    });
+    this.hotelServiceService.getServices().subscribe(data => {
+      this.services = data;
     });
   }
 
@@ -61,6 +75,36 @@ export class ReservationManagement implements OnInit {
 
   createNew() {
     this.router.navigate(['/admin/reservations/create']);
+  }
+
+  viewTimeline() {
+    this.router.navigate(['/admin/reservations/timeline']);
+  }
+
+  openAddServiceDialog(res: Reservation) {
+    if (!res.id) return;
+    this.selectedReservationId = res.id;
+    this.newServiceItem = { serviceId: 0, quantity: 1 };
+    this.showAddServiceDialog = true;
+  }
+
+  submitAddService() {
+    if (!this.selectedReservationId || !this.newServiceItem.serviceId || this.newServiceItem.quantity < 1) {
+      this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Vui lòng chọn dịch vụ và số lượng hợp lệ' });
+      return;
+    }
+    
+    this.reservationService.addExtraService(this.selectedReservationId, this.newServiceItem.serviceId, this.newServiceItem.quantity)
+      .subscribe({
+        next: (res) => {
+          this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã thêm dịch vụ' });
+          this.showAddServiceDialog = false;
+          this.loadReservations();
+        },
+        error: (err) => {
+          this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Thêm dịch vụ thất bại' });
+        }
+      });
   }
 
   processPayment(res: Reservation) {

@@ -69,6 +69,7 @@ public class DataInitializer implements CommandLineRunner {
         initFunction(hotelModule, FunctionCode.ROOM.name(), "Phòng", "/admin/rooms", "pi pi-home", 3);
         initFunction(hotelModule, FunctionCode.RESERVATION.name(), "Đặt phòng", "/admin/reservations", "pi pi-calendar", 4);
         initFunction(hotelModule, FunctionCode.HOTEL.name(), "Dịch vụ khách sạn", "/admin/services", "pi pi-box", 5);
+        initFunction(hotelModule, FunctionCode.CHAT.name(), "Chat trực tuyến", "/admin/chat", "pi pi-comments", 6);
 
         initFunction(financeModule, FunctionCode.INVOICE.name(), "Hóa đơn", "/admin/invoices", "pi pi-file-o", 1);
         initFunction(financeModule, FunctionCode.FINANCE.name(), "Thanh toán", "/admin/payments", "pi pi-money-bill", 2);
@@ -156,14 +157,11 @@ public class DataInitializer implements CommandLineRunner {
         Hotel defaultHotel = hotelRepository.findAll().stream().findFirst().orElse(null);
         if (defaultHotel == null) {
             defaultHotel = new Hotel();
-        }
-
-        if (defaultHotel.getId() == null || hasEncodingNoise(defaultHotel.getName()) || hasEncodingNoise(defaultHotel.getAddress())
-                || hasEncodingNoise(defaultHotel.getCity()) || hasEncodingNoise(defaultHotel.getCountry())) {
-            defaultHotel.setName("Đà Lạt Grand Hotel");
-            defaultHotel.setAddress("123 Trần Phú");
-            defaultHotel.setCity("Đà Lạt");
-            defaultHotel.setCountry("Việt Nam");
+            defaultHotel.setName("Grand Palace Hotel");
+            defaultHotel.setDescription("A luxurious hotel with all modern amenities.");
+            defaultHotel.setAddressLine("123 Test Street");
+            defaultHotel.setProvinceId(1L);
+            defaultHotel.setWardId(1L);
             defaultHotel.setStarRating(5);
             defaultHotel.setStatus("ACTIVE");
             defaultHotel = hotelRepository.save(defaultHotel);
@@ -240,6 +238,7 @@ public class DataInitializer implements CommandLineRunner {
         ensurePermission(role, FunctionCode.HOTEL, manage);
         ensurePermission(role, FunctionCode.INVOICE, manageAndExport);
         ensurePermission(role, FunctionCode.FINANCE, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE);
+        ensurePermission(role, FunctionCode.CHAT, manage);
     }
 
     private void seedReceptionistPermissions(Role role) {
@@ -249,6 +248,7 @@ public class DataInitializer implements CommandLineRunner {
         ensurePermission(role, FunctionCode.ROOM, ActionCode.VIEW | ActionCode.UPDATE);
         ensurePermission(role, FunctionCode.RESERVATION, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE);
         ensurePermission(role, FunctionCode.INVOICE, ActionCode.VIEW | ActionCode.CREATE);
+        ensurePermission(role, FunctionCode.CHAT, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE);
     }
 
     private void seedAccountantPermissions(Role role) {

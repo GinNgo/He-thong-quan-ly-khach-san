@@ -92,4 +92,18 @@ export class HotelDetailComponent implements OnInit {
       el.scrollIntoView({ behavior: 'smooth' });
     }
   }
+
+  submitClaim() {
+    if (!this.hotel?.id) return;
+    this.clientApi.submitPropertyClaim(this.hotel.id, this.claimForm).subscribe({
+      next: () => {
+        alert('Gửi yêu cầu thành công. Chúng tôi sẽ liên hệ với bạn sớm nhất!');
+        this.showClaimModal = false;
+      },
+      error: (err) => {
+        alert('Có lỗi xảy ra, vui lòng thử lại.');
+        console.error(err);
+      }
+    });
+  }
 }

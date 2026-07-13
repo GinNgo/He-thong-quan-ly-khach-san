@@ -8,7 +8,7 @@
 
   <!-- Hero Content -->
   <div class="relative z-10 text-center px-4 mt-[-100px]">
-    <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 drop-shadow-lg tracking-tight leading-tight">
+    <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 drop-shadow-2xl tracking-wide leading-tight font-serif">
       Trải nghiệm Đẳng cấp<br>Không giới hạn
     </h1>
   </div>
@@ -16,12 +16,12 @@
   <!-- Search Bar Overlay -->
   <div class="absolute bottom-10 left-0 right-0 z-20 px-4">
     <div class="max-w-[1100px] mx-auto">
-      <div class="bg-[#f8f7f9] p-1 rounded-2xl shadow-2xl flex flex-col md:flex-row gap-1 items-stretch border-[3px] border-[#f5a623] overflow-hidden">
+      <div class="liquid-glass p-2 rounded-2xl shadow-2xl flex flex-col md:flex-row gap-2 items-stretch border border-white/40 overflow-hidden">
         
         <!-- Location Input -->
-        <div class="flex-[1.5] w-full bg-white relative cursor-pointer" (click)="locOp.toggle($event)">
-          <div class="flex items-center h-[56px] px-4">
-            <i class="pi pi-search text-gray-400 mr-2 text-xl"></i>
+        <div class="flex-[1.5] w-full bg-white/90 rounded-xl relative cursor-pointer hover:bg-white transition-colors" (click)="locOp.toggle($event)">
+          <div class="flex items-center h-[60px] px-5">
+            <i class="pi pi-search text-primary mr-3 text-xl"></i>
             <input type="text" [(ngModel)]="searchQuery" placeholder="Thành phố, khách sạn, điểm đến" class="w-full h-full border-0 focus:ring-0 text-[15px] font-medium text-gray-800 bg-transparent outline-none pointer-events-none" readonly>
           </div>
           <!-- Location Overlay -->
@@ -31,14 +31,15 @@
                 <!-- Recent Searches -->
                 <div class="w-1/2">
                   <h4 class="text-xs font-bold text-gray-500 mb-3 px-2">Tìm kiếm gần đây</h4>
-                  <div *ngFor="let item of recentSearches" class="p-2 bg-[#f0f2f8] rounded-xl cursor-pointer hover:bg-gray-100 mb-2 border border-blue-50" (click)="selectLocation(item.name, locOp)">
+                  <div *ngFor="let item of recentSearches" class="p-2 bg-[#f0f2f8] rounded-xl cursor-pointer hover:bg-gray-100 mb-2 border border-blue-50" (click)="selectLocation(item, locOp)">
                     <div class="font-bold text-gray-900 text-sm mb-1 flex items-center">
                       <i class="pi pi-map-marker text-gray-500 text-[16px] mr-2"></i>
-                      {{ item.name }}
+                      {{ item.displayLocation || item.keyword || 'Địa điểm bất kỳ' }}
                     </div>
                     <div class="text-[11px] text-gray-500 flex flex-col pl-5">
-                      <span>{{ item.date }}</span>
-                      <span>{{ item.guests }} người lớn</span>
+                      <span *ngIf="item.checkInDate && item.checkOutDate">{{ item.checkInDate | date:'dd/MM/yyyy' }} - {{ item.checkOutDate | date:'dd/MM/yyyy' }}</span>
+                      <span *ngIf="!item.checkInDate || !item.checkOutDate">Ngày bất kỳ</span>
+                      <span>{{ item.adultCount || 2 }} người lớn<span *ngIf="item.childCount">, {{ item.childCount }} trẻ em</span></span>
                     </div>
                   </div>
                 </div>
@@ -60,9 +61,9 @@
 
         <!-- Date Picker Triggers -->
         <!-- Check-in -->
-        <div class="flex-1 w-full bg-white relative cursor-pointer group" (click)="dateOp.toggle($event)">
-          <div class="flex items-center h-[56px] px-4">
-            <i class="pi pi-calendar text-gray-400 mr-3 text-xl"></i>
+        <div class="flex-1 w-full bg-white/90 rounded-xl relative cursor-pointer group hover:bg-white transition-colors" (click)="dateOp.toggle($event)">
+          <div class="flex items-center h-[60px] px-5">
+            <i class="pi pi-calendar text-primary mr-3 text-xl"></i>
             <div class="flex flex-col justify-center">
               <span class="text-[14px] font-bold text-gray-900" [ngClass]="{'text-gray-400': !checkInDate}">{{ formatDisplayDate(checkInDate) }}</span>
               <span class="text-[12px] text-gray-500">{{ formatDisplayDayOfWeek(checkInDate) }}</span>
@@ -71,9 +72,9 @@
         </div>
 
         <!-- Check-out -->
-        <div class="flex-1 w-full bg-white relative cursor-pointer group" (click)="dateOp.toggle($event)">
-          <div class="flex items-center h-[56px] px-4">
-            <i class="pi pi-calendar text-gray-400 mr-3 text-xl"></i>
+        <div class="flex-1 w-full bg-white/90 rounded-xl relative cursor-pointer group hover:bg-white transition-colors" (click)="dateOp.toggle($event)">
+          <div class="flex items-center h-[60px] px-5">
+            <i class="pi pi-calendar text-primary mr-3 text-xl"></i>
             <div class="flex flex-col justify-center">
               <span class="text-[14px] font-bold text-gray-900" [ngClass]="{'text-gray-400': !checkOutDate}">{{ formatDisplayDate(checkOutDate) }}</span>
               <span class="text-[12px] text-gray-500">{{ formatDisplayDayOfWeek(checkOutDate) }}</span>
@@ -89,10 +90,10 @@
         </p-popover>
 
         <!-- Guests Selector Trigger -->
-        <div class="flex-1 w-full bg-white relative cursor-pointer" (click)="guestOp.toggle($event)">
-          <div class="flex justify-between items-center h-[56px] px-4">
+        <div class="flex-1 w-full bg-white/90 rounded-xl relative cursor-pointer hover:bg-white transition-colors" (click)="guestOp.toggle($event)">
+          <div class="flex justify-between items-center h-[60px] px-5">
             <div class="flex items-center">
-              <i class="pi pi-users text-gray-400 mr-3 text-xl"></i>
+              <i class="pi pi-users text-primary mr-3 text-xl"></i>
               <div class="flex flex-col justify-center">
                 <span class="text-[14px] font-bold text-gray-900">{{ guestInfo.adults }} người lớn<span *ngIf="guestInfo.children > 0">, {{ guestInfo.children }} trẻ em</span></span>
                 <span class="text-[12px] text-gray-500">{{ guestInfo.rooms }} phòng</span>
@@ -154,8 +155,8 @@
         </div>
 
         <!-- Search Button -->
-        <div class="w-full md:w-auto h-[56px] flex-shrink-0 bg-[#0071c2]">
-          <button (click)="searchRooms()" class="w-full md:w-[150px] h-full bg-[#1b63c7] hover:bg-[#144896] text-white font-bold text-lg px-6 flex items-center justify-center border-none outline-none transition-colors">
+        <div class="w-full md:w-[150px] flex-shrink-0">
+          <button (click)="searchRooms()" class="w-full h-[60px] rounded-xl bg-accent hover:bg-[#854D0E] text-white font-bold text-lg px-6 flex items-center justify-center border-none outline-none hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
             TÌM
           </button>
         </div>
@@ -171,10 +172,10 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex justify-between items-end mb-8">
       <div>
-        <h2 class="text-3xl font-bold text-gray-900 mb-2">Điểm Đến Phổ Biến</h2>
-        <p class="text-gray-500 text-sm">Khám phá các điểm đến được yêu thích nhất cho kỳ nghỉ của bạn</p>
+        <h2 class="text-4xl font-bold text-primary mb-2 font-serif">Điểm Đến Phổ Biến</h2>
+        <p class="text-gray-500 text-sm font-medium">Khám phá các điểm đến được yêu thích nhất cho kỳ nghỉ của bạn</p>
       </div>
-      <button (click)="goToSearch()" class="border border-gray-300 text-blue-700 text-sm font-bold hover:bg-gray-50 px-4 py-2 rounded transition-colors hidden sm:block">Xem tất cả</button>
+      <button (click)="goToSearch()" class="border border-gray-300 text-primary text-sm font-bold hover:bg-gray-50 px-4 py-2 rounded transition-colors hidden sm:block">Xem tất cả</button>
     </div>
 
     <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -195,9 +196,9 @@
 <!-- Promotions Section -->
 <section id="offers" class="py-10 bg-white">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="mb-8">
-      <h2 class="text-3xl font-bold text-gray-900 mb-2">Ưu Đãi Đặc Biệt</h2>
-      <p class="text-gray-500 text-sm">Các chương trình khuyến mãi tốt nhất dành riêng cho bạn</p>
+    <div class="mb-10 text-center">
+      <h2 class="text-4xl font-bold text-primary mb-2 font-serif">Ưu Đãi Đặc Biệt</h2>
+      <p class="text-gray-500 text-sm font-medium">Các chương trình khuyến mãi tốt nhất dành riêng cho bạn</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -211,7 +212,7 @@
           <p class="text-gray-600 text-sm mb-5 leading-relaxed relative z-10">{{ promo.desc }}</p>
           <div class="flex items-center gap-3 relative z-10 mt-auto">
             <div class="bg-white text-blue-700 font-mono font-bold px-3 py-2 rounded-lg border border-blue-200 select-all tracking-wider shadow-sm">{{ promo.code }}</div>
-            <button (click)="copyPromoCode(promo.code)" class="bg-[#2d53d8] hover:bg-blue-800 text-white text-sm font-bold py-2.5 px-5 rounded-lg transition-colors shadow-md">
+            <button (click)="copyPromoCode(promo.code)" class="bg-primary hover:bg-blue-800 text-white text-sm font-bold py-2.5 px-5 rounded-lg transition-colors shadow-md">
               {{ copiedCode === promo.code ? 'Đã copy' : 'Copy mã' }}
             </button>
           </div>
@@ -225,7 +226,7 @@
 <section id="rooms" class="py-16 bg-white">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="text-center mb-12">
-      <h2 class="text-3xl font-bold text-gray-900">Phòng Nổi Bật</h2>
+      <h2 class="text-4xl font-bold text-primary font-serif">Phòng Nổi Bật</h2>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -237,8 +238,8 @@
           <h3 class="text-lg font-bold text-gray-900 mb-1">{{ room.name }}</h3>
           <p class="text-xs text-gray-500 mb-4">{{ room.type }}</p>
           <div class="flex justify-between items-center mt-2">
-            <div class="text-xl font-black text-gray-900">${{ room.price | number:'1.2-2' }}</div>
-            <button (click)="goToSearch()" class="bg-[#1a56db] hover:bg-blue-700 text-white text-xs font-bold py-2 px-4 rounded transition-colors shadow-sm shadow-blue-500/30">Đặt ngay</button>
+            <div class="text-xl font-black text-primary">${{ room.price | number:'1.2-2' }}</div>
+            <button (click)="goToSearch()" class="bg-primary hover:bg-[#1E40AF] text-white text-xs font-bold py-2 px-4 rounded hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300 shadow-sm shadow-blue-500/30">Đặt ngay</button>
           </div>
         </div>
       </div>
@@ -250,7 +251,7 @@
 <section id="services" class="py-20 bg-[#f8f9fa]">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="text-center mb-12">
-      <h2 class="text-3xl font-bold text-gray-900">Dịch Vụ Nổi Bật</h2>
+      <h2 class="text-4xl font-bold text-primary font-serif">Dịch Vụ Nổi Bật</h2>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -269,13 +270,13 @@
 <section id="reviews" class="py-20 bg-white">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="text-center mb-12">
-      <h2 class="text-3xl font-bold text-gray-900">Đánh Giá Từ Khách Hàng</h2>
+      <h2 class="text-4xl font-bold text-primary font-serif">Đánh Giá Từ Khách Hàng</h2>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
       
       <!-- Prev Button Mock -->
-      <button class="absolute left-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center text-gray-600 hover:text-blue-600 z-10 hidden lg:flex transition-colors">
+      <button class="absolute left-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center text-gray-600 hover:text-primary z-10 hidden lg:flex transition-colors">
         <span class="material-symbols-outlined text-lg leading-none">chevron_left</span>
       </button>
 
@@ -299,7 +300,7 @@
       </div>
 
       <!-- Next Button Mock -->
-      <button class="absolute right-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center text-gray-600 hover:text-blue-600 z-10 hidden lg:flex transition-colors">
+      <button class="absolute right-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center text-gray-600 hover:text-primary z-10 hidden lg:flex transition-colors">
         <span class="material-symbols-outlined text-lg leading-none">chevron_right</span>
       </button>
 
@@ -307,7 +308,7 @@
 
     <!-- Pagination Dots -->
     <div class="flex justify-center gap-2 mt-8">
-      <div class="w-2 h-2 rounded-full bg-blue-600"></div>
+      <div class="w-2 h-2 rounded-full bg-primary"></div>
       <div class="w-2 h-2 rounded-full bg-gray-200"></div>
       <div class="w-2 h-2 rounded-full bg-gray-200"></div>
       <div class="w-2 h-2 rounded-full bg-gray-200"></div>

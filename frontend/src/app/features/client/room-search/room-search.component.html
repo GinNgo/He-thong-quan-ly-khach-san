@@ -1,12 +1,12 @@
 <div class="min-h-screen bg-gray-50 font-sans">
-  <section class="bg-[#003b95] px-4 py-5 md:px-8">
+  <section class="bg-primary px-4 py-8 md:px-8 bg-opacity-95">
     <div class="max-w-7xl mx-auto">
-      <div class="mb-3 text-white">
-        <h1 class="text-2xl font-bold mb-1">Tìm khách sạn phù hợp</h1>
-        <p class="text-sm text-blue-100 mb-0">Tìm theo khu vực, khoảng cách, và so sánh giá tốt nhất.</p>
+      <div class="mb-5 text-white">
+        <h1 class="text-3xl font-bold mb-2 font-serif tracking-wide">Tìm khách sạn phù hợp</h1>
+        <p class="text-sm text-blue-100 mb-0 font-medium">Tìm theo khu vực, khoảng cách, và so sánh giá tốt nhất.</p>
       </div>
 
-      <form [formGroup]="searchForm" (ngSubmit)="search()" class="grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr_0.6fr_auto_auto] gap-2 bg-[#febb02] p-2 rounded-lg">
+      <form [formGroup]="searchForm" (ngSubmit)="search()" class="grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr_0.6fr_auto_auto] gap-2 liquid-glass p-3 rounded-xl border border-white/20 shadow-lg">
         <div class="bg-white rounded-md flex items-center p-field mb-0">
           <i class="pi pi-map-marker text-gray-500 pl-3"></i>
           <p-autoComplete
@@ -47,12 +47,12 @@
           <input type="number" min="1" class="w-full focus:outline-none text-gray-800" formControlName="adultCount">
         </label>
 
-        <button type="button" class="bg-blue-100 hover:bg-blue-200 text-[#003b95] font-bold px-4 py-3 rounded-md transition-colors flex items-center justify-center gap-2" (click)="getUserLocation()" title="Tìm gần tôi">
+        <button type="button" class="bg-blue-50/20 hover:bg-white text-white hover:text-primary font-bold px-4 py-3 rounded-lg transition-all duration-300 flex items-center justify-center gap-2 border border-white/30" (click)="getUserLocation()" title="Tìm gần tôi">
           <i class="pi pi-compass text-xl"></i>
         </button>
 
-        <button type="submit" class="bg-[#0071c2] hover:bg-[#005999] text-white font-bold px-6 py-3 rounded-md transition-colors disabled:opacity-50" [disabled]="searchForm.invalid || isLoading">
-          Tìm kiếm
+        <button type="submit" class="bg-accent hover:bg-[#854D0E] text-white font-bold px-8 py-3 rounded-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50" [disabled]="searchForm.invalid || isLoading">
+          TÌM
         </button>
       </form>
 
@@ -62,13 +62,13 @@
 
   <section class="max-w-7xl mx-auto w-full px-4 md:px-8 py-6 flex flex-col lg:flex-row gap-6">
     <aside class="w-full lg:w-72 flex-shrink-0">
-      <div class="bg-white border border-gray-200 rounded-lg p-5 sticky top-24">
+      <div class="bg-white border border-gray-100 shadow-sm rounded-xl p-5 sticky top-24">
         <div class="flex items-center justify-between mb-5">
           <div>
-            <h2 class="text-lg font-bold text-gray-900 mb-1">Bộ lọc</h2>
+            <h2 class="text-lg font-bold text-primary mb-1 font-serif">Bộ lọc</h2>
             <p class="text-xs text-gray-500 mb-0">{{ activeFiltersCount }} điều kiện đang chọn</p>
           </div>
-          <button class="text-sm font-semibold text-[#0071c2] hover:text-[#005999]" (click)="clearFilters()">Xóa</button>
+          <button class="text-sm font-semibold text-accent hover:text-[#854D0E]" (click)="clearFilters()">Xóa</button>
         </div>
 
         <div class="mb-6">
@@ -93,9 +93,9 @@
         <div>
           <h3 class="font-bold text-gray-800 mb-3">Loại phòng</h3>
           <div class="space-y-2">
-            <label class="flex items-center gap-2 cursor-pointer" *ngFor="let type of roomTypesFilter">
-              <input type="checkbox" [(ngModel)]="type.checked" (ngModelChange)="applyFilters()" class="w-4 h-4 rounded border-gray-300 text-[#0071c2] focus:ring-[#0071c2]">
-              <span class="text-gray-700 text-sm">{{ type.label }}</span>
+            <label class="flex items-center gap-3 cursor-pointer group" *ngFor="let type of roomTypesFilter">
+              <input type="checkbox" [(ngModel)]="type.checked" (ngModelChange)="applyFilters()" class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
+              <span class="text-gray-600 text-sm group-hover:text-primary transition-colors">{{ type.label }}</span>
             </label>
           </div>
         </div>
@@ -103,9 +103,9 @@
     </aside>
 
     <main class="flex-grow">
-      <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div class="bg-white border border-gray-100 shadow-sm rounded-xl p-4 mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h2 class="text-lg font-bold text-gray-900 mb-1">
+          <h2 class="text-xl font-bold text-primary mb-1 font-serif">
             {{ isLoading ? 'Đang tải kết quả...' : hotels.length + ' khách sạn phù hợp' }}
           </h2>
           <p class="text-sm text-gray-500 mb-0" *ngIf="searchForm.value.keyword">Khu vực: {{ searchForm.value.keyword }}</p>
@@ -115,34 +115,35 @@
         </div>
       </div>
 
-      <div *ngIf="isLoading" class="bg-white border border-gray-200 rounded-lg flex justify-center py-16">
-        <i class="pi pi-spin pi-spinner text-4xl text-[#003b95]"></i>
+      <div *ngIf="isLoading" class="bg-white border border-gray-100 shadow-sm rounded-xl flex justify-center py-16">
+        <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
       </div>
 
-      <div *ngIf="!isLoading && hotels.length === 0" class="bg-white border border-gray-200 rounded-lg text-center py-16 px-6">
-        <div class="w-16 h-16 rounded-full bg-blue-50 text-[#003b95] flex items-center justify-center mx-auto mb-4">
+      <div *ngIf="!isLoading && hotels.length === 0" class="bg-white border border-gray-100 shadow-sm rounded-xl text-center py-16 px-6">
+        <div class="w-16 h-16 rounded-full bg-blue-50 text-primary flex items-center justify-center mx-auto mb-4">
           <i class="pi pi-search text-2xl"></i>
         </div>
-        <h3 class="text-xl font-bold text-gray-900 mb-2">Không tìm thấy khách sạn phù hợp</h3>
+        <h3 class="text-xl font-bold text-primary mb-2 font-serif">Không tìm thấy khách sạn phù hợp</h3>
         <p class="text-gray-500 mb-5">Hãy thử thay đổi ngày, địa điểm hoặc thu nhỏ bộ lọc.</p>
-        <button class="bg-[#0071c2] hover:bg-[#005999] text-white font-bold px-5 py-2 rounded-md" (click)="clearFilters()">Xóa bộ lọc</button>
+        <button class="bg-primary hover:bg-[#1E40AF] text-white font-bold px-6 py-2.5 rounded-lg transition-all duration-300" (click)="clearFilters()">Xóa bộ lọc</button>
       </div>
 
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-5" *ngIf="!isLoading && hotels.length > 0">
-        <article class="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col hover:shadow-lg transition-shadow duration-300" *ngFor="let hotel of hotels">
-          <div class="h-52 w-full overflow-hidden relative">
-            <img [src]="hotel.mainImage || 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&q=80&w=800'" [alt]="hotel.name" class="w-full h-full object-cover">
-            <div class="absolute top-3 left-3 bg-white/95 text-gray-900 text-xs font-bold px-3 py-1 rounded-full shadow-sm">
-              {{ hotel.starRating }}/5 <i class="pi pi-star-fill text-[#febb02] ml-1"></i>
+        <article class="bg-white border border-gray-100 rounded-2xl overflow-hidden flex flex-col shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group" *ngFor="let hotel of hotels">
+          <div class="h-56 w-full overflow-hidden relative">
+            <img [src]="hotel.mainImage || 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&q=80&w=800'" [alt]="hotel.name" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div class="absolute top-3 left-3 bg-white/95 text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm backdrop-blur-sm">
+              {{ hotel.starRating }}/5 <i class="pi pi-star-fill text-accent ml-1"></i>
             </div>
-            <div class="absolute top-3 right-3 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm" *ngIf="hotel.distanceKm != null">
+            <div class="absolute top-3 right-3 bg-primary text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm backdrop-blur-sm" *ngIf="hotel.distanceKm != null">
               <i class="pi pi-map-marker"></i> {{ hotel.distanceKm | number:'1.1-1' }} km
             </div>
           </div>
 
-          <div class="p-5 flex flex-col flex-grow">
-            <div class="mb-3">
-              <h3 class="text-xl font-bold text-gray-900 leading-tight mb-2">{{ hotel.name }}</h3>
+          <div class="p-6 flex flex-col flex-grow">
+            <div class="mb-4">
+              <h3 class="text-2xl font-bold text-primary leading-tight mb-2 font-serif">{{ hotel.name }}</h3>
               <div class="text-sm text-gray-600">
                 <i class="pi pi-map-marker text-xs mr-1"></i> {{ hotel.addressLine }}
               </div>
@@ -174,7 +175,7 @@
             </div>
 
             <button
-              class="w-full bg-[#003b95] hover:bg-[#002255] text-white font-semibold py-2.5 rounded-md transition-colors mt-auto"
+              class="w-full bg-primary hover:bg-[#1E40AF] text-white font-bold py-3 rounded-lg transition-all duration-300 mt-auto hover:shadow-md hover:-translate-y-0.5"
               [routerLink]="['/hotel', hotel.id]"
               [queryParams]="{ checkIn: searchForm.value.checkInDate, checkOut: searchForm.value.checkOutDate, guests: searchForm.value.adultCount }">
               Xem chi tiết và chọn phòng

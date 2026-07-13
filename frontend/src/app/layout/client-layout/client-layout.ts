@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { AuthService } from '../../core/services/auth';
+import { ChatWidgetComponent } from '../../features/client/chat-widget/chat-widget';
 
 @Component({
   selector: 'app-client-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, ButtonModule],
+  imports: [CommonModule, RouterModule, ButtonModule, ChatWidgetComponent],
   templateUrl: './client-layout.html',
   styleUrls: ['./client-layout.css']
 })

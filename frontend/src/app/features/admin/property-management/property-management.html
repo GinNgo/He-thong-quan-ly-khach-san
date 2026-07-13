@@ -21,7 +21,8 @@
                 <td>{{ property.name }}</td>
                 <td>{{ property.city }}</td>
                 <td>
-                    <p-tag [severity]="property.status === 'ACTIVE' ? 'success' : (property.status === 'PENDING' ? 'warning' : 'danger')" [value]="property.status"></p-tag>
+                    <p-tag [severity]="property.status === 'ACTIVE' ? 'success' : property.status === 'INACTIVE' ? 'danger' : 'warn'" 
+                           [value]="property.status === 'ACTIVE' ? 'Hoạt động' : property.status === 'INACTIVE' ? 'Ngừng HĐ' : 'Chờ duyệt'"></p-tag>
                 </td>
                 <td>
                     <ng-container *ngIf="!isAdmin">

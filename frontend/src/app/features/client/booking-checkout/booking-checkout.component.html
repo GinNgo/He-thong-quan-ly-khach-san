@@ -63,22 +63,63 @@
 
         <div class="mb-8">
           <label class="block text-sm font-bold text-gray-700 mb-2">Số khách</label>
-          <input type="number" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#0071c2]" 
+          <input type="number" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-primary" 
                  [(ngModel)]="bookingData.guests" name="guests" min="1" required>
         </div>
         
-        <div class="bg-blue-50 border border-blue-100 rounded p-4 mb-8">
-          <div class="flex items-start gap-3">
-            <i class="pi pi-info-circle text-[#0071c2] mt-1"></i>
-            <div>
-              <h4 class="font-bold text-[#0071c2]">Thanh toán tại chỗ</h4>
-              <p class="text-sm text-gray-600 mt-1">Bạn không cần thẻ tín dụng để đặt phòng. Vui lòng thanh toán trực tiếp tại khách sạn khi nhận phòng.</p>
-            </div>
+        <div class="mb-8">
+          <label class="block text-sm font-bold text-gray-700 mb-3">Phương thức thanh toán</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            <label class="border rounded-lg p-4 cursor-pointer flex items-center gap-3 transition-colors"
+                   [class.border-primary]="bookingData.paymentMethod === 'PAY_AT_HOTEL'"
+                   [class.bg-blue-50]="bookingData.paymentMethod === 'PAY_AT_HOTEL'">
+              <input type="radio" name="paymentMethod" value="PAY_AT_HOTEL" [(ngModel)]="bookingData.paymentMethod" class="w-4 h-4 text-primary">
+              <div class="flex-1">
+                <div class="font-bold text-gray-900">Thanh toán tại quầy</div>
+                <div class="text-xs text-gray-500">Thanh toán khi nhận phòng</div>
+              </div>
+              <i class="pi pi-building text-gray-400 text-xl"></i>
+            </label>
+
+            <label class="border rounded-lg p-4 cursor-pointer flex items-center gap-3 transition-colors"
+                   [class.border-[#A50064]]="bookingData.paymentMethod === 'MOMO'"
+                   [class.bg-pink-50]="bookingData.paymentMethod === 'MOMO'">
+              <input type="radio" name="paymentMethod" value="MOMO" [(ngModel)]="bookingData.paymentMethod" class="w-4 h-4 text-[#A50064]">
+              <div class="flex-1">
+                <div class="font-bold text-gray-900">Ví MoMo</div>
+                <div class="text-xs text-gray-500">Quét mã QR qua ứng dụng</div>
+              </div>
+              <div class="w-8 h-8 rounded bg-[#A50064] text-white flex items-center justify-center font-bold text-xs">MoMo</div>
+            </label>
+
+            <label class="border rounded-lg p-4 cursor-pointer flex items-center gap-3 transition-colors"
+                   [class.border-[#005BAA]]="bookingData.paymentMethod === 'VNPAY'"
+                   [class.bg-blue-50]="bookingData.paymentMethod === 'VNPAY'">
+              <input type="radio" name="paymentMethod" value="VNPAY" [(ngModel)]="bookingData.paymentMethod" class="w-4 h-4 text-[#005BAA]">
+              <div class="flex-1">
+                <div class="font-bold text-gray-900">VNPAY</div>
+                <div class="text-xs text-gray-500">Thanh toán qua thẻ ATM/Bank</div>
+              </div>
+              <div class="w-8 h-8 rounded bg-[#005BAA] text-white flex items-center justify-center font-bold text-xs">VN</div>
+            </label>
+
+            <label class="border rounded-lg p-4 cursor-pointer flex items-center gap-3 transition-colors"
+                   [class.border-[#635BFF]]="bookingData.paymentMethod === 'STRIPE'"
+                   [class.bg-indigo-50]="bookingData.paymentMethod === 'STRIPE'">
+              <input type="radio" name="paymentMethod" value="STRIPE" [(ngModel)]="bookingData.paymentMethod" class="w-4 h-4 text-[#635BFF]">
+              <div class="flex-1">
+                <div class="font-bold text-gray-900">Thẻ Tín Dụng</div>
+                <div class="text-xs text-gray-500">Thanh toán quốc tế an toàn</div>
+              </div>
+              <i class="pi pi-credit-card text-[#635BFF] text-xl"></i>
+            </label>
+
           </div>
         </div>
 
         <button type="submit" 
-                class="w-full bg-[#0071c2] hover:bg-[#005999] text-white font-bold py-4 rounded transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
+                class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
                 [disabled]="!bookingForm.valid || isSubmitting">
           <i class="pi pi-spin pi-spinner" *ngIf="isSubmitting"></i>
           <span>Hoàn tất Đặt phòng</span>

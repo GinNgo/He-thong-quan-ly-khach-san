@@ -32,6 +32,7 @@ export interface Reservation {
 export class ReservationService {
   private apiUrl = `${environment.apiUrl}/reservations`;
 
+
   constructor(private http: HttpClient) {}
 
   getAllReservations(): Observable<Reservation[]> {
@@ -48,6 +49,10 @@ export class ReservationService {
 
   updateReservationStatus(id: number, status: string): Observable<Reservation> {
     return this.http.put<Reservation>(`${this.apiUrl}/${id}/status?status=${status}`, {});
+  }
+
+  addExtraService(id: number, serviceId: number, quantity: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/${id}/services`, { serviceId, quantity });
   }
 
   deleteReservation(id: number): Observable<void> {

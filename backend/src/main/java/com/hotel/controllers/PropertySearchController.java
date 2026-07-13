@@ -21,6 +21,7 @@ public class PropertySearchController {
     @GetMapping("/search")
     public ResponseEntity<Page<PropertySearchResponseDTO>> searchProperties(
             @ModelAttribute PropertySearchRequestDTO request) {
+        System.out.println("PropertySearchController HIT!");
         Page<PropertySearchResponseDTO> result = propertySearchService.searchProperties(request);
         return ResponseEntity.ok(result);
     }

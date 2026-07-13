@@ -33,8 +33,10 @@ public class SubscriptionFeatureService {
                 // If the user has multiple active subscriptions (rare, but possible), we take the max limit
                 if (featureLimits.containsKey(code)) {
                     Integer currentLimit = featureLimits.get(code);
-                    if (currentLimit == -1 || (limit != null && limit > currentLimit)) {
-                        featureLimits.put(code, limit);
+                    if (currentLimit != -1) {
+                        if (limit == -1 || (limit != null && limit > currentLimit)) {
+                            featureLimits.put(code, limit);
+                        }
                     }
                 } else {
                     featureLimits.put(code, limit);

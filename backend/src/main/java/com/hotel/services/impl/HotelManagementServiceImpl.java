@@ -26,7 +26,7 @@ public class HotelManagementServiceImpl implements HotelManagementService {
         if (city == null || city.trim().isEmpty()) {
             return hotelRepository.findByStatus(status);
         }
-        return hotelRepository.findByCityContainingIgnoreCaseAndStatus(city, status);
+        return hotelRepository.findByAddressLineContainingIgnoreCaseAndStatus(city, status);
     }
 
     @Override
@@ -46,9 +46,9 @@ public class HotelManagementServiceImpl implements HotelManagementService {
         Hotel existingHotel = hotelRepository.findById(id).orElseThrow(() -> new RuntimeException("Hotel not found"));
         existingHotel.setName(hotel.getName());
         existingHotel.setDescription(hotel.getDescription());
-        existingHotel.setAddress(hotel.getAddress());
-        existingHotel.setCity(hotel.getCity());
-        existingHotel.setCountry(hotel.getCountry());
+        existingHotel.setAddressLine(hotel.getAddressLine());
+        existingHotel.setProvinceId(hotel.getProvinceId());
+        existingHotel.setWardId(hotel.getWardId());
         existingHotel.setStarRating(hotel.getStarRating());
         existingHotel.setMainImage(hotel.getMainImage());
         existingHotel.setStatus(hotel.getStatus());
@@ -59,5 +59,10 @@ public class HotelManagementServiceImpl implements HotelManagementService {
     @Transactional
     public void deleteHotel(Long id) {
         hotelRepository.deleteById(id);
+    }
+
+    @Override
+    public List<Hotel> getHotelsByOwnerId(Long ownerId) {
+        return hotelRepository.findByOwnerId(ownerId);
     }
 }
