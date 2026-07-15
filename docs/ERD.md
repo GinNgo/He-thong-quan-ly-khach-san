@@ -315,3 +315,187 @@ erDiagram
 - **`property_import_items`**: Dữ liệu thô từ API ngoài trước khi duyệt, được kiểm tra deduplication.
 - **`property_external_photos`**: Lưu trữ URL hình ảnh của API ngoài.
 - **`property_claim_requests`**: Yêu cầu xác nhận chủ sở hữu từ phía người dùng cho cơ sở đã được hệ thống nhập tự động.
+# Bổ sung ERD: Unicode, tìm kiếm và tồn phòng (2026-07-15)
+
+## Nguyên tắc migration
+
+- SQL Server là nguồn dữ liệu chính; cột chứa tiếng Việt dùng `NVARCHAR`, mô tả dài dùng `NVARCHAR(MAX)`.
+- Thứ tự bắt buộc: backup, chuyển kiểu/thêm cột nullable, backfill, reimport UTF-8, tạo index, kiểm tra, rồi mới siết `NOT NULL` khi an toàn.
+- Không xóa/truncate `locations`. Import upsert theo `(location_type, source_code)`; `code` dùng namespace `P-{sourceCode}` và `W-{sourceCode}` để mã tỉnh không đụng mã phường.
+- Địa giới chỉ có `PROVINCE -> WARD`; quận/huyện chỉ là `legacy_parent_name`.
+
+## Mô hình mục tiêu
+
+```mermaid
+erDiagram
+    LOCATIONS ||--o{ LOCATIONS : "province has wards"
+    LOCATIONS ||--o{ HOTELS : "province or ward"
+    HOTELS ||--o{ ROOM_TYPES : has
+    HOTELS ||--o{ ROOMS : owns
+    ROOM_TYPES ||--o{ ROOMS : classifies
+    HOTELS ||--o{ RESERVATIONS : receives
+    RESERVATIONS ||--|{ RESERVATION_DETAILS : contains
+    ROOM_TYPES ||--o{ RESERVATION_DETAILS : reserves
+    RESERVATION_DETAILS ||--o{ RESERVATION_ROOMS : assigns
+    ROOMS ||--o{ RESERVATION_ROOMS : allocated
+    RESERVATIONS ||--o{ RESERVATION_SERVICE_ITEMS : consumes
+
+    LOCATIONS {
+        bigint id PK
+        bigint parent_id FK
+        varchar code UK
+        varchar source_code
+        nvarchar name_vi
+        nvarchar name_en
+        nvarchar normalized_name
+        varchar location_type
+        nvarchar full_path
+        nvarchar legacy_parent_name
+    }
+    HOTELS {
+        bigint id PK
+        nvarchar name
+        nvarchar name_vi
+        nvarchar name_en
+        nvarchar normalized_name
+        nvarchar address
+        nvarchar normalized_address
+        bigint province_id
+        bigint ward_id
+        varchar approval_status
+        varchar operation_status
+    }
+    ROOM_TYPES {
+        bigint id PK
+        bigint hotel_id FK
+        varchar code
+        nvarchar name_vi
+        nvarchar description_vi
+        varchar bed_type
+        int bed_count
+        int max_adults
+        int max_children
+        int max_guests
+        decimal base_price
+        decimal hourly_price
+        varchar status
+    }
+    ROOMS {
+        bigint id PK
+        bigint hotel_id FK
+        bigint room_type_id FK
+        nvarchar room_number
+        int floor
+        varchar status
+        varchar maintenance_status
+        int max_guests
+    }
+    RESERVATION_DETAILS {
+        bigint id PK
+        bigint reservation_id FK
+        bigint room_type_id FK
+        int quantity
+        int adults
+        int children
+        decimal unit_price
+        decimal subtotal
+    }
+    RESERVATION_ROOMS {
+        bigint id PK
+        bigint reservation_detail_id FK
+        bigint room_id FK
+        datetime assigned_at
+        datetime released_at
+        varchar status
+    }
+```
+
+## Ràng buộc và index
+
+- Unique: `locations(location_type, source_code)`, `room_types(hotel_id, code)`, `rooms(hotel_id, room_number)`.
+- `rooms.hotel_id` phải khớp hotel của `room_type_id`; số lượng phòng lấy từ `COUNT(rooms)` vật lý.
+- Index: `locations(location_type,parent_id,status)`, `locations(normalized_name)`, `hotels(province_id,ward_id,approval_status,operation_status)`, `hotels(normalized_name)`, `hotels(normalized_address)` với độ dài indexable.
+
+# Bổ sung ERD: dữ liệu demo toàn quốc và vận hành Owner (2026-07-15)
+
+## Baseline và phạm vi migration
+
+- Baseline SQL Server trước phase: 34 Province, 6.283 Ward, 11 Hotel, 33 RoomType, 69 Room và 0 AccountSubscription đang lưu.
+- Không đổi tên bảng `hotels`; trong nghiệp vụ bảng này tiếp tục đóng vai trò Property.
+- `STANDARD` tạo 3-5 cơ sở theo mỗi tỉnh, không được mô tả là bao phủ toàn bộ Ward. `FULL_COVERAGE` mới tạo tối thiểu một cơ sở theo Ward, chạy theo batch và bị chặn bởi `max-total-properties`.
+- Bản ghi thật không được update hoặc delete bởi seeder. Seeder chỉ upsert bản ghi có `is_demo=1`, `data_source='DEMO'` và `seed_key` do hệ thống tạo.
+
+```mermaid
+erDiagram
+    USERS ||--o{ USER_PROPERTIES : manages
+    HOTELS ||--o{ USER_PROPERTIES : assigned_to
+    USERS ||--o{ ACCOUNT_SUBSCRIPTIONS : owns
+    SUBSCRIPTION_PLANS ||--o{ ACCOUNT_SUBSCRIPTIONS : activates
+    SUBSCRIPTION_PLANS ||--o{ PLAN_FEATURES : limits
+    HOTELS ||--o{ PROPERTY_IMAGES : presents
+    HOTELS ||--o{ ROOM_TYPES : defines
+    ROOM_TYPES ||--o{ ROOM_TYPE_IMAGES : presents
+    ROOM_TYPES ||--o{ ROOMS : contains
+    RESERVATION_DETAILS ||--o{ RESERVATION_ROOMS : assigns
+    ROOMS ||--o{ RESERVATION_ROOMS : allocated
+    RESERVATIONS ||--o{ RESERVATION_SERVICES : consumes
+    RESERVATIONS ||--o| INVOICES : invoices
+    ROOMS ||--o{ HOUSEKEEPING_TASKS : requires
+    DEMO_SEED_PROGRESS }o--|| LOCATIONS : tracks
+
+    HOTELS {
+        bit is_demo
+        nvarchar data_source
+        nvarchar seed_key UK
+        nvarchar normalized_name
+        nvarchar normalized_address
+    }
+    PROPERTY_IMAGES {
+        bigint hotel_id FK
+        nvarchar image_url
+        nvarchar alt_text_vi
+        nvarchar alt_text_en
+        bit is_primary
+        int sort_order
+        bit is_demo
+    }
+    ROOM_TYPES {
+        bigint hotel_id FK
+        nvarchar normalized_name
+        decimal area
+        bit is_demo
+    }
+    ROOM_TYPE_IMAGES {
+        bigint room_type_id FK
+        nvarchar image_url
+        bit is_primary
+        int sort_order
+        nvarchar alt_text_vi
+        bit is_demo
+    }
+    ROOMS {
+        bigint hotel_id FK
+        bigint room_type_id FK
+        nvarchar room_number
+        varchar status
+        varchar housekeeping_status
+        varchar maintenance_status
+        bit is_demo
+    }
+    HOUSEKEEPING_TASKS {
+        bigint room_id FK
+        bigint reservation_id FK
+        varchar status
+        datetime assigned_at
+        datetime completed_at
+    }
+    DEMO_SEED_PROGRESS {
+        nvarchar seed_key PK
+        varchar coverage_mode
+        bigint location_id FK
+        varchar status
+        nvarchar error_message
+    }
+```
+
+`Room.status` biểu diễn khả năng vận hành (`AVAILABLE`, `RESERVED`, `OCCUPIED`, `MAINTENANCE`, `OUT_OF_SERVICE`); `housekeeping_status` biểu diễn `CLEAN`, `DIRTY`, `CLEANING`; `maintenance_status` được giữ riêng. Check-out chuyển phòng sang `DIRTY`, tạo `housekeeping_tasks`; chỉ khi hoàn tất dọn phòng mới chuyển về `AVAILABLE/CLEAN`.

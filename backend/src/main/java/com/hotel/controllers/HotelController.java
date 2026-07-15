@@ -1,6 +1,7 @@
 package com.hotel.controllers;
 
 import com.hotel.entities.Hotel;
+import com.hotel.dtos.PublicHotelDetailDTO;
 import com.hotel.services.HotelManagementService;
 import com.hotel.services.RoomTypeService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,8 +54,9 @@ public class HotelController {
         return ResponseEntity.ok(hotels);
     }
     @GetMapping("/public/{id}")
-    public ResponseEntity<Hotel> getHotelById(@PathVariable Long id) {
+    public ResponseEntity<PublicHotelDetailDTO> getHotelById(@PathVariable Long id) {
         return hotelService.getHotelById(id)
+                .map(PublicHotelDetailDTO::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -65,13 +67,13 @@ public class HotelController {
         return ResponseEntity.ok(hotelService.getHotelsByOwnerId(userDetails.getUserId()));
     }
 
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('SUPER_ADMIN')")
     @GetMapping
-    public ResponseEntity<List<Hotel>> getAllHotels() {
-        return ResponseEntity.ok(hotelService.getAllHotels());
+    public ResponseEntity<List<PublicHotelDetailDTO>> getAllHotels() {
+        return ResponseEntity.ok(hotelService.getAllHotels().stream().map(PublicHotelDetailDTO::from).toList());
     }
 
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('SUPER_ADMIN')")
     @PostMapping
     public ResponseEntity<Hotel> createHotel(@RequestBody Hotel hotel) {
         return ResponseEntity.ok(hotelService.createHotel(hotel));
@@ -79,13 +81,13 @@ public class HotelController {
 
 
 
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('SUPER_ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<Hotel> updateHotel(@PathVariable Long id, @RequestBody Hotel hotel) {
         return ResponseEntity.ok(hotelService.updateHotel(id, hotel));
     }
 
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('SUPER_ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteHotel(@PathVariable Long id) {
         hotelService.deleteHotel(id);
@@ -100,7 +102,7 @@ public class HotelController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('SUPER_ADMIN')")
     @PostMapping("/{id}/approve")
     public ResponseEntity<Hotel> approveHotel(@PathVariable Long id) {
         return hotelService.getHotelById(id).map(hotel -> {
@@ -109,7 +111,7 @@ public class HotelController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('SUPER_ADMIN')")
     @PostMapping("/{id}/reject")
     public ResponseEntity<Hotel> rejectHotel(@PathVariable Long id) {
         return hotelService.getHotelById(id).map(hotel -> {

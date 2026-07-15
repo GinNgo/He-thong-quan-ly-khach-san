@@ -34,7 +34,7 @@ export class Sidebar implements OnInit {
   ngOnInit() {
     this.http.get<AppModuleDto[]>(`${environment.apiUrl}/auth/my-menu`).subscribe({
       next: (res) => {
-        this.menuItems = res;
+        this.menuItems = this.deduplicateMenu(res);
         this.cdr.detectChanges();
       },
       error: () => {
@@ -42,6 +42,20 @@ export class Sidebar implements OnInit {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  private deduplicateMenu(modules: AppModuleDto[]): AppModuleDto[] {
+    const seenCodes = new Set<string>();
+    const seenRoutes = new Set<string>();
+    return modules.map(module => ({
+      ...module,
+      functions: (module.functions || []).filter(func => {
+        if (!func.url || seenCodes.has(func.code) || seenRoutes.has(func.url)) return false;
+        seenCodes.add(func.code);
+        seenRoutes.add(func.url);
+        return true;
+      })
+    })).filter(module => module.functions.length > 0);
   }
 
   private getFallbackMenu(): AppModuleDto[] {

@@ -1,0 +1,22 @@
+<section class="owner-dashboard">
+  <header>
+    <div><h1>Tổng quan cơ sở</h1><p>Tồn phòng và mức sử dụng gói theo cơ sở đang chọn.</p></div>
+    <select [(ngModel)]="selectedPropertyId" (change)="selectProperty()" aria-label="Cơ sở đang quản lý">
+      @for (property of context?.properties || []; track property.id) { <option [ngValue]="property.id">{{ property.nameVi }}</option> }
+    </select>
+  </header>
+  @if (error) { <div class="notice error">{{ error }}</div> }
+  @if (loading) { <div class="notice">Đang tải tổng quan...</div> }
+  @if (context && !loading) {
+    @if (context.upgradeRequired) { <div class="upgrade"><strong>Gói {{ context.planCode }}</strong><span>Một số chức năng nâng cao đang bị giới hạn. Dữ liệu đã nhập vẫn được giữ nguyên.</span><a routerLink="/management/billing">Xem gói dịch vụ</a></div> }
+    <div class="summary"><div><span>Gói hiện tại</span><strong>{{ context.planCode }}</strong></div><div><span>Trạng thái</span><strong>{{ context.subscriptionStatus }}</strong></div><div><span>Cơ sở</span><strong>{{ context.usage['properties'] || 0 }} / {{ limit('MAX_PROPERTIES') }}</strong></div><div><span>Phòng</span><strong>{{ context.usage['rooms'] || 0 }} / {{ limit('MAX_ROOMS') }}</strong></div></div>
+    <div class="metrics">
+      <article><span>Phòng trống</span><strong>{{ value('availableRooms') }}</strong></article>
+      <article><span>Đã đặt</span><strong>{{ value('reservedRooms') }}</strong></article>
+      <article><span>Đang ở</span><strong>{{ value('occupiedRooms') }}</strong></article>
+      <article><span>Cần dọn</span><strong>{{ value('dirtyRooms') }}</strong></article>
+      <article><span>Bảo trì</span><strong>{{ value('maintenanceRooms') }}</strong></article>
+      <article><span>Tác vụ dọn</span><strong>{{ value('pendingHousekeeping') }}</strong></article>
+    </div>
+  }
+</section>

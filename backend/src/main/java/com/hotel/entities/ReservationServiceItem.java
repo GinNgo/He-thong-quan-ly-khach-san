@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -33,6 +34,16 @@ public class ReservationServiceItem extends AuditableEntity {
     @Column(nullable = false)
     private BigDecimal totalAmount;
 
+    @Column(name = "used_at")
+    private LocalDateTime usedAt;
+
+    @Column(nullable = false)
+    private String status = "ACTIVE";
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "added_by_user_id")
+    private User addedBy;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -50,4 +61,10 @@ public class ReservationServiceItem extends AuditableEntity {
 
     public BigDecimal getTotalAmount() { return totalAmount; }
     public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+    public LocalDateTime getUsedAt() { return usedAt; }
+    public void setUsedAt(LocalDateTime usedAt) { this.usedAt = usedAt; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public User getAddedBy() { return addedBy; }
+    public void setAddedBy(User addedBy) { this.addedBy = addedBy; }
 }

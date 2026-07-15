@@ -2,21 +2,29 @@ package com.hotel.entities;
 
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 
 import jakarta.persistence.*;
 
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
+@Setter
 @Entity
-@Table(name = "rooms")
+@Table(name = "rooms", uniqueConstraints = @UniqueConstraint(name = "UX_rooms_hotel_room_number", columnNames = {"hotel_id", "room_number"}))
 public class Room extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "room_number", nullable = false, unique = true)
+    @Column(name = "room_number", nullable = false, columnDefinition = "nvarchar(50)")
     private String roomNumber;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hotel_id", nullable = false)
+    private Hotel hotel;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "room_type_id", nullable = false)
@@ -28,11 +36,26 @@ public class Room extends AuditableEntity {
     @Column(nullable = false)
     private String status; // AVAILABLE, RESERVED, OCCUPIED, MAINTENANCE, CLEANING
 
-    @Column(name = "description_vi", columnDefinition = "TEXT")
+    @Column(name = "maintenance_status", nullable = false)
+    private String maintenanceStatus = "NONE";
+
+    @Column(name = "housekeeping_status", nullable = false)
+    private String housekeepingStatus = "CLEAN";
+
+    @Column(name = "is_demo", nullable = false)
+    private Boolean isDemo = false;
+
+    @Column(name = "max_guests")
+    private Integer maxGuests;
+
+    @Column(name = "description_vi", columnDefinition = "nvarchar(max)")
     private String descriptionVi;
 
-    @Column(name = "description_en", columnDefinition = "TEXT")
+    @Column(name = "description_en", columnDefinition = "nvarchar(max)")
     private String descriptionEn;
+
+    @Column(columnDefinition = "nvarchar(1000)")
+    private String note;
 
     // Getters and Setters omitted for brevity
 

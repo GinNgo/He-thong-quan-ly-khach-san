@@ -12,8 +12,10 @@ export enum ActionCode {
 export enum FunctionCode {
   SYSTEM = 'SYSTEM',
   HOTEL = 'HOTEL',
+  HOTEL_SERVICE = 'HOTEL_SERVICE',
   BOOKING = 'BOOKING',
   FINANCE = 'FINANCE',
+  RESERVATION_PAYMENT = 'RESERVATION_PAYMENT',
   AI = 'AI',
   USER = 'USER',
   ROLE = 'ROLE',
@@ -39,12 +41,7 @@ export class PermissionService {
   constructor() { }
 
   getPermissions(): { function: string, actionMask: number }[] {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      const user = JSON.parse(userStr);
-      return user.permissions || [];
-    }
-    return [];
+    return this.readStoredUser()?.permissions || [];
   }
 
   hasPermission(functionCode: string, actionCode: number): boolean {
@@ -64,13 +61,22 @@ export class PermissionService {
   }
 
   isSuperAdmin(): boolean {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      const user = JSON.parse(userStr);
+    const user = this.readStoredUser();
+    if (user) {
       const roles = user.roles || [];
       return user.username === 'admin' || roles.includes('SUPER_ADMIN') || roles.includes('ADMIN');
     }
     return false;
+  }
+
+  private readStoredUser(): any | null {
+    try {
+      const storage = globalThis.localStorage;
+      const raw = storage?.getItem('user');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
   }
 
   canView(functionCode: string): boolean {

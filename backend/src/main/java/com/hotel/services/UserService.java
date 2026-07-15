@@ -171,6 +171,15 @@ public class UserService {
     @Autowired
     private SubscriptionFeatureService subscriptionFeatureService;
 
+    @Autowired
+    private com.hotel.repositories.ChatMessageRepository chatMessageRepository;
+
+    @Autowired
+    private com.hotel.repositories.ReservationRepository reservationRepository;
+
+    @Autowired
+    private com.hotel.repositories.PropertyClaimRequestRepository propertyClaimRequestRepository;
+
     public Optional<UserDto> getUserWithSaaSContext(Long id) {
         Optional<User> optionalUser = userRepository.findById(id);
         if (optionalUser.isEmpty()) return Optional.empty();
@@ -187,6 +196,17 @@ public class UserService {
             return hs;
         }).collect(Collectors.toList());
         dto.setAssignedProperties(properties);
+        dto.setUnreadMessageCount(chatMessageRepository.countByReceiverIdAndIsReadFalse(id));
+        dto.setPendingBookingCount(reservationRepository.countByUserIdAndStatusIn(
+                id, java.util.List.of("DRAFT", "PENDING", "PENDING_PAYMENT", "CONFIRMED")));
+        if (!userProperties.isEmpty()) {
+            boolean pending = userProperties.stream().anyMatch(up -> "PENDING_APPROVAL".equals(up.getHotel().getApprovalStatus()));
+            dto.setPartnerRegistrationStatus(pending ? "PENDING" : "APPROVED");
+        } else {
+            dto.setPartnerRegistrationStatus(propertyClaimRequestRepository
+                    .findFirstByRequesterUserIdOrderByCreatedAtDesc(id)
+                    .map(com.hotel.entities.PropertyClaimRequest::getStatus).orElse("NONE"));
+        }
 
         // Fetch active subscription
         List<com.hotel.entities.AccountSubscription> subs = accountSubscriptionRepository.findByUserIdAndStatus(id, "ACTIVE");

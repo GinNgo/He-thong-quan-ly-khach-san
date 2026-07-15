@@ -1,0 +1,85 @@
+<div class="partner-register-container">
+  <div class="register-card">
+    <div class="header">
+      <h2>Đăng ký trở thành Đối tác</h2>
+      <p>Cùng hợp tác để tiếp cận hàng triệu khách hàng và tăng doanh thu.</p>
+    </div>
+
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form">
+      <div class="form-section">
+        <h3>Thông tin cá nhân</h3>
+        <div class="form-group">
+          <label for="fullName">Họ và tên *</label>
+          <input type="text" id="fullName" formControlName="fullName" placeholder="Nhập họ và tên"
+            [class.invalid]="registerForm.get('fullName')?.invalid && registerForm.get('fullName')?.touched">
+          <div class="error-msg" *ngIf="registerForm.get('fullName')?.invalid && registerForm.get('fullName')?.touched">
+            Họ và tên là bắt buộc.
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="email">Email đăng nhập *</label>
+            <input type="email" id="email" formControlName="email" placeholder="example@email.com"
+              [class.invalid]="registerForm.get('email')?.invalid && registerForm.get('email')?.touched">
+            <div class="error-msg" *ngIf="registerForm.get('email')?.invalid && registerForm.get('email')?.touched">
+              Email không hợp lệ.
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="phone">Số điện thoại *</label>
+            <input type="text" id="phone" formControlName="phone" placeholder="Nhập SĐT"
+              [class.invalid]="registerForm.get('phone')?.invalid && registerForm.get('phone')?.touched">
+            <div class="error-msg" *ngIf="registerForm.get('phone')?.invalid && registerForm.get('phone')?.touched">
+              Số điện thoại là bắt buộc.
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Mật khẩu *</label>
+          <input type="password" id="password" formControlName="password" placeholder="Tối thiểu 6 ký tự"
+            [class.invalid]="registerForm.get('password')?.invalid && registerForm.get('password')?.touched">
+          <div class="error-msg" *ngIf="registerForm.get('password')?.invalid && registerForm.get('password')?.touched">
+            Mật khẩu bắt buộc và tối thiểu 6 ký tự.
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h3>Thông tin cơ sở lưu trú</h3>
+        <div class="form-group">
+          <label for="propertyName">Tên cơ sở lưu trú *</label>
+          <input type="text" id="propertyName" formControlName="propertyName" placeholder="Ví dụ: Khách sạn Mường Thanh"
+            [class.invalid]="registerForm.get('propertyName')?.invalid && registerForm.get('propertyName')?.touched">
+          <div class="error-msg" *ngIf="registerForm.get('propertyName')?.invalid && registerForm.get('propertyName')?.touched">
+            Tên cơ sở lưu trú là bắt buộc.
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="propertyAddress">Địa chỉ đầy đủ *</label>
+          <input type="text" id="propertyAddress" formControlName="propertyAddress" placeholder="Số nhà, Tên đường, Quận/Huyện, Tỉnh/TP"
+            [class.invalid]="registerForm.get('propertyAddress')?.invalid && registerForm.get('propertyAddress')?.touched">
+          <div class="error-msg" *ngIf="registerForm.get('propertyAddress')?.invalid && registerForm.get('propertyAddress')?.touched">
+            Địa chỉ là bắt buộc.
+          </div>
+        </div>
+      </div>
+
+      <div class="error-banner" *ngIf="errorMessage">
+        {{ errorMessage }}
+      </div>
+
+      <button type="submit" class="submit-btn" [disabled]="isLoading">
+        <span *ngIf="!isLoading">Đăng ký ngay</span>
+        <span *ngIf="isLoading" class="spinner"></span>
+      </button>
+
+      <p class="login-link">
+        Đã có tài khoản? <a routerLink="/login">Đăng nhập</a>
+      </p>
+    </form>
+  </div>
+</div>

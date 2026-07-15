@@ -1,0 +1,15 @@
+<section class="inventory-page">
+  <header><div><h1>{{ mode === 'room-types' ? 'Loại phòng' : 'Phòng vật lý' }}</h1><p>Quản lý theo cơ sở đang chọn và giới hạn gói hiện tại.</p></div><div class="actions"><select [(ngModel)]="propertyId" (change)="reload()">@for (property of properties; track property.id) { <option [ngValue]="property.id">{{ property.nameVi }}</option> }</select><button type="button" (click)="showForm = !showForm"><i class="pi pi-plus"></i> {{ mode === 'room-types' ? 'Thêm loại phòng' : 'Tạo hàng loạt' }}</button></div></header>
+  @if (error) { <div class="error">{{ error }}</div> }
+  @if (showForm) {
+    <form (ngSubmit)="save()">
+      @if (mode === 'room-types') {
+        <label>Mã<input [(ngModel)]="roomTypeForm.code" name="code" required></label><label>Tên tiếng Việt<input [(ngModel)]="roomTypeForm.nameVi" name="nameVi" required></label><label>Tên tiếng Anh<input [(ngModel)]="roomTypeForm.nameEn" name="nameEn" required></label><label>Loại giường<input [(ngModel)]="roomTypeForm.bedType" name="bedType"></label><label>Người lớn<input type="number" [(ngModel)]="roomTypeForm.maxAdults" name="maxAdults"></label><label>Trẻ em<input type="number" [(ngModel)]="roomTypeForm.maxChildren" name="maxChildren"></label><label>Tổng khách<input type="number" [(ngModel)]="roomTypeForm.maxGuests" name="maxGuests"></label><label>Giá cơ bản<input type="number" [(ngModel)]="roomTypeForm.basePrice" name="basePrice"></label>
+      } @else {
+        <label>Loại phòng<select [(ngModel)]="bulkForm.roomTypeId" name="roomTypeId" required>@for (type of roomTypes; track type.id) { <option [ngValue]="type.id">{{ type.nameVi }}</option> }</select></label><label>Từ số<input type="number" [(ngModel)]="bulkForm.fromNumber" name="fromNumber"></label><label>Đến số<input type="number" [(ngModel)]="bulkForm.toNumber" name="toNumber"></label><label>Tầng<input type="number" [(ngModel)]="bulkForm.floor" name="floor"></label>
+      }
+      <div class="form-actions"><button type="button" class="secondary" (click)="showForm=false">Hủy</button><button type="submit">Lưu</button></div>
+    </form>
+  }
+  <div class="table-panel">@if (loading) { <div class="state">Đang tải...</div> } @else if (!rows.length) { <div class="state">Chưa có dữ liệu.</div> } @else { <table><thead><tr><th>ID</th><th>{{ mode === 'room-types' ? 'Mã' : 'Số phòng' }}</th><th>{{ mode === 'room-types' ? 'Tên' : 'Loại phòng' }}</th><th>Trạng thái</th><th>{{ mode === 'room-types' ? 'Sức chứa' : 'Tầng' }}</th></tr></thead><tbody>@for (row of rows; track row.id) { <tr><td>{{ row.id }}</td><td>{{ mode === 'room-types' ? row.code : row.roomNumber }}</td><td>{{ mode === 'room-types' ? row.nameVi : row.roomTypeNameVi }}</td><td>{{ row.status }}</td><td>{{ mode === 'room-types' ? row.maxGuests : row.floor }}</td></tr> }</tbody></table> }</div>
+</section>

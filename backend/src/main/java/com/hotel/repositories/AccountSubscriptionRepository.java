@@ -11,4 +11,6 @@ import java.util.List;
 public interface AccountSubscriptionRepository extends JpaRepository<AccountSubscription, Long> {
     List<AccountSubscription> findByUserIdAndStatus(Long userId, String status);
     List<AccountSubscription> findByUserId(Long userId);
+    Optional<AccountSubscription> findFirstByUserIdOrderByStartAtDesc(Long userId);
+    Optional<AccountSubscription> findFirstByUserIdAndPlanCodeOrderByStartAtDesc(Long userId, String planCode);
 }

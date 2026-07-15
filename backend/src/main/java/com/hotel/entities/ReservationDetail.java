@@ -2,12 +2,16 @@ package com.hotel.entities;
 
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
+@Setter
 @Entity
 @Table(name = "reservation_details")
 public class ReservationDetail extends AuditableEntity {
@@ -21,8 +25,24 @@ public class ReservationDetail extends AuditableEntity {
     private Reservation reservation;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_id", nullable = false)
+    @JoinColumn(name = "room_id")
     private Room room;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "room_type_id")
+    private RoomType roomType;
+
+    @Column(nullable = false)
+    private Integer quantity = 1;
+
+    private Integer adults;
+
+    private Integer children;
+
+    @Column(name = "unit_price")
+    private BigDecimal unitPrice;
+
+    private BigDecimal subtotal;
 
     @Column(nullable = false)
     private BigDecimal price;

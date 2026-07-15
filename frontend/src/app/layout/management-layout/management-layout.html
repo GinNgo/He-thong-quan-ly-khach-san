@@ -1,0 +1,82 @@
+<div class="management-container">
+  <!-- Sidebar -->
+  <aside class="sidebar" [class.collapsed]="isSidebarCollapsed">
+    <div class="sidebar-header">
+      <div class="logo">
+        <span class="material-symbols-outlined text-accent" style="font-size: 28px;">business</span>
+        <span class="logo-text" *ngIf="!isSidebarCollapsed">Partner Portal</span>
+      </div>
+      <button class="toggle-btn" (click)="toggleSidebar()">
+        <span class="material-symbols-outlined">{{ isSidebarCollapsed ? 'menu' : 'chevron_left' }}</span>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a routerLink="/management/dashboard" routerLinkActive="active" class="nav-item">
+        <span class="material-symbols-outlined">dashboard</span>
+        <span class="nav-text" *ngIf="!isSidebarCollapsed">Tổng quan</span>
+      </a>
+
+      <div class="nav-divider" *ngIf="!isSidebarCollapsed">QUẢN LÝ</div>
+
+      <a routerLink="/management/properties" routerLinkActive="active" class="nav-item">
+        <span class="material-symbols-outlined">domain</span>
+        <span class="nav-text" *ngIf="!isSidebarCollapsed">Cơ sở lưu trú</span>
+      </a>
+      <a routerLink="/management/room-types" routerLinkActive="active" class="nav-item">
+        <span class="material-symbols-outlined">bed</span>
+        <span class="nav-text" *ngIf="!isSidebarCollapsed">Loại phòng</span>
+      </a>
+      <a routerLink="/management/rooms" routerLinkActive="active" class="nav-item">
+        <span class="material-symbols-outlined">meeting_room</span>
+        <span class="nav-text" *ngIf="!isSidebarCollapsed">Phòng vật lý</span>
+      </a>
+      <a routerLink="/management/bookings" routerLinkActive="active" class="nav-item">
+        <span class="material-symbols-outlined">book_online</span>
+        <span class="nav-text" *ngIf="!isSidebarCollapsed">Đặt phòng</span>
+      </a>
+
+      <div class="nav-divider" *ngIf="!isSidebarCollapsed">SaaS & TÀI KHOẢN</div>
+
+      <a routerLink="/management/billing" routerLinkActive="active" class="nav-item">
+        <span class="material-symbols-outlined">workspace_premium</span>
+        <span class="nav-text" *ngIf="!isSidebarCollapsed">Gói dịch vụ (SaaS)</span>
+      </a>
+      <a routerLink="/management/staff" routerLinkActive="active" class="nav-item">
+        <span class="material-symbols-outlined">group</span>
+        <span class="nav-text" *ngIf="!isSidebarCollapsed">Nhân viên</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <header class="topbar">
+      <div class="topbar-left">
+        <h2 class="page-title">Quản lý dành cho Đối tác</h2>
+      </div>
+      <div class="topbar-right">
+        <div class="user-profile group">
+          <div class="avatar">
+            <span class="material-symbols-outlined">person</span>
+          </div>
+          <span class="username">{{ username }}</span>
+          <span class="material-symbols-outlined text-gray-500">arrow_drop_down</span>
+
+          <div class="dropdown-menu">
+            <a routerLink="/" class="dropdown-item">
+              <span class="material-symbols-outlined">home</span> Về trang chủ
+            </a>
+            <a (click)="logout()" class="dropdown-item text-red">
+              <span class="material-symbols-outlined">logout</span> Đăng xuất
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="content-wrapper">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>

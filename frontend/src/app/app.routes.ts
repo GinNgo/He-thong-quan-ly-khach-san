@@ -35,12 +35,17 @@ export const routes: Routes = [
       { path: 'hotel/:id', component: HotelDetailComponent },
       { path: 'booking/:roomTypeId', component: BookingCheckoutComponent, canActivate: [clientAuthGuard] },
       { path: 'profile', component: ProfileComponent, canActivate: [clientAuthGuard] }
+      ,{ path: 'booking-history', component: ProfileComponent, canActivate: [clientAuthGuard], data: { tab: 'bookings' } }
+      ,{ path: 'my-invoices', loadComponent: () => import('./features/client/my-invoices/my-invoices.component').then(m => m.MyInvoicesComponent), canActivate: [clientAuthGuard] }
+      ,{ path: 'settings', loadComponent: () => import('./features/client/account-settings/account-settings.component').then(m => m.AccountSettingsComponent), canActivate: [clientAuthGuard] }
     ]
   },
   { path: 'payment-simulator', loadComponent: () => import('./features/client/payment-simulator/payment-simulator').then(m => m.PaymentSimulatorComponent) },
   { path: 'payment-result', loadComponent: () => import('./features/client/payment-result/payment-result').then(m => m.PaymentResultComponent) },
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
+  { path: 'partner/register', loadComponent: () => import('./features/client/partner-register/partner-register.component').then(m => m.PartnerRegisterComponent) },
+  { path: 'partner/registration-status', loadComponent: () => import('./features/client/partner-registration-status/partner-registration-status.component').then(m => m.PartnerRegistrationStatusComponent), canActivate: [clientAuthGuard] },
   { path: 'admin/login', component: AdminLoginComponent },
   {
     path: 'admin',
@@ -54,7 +59,7 @@ export const routes: Routes = [
 
       { path: 'room-types', component: RoomTypeManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROOM_TYPE, actionCode: ActionCode.VIEW } },
       { path: 'rooms', component: RoomManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROOM, actionCode: ActionCode.VIEW } },
-      { path: 'services', component: ServiceManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.HOTEL, actionCode: ActionCode.VIEW } },
+      { path: 'services', component: ServiceManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.HOTEL_SERVICE, actionCode: ActionCode.VIEW } },
       { path: 'reservations', component: ReservationManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.RESERVATION, actionCode: ActionCode.VIEW } },
       { path: 'reservations/timeline', component: ReservationTimelineComponent, canActivate: [permissionGuard], data: { functionCode: FunctionCode.RESERVATION, actionCode: ActionCode.VIEW } },
       { path: 'reservations/create', component: ReservationCreate, canActivate: [permissionGuard], data: { functionCode: FunctionCode.RESERVATION, actionCode: ActionCode.CREATE } },
@@ -67,9 +72,38 @@ export const routes: Routes = [
       { path: 'role-permissions', loadComponent: () => import('./features/admin/role-permission/role-permission.component').then(m => m.RolePermissionComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROLE_PERMISSION, actionCode: ActionCode.VIEW } },
       { path: 'property-imports', loadComponent: () => import('./features/admin/property-imports/property-imports.component').then(m => m.PropertyImportsComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PROPERTY_IMPORT, actionCode: ActionCode.VIEW } },
       { path: 'property-claims', loadComponent: () => import('./features/admin/property-claims/property-claims.component').then(m => m.PropertyClaimsComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PROPERTY_CLAIM, actionCode: ActionCode.VIEW } },
+      { path: 'property-owners', loadComponent: () => import('./features/admin/partner-overview/partner-overview.component').then(m => m.PartnerOverviewComponent), data: { title: 'Chủ cơ sở', endpoint: 'property-owners' } },
+      { path: 'property-registrations', loadComponent: () => import('./features/admin/partner-overview/partner-overview.component').then(m => m.PartnerOverviewComponent), data: { title: 'Tài khoản đã đăng phòng', endpoint: 'property-registrations' } },
+      { path: 'unsubscribed-owners', loadComponent: () => import('./features/admin/partner-overview/partner-overview.component').then(m => m.PartnerOverviewComponent), data: { title: 'Tài khoản chưa mua gói', endpoint: 'property-owners/unsubscribed' } },
+      { path: 'property-approvals', loadComponent: () => import('./features/admin/partner-overview/partner-overview.component').then(m => m.PartnerOverviewComponent), data: { title: 'Duyệt cơ sở', endpoint: 'property-approvals' } },
+      { path: 'property-staff', loadComponent: () => import('./features/admin/partner-overview/partner-overview.component').then(m => m.PartnerOverviewComponent), data: { title: 'Nhân viên cơ sở', endpoint: 'property-staff' } },
+      { path: 'property-room-types', loadComponent: () => import('./features/admin/partner-overview/partner-overview.component').then(m => m.PartnerOverviewComponent), data: { title: 'Danh mục loại phòng', endpoint: 'property-room-types' } },
+      { path: 'property-rooms', loadComponent: () => import('./features/admin/partner-overview/partner-overview.component').then(m => m.PartnerOverviewComponent), data: { title: 'Danh sách phòng', endpoint: 'property-rooms' } },
+      { path: 'subscription-orders', loadComponent: () => import('./features/admin/partner-overview/partner-overview.component').then(m => m.PartnerOverviewComponent), data: { title: 'Đơn đăng ký gói', endpoint: 'subscription-orders' } },
+      { path: 'subscription-payments', loadComponent: () => import('./features/admin/partner-overview/partner-overview.component').then(m => m.PartnerOverviewComponent), data: { title: 'Thanh toán gói', endpoint: 'subscription-payments' } },
+      { path: 'software-contracts', loadComponent: () => import('./features/admin/partner-overview/partner-overview.component').then(m => m.PartnerOverviewComponent), data: { title: 'Hợp đồng phần mềm', endpoint: 'software-contracts' } },
+      { path: 'role', redirectTo: 'roles', pathMatch: 'full' },
+      { path: 'roles-management', redirectTo: 'roles', pathMatch: 'full' },
+      { path: 'permissions/roles', redirectTo: 'role-permissions', pathMatch: 'full' },
+      { path: 'room-type', redirectTo: 'room-types', pathMatch: 'full' },
+      { path: 'manage-rooms', redirectTo: 'rooms', pathMatch: 'full' },
       { path: '404', loadComponent: () => import('./features/error/not-found/not-found.component').then(m => m.NotFoundComponent) },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: '**', redirectTo: '404' }
+    ]
+  },
+  {
+    path: 'management',
+    loadComponent: () => import('./layout/management-layout/management-layout').then(m => m.ManagementLayout),
+    canActivate: [authGuard],
+    children: [
+      { path: 'dashboard', loadComponent: () => import('./features/management/dashboard/management-dashboard.component').then(m => m.ManagementDashboardComponent) },
+      { path: 'properties', loadComponent: () => import('./features/management/dashboard/management-dashboard.component').then(m => m.ManagementDashboardComponent) },
+      { path: 'room-types', loadComponent: () => import('./features/management/inventory/management-inventory.component').then(m => m.ManagementInventoryComponent), data: { mode: 'room-types' } },
+      { path: 'rooms', loadComponent: () => import('./features/management/inventory/management-inventory.component').then(m => m.ManagementInventoryComponent), data: { mode: 'rooms' } },
+      { path: 'billing', loadComponent: () => import('./features/management/subscription-billing/subscription-billing.component').then(m => m.SubscriptionBillingComponent) },
+      { path: 'subscription', redirectTo: 'billing', pathMatch: 'full' },
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },
   { path: '403', loadComponent: () => import('./features/error/forbidden/forbidden.component').then(m => m.ForbiddenComponent) },

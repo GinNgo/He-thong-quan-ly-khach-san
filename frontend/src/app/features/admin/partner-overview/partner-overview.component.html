@@ -1,0 +1,33 @@
+<section class="partner-page">
+  <header class="page-header">
+    <div>
+      <h1>{{ title }}</h1>
+      <p>Theo dõi dữ liệu cơ sở, tài khoản và gói dịch vụ trên toàn hệ thống.</p>
+    </div>
+    <button type="button" class="icon-button" title="Tải lại" (click)="load()">
+      <i class="pi pi-refresh" [class.pi-spin]="loading"></i>
+    </button>
+  </header>
+
+  <div class="data-panel">
+    @if (error) {
+      <div class="state error">{{ error }}</div>
+    } @else if (loading) {
+      <div class="state"><i class="pi pi-spin pi-spinner"></i> Đang tải dữ liệu...</div>
+    } @else if (!rows.length) {
+      <div class="state">Chưa có dữ liệu phù hợp.</div>
+    } @else {
+      <div class="table-scroll">
+        <table>
+          <thead><tr>@for (column of columns; track column) { <th>{{ label(column) }}</th> }</tr></thead>
+          <tbody>
+            @for (row of rows; track $index) {
+              <tr>@for (column of columns; track column) { <td>{{ display(row[column]) }}</td> }</tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <footer>{{ rows.length }} bản ghi</footer>
+    }
+  </div>
+</section>

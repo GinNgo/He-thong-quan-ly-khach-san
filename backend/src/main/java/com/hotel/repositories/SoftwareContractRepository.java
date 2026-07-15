@@ -5,4 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface SoftwareContractRepository extends JpaRepository<SoftwareContract, Long> {}
+public interface SoftwareContractRepository extends JpaRepository<SoftwareContract, Long> {
+    java.util.Optional<SoftwareContract> findByContractNo(String contractNo);
+}

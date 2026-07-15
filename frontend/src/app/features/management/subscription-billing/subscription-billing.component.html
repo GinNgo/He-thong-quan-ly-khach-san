@@ -1,0 +1,50 @@
+<div class="billing-container">
+  <div class="current-plan-card" *ngIf="mySubscription">
+    <div class="plan-header">
+      <h3>Gói hiện tại của bạn</h3>
+      <span class="status-badge" [class.active]="mySubscription.status === 'ACTIVE'">{{ mySubscription.status }}</span>
+    </div>
+    <div class="plan-details">
+      <div class="plan-name">{{ mySubscription.plan.name }}</div>
+      <div class="plan-meta">
+        <p *ngIf="mySubscription.endAt">Ngày hết hạn: <strong>{{ mySubscription.endAt | date:'dd/MM/yyyy' }}</strong></p>
+        <p *ngIf="!mySubscription.endAt">Gói không thời hạn (Lifetime)</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="section-title">Nâng cấp gói dịch vụ</h2>
+  <div class="pricing-grid" *ngIf="!isLoading">
+    <div class="pricing-card" *ngFor="let plan of plans" [class.highlight]="plan.code === 'PRO'">
+      <div class="card-header">
+        <h4>{{ plan.name }}</h4>
+        <div class="price">
+          <span class="amount">{{ plan.price | number:'1.0-0' }}</span>
+          <span class="currency">{{ plan.currency }}</span>
+          <span class="period" *ngIf="plan.durationDays > 0">/ {{ plan.durationDays }} ngày</span>
+          <span class="period" *ngIf="plan.durationDays === 0">/ Vĩnh viễn</span>
+        </div>
+        <p class="desc">{{ plan.description }}</p>
+      </div>
+      <div class="card-body">
+        <ul class="features">
+          <li><span class="material-symbols-outlined text-green">check</span> Hỗ trợ tính năng cơ bản</li>
+          <li *ngIf="plan.price > 0"><span class="material-symbols-outlined text-green">check</span> Quản lý không giới hạn phòng</li>
+          <li *ngIf="plan.code === 'PREMIUM'"><span class="material-symbols-outlined text-green">check</span> Hỗ trợ báo cáo doanh thu</li>
+        </ul>
+      </div>
+      <div class="card-footer">
+        <button class="btn btn-primary w-full"
+                [disabled]="mySubscription?.plan?.id === plan.id"
+                (click)="buyPlan(plan.id)">
+          {{ mySubscription?.plan?.id === plan.id ? 'Đang sử dụng' : 'Mua ngay' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <p>Đang tải thông tin gói...</p>
+  </div>
+</div>

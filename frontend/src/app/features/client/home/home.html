@@ -4,40 +4,51 @@
   <app-sticky-search-bar [isVisible]="showStickySearch"></app-sticky-search-bar>
 
   <!-- Hero Section -->
-  <section id="home" class="relative h-[600px] flex items-center justify-center">
+  <section id="home" class="home-hero relative h-[480px] flex items-center justify-center">
     <!-- Background Image -->
     <div class="absolute inset-0 z-0">
-      <img src="https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=1920&q=80" alt="Resort" class="w-full h-full object-cover">
+      <img src="assets/images/login-bg.png" alt="Sảnh lưu trú LuxeStay" class="w-full h-full object-cover">
       <!-- Dark overlay -->
       <div class="absolute inset-0 bg-black/40"></div>
     </div>
     
     <div class="relative z-10 text-center px-4 w-full max-w-7xl flex flex-col items-center">
-      <h1 class="text-4xl md:text-5xl lg:text-[64px] font-bold text-white mb-6 font-serif drop-shadow-lg leading-tight animate-fade-in-up">
-        Trải nghiệm <span class="text-blue-400">Đẳng cấp</span>
+      <span class="hero-kicker">Tìm chỗ nghỉ trên khắp Việt Nam</span>
+      <h1 class="text-4xl md:text-5xl lg:text-[56px] font-bold text-white mb-4 font-serif drop-shadow-lg leading-tight animate-fade-in-up">
+        LuxeStay
       </h1>
       <p class="text-lg md:text-xl text-gray-100 max-w-2xl mx-auto font-medium drop-shadow-md animate-fade-in-up animation-delay-100 mb-0">
-        Khám phá hàng ngàn khách sạn, khu nghỉ dưỡng cao cấp tại Việt Nam với giá tốt nhất.
+        Chọn đúng tỉnh, phường/xã hoặc cơ sở bạn cần với dữ liệu phòng được cập nhật từ hệ thống.
       </p>
     </div>
   </section>
 
   <!-- Hero Search Component (Positioned to overlap Hero bottom) -->
-  <div #heroSearchRef class="relative z-20 max-w-7xl mx-auto px-4 mt-[-80px]">
+  <div #heroSearchRef class="relative z-20 max-w-7xl mx-auto px-4 mt-[-62px]">
     <app-hero-search></app-hero-search>
   </div>
 
   <!-- Main Content Area -->
-  <div class="max-w-7xl mx-auto px-4 mt-16">
-    
-    <!-- Promotions Component -->
-    <app-promotions [promotions]="promotions"></app-promotions>
-
+  <div class="max-w-7xl mx-auto px-4 mt-14">
     <!-- Popular Destinations Component -->
     <app-popular-destinations 
       [destinations]="destinations" 
       [loading]="isLoadingDestinations">
     </app-popular-destinations>
 
+    <app-featured-properties
+      [properties]="featuredProperties"
+      [loading]="isLoadingFeatured">
+    </app-featured-properties>
+
   </div>
+
+  <section class="owner-band">
+    <div>
+      <span>Dành cho đối tác lưu trú</span>
+      <h2>Đưa cơ sở của bạn lên LuxeStay</h2>
+      <p>Quản lý loại phòng, tồn phòng và đặt phòng trên cùng một hệ thống.</p>
+    </div>
+    <button type="button" (click)="openOwnerPortal()"><i class="pi pi-building"></i> Đăng chỗ nghỉ</button>
+  </section>
 </div>

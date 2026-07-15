@@ -1,124 +1,57 @@
-<!-- Header / Navbar -->
-<header class="liquid-glass sticky top-0 z-50 shadow-sm transition-all duration-300"
-        [style.visibility]="layoutState.hideMainHeader() ? 'hidden' : 'visible'">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex justify-between items-center h-20">
-      
-      <!-- Logo -->
-      <a routerLink="/" class="flex items-center gap-2 no-underline text-gray-900">
-        <div class="flex flex-col items-center justify-center border-2 border-gray-900 p-1">
-          <div class="flex gap-1">
-            <div class="w-1 h-3 bg-gray-900"></div>
-            <div class="w-1 h-4 bg-gray-900"></div>
-            <div class="w-1 h-5 bg-gray-900"></div>
-          </div>
-        </div>
-        <div class="flex flex-col leading-tight">
-          <span class="text-xl font-black tracking-widest uppercase">Luxstay</span>
-          <span class="text-xs font-semibold tracking-widest uppercase text-gray-500">Hotels</span>
-        </div>
-      </a>
-
-      <!-- Navigation -->
-      <nav class="hidden md:flex space-x-8">
-        <a routerLink="/" fragment="rooms" class="text-sm font-semibold text-gray-900 hover:text-accent transition-colors duration-300 no-underline">Phòng nghỉ</a>
-        <a routerLink="/" fragment="services" class="text-sm font-medium text-gray-700 hover:text-accent transition-colors duration-300 no-underline">Dịch vụ</a>
-        <a routerLink="/" fragment="offers" class="text-sm font-medium text-gray-700 hover:text-accent transition-colors duration-300 no-underline">Ưu đãi</a>
-        <a routerLink="/search" class="text-sm font-medium text-gray-700 hover:text-accent transition-colors duration-300 no-underline">Tìm khách sạn</a>
-        <a routerLink="/" fragment="reviews" class="text-sm font-medium text-gray-700 hover:text-accent transition-colors duration-300 no-underline">Đánh giá</a>
-      </nav>
-
-      <!-- Actions -->
-      <div class="flex items-center space-x-3 sm:space-x-6">
-        <div class="hidden sm:flex items-center space-x-1 cursor-pointer group">
-          <span class="text-sm font-medium text-gray-700 group-hover:text-blue-600">VN</span>
-          <span class="material-symbols-outlined text-[18px] leading-none text-gray-500 group-hover:text-blue-600 flex items-center">expand_more</span>
-        </div>
-        
-        <ng-container *ngIf="!isLoggedIn">
-          <a routerLink="/login" class="bg-accent text-white px-6 py-2.5 rounded-md text-sm font-semibold hover:-translate-y-1 hover:shadow-xl transition-all duration-300 no-underline">
-            Đăng nhập/Đăng ký
-          </a>
-        </ng-container>
-
-        <ng-container *ngIf="isLoggedIn">
-          <div class="relative group cursor-pointer">
-            <div class="flex items-center gap-3">
-              <div class="flex flex-col text-right">
-                <span class="text-sm font-bold text-gray-900 group-hover:text-accent transition-colors">Hi, {{ username }}</span>
-              </div>
-              <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center border-2 border-white shadow-sm overflow-hidden group-hover:border-accent transition-colors">
-                <img [src]="'https://ui-avatars.com/api/?name=' + username + '&background=random'" *ngIf="username" alt="Avatar" class="w-full h-full object-cover">
-                <span class="material-symbols-outlined text-primary" *ngIf="!username">person</span>
-              </div>
-              <span class="material-symbols-outlined text-gray-400 group-hover:text-accent transition-colors">arrow_drop_down</span>
-            </div>
-
-            <!-- Dropdown Menu -->
-            <div class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-right group-hover:translate-y-0 translate-y-2">
-              <div class="p-2 flex flex-col gap-1">
-                <a routerLink="/profile" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 hover:text-accent transition-colors no-underline font-medium">
-                  <i class="pi pi-user text-gray-400"></i> Trang cá nhân
-                </a>
-                <a routerLink="/profile" fragment="bookings" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 hover:text-accent transition-colors no-underline font-medium">
-                  <i class="pi pi-calendar text-gray-400"></i> Lịch sử đặt phòng
-                </a>
-                <a routerLink="/profile" fragment="invoices" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 hover:text-accent transition-colors no-underline font-medium">
-                  <i class="pi pi-file text-gray-400"></i> Hóa đơn của tôi
-                </a>
-                <a *ngIf="isPropertyOwner" routerLink="/admin" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 hover:text-accent transition-colors no-underline font-medium border-t border-gray-100 mt-1 pt-2">
-                  <i class="pi pi-building text-gray-400"></i> Quản lý cơ sở
-                </a>
-                <div class="h-px bg-gray-100 my-1"></div>
-                <a routerLink="/profile" fragment="security" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 hover:text-accent transition-colors no-underline font-medium">
-                  <i class="pi pi-lock text-gray-400"></i> Đổi mật khẩu
-                </a>
-                <a (click)="logout(); $event.stopPropagation()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 transition-colors no-underline font-medium cursor-pointer">
-                  <i class="pi pi-sign-out text-red-500"></i> Đăng xuất
-                </a>
-              </div>
-            </div>
-          </div>
-        </ng-container>
-
-        <button type="button" class="md:hidden w-10 h-10 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-700" (click)="toggleMobileMenu()" aria-label="Mở menu">
-          <span class="material-symbols-outlined text-[22px]">{{ isMobileMenuOpen ? 'close' : 'menu' }}</span>
-        </button>
-      </div>
-      
-    </div>
-
-    <nav *ngIf="isMobileMenuOpen" class="md:hidden border-t border-gray-100 py-3 flex flex-col gap-1">
-      <a routerLink="/" fragment="rooms" (click)="closeMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-900 hover:bg-gray-50 no-underline">Phòng nghỉ</a>
-      <a routerLink="/" fragment="services" (click)="closeMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 no-underline">Dịch vụ</a>
-      <a routerLink="/" fragment="offers" (click)="closeMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 no-underline">Ưu đãi</a>
-      <a routerLink="/search" (click)="closeMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 no-underline">Tìm khách sạn</a>
-      <a routerLink="/" fragment="reviews" (click)="closeMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 no-underline">Đánh giá</a>
+<header class="public-header" [style.visibility]="layoutState.hideMainHeader() ? 'hidden' : 'visible'">
+  <div class="header-inner">
+    <a routerLink="/" class="brand" aria-label="LuxeStay - Trang chủ">
+      <span class="brand-mark"><i></i><i></i><i></i></span>
+      <span><strong>LuxeStay</strong><small>Hotels</small></span>
+    </a>
+    <nav class="desktop-nav" aria-label="Điều hướng chính">
+      <a routerLink="/search">Tất cả chỗ nghỉ</a><a routerLink="/" fragment="rooms">Khách sạn</a>
+      <a routerLink="/" fragment="services">Dịch vụ</a><a routerLink="/" fragment="offers">Ưu đãi</a>
     </nav>
-  </div>
-</header>
-
-<!-- Main Content -->
-<main class="min-h-screen bg-[#f8f9fc] font-sans">
-  <router-outlet></router-outlet>
-</main>
-
-<!-- Footer -->
-<footer class="bg-gray-900 text-gray-300 py-12">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
-    <div class="flex items-center gap-2">
-      <div class="flex flex-col leading-tight text-white">
-        <span class="text-xl font-black tracking-widest uppercase font-serif">LuxeStay</span>
-        <span class="text-xs font-semibold tracking-widest uppercase text-gray-400">Hotels</span>
+    <div class="header-actions">
+      <button type="button" class="locale-button" title="Ngôn ngữ và tiền tệ"><span>VI</span><small>VND</small></button>
+      <button type="button" class="partner-button" (click)="navigatePartner()" [disabled]="partnerLabel === 'Tài khoản bị khóa'">{{ partnerLabel }}</button>
+      <a *ngIf="!isLoggedIn" routerLink="/login" class="login-button">Đăng nhập</a>
+      <div *ngIf="isLoggedIn" class="account-area">
+        <button type="button" class="account-trigger" (click)="toggleAccountMenu($event)" [attr.aria-expanded]="accountMenuOpen" aria-haspopup="menu">
+          <span class="avatar"><img *ngIf="avatarUrl" [src]="avatarUrl" alt="Ảnh đại diện" (error)="handleAvatarError()"><span *ngIf="!avatarUrl">{{ initials }}</span></span>
+          <span class="account-copy"><strong>{{ fullName || username }}</strong><small>{{ isPropertyOwner ? 'Chủ cơ sở' : 'Khách hàng' }}</small></span>
+          <i class="pi" [ngClass]="accountMenuOpen ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+        </button>
+        <section *ngIf="accountMenuOpen" class="account-menu" role="menu" aria-label="Menu tài khoản">
+          <header>
+            <span class="avatar large"><img *ngIf="avatarUrl" [src]="avatarUrl" alt="Ảnh đại diện" (error)="handleAvatarError()"><span *ngIf="!avatarUrl">{{ initials }}</span></span>
+            <span><strong>{{ fullName || username }}</strong><small>{{ userContext?.email || username }}</small></span>
+            <button type="button" class="menu-close" (click)="closeAccountMenu()" title="Đóng"><i class="pi pi-times"></i></button>
+          </header>
+          <nav>
+            <a routerLink="/profile" [queryParams]="{tab: 'profile'}" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-user"></i><span>Thông tin cá nhân</span></a>
+            <a routerLink="/booking-history" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-suitcase"></i><span>Chuyến đi của tôi</span><b *ngIf="userContext?.pendingBookingCount">{{ userContext?.pendingBookingCount }}</b></a>
+            <a routerLink="/my-invoices" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-file"></i><span>Hóa đơn của tôi</span></a>
+            <div class="menu-divider"></div>
+            <button type="button" (click)="navigatePartner()" role="menuitem" [disabled]="partnerLabel === 'Tài khoản bị khóa'"><i class="pi pi-building"></i><span>{{ partnerLabel }}</span></button>
+            <ng-container *ngIf="isPropertyOwner">
+              <a routerLink="/management/dashboard" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-chart-bar"></i><span>Tổng quan quản lý</span></a>
+              <a routerLink="/management/room-types" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-th-large"></i><span>Loại phòng và phòng</span></a>
+              <a routerLink="/management/subscription" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-credit-card"></i><span>Gói dịch vụ</span><small>{{ userContext?.plan || 'Chưa có gói' }}</small></a>
+            </ng-container>
+            <a *ngIf="isAdmin" routerLink="/admin/dashboard" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-shield"></i><span>Quản trị hệ thống</span></a>
+            <div class="menu-divider"></div>
+            <div class="menu-setting"><i class="pi pi-language"></i><span>Ngôn ngữ</span><small>Tiếng Việt</small></div>
+            <div class="menu-setting"><i class="pi pi-wallet"></i><span>Tiền tệ</span><small>VND</small></div>
+            <a routerLink="/settings" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-cog"></i><span>Cài đặt tài khoản</span></a>
+            <button type="button" class="logout-item" (click)="logout()" role="menuitem"><i class="pi pi-sign-out"></i><span>Đăng xuất</span></button>
+          </nav>
+        </section>
       </div>
+      <button type="button" class="mobile-toggle" (click)="toggleMobileMenu()" aria-label="Mở menu"><i class="pi" [ngClass]="isMobileMenuOpen ? 'pi-times' : 'pi-bars'"></i></button>
     </div>
-    <div class="flex space-x-6">
-      <a href="#" class="text-sm text-gray-400 hover:text-white transition-colors duration-300 no-underline">Privacy Policy</a>
-      <a href="#" class="text-sm text-gray-400 hover:text-white transition-colors duration-300 no-underline">Terms of Service</a>
-    </div>
-    <p class="text-sm text-gray-500 m-0">&copy; 2026 LuxeStay Hotels. All rights reserved.</p>
   </div>
-</footer>
-
-<!-- Realtime Chat Widget -->
+  <nav *ngIf="isMobileMenuOpen" class="mobile-nav">
+    <a routerLink="/search" (click)="closeMobileMenu()">Tất cả chỗ nghỉ</a><a routerLink="/" fragment="rooms" (click)="closeMobileMenu()">Khách sạn</a>
+    <a routerLink="/" fragment="services" (click)="closeMobileMenu()">Dịch vụ</a><button type="button" (click)="navigatePartner(); closeMobileMenu()">{{ partnerLabel }}</button>
+  </nav>
+</header>
+<main class="public-main"><router-outlet></router-outlet></main>
+<footer class="public-footer"><div><strong>LuxeStay Hotels</strong><span>Đặt chỗ minh bạch, quản lý lưu trú thuận tiện.</span></div><small>&copy; 2026 LuxeStay Hotels.</small></footer>
 <app-chat-widget></app-chat-widget>

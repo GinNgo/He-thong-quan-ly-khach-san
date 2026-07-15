@@ -56,6 +56,8 @@ public class DataInitializer implements CommandLineRunner {
         AppModule systemModule = initModule("SYSTEM", "Hệ thống");
         AppModule hotelModule = initModule("HOTEL", "Khách sạn");
         AppModule financeModule = initModule("FINANCE", "Tài chính");
+        AppModule partnerModule = initModule("PARTNER_PROPERTY", "Đối tác & Cơ sở");
+        AppModule subscriptionModule = initModule("SUBSCRIPTION", "Gói & Hợp đồng");
 
         initFunction(systemModule, FunctionCode.REPORT.name(), "Bảng điều khiển", "/admin/dashboard", "pi pi-chart-bar", 1);
         initFunction(systemModule, FunctionCode.SYSTEM.name(), "Khai báo trang", "/admin/modules", "pi pi-sitemap", 2);
@@ -68,11 +70,24 @@ public class DataInitializer implements CommandLineRunner {
         initFunction(hotelModule, FunctionCode.ROOM_TYPE.name(), "Loại phòng", "/admin/room-types", "pi pi-list", 2);
         initFunction(hotelModule, FunctionCode.ROOM.name(), "Phòng", "/admin/rooms", "pi pi-home", 3);
         initFunction(hotelModule, FunctionCode.RESERVATION.name(), "Đặt phòng", "/admin/reservations", "pi pi-calendar", 4);
-        initFunction(hotelModule, FunctionCode.HOTEL.name(), "Dịch vụ khách sạn", "/admin/services", "pi pi-box", 5);
+        initFunction(hotelModule, FunctionCode.HOTEL_SERVICE.name(), "Dịch vụ khách sạn", "/admin/services", "pi pi-box", 5);
         initFunction(hotelModule, FunctionCode.CHAT.name(), "Chat trực tuyến", "/admin/chat", "pi pi-comments", 6);
 
         initFunction(financeModule, FunctionCode.INVOICE.name(), "Hóa đơn", "/admin/invoices", "pi pi-file-o", 1);
-        initFunction(financeModule, FunctionCode.FINANCE.name(), "Thanh toán", "/admin/payments", "pi pi-money-bill", 2);
+
+        initFunction(partnerModule, "ADMIN_PROPERTIES", "Cơ sở lưu trú", "/admin/properties", "pi pi-building", 1);
+        initFunction(partnerModule, "PROPERTY_OWNERS", "Chủ cơ sở", "/admin/property-owners", "pi pi-users", 2);
+        initFunction(partnerModule, "PROPERTY_REGISTRATIONS", "Tài khoản đã đăng phòng", "/admin/property-registrations", "pi pi-user-plus", 3);
+        initFunction(partnerModule, "UNSUBSCRIBED_OWNERS", "Tài khoản chưa mua gói", "/admin/unsubscribed-owners", "pi pi-exclamation-circle", 4);
+        initFunction(partnerModule, "PROPERTY_APPROVALS", "Duyệt cơ sở", "/admin/property-approvals", "pi pi-check-square", 5);
+        initFunction(partnerModule, "PROPERTY_STAFF", "Nhân viên cơ sở", "/admin/property-staff", "pi pi-id-card", 6);
+        initFunction(partnerModule, "PROPERTY_ROOM_TYPES", "Danh mục loại phòng", "/admin/property-room-types", "pi pi-list", 7);
+        initFunction(partnerModule, "PROPERTY_ROOMS", "Danh sách phòng", "/admin/property-rooms", "pi pi-home", 8);
+
+        initFunction(subscriptionModule, "SUBSCRIPTION_PLANS_ADMIN", "Gói dịch vụ", "/admin/plans", "pi pi-box", 1);
+        initFunction(subscriptionModule, "SUBSCRIPTION_ORDERS", "Đơn đăng ký gói", "/admin/subscription-orders", "pi pi-file-edit", 3);
+        initFunction(subscriptionModule, "SUBSCRIPTION_PAYMENTS", "Thanh toán gói", "/admin/subscription-payments", "pi pi-credit-card", 4);
+        initFunction(subscriptionModule, "SOFTWARE_CONTRACTS", "Hợp đồng", "/admin/software-contracts", "pi pi-file", 5);
 
         Role superAdminRole = initRole("SUPER_ADMIN", "Quản trị hệ thống", "Toàn quyền hệ thống.");
         Role adminRole = initRole("ADMIN", "Quản trị viên", "Toàn quyền hệ thống.");
@@ -103,13 +118,17 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void repairSchema() {
+        if (!isSqlServer()) {
+            return;
+        }
+
         try {
             jdbcTemplate.execute("ALTER TABLE app_module ALTER COLUMN name NVARCHAR(255)");
             jdbcTemplate.execute("ALTER TABLE app_function ALTER COLUMN name NVARCHAR(255)");
             jdbcTemplate.execute("ALTER TABLE app_role ALTER COLUMN name NVARCHAR(255) NOT NULL");
             jdbcTemplate.execute("IF COL_LENGTH('app_role', 'description') IS NULL ALTER TABLE app_role ADD description NVARCHAR(500)");
             jdbcTemplate.execute("ALTER TABLE hotels ALTER COLUMN name NVARCHAR(255) NOT NULL");
-            jdbcTemplate.execute("ALTER TABLE hotels ALTER COLUMN address NVARCHAR(255) NOT NULL");
+            jdbcTemplate.execute("ALTER TABLE hotels ALTER COLUMN address NVARCHAR(1000) NOT NULL");
             jdbcTemplate.execute("ALTER TABLE hotels ALTER COLUMN city NVARCHAR(255) NOT NULL");
             jdbcTemplate.execute("ALTER TABLE hotels ALTER COLUMN country NVARCHAR(255) NOT NULL");
             jdbcTemplate.execute("ALTER TABLE hotels ALTER COLUMN description NVARCHAR(MAX)");
@@ -118,6 +137,18 @@ public class DataInitializer implements CommandLineRunner {
             jdbcTemplate.execute("ALTER TABLE users ALTER COLUMN full_name NVARCHAR(255)");
         } catch (Exception e) {
             System.out.println("Could not alter table columns: " + e.getMessage());
+        }
+    }
+
+    private boolean isSqlServer() {
+        if (jdbcTemplate.getDataSource() == null) {
+            return false;
+        }
+        try (var connection = jdbcTemplate.getDataSource().getConnection()) {
+            return "Microsoft SQL Server".equalsIgnoreCase(
+                    connection.getMetaData().getDatabaseProductName());
+        } catch (Exception e) {
+            return false;
         }
     }
 
@@ -150,6 +181,9 @@ public class DataInitializer implements CommandLineRunner {
         role.setCode(code);
         role.setName(name);
         role.setDescription(description);
+        role.setStatus("ACTIVE");
+        role.setSystemRole(Set.of("SUPER_ADMIN", "ADMIN", "CUSTOMER", "PROPERTY_OWNER", "HOTEL_ADMIN",
+                "HOTEL_MANAGER", "RECEPTIONIST", "ACCOUNTANT").contains(code));
         return roleRepository.save(role);
     }
 
@@ -160,6 +194,8 @@ public class DataInitializer implements CommandLineRunner {
             defaultHotel.setName("Grand Palace Hotel");
             defaultHotel.setDescription("A luxurious hotel with all modern amenities.");
             defaultHotel.setAddressLine("123 Test Street");
+            defaultHotel.setCity("Hà Nội");
+            defaultHotel.setCountry("Việt Nam");
             defaultHotel.setProvinceId(1L);
             defaultHotel.setWardId(1L);
             defaultHotel.setStarRating(5);
@@ -197,6 +233,7 @@ public class DataInitializer implements CommandLineRunner {
                     Room room = new Room();
                     room.setRoomNumber(String.format("%d-%s-%02d", hotel.getId(), roomType.getCode(), i));
                     room.setRoomType(roomType);
+                    room.setHotel(hotel);
                     room.setFloor(i);
                     room.setStatus("AVAILABLE");
                     room.setDescriptionVi(roomType.getDescriptionVi());
@@ -215,6 +252,10 @@ public class DataInitializer implements CommandLineRunner {
         roomType.setNameVi(nameVi);
         roomType.setNameEn(nameEn);
         roomType.setMaxGuest(maxGuest);
+        roomType.setMaxGuests(maxGuest);
+        roomType.setMaxAdults(maxGuest);
+        roomType.setMaxChildren(1);
+        roomType.setStatus("ACTIVE");
         roomType.setBasePrice(new BigDecimal(basePrice));
         roomType.setDescriptionVi(description);
         roomType.setDescriptionEn(description);
@@ -235,9 +276,9 @@ public class DataInitializer implements CommandLineRunner {
         ensurePermission(role, FunctionCode.ROOM_TYPE, manage);
         ensurePermission(role, FunctionCode.ROOM, manage);
         ensurePermission(role, FunctionCode.RESERVATION, manage | ActionCode.APPROVE);
-        ensurePermission(role, FunctionCode.HOTEL, manage);
+        ensurePermission(role, FunctionCode.HOTEL_SERVICE, manage);
         ensurePermission(role, FunctionCode.INVOICE, manageAndExport);
-        ensurePermission(role, FunctionCode.FINANCE, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE);
+        ensurePermission(role, FunctionCode.RESERVATION_PAYMENT, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE);
         ensurePermission(role, FunctionCode.CHAT, manage);
     }
 
@@ -255,7 +296,7 @@ public class DataInitializer implements CommandLineRunner {
         int invoiceMask = ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.DELETE | ActionCode.EXPORT;
         ensurePermission(role, FunctionCode.REPORT, ActionCode.VIEW);
         ensurePermission(role, FunctionCode.INVOICE, invoiceMask);
-        ensurePermission(role, FunctionCode.FINANCE, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.EXPORT);
+        ensurePermission(role, FunctionCode.RESERVATION_PAYMENT, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.EXPORT);
     }
 
     private void ensurePermission(Role role, FunctionCode functionCode, int actionMask) {

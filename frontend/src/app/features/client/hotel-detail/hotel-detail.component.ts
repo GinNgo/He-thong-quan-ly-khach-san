@@ -1,109 +1,27 @@
-import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ClientApiService, Hotel, RoomType } from '../../../core/services/client-api.service';
+import { ImageFallbackService } from '../../../core/services/image-fallback.service';
 
-@Component({
-  selector: 'app-hotel-detail',
-  standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
-  templateUrl: './hotel-detail.component.html',
-  styleUrls: ['./hotel-detail.component.css']
-})
+@Component({selector:'app-hotel-detail',standalone:true,imports:[CommonModule,FormsModule],templateUrl:'./hotel-detail.component.html',styleUrls:['./hotel-detail.component.css']})
 export class HotelDetailComponent implements OnInit {
-  private route = inject(ActivatedRoute);
-  private clientApi = inject(ClientApiService);
-
-  hotel: Hotel | null = null;
-  roomTypes: RoomType[] = [];
-  isLoading = true;
-  roomError = '';
-  bookingQueryParams: { checkIn?: string; checkOut?: string; guests?: number } = {};
-
-  showClaimModal = false;
-  claimForm = {
-    verificationMethod: 'BUSINESS_LICENSE',
-    verificationData: '',
-    note: ''
-  };
-
-  ngOnInit(): void {
-    this.route.queryParams.subscribe((params) => {
-      this.bookingQueryParams = {
-        checkIn: params['checkIn'] || undefined,
-        checkOut: params['checkOut'] || undefined,
-        guests: Number(params['guests']) || undefined,
-      };
-
-      if (this.hotel?.id) {
-        this.loadRoomTypes(this.hotel.id);
-      }
-    });
-
-    this.route.paramMap.subscribe((params) => {
-      const id = params.get('id');
-      if (id) {
-        this.loadHotelData(Number(id));
-      }
-    });
-  }
-
-  loadHotelData(hotelId: number) {
-    this.isLoading = true;
-    this.clientApi.getHotelById(hotelId).subscribe({
-      next: (hotelData) => {
-        this.hotel = hotelData;
-        this.loadRoomTypes(hotelId);
-      },
-      error: (err) => {
-        console.error('Error fetching hotel details:', err);
-        this.isLoading = false;
-      }
-    });
-  }
-
-  loadRoomTypes(hotelId: number) {
-    this.roomError = '';
-    this.clientApi
-      .getRoomTypesByHotel(
-        hotelId,
-        this.bookingQueryParams.checkIn,
-        this.bookingQueryParams.checkOut,
-        this.bookingQueryParams.guests
-      )
-      .subscribe({
-        next: (roomTypesData) => {
-          this.roomTypes = roomTypesData;
-          this.isLoading = false;
-        },
-        error: (err) => {
-          console.error('Error fetching room types:', err);
-          this.roomTypes = [];
-          this.roomError = 'Khong the tai tinh trang phong. Vui long thu lai.';
-          this.isLoading = false;
-        }
-      });
-  }
-
-  scrollToRooms() {
-    const el = document.getElementById('rooms');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
-  }
-
-  submitClaim() {
-    if (!this.hotel?.id) return;
-    this.clientApi.submitPropertyClaim(this.hotel.id, this.claimForm).subscribe({
-      next: () => {
-        alert('Gửi yêu cầu thành công. Chúng tôi sẽ liên hệ với bạn sớm nhất!');
-        this.showClaimModal = false;
-      },
-      error: (err) => {
-        alert('Có lỗi xảy ra, vui lòng thử lại.');
-        console.error(err);
-      }
-    });
-  }
+  private readonly route=inject(ActivatedRoute); private readonly router=inject(Router); private readonly api=inject(ClientApiService); private readonly changeDetector=inject(ChangeDetectorRef); readonly fallback=inject(ImageFallbackService);
+  hotel:Hotel|null=null; roomTypes:RoomType[]=[]; isLoading=true; roomError=''; selectedRoomType:RoomType|null=null; selectedQuantity=0;
+  bookingQueryParams:{checkIn?:string;checkOut?:string;adultCount:number;childCount:number;roomCount:number}={adultCount:2,childCount:0,roomCount:1};
+  showClaimModal=false; claimForm={verificationMethod:'BUSINESS_LICENSE',verificationData:'',note:''};
+  ngOnInit():void{this.route.queryParams.subscribe(p=>{this.bookingQueryParams={checkIn:p['checkInDate']||p['checkIn'],checkOut:p['checkOutDate']||p['checkOut'],adultCount:Number(p['adultCount'])||Number(p['guests'])||2,childCount:Number(p['childCount'])||0,roomCount:Number(p['roomCount'])||1};if(this.hotel?.id)this.loadRoomTypes(this.hotel.id);});this.route.paramMap.subscribe(p=>{const id=Number(p.get('id'));if(id)this.loadHotelData(id);});}
+  get guests():number{return this.bookingQueryParams.adultCount+this.bookingQueryParams.childCount;} get nights():number{if(!this.bookingQueryParams.checkIn||!this.bookingQueryParams.checkOut)return 1;return Math.max(1,Math.round((new Date(this.bookingQueryParams.checkOut).getTime()-new Date(this.bookingQueryParams.checkIn).getTime())/86400000));}
+  get roomSubtotal():number{return (this.selectedRoomType?.basePrice||0)*this.nights*this.selectedQuantity;} get roomTotal():number{return (this.selectedRoomType?.totalPrice||0)*this.selectedQuantity||this.roomSubtotal;} get roomTax():number{return Math.max(0,this.roomTotal-this.roomSubtotal);} get canContinue():boolean{return !!this.selectedRoomType&&this.selectedQuantity>0&&this.selectedQuantity<=this.maxQuantity(this.selectedRoomType)&&this.capacityValid;}
+  get capacityValid():boolean{if(!this.selectedRoomType||!this.selectedQuantity)return false;const maxA=this.selectedRoomType.maxAdults??this.selectedRoomType.maxGuests??this.selectedRoomType.maxGuest;const maxC=this.selectedRoomType.maxChildren??this.selectedRoomType.maxGuests??this.selectedRoomType.maxGuest;const maxG=this.selectedRoomType.maxGuests??this.selectedRoomType.maxGuest;return this.bookingQueryParams.adultCount<=maxA*this.selectedQuantity&&this.bookingQueryParams.childCount<=maxC*this.selectedQuantity&&this.guests<=maxG*this.selectedQuantity;}
+  loadHotelData(id:number):void{this.isLoading=true;this.api.getHotelById(id).subscribe({next:h=>{this.hotel=h;this.changeDetector.detectChanges();this.loadRoomTypes(id);},error:()=>{this.roomError='Không thể tải thông tin cơ sở.';this.isLoading=false;this.changeDetector.detectChanges();}});}
+  loadRoomTypes(id:number):void{this.roomError='';this.api.getRoomTypesByHotel(id,this.bookingQueryParams.checkIn,this.bookingQueryParams.checkOut,this.guests).subscribe({next:r=>{this.roomTypes=r;this.selectedRoomType=null;this.selectedQuantity=0;this.isLoading=false;this.changeDetector.detectChanges();setTimeout(()=>{if(this.route.snapshot.fragment==='rooms')this.scrollToRooms();});},error:()=>{this.roomTypes=[];this.roomError='Không thể tải tình trạng phòng. Vui lòng thử lại.';this.isLoading=false;this.changeDetector.detectChanges();}});}
+  selectQuantity(room:RoomType,value:any):void{const quantity=Math.max(0,Math.min(this.maxQuantity(room),Number(value)||0));if(quantity===0){if(this.selectedRoomType?.id===room.id){this.selectedRoomType=null;this.selectedQuantity=0;}return;}this.selectedRoomType=room;this.selectedQuantity=quantity;}
+  maxQuantity(room:RoomType):number{return Math.max(0,Math.min(room.availableRooms??0,this.bookingQueryParams.roomCount));} quantities(room:RoomType):number[]{return Array.from({length:this.maxQuantity(room)+1},(_,i)=>i);}
+  continueBooking():void{if(!this.canContinue||!this.selectedRoomType||!this.hotel)return;this.router.navigate(['/booking',this.selectedRoomType.id],{queryParams:{checkIn:this.bookingQueryParams.checkIn,checkOut:this.bookingQueryParams.checkOut,adultCount:this.bookingQueryParams.adultCount,childCount:this.bookingQueryParams.childCount,roomCount:this.bookingQueryParams.roomCount,quantity:this.selectedQuantity,hotelId:this.hotel.id,roomTypeName:this.selectedRoomType.nameVi,nightlyPrice:this.selectedRoomType.basePrice,estimatedTotal:this.roomTotal}});}
+  roomImage(room:RoomType):string{return room.imageUrls?.[0]||this.fallback.room(room.code);} handleRoomImageError(e:Event,room:RoomType):void{this.fallback.replace(e,this.fallback.room(room.code));} handleHotelImageError(e:Event):void{this.fallback.replace(e,this.fallback.property(this.hotel?.propertyType));}
+  bedLabel(value?:string):string{return ({SINGLE:'1 giường đơn',DOUBLE:'1 giường đôi',TWIN:'2 giường đơn',MULTIPLE:'Nhiều giường'} as Record<string,string>)[value||'']||value||'Theo cấu hình phòng';}
+  formatVnd(value:number):string{return `${new Intl.NumberFormat('vi-VN',{maximumFractionDigits:0}).format(value||0)} ₫`;}
+  scrollToRooms():void{document.getElementById('rooms')?.scrollIntoView({behavior:'smooth'});} submitClaim():void{if(!this.hotel)return;this.api.submitPropertyClaim(this.hotel.id,this.claimForm).subscribe({next:()=>{this.showClaimModal=false;alert('Yêu cầu đã được gửi để xét duyệt.');},error:()=>alert('Không thể gửi yêu cầu lúc này.')});}
 }

@@ -25,6 +25,12 @@ public class Role extends AuditableEntity {
     @Column(columnDefinition = "NVARCHAR(500)")
     private String description;
 
+    @Column(nullable = false)
+    private String status = "ACTIVE";
+
+    @Column(name = "system_role", nullable = false)
+    private Boolean systemRole = false;
+
     @OneToMany(mappedBy = "role", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     private java.util.Set<RolePermission> rolePermissions;
 
@@ -61,6 +67,11 @@ public class Role extends AuditableEntity {
     public void setDescription(String description) {
         this.description = description;
     }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public Boolean getSystemRole() { return systemRole; }
+    public void setSystemRole(Boolean systemRole) { this.systemRole = systemRole; }
 
     public java.util.Set<RolePermission> getRolePermissions() {
         return rolePermissions;

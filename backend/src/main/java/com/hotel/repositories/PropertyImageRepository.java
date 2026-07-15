@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface PropertyImageRepository extends JpaRepository<PropertyImage, Long> {
     List<PropertyImage> findByHotelId(Long hotelId);
+    List<PropertyImage> findByHotelIdOrderBySortOrderAsc(Long hotelId);
+    long countByHotelId(Long hotelId);
 }

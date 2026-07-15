@@ -17,10 +17,16 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
 
   mail:
     host: smtp.gmail.com
@@ -61,7 +67,18 @@ jwt:
 app:
   location-import:
     enabled: true
-    file-path: src/main/resources/data/locations.json
+    file-path: ../docs/34_tinh_huyen_xa.json
+    cleanup-obsolete: false
+  demo-data:
+    enabled: false
+    legacy-seed: false
+    nationwide-property-seed: false
+    coverage-mode: STANDARD
+    properties-per-province: 5
+    properties-per-ward: 1
+    max-total-properties: 5000
+    batch-size: 50
+    allow-public-demo: false
   accommodation-import:
     enabled: true
     provider: NOMINATIM

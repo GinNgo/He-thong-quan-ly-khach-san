@@ -23,7 +23,7 @@ public class Reservation extends AuditableEntity {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_id", nullable = false)
+    @JoinColumn(name = "room_id")
     private Room room;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -47,7 +47,7 @@ public class Reservation extends AuditableEntity {
     @Column(name = "payment_method")
     private String paymentMethod; // CREDIT_CARD, PAYPAL, APPLE_PAY
 
-    @Column(name = "special_requests", columnDefinition = "TEXT")
+    @Column(name = "special_requests", columnDefinition = "nvarchar(max)")
     private String specialRequests;
 
 

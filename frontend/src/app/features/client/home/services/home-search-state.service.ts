@@ -1,13 +1,16 @@
-import { Injectable, signal, computed, effect } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 export type StayType = 'OVERNIGHT' | 'DAY_USE';
+export type SuggestionType = 'PROVINCE' | 'WARD' | 'PROPERTY' | 'LANDMARK';
 
 export interface HomeSearchState {
   keyword: string;
   locationDisplayName: string;
+  selectedSuggestionType: SuggestionType | null;
   provinceId: number | null;
   wardId: number | null;
+  propertyId: number | null;
   propertyTypes: string[];
   stayType: StayType;
   checkInDate: Date | null;
@@ -15,156 +18,279 @@ export interface HomeSearchState {
   adultCount: number;
   childCount: number;
   roomCount: number;
+  latitude: number | null;
+  longitude: number | null;
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+export interface RecentSearch {
+  displayLocation: string;
+  keyword: string;
+  provinceId: number | null;
+  wardId: number | null;
+  propertyId: number | null;
+  selectedSuggestionType: SuggestionType | null;
+  checkInDate: string | null;
+  checkOutDate: string | null;
+  adultCount: number;
+  childCount: number;
+  roomCount: number;
+  createdAt: string;
+}
+
+export interface SearchSelection {
+  type: SuggestionType;
+  id: number;
+  displayName: string;
+  name?: string;
+  provinceId?: number;
+  wardId?: number;
+}
+
+@Injectable({ providedIn: 'root' })
 export class HomeSearchStateService {
-  
-  // Initialize with defaults
-  private defaultCheckIn = new Date();
-  private defaultCheckOut = new Date();
-  
-  constructor(private router: Router) {
-    this.defaultCheckOut.setDate(this.defaultCheckOut.getDate() + 1);
-    
-    // Initial state setup
-    this.state.set({
-      keyword: '',
-      locationDisplayName: '',
-      provinceId: null,
-      wardId: null,
-      propertyTypes: [], // empty means all
-      stayType: 'OVERNIGHT',
-      checkInDate: this.defaultCheckIn,
-      checkOutDate: this.defaultCheckOut,
-      adultCount: 2,
-      childCount: 0,
-      roomCount: 1
-    });
-  }
+  readonly state = signal<HomeSearchState>(this.createDefaultState());
+  readonly recentSearches = signal<RecentSearch[]>(this.readRecentSearches());
 
-  // Reactive state using Angular Signals
-  readonly state = signal<HomeSearchState>({} as HomeSearchState);
-
-  // Computed derivations if needed
   readonly guestSummary = computed(() => {
-    const s = this.state();
-    let summary = `${s.adultCount} người lớn`;
-    if (s.childCount > 0) summary += `, ${s.childCount} trẻ em`;
-    summary += ` • ${s.roomCount} phòng`;
-    return summary;
+    const state = this.state();
+    let summary = `${state.adultCount} người lớn`;
+    if (state.childCount > 0) summary += `, ${state.childCount} trẻ em`;
+    return `${summary} · ${state.roomCount} phòng`;
   });
 
   readonly isDayUse = computed(() => this.state().stayType === 'DAY_USE');
 
-  // Actions
-  updateLocation(keyword: string, displayName: string, provinceId: number | null, wardId: number | null) {
-    this.state.update(s => ({ ...s, keyword, locationDisplayName: displayName, provinceId, wardId }));
+  constructor(private router: Router) {}
+
+  updateKeyword(value: string): void {
+    this.state.update(state => ({
+      ...state,
+      keyword: value,
+      locationDisplayName: value,
+      selectedSuggestionType: null,
+      provinceId: null,
+      wardId: null,
+      propertyId: null
+    }));
   }
 
-  updateStayType(stayType: StayType) {
-    this.state.update(s => {
-       const newState = { ...s, stayType };
-       if (stayType === 'OVERNIGHT') {
-         // ensure checkout is after checkin
-         if (newState.checkInDate && (!newState.checkOutDate || newState.checkOutDate <= newState.checkInDate)) {
-           const nextDay = new Date(newState.checkInDate);
-           nextDay.setDate(nextDay.getDate() + 1);
-           newState.checkOutDate = nextDay;
-         }
-       }
-       return newState;
+  updateLocation(keyword: string, displayName: string, provinceId: number | null, wardId: number | null): void {
+    this.state.update(state => ({
+      ...state,
+      keyword,
+      locationDisplayName: displayName,
+      selectedSuggestionType: wardId ? 'WARD' : provinceId ? 'PROVINCE' : null,
+      provinceId,
+      wardId,
+      propertyId: null
+    }));
+  }
+
+  selectSuggestion(selection: SearchSelection): void {
+    const provinceId = selection.type === 'PROVINCE' ? selection.id : selection.provinceId ?? null;
+    const wardId = selection.type === 'WARD' ? selection.id : selection.wardId ?? null;
+    this.state.update(state => ({
+      ...state,
+      keyword: selection.type === 'PROPERTY' ? selection.name || selection.displayName : '',
+      locationDisplayName: selection.displayName,
+      selectedSuggestionType: selection.type,
+      provinceId,
+      wardId: selection.type === 'PROVINCE' ? null : wardId,
+      propertyId: selection.type === 'PROPERTY' ? selection.id : null
+    }));
+
+    if (selection.type === 'PROPERTY') {
+      this.saveRecentSearch(this.state());
+      this.router.navigate(['/hotel', selection.id], { queryParams: this.bookingQueryParams() });
+    }
+  }
+
+  clearLocation(): void {
+    this.state.update(state => ({
+      ...state,
+      keyword: '',
+      locationDisplayName: '',
+      selectedSuggestionType: null,
+      provinceId: null,
+      wardId: null,
+      propertyId: null
+    }));
+  }
+
+  updateStayType(stayType: StayType): void {
+    this.state.update(state => {
+      const next = { ...state, stayType };
+      if (stayType === 'OVERNIGHT' && next.checkInDate &&
+          (!next.checkOutDate || next.checkOutDate <= next.checkInDate)) {
+        next.checkOutDate = this.addDays(next.checkInDate, 1);
+      }
+      return next;
     });
   }
 
-  updatePropertyTypes(types: string[]) {
-    this.state.update(s => ({ ...s, propertyTypes: types }));
+  updatePropertyTypes(propertyTypes: string[]): void {
+    this.state.update(state => ({ ...state, propertyTypes }));
   }
 
-  updateDates(checkIn: Date | null, checkOut: Date | null) {
-     this.state.update(s => {
-       const newState = { ...s, checkInDate: checkIn, checkOutDate: checkOut };
-       if (checkIn && checkOut && checkOut <= checkIn && s.stayType === 'OVERNIGHT') {
-          const nextDay = new Date(checkIn);
-          nextDay.setDate(nextDay.getDate() + 1);
-          newState.checkOutDate = nextDay;
-       }
-       return newState;
-     });
+  updateDates(checkInDate: Date | null, checkOutDate: Date | null): void {
+    this.state.update(state => {
+      const next = { ...state, checkInDate, checkOutDate };
+      if (checkInDate && checkOutDate && checkOutDate <= checkInDate && state.stayType === 'OVERNIGHT') {
+        next.checkOutDate = this.addDays(checkInDate, 1);
+      }
+      return next;
+    });
   }
 
-  updateGuests(adultCount: number, childCount: number, roomCount: number) {
-     this.state.update(s => ({
-       ...s,
-       adultCount: Math.max(1, adultCount),
-       childCount: Math.max(0, childCount),
-       roomCount: Math.max(1, roomCount)
-     }));
+  updateGuests(adultCount: number, childCount: number, roomCount: number): void {
+    this.state.update(state => ({
+      ...state,
+      adultCount: Math.max(1, adultCount),
+      childCount: Math.max(0, childCount),
+      roomCount: Math.max(1, roomCount)
+    }));
   }
 
-  submitSearch() {
-    const s = this.state();
-    if (!s.checkInDate || (s.stayType === 'OVERNIGHT' && !s.checkOutDate)) {
-       // Should validate in UI first, but fail safe here
-       console.error("Invalid dates");
-       return false;
+  applyRecentSearch(recent: RecentSearch): void {
+    const today = this.startOfToday();
+    let checkIn = recent.checkInDate ? new Date(`${recent.checkInDate}T00:00:00`) : today;
+    let checkOut = recent.checkOutDate ? new Date(`${recent.checkOutDate}T00:00:00`) : this.addDays(today, 1);
+    if (checkIn < today) {
+      checkIn = today;
+      checkOut = this.addDays(today, 1);
+    } else if (checkOut <= checkIn) {
+      checkOut = this.addDays(checkIn, 1);
+    }
+    this.state.update(state => ({
+      ...state,
+      keyword: recent.keyword,
+      locationDisplayName: recent.displayLocation,
+      selectedSuggestionType: recent.selectedSuggestionType,
+      provinceId: recent.provinceId,
+      wardId: recent.wardId,
+      propertyId: recent.propertyId,
+      checkInDate: checkIn,
+      checkOutDate: checkOut,
+      adultCount: recent.adultCount || 1,
+      childCount: recent.childCount || 0,
+      roomCount: recent.roomCount || 1
+    }));
+  }
+
+  removeRecentSearch(recent: RecentSearch): void {
+    const remaining = this.recentSearches().filter(item => this.recentKey(item) !== this.recentKey(recent));
+    this.persistRecent(remaining);
+  }
+
+  clearRecentSearches(): void {
+    this.persistRecent([]);
+  }
+
+  submitSearch(): boolean {
+    const state = this.state();
+    if (!state.checkInDate || (state.stayType === 'OVERNIGHT' && !state.checkOutDate)) return false;
+    if (state.propertyId) {
+      this.saveRecentSearch(state);
+      this.router.navigate(['/hotel', state.propertyId], { queryParams: this.bookingQueryParams() });
+      return true;
     }
 
-    const queryParams: any = {};
-    if (s.keyword && !s.provinceId && !s.wardId) {
-      queryParams.keyword = s.keyword;
-    }
-    if (s.provinceId) queryParams.provinceId = s.provinceId;
-    if (s.wardId) queryParams.wardId = s.wardId;
-    if (s.propertyTypes.length > 0) queryParams.propertyTypes = s.propertyTypes.join(',');
-    
-    queryParams.stayType = s.stayType;
-    queryParams.checkInDate = this.formatDate(s.checkInDate);
-    if (s.stayType === 'OVERNIGHT' && s.checkOutDate) {
-      queryParams.checkOutDate = this.formatDate(s.checkOutDate);
-    }
-    
-    queryParams.adultCount = s.adultCount;
-    queryParams.childCount = s.childCount;
-    queryParams.roomCount = s.roomCount;
+    const queryParams: Record<string, string | number> = {
+      stayType: state.stayType,
+      checkInDate: this.formatDate(state.checkInDate),
+      adultCount: state.adultCount,
+      childCount: state.childCount,
+      roomCount: state.roomCount
+    };
+    if (state.checkOutDate) queryParams['checkOutDate'] = this.formatDate(state.checkOutDate);
+    if (state.keyword && !state.provinceId && !state.wardId) queryParams['keyword'] = state.keyword.trim();
+    if (state.locationDisplayName) queryParams['displayLocation'] = state.locationDisplayName;
+    if (state.provinceId) queryParams['provinceId'] = state.provinceId;
+    if (state.wardId) queryParams['wardId'] = state.wardId;
+    if (state.propertyTypes.length) queryParams['propertyTypes'] = state.propertyTypes.join(',');
+    if (state.latitude !== null) queryParams['latitude'] = state.latitude;
+    if (state.longitude !== null) queryParams['longitude'] = state.longitude;
 
-    // Save recent search
-    this.saveRecentSearch(s);
-
+    this.saveRecentSearch(state);
     this.router.navigate(['/search'], { queryParams });
     return true;
   }
 
-  private saveRecentSearch(s: HomeSearchState) {
-    if (!s.keyword && !s.provinceId) return;
-    
+  bookingQueryParams(): Record<string, string | number> {
+    const state = this.state();
+    const params: Record<string, string | number> = {
+      adultCount: state.adultCount,
+      childCount: state.childCount,
+      roomCount: state.roomCount
+    };
+    if (state.checkInDate) params['checkInDate'] = this.formatDate(state.checkInDate);
+    if (state.checkOutDate) params['checkOutDate'] = this.formatDate(state.checkOutDate);
+    return params;
+  }
+
+  private createDefaultState(): HomeSearchState {
+    const checkInDate = this.startOfToday();
+    return {
+      keyword: '', locationDisplayName: '', selectedSuggestionType: null,
+      provinceId: null, wardId: null, propertyId: null, propertyTypes: [],
+      stayType: 'OVERNIGHT', checkInDate, checkOutDate: this.addDays(checkInDate, 1),
+      adultCount: 2, childCount: 0, roomCount: 1, latitude: null, longitude: null
+    };
+  }
+
+  private saveRecentSearch(state: HomeSearchState): void {
+    if (!state.locationDisplayName.trim()) return;
+    const entry: RecentSearch = {
+      displayLocation: state.locationDisplayName,
+      keyword: state.keyword,
+      provinceId: state.provinceId,
+      wardId: state.wardId,
+      propertyId: state.propertyId,
+      selectedSuggestionType: state.selectedSuggestionType,
+      checkInDate: state.checkInDate ? this.formatDate(state.checkInDate) : null,
+      checkOutDate: state.checkOutDate ? this.formatDate(state.checkOutDate) : null,
+      adultCount: state.adultCount,
+      childCount: state.childCount,
+      roomCount: state.roomCount,
+      createdAt: new Date().toISOString()
+    };
+    const unique = this.recentSearches().filter(item => this.recentKey(item) !== this.recentKey(entry));
+    this.persistRecent([entry, ...unique].slice(0, 8));
+  }
+
+  private readRecentSearches(): RecentSearch[] {
+    if (typeof localStorage === 'undefined') return [];
     try {
-      const recent = JSON.parse(localStorage.getItem('recentSearches') || '[]');
-      const newEntry = {
-         displayLocation: s.locationDisplayName || s.keyword,
-         keyword: s.keyword,
-         provinceId: s.provinceId,
-         wardId: s.wardId,
-         checkInDate: s.checkInDate,
-         checkOutDate: s.checkOutDate,
-         adultCount: s.adultCount,
-         childCount: s.childCount,
-         roomCount: s.roomCount
-      };
-      
-      // Remove duplicates based on location
-      const filtered = recent.filter((r: any) => r.displayLocation !== newEntry.displayLocation);
-      filtered.unshift(newEntry);
-      
-      // Keep only top 5
-      if (filtered.length > 5) filtered.length = 5;
-      
-      localStorage.setItem('recentSearches', JSON.stringify(filtered));
-    } catch(e) {
-      console.error("Error saving recent search", e);
+      const parsed = JSON.parse(localStorage.getItem('luxestay.recent-searches') ||
+        localStorage.getItem('recentSearches') || '[]');
+      return Array.isArray(parsed) ? parsed.slice(0, 8) : [];
+    } catch {
+      return [];
     }
+  }
+
+  private persistRecent(items: RecentSearch[]): void {
+    this.recentSearches.set(items);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('luxestay.recent-searches', JSON.stringify(items));
+      localStorage.removeItem('recentSearches');
+    }
+  }
+
+  private recentKey(item: RecentSearch): string {
+    return `${item.selectedSuggestionType || ''}:${item.propertyId || item.wardId || item.provinceId || item.displayLocation}`;
+  }
+
+  private startOfToday(): Date {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+
+  private addDays(date: Date, days: number): Date {
+    const result = new Date(date);
+    result.setDate(result.getDate() + days);
+    return result;
   }
 
   private formatDate(date: Date): string {

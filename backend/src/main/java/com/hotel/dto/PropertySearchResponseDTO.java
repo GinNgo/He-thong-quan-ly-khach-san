@@ -23,8 +23,11 @@ public class PropertySearchResponseDTO {
     private Double longitude;
     private Double distanceKm;
     private String distanceText;
+    private String mainImageUrl;
     private String thumbnailUrl;
     private List<String> galleryUrls;
+    private Integer imageCount;
+    private String imageAltText;
     private List<String> amenities;
     private Double reviewScore;
     private Integer reviewCount;
@@ -55,8 +58,12 @@ public class PropertySearchResponseDTO {
     @AllArgsConstructor
     public static class PricingSummary {
         private BigDecimal nightlyPrice;
+        private BigDecimal discountedNightlyPrice;
+        // Kept for clients deployed before the pricing contract was clarified.
         private BigDecimal discountedPrice;
         private Integer numberOfNights;
+        private Integer roomQuantity;
+        private BigDecimal subtotal;
         private BigDecimal taxAmount;
         private BigDecimal feeAmount;
         private BigDecimal totalAmount;

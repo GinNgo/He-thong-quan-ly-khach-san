@@ -7,4 +7,5 @@ import java.util.List;
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
     List<Reservation> findByUserId(Long userId);
     List<Reservation> findByStatus(String status);
+    long countByUserIdAndStatusIn(Long userId, java.util.Collection<String> statuses);
 }

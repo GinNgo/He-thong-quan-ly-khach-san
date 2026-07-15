@@ -2,6 +2,8 @@ import { Component, Input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CarouselModule } from 'primeng/carousel';
 import { HomeSearchStateService } from '../../services/home-search-state.service';
+import { LocationSuggestion } from '../../../../../core/services/client-api.service';
+import { ImageFallbackService } from '../../../../../core/services/image-fallback.service';
 
 @Component({
   selector: 'app-popular-destinations',
@@ -9,7 +11,10 @@ import { HomeSearchStateService } from '../../services/home-search-state.service
   imports: [CommonModule, CarouselModule],
   template: `
     <div class="mb-12">
-      <h2 class="text-2xl font-bold text-gray-900 mb-6 font-serif">Các điểm đến thu hút nhất Việt Nam</h2>
+      <div class="mb-6">
+        <span class="text-xs font-extrabold uppercase text-amber-700">Khám phá theo khu vực</span>
+        <h2 class="text-2xl md:text-[28px] font-bold text-gray-900 mt-1 font-serif">Điểm đến phổ biến</h2>
+      </div>
       
       <!-- Skeleton Loading -->
       <div *ngIf="loading" class="flex gap-4 overflow-hidden">
@@ -25,14 +30,15 @@ import { HomeSearchStateService } from '../../services/home-search-state.service
         <p-carousel [value]="destinations" [numVisible]="5" [numScroll]="1" [circular]="false" [responsiveOptions]="responsiveOptions" [showIndicators]="false">
           <ng-template pTemplate="item" let-dest>
             <div class="px-2 cursor-pointer group" (click)="selectDestination(dest)">
-              <div class="rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 bg-white">
+              <div class="rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-200 bg-white">
                 <div class="aspect-[4/3] w-full overflow-hidden relative bg-gray-100">
-                  <img [src]="dest.image" [alt]="dest.name" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                  <img [src]="displayImage(dest.imageUrl, dest.id)" [alt]="dest.name" loading="lazy"
+                    (error)="handleImageError($event, dest.id)" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
                   <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 </div>
                 <div class="p-4 text-center">
                   <h3 class="font-bold text-gray-900 text-lg group-hover:text-primary transition-colors">{{ dest.name }}</h3>
-                  <p class="text-gray-500 text-sm mt-1">{{ dest.properties | number }} chỗ ở</p>
+                  <p class="text-gray-500 text-sm mt-1">{{ dest.propertyCount || 0 | number }} chỗ nghỉ</p>
                 </div>
               </div>
             </div>
@@ -67,10 +73,11 @@ import { HomeSearchStateService } from '../../services/home-search-state.service
   `]
 })
 export class PopularDestinationsComponent {
-  @Input() destinations: any[] = [];
+  @Input() destinations: LocationSuggestion[] = [];
   @Input() loading = false;
   
   private stateService = inject(HomeSearchStateService);
+  private imageFallback = inject(ImageFallbackService);
 
   responsiveOptions = [
     { breakpoint: '1199px', numVisible: 4, numScroll: 1 },
@@ -79,8 +86,16 @@ export class PopularDestinationsComponent {
     { breakpoint: '575px', numVisible: 1, numScroll: 1 }
   ];
 
-  selectDestination(dest: any) {
-    this.stateService.updateLocation(dest.name, dest.name, dest.id, null);
+  selectDestination(dest: LocationSuggestion) {
+    this.stateService.selectSuggestion({ type: 'PROVINCE', id: dest.id, name: dest.name, displayName: dest.displayName || dest.name });
     this.stateService.submitSearch();
+  }
+
+  displayImage(imageUrl: string | undefined, _id: number): string {
+    return imageUrl || this.imageFallback.destination();
+  }
+
+  handleImageError(event: Event, id: number): void {
+    this.imageFallback.replace(event, this.imageFallback.destination());
   }
 }

@@ -356,7 +356,7 @@ sequenceDiagram
     participant DB as SQL Server
     
     Admin->>ImportSvc: Chạy @PostConstruct (nếu enabled)
-    ImportSvc->>FS: Đقر JSON (LOCATION_JSON_PATH)
+    ImportSvc->>FS: Đọc JSON (LOCATION_JSON_PATH)
     FS-->>ImportSvc: Dữ liệu JSON (Tỉnh -> Huyện -> Xã)
     ImportSvc->>ImportSvc: Bỏ qua Huyện, gán Xã trực tiếp vào Tỉnh (Flatten)
     ImportSvc->>DB: @Transactional saveAll(locations)
@@ -365,21 +365,21 @@ sequenceDiagram
     ImportSvc-->>Admin: Ghi Log Report (tổng số import, số lỗi)
 ```
 
-## 6. PH�N H? IMPORT D? LI?U T? �?NG & CLAIM CO S?
+## 6. PHÂN HỆ IMPORT DỮ LIỆU TỰ ĐỘNG & CLAIM CƠ SỞ
 
-### 6.1. Bi?u d? Use Case (Import & Claim)
-`plantuml
+### 6.1. Biểu đồ Use Case (Import & Claim)
+```plantuml
 @startuml
 left to right direction
-actor "Kh�ch h�ng" as Guest
-actor "Qu?n tr? vi�n (Super Admin)" as Admin
+actor "Khách hàng" as Guest
+actor "Quản trị viên (Super Admin)" as Admin
 
-rectangle "Ph�n h? Import & Claim" {
-  usecase "T�m ki?m & L?c D? li?u t? API" as UC1
-  usecase "Xem Preview v� S�ng l?c Tr�ng L?p" as UC2
-  usecase "Import d? li?u v�o h? th?ng" as UC3
-  usecase "G?i y�u c?u nh?n quy?n (Claim)" as UC4
-  usecase "Duy?t y�u c?u Claim" as UC5
+rectangle "Phân hệ Import & Claim" {
+  usecase "Tìm kiếm & Lọc dữ liệu từ API" as UC1
+  usecase "Xem Preview và Sàng lọc Trùng lặp" as UC2
+  usecase "Import dữ liệu vào hệ thống" as UC3
+  usecase "Gửi yêu cầu nhận quyền (Claim)" as UC4
+  usecase "Duyệt yêu cầu Claim" as UC5
 }
 
 Admin --> UC1
@@ -388,10 +388,10 @@ Admin --> UC3
 Admin --> UC5
 Guest --> UC4
 @enduml
-`
+```
 
-### 6.2. Bi?u d? Tu?n t? (Sequence Diagram) - Lu?ng Deduplicate v� Import
-`plantuml
+### 6.2. Biểu đồ Tuần tự (Sequence Diagram) - Luồng Deduplicate và Import
+```plantuml
 @startuml
 actor Admin
 participant "PropertyImportController" as Controller
@@ -410,14 +410,14 @@ Provider --> ImportService: List<ProviderSearchResult>
 deactivate Provider
 
 ImportService -> DB: Create PropertyImportBatch
-loop Cho m?i k?t qu?
-    ImportService -> DB: Check Duplicate (M?c 1-5: ID, T�n, T?a d?, SDT)
+loop Cho mỗi kết quả
+    ImportService -> DB: Check Duplicate (Mức 1-5: ID, Tên, Tọa độ, SĐT)
     alt Exact Duplicate
-        ImportService -> DB: Luu Staging (Status=EXACT_DUPLICATE)
+        ImportService -> DB: Lưu Staging (Status=EXACT_DUPLICATE)
     else Possible Duplicate
-        ImportService -> DB: Luu Staging (Status=POSSIBLE_DUPLICATE)
+        ImportService -> DB: Lưu Staging (Status=POSSIBLE_DUPLICATE)
     else New
-        ImportService -> DB: Luu Staging (Status=NEW)
+        ImportService -> DB: Lưu Staging (Status=NEW)
     end
 end
 ImportService --> Controller: BatchPreviewResult
@@ -438,30 +438,140 @@ deactivate ImportService
 Controller --> Admin: Success Response
 deactivate Controller
 @enduml
-`
+```
 
-### 6.3. Bi?u d? Ho?t d?ng (Activity Diagram) - Nh?n quy?n co s?
-`plantuml
+### 6.3. Biểu đồ Hoạt động (Activity Diagram) - Nhận quyền cơ sở
+```plantuml
 @startuml
 start
-:User xem trang chi ti?t kh�ch s?n;
-if (Kh�ch s?n ? tr?ng th�i IMPORTED_PENDING_REVIEW?) then (C�)
-  :Hi?n th? n�t "X�c nh?n quy?n qu?n l�";
-  :User click v� di?n form x�c minh (gi?y ph�p kinh doanh...);
-  :Luu PropertyClaimRequest (PENDING);
-  :Admin nh?n th�ng b�o;
-  :Admin ki?m tra gi?y t?;
-  if (H?p l??) then (�?ng �)
-    :Chuy?n tr?ng th�i Kh�ch s?n -> ACTIVE;
-    :T?o record user_properties v?i Role=OWNER;
-    :G?i email th�ng b�o c?p quy?n th�nh c�ng;
-  else (T? ch?i)
-    :C?p nh?t PropertyClaimRequest (REJECTED);
-    :G?i email y�u c?u b? sung th�ng tin;
+:User xem trang chi tiết khách sạn;
+if (Khách sạn ở trạng thái IMPORTED_PENDING_REVIEW?) then (Có)
+  :Hiển thị nút "Xác nhận quyền quản lý";
+  :User click và điền form xác minh (giấy phép kinh doanh...);
+  :Lưu PropertyClaimRequest (PENDING);
+  :Admin nhận thông báo;
+  :Admin kiểm tra giấy tờ;
+  if (Hợp lệ?) then (Đồng ý)
+    :Chuyển trạng thái Khách sạn -> ACTIVE;
+    :Tạo record user_properties với Role=OWNER;
+    :Gửi email thông báo cấp quyền thành công;
+  else (Từ chối)
+    :Cập nhật PropertyClaimRequest (REJECTED);
+    :Gửi email yêu cầu bổ sung thông tin;
   end if
-else (Kh�ng)
-  :Ch? xem th�ng tin b�nh thu?ng;
+else (Không)
+  :Chỉ xem thông tin bình thường;
 end if
 stop
 @enduml
-`
+```
+# Bổ sung UML: import, search và booking (2026-07-15)
+
+## Import địa giới UTF-8 idempotent
+
+```mermaid
+sequenceDiagram
+    participant Boot as ApplicationReady
+    participant Importer as LocationImportService
+    participant Json as 34_tinh_huyen_xa.json
+    participant DB as SQL Server
+    Boot->>Importer: chạy khi cấu hình bật
+    Importer->>Json: đọc InputStream UTF-8, xử lý BOM
+    Importer->>DB: upsert PROVINCE theo type + sourceCode
+    loop district metadata và ward
+        Importer->>DB: upsert WARD theo type + sourceCode, parent=province
+    end
+    Importer->>DB: kiểm tra DISTRICT, parent, null và ký tự ?
+    Importer-->>Boot: added/updated/skipped/errors
+```
+
+## Search không dấu và tồn phòng
+
+```mermaid
+sequenceDiagram
+    participant UI as Angular
+    participant API as Public API
+    participant N as VietnameseTextNormalizer
+    participant Inventory as RoomAvailabilityService
+    participant DB as SQL Server
+    UI->>API: keyword/location/dates/guests/roomCount
+    API->>N: normalize một lần
+    API->>DB: truy vấn normalized columns + code + slug
+    DB-->>API: PROVINCE, WARD, PROPERTY hợp lệ
+    API->>Inventory: kiểm tra sức chứa và tồn nếu có ngày
+    Inventory->>DB: active - maintenance - overlapping reservations
+    API-->>UI: kết quả thật, phân nhóm và click được
+```
+
+## Booking và gán phòng
+
+```mermaid
+sequenceDiagram
+    participant Guest as Khách
+    participant Booking as ReservationService
+    participant Inventory as RoomAvailabilityService
+    participant DB as SQL Server
+    Guest->>Booking: roomType + quantity + adults + children + dates
+    Booking->>Inventory: khóa và kiểm tra tồn/sức chứa
+    Booking->>DB: lưu reservation_details, chưa cần gán room
+    Note over Inventory,DB: overlap: existing.checkIn < requestedCheckOut AND existing.checkOut > requestedCheckIn
+    Booking->>DB: khi check-in gán đủ quantity vào reservation_rooms
+```
+
+Owner lấy `activeProperty` từ user context phía server và không xem/sửa dữ liệu cơ sở khác. Super Admin được chọn property nhưng vẫn phải qua kiểm tra quyền. API không tin `hotelId` do frontend tự gửi.
+
+# Bổ sung UML: seeder, subscription và vòng đời lưu trú (2026-07-15)
+
+```mermaid
+sequenceDiagram
+    participant Boot as ApplicationReady
+    participant Seed as NationwideDemoSeedService
+    participant Batch as Transaction batch
+    participant DB as SQL Server
+    Boot->>Seed: enabled + nationwide-property-seed + profile hợp lệ
+    Seed->>DB: đọc Province/Ward thật
+    loop theo Province hoặc Ward và giới hạn cấu hình
+        Seed->>Batch: upsert theo seed_key
+        Batch->>DB: Hotel + images + RoomType + Room + service
+        Batch->>DB: Owner + UserProperty + Subscription
+        Batch->>DB: lưu progress COMMITTED/FAILED
+    end
+    Seed-->>Boot: SeedReport không chứa mật khẩu
+```
+
+```mermaid
+stateDiagram-v2
+    [*] --> NO_PLAN
+    NO_PLAN --> FREE: cấp gói Basic/Free
+    NO_PLAN --> STANDARD: thanh toán thành công
+    FREE --> STANDARD: nâng cấp
+    STANDARD --> BUSINESS: nâng cấp
+    STANDARD --> EXPIRED: hết hạn
+    BUSINESS --> EXPIRED: hết hạn
+    NO_PLAN --> LIFETIME: mua vĩnh viễn
+    FREE --> REVOKED: Admin thu hồi có lịch sử
+    STANDARD --> REVOKED: Admin thu hồi có lịch sử
+    LIFETIME --> REVOKED: Admin thu hồi có lịch sử
+```
+
+Account status, subscription status và property approval status là ba trạng thái độc lập. Quyền truy cập dữ liệu lấy từ `user_properties`; giới hạn chức năng lấy từ `plan_features`; không nhận `hotelId` frontend nếu hotel không thuộc context đăng nhập.
+
+```mermaid
+sequenceDiagram
+    participant Staff as Lễ tân
+    participant API as Reservation API
+    participant Inventory as Availability Service
+    participant DB as SQL Server
+    Staff->>API: check-in reservation
+    API->>Inventory: lấy phòng trống đúng Hotel + RoomType
+    Staff->>API: assign đủ quantity
+    API->>DB: ReservationRoom + Room=OCCUPIED + Reservation=CHECKED_IN
+    Staff->>API: thêm dịch vụ theo giá snapshot
+    API->>DB: ReservationService(quantity, unitPrice, amount)
+    Staff->>API: check-out và payment
+    API->>DB: tạo/cập nhật Invoice
+    API->>DB: Reservation=CHECKED_OUT, Room=DIRTY
+    API->>DB: tạo HousekeepingTask=PENDING
+    Staff->>API: hoàn tất dọn phòng
+    API->>DB: Room=AVAILABLE, housekeeping=CLEAN
+```

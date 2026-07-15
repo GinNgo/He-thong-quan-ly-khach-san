@@ -84,6 +84,9 @@ public class UserDto {
     private java.util.Map<String, Integer> limits;
     private java.util.Map<String, Integer> currentUsage;
     private List<HotelSummary> assignedProperties;
+    private String partnerRegistrationStatus;
+    private Long unreadMessageCount;
+    private Long pendingBookingCount;
 
     public String getPlan() { return plan; }
     public void setPlan(String plan) { this.plan = plan; }
@@ -108,4 +111,10 @@ public class UserDto {
 
     public List<HotelSummary> getAssignedProperties() { return assignedProperties; }
     public void setAssignedProperties(List<HotelSummary> assignedProperties) { this.assignedProperties = assignedProperties; }
+    public String getPartnerRegistrationStatus() { return partnerRegistrationStatus; }
+    public void setPartnerRegistrationStatus(String partnerRegistrationStatus) { this.partnerRegistrationStatus = partnerRegistrationStatus; }
+    public Long getUnreadMessageCount() { return unreadMessageCount; }
+    public void setUnreadMessageCount(Long unreadMessageCount) { this.unreadMessageCount = unreadMessageCount; }
+    public Long getPendingBookingCount() { return pendingBookingCount; }
+    public void setPendingBookingCount(Long pendingBookingCount) { this.pendingBookingCount = pendingBookingCount; }
 }

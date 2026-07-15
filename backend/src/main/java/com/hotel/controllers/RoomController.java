@@ -1,6 +1,8 @@
 package com.hotel.controllers;
 
 import com.hotel.dtos.RoomDTO;
+import com.hotel.dtos.BulkRoomRequest;
+import com.hotel.dtos.BulkRoomResultDTO;
 import com.hotel.services.RoomService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -42,6 +44,12 @@ public class RoomController {
     @Operation(summary = "Create new room")
     public ResponseEntity<RoomDTO> createRoom(@RequestBody RoomDTO dto) {
         return ResponseEntity.ok(roomService.createRoom(dto));
+    }
+
+    @PostMapping("/bulk")
+    @Permission(function = FunctionCode.ROOM, action = ActionCode.CREATE)
+    public ResponseEntity<BulkRoomResultDTO> bulkCreate(@RequestBody BulkRoomRequest request) {
+        return ResponseEntity.ok(roomService.bulkCreate(request));
     }
 
     @PutMapping("/{id}")

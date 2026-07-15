@@ -11,6 +11,8 @@ import com.hotel.security.ActionCode;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.hotel.security.CustomUserDetails;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 @RestController
 @RequestMapping("/api/invoices")
@@ -23,6 +25,14 @@ public class InvoiceController {
     public InvoiceController(InvoiceRepository invoiceRepository, InvoiceService invoiceService) {
         this.invoiceRepository = invoiceRepository;
         this.invoiceService = invoiceService;
+    }
+
+    @GetMapping("/my")
+    public ResponseEntity<List<InvoiceDTO>> getMyInvoices(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userDetails == null) return ResponseEntity.status(401).build();
+        List<InvoiceDTO> result = invoiceRepository.findByReservationUserIdOrderByIssueDateDesc(userDetails.getUserId())
+                .stream().map(this::toDto).toList();
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping
@@ -49,5 +59,16 @@ public class InvoiceController {
     @Permission(function = FunctionCode.INVOICE, action = ActionCode.VIEW)
     public ResponseEntity<InvoiceDTO> getInvoiceByReservation(@PathVariable Long reservationId) {
         return ResponseEntity.ok(invoiceService.getInvoiceByReservation(reservationId));
+    }
+
+    private InvoiceDTO toDto(Invoice invoice) {
+        InvoiceDTO dto = new InvoiceDTO();
+        dto.setId(invoice.getId());
+        dto.setInvoiceCode(invoice.getInvoiceCode());
+        dto.setReservationId(invoice.getReservation().getId());
+        dto.setIssueDate(invoice.getIssueDate());
+        dto.setTotalAmount(invoice.getTotalAmount());
+        dto.setStatus(invoice.getStatus());
+        return dto;
     }
 }

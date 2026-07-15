@@ -12,12 +12,21 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     List<Room> findByStatus(String status);
     List<Room> findByFloor(Integer floor);
     List<Room> findByRoomTypeId(Long roomTypeId);
+    List<Room> findByHotelId(Long hotelId);
+    List<Room> findByHotelIdIn(java.util.Collection<Long> hotelIds);
+    java.util.Optional<Room> findByHotelIdAndRoomNumber(Long hotelId, String roomNumber);
+    long countByRoomTypeId(Long roomTypeId);
+    long countByHotelId(Long hotelId);
+    long countByHotelIdIn(java.util.Collection<Long> hotelIds);
+    long countByHotelIdAndStatus(Long hotelId, String status);
+    long countByHotelIdAndHousekeepingStatus(Long hotelId, String housekeepingStatus);
 
     @Query("""
             select count(room)
             from Room room
             where room.roomType.id = :roomTypeId
               and room.status not in :excludedRoomStatuses
+              and (room.maintenanceStatus is null or room.maintenanceStatus = 'NONE')
             """)
     long countBookableRoomsByRoomTypeId(
             @Param("roomTypeId") Long roomTypeId,
@@ -29,10 +38,14 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
             from Room room
             where room.roomType.id = :roomTypeId
               and room.status not in :excludedRoomStatuses
+              and (room.maintenanceStatus is null or room.maintenanceStatus = 'NONE')
               and room.id not in (
-                  select reservation.room.id
-                  from Reservation reservation
-                  where reservation.room.roomType.id = :roomTypeId
+                  select assignment.room.id
+                  from ReservationRoom assignment
+                  join assignment.reservationDetail detail
+                  join detail.reservation reservation
+                  where detail.roomType.id = :roomTypeId
+                    and assignment.status = 'ASSIGNED'
                     and reservation.status not in :excludedReservationStatuses
                     and reservation.checkInDate < :checkOut
                     and reservation.checkOutDate > :checkIn
@@ -53,10 +66,14 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
             from Room room
             where room.roomType.id = :roomTypeId
               and room.status not in :excludedRoomStatuses
+              and (room.maintenanceStatus is null or room.maintenanceStatus = 'NONE')
               and room.id not in (
-                  select reservation.room.id
-                  from Reservation reservation
-                  where reservation.room.roomType.id = :roomTypeId
+                  select assignment.room.id
+                  from ReservationRoom assignment
+                  join assignment.reservationDetail detail
+                  join detail.reservation reservation
+                  where detail.roomType.id = :roomTypeId
+                    and assignment.status = 'ASSIGNED'
                     and reservation.status not in :excludedReservationStatuses
                     and reservation.checkInDate < :checkOut
                     and reservation.checkOutDate > :checkIn

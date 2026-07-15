@@ -2,12 +2,16 @@ package com.hotel.entities;
 
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
+@Setter
 @Entity
 @Table(name = "services")
 public class HotelService extends AuditableEntity {
@@ -19,23 +23,30 @@ public class HotelService extends AuditableEntity {
     @Column(nullable = false, unique = true)
     private String code;
 
-    @Column(name = "name_vi", nullable = false)
+    @Column(name = "name_vi", nullable = false, columnDefinition = "nvarchar(255)")
     private String nameVi;
 
-    @Column(name = "name_en", nullable = false)
+    @Column(name = "name_en", nullable = false, columnDefinition = "nvarchar(255)")
     private String nameEn;
 
     @Column(nullable = false)
     private BigDecimal price;
 
-    @Column(name = "description_vi", columnDefinition = "TEXT")
+    @Column(name = "description_vi", columnDefinition = "nvarchar(max)")
     private String descriptionVi;
 
-    @Column(name = "description_en", columnDefinition = "TEXT")
+    @Column(name = "description_en", columnDefinition = "nvarchar(max)")
     private String descriptionEn;
 
     @Column(nullable = false)
     private String status = "ACTIVE"; // ACTIVE, INACTIVE
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hotel_id")
+    private Hotel hotel;
+
+    @Column(name = "is_system", nullable = false)
+    private Boolean systemService = false;
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

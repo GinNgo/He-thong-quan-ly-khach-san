@@ -1,17 +1,20 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { PaymentSimulator } from './payment-simulator';
+import { PaymentSimulatorComponent } from './payment-simulator';
+import { provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
 
 describe('PaymentSimulator', () => {
-  let component: PaymentSimulator;
-  let fixture: ComponentFixture<PaymentSimulator>;
+  let component: PaymentSimulatorComponent;
+  let fixture: ComponentFixture<PaymentSimulatorComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [PaymentSimulator],
+      imports: [PaymentSimulatorComponent],
+      providers: [provideRouter([]), provideHttpClient()],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(PaymentSimulator);
+    fixture = TestBed.createComponent(PaymentSimulatorComponent);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

@@ -23,10 +23,10 @@ public class Notification {
     @Column(nullable = false)
     private String type; // BOOKING, CHAT, SYSTEM
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "nvarchar(255)")
     private String title;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(nullable = false, columnDefinition = "nvarchar(max)")
     private String message;
 
     @Column(name = "is_read", nullable = false)

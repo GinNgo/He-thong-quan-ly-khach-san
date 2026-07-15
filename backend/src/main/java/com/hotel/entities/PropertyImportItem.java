@@ -25,13 +25,13 @@ public class PropertyImportItem extends AuditableEntity {
     @Column(name = "external_id", nullable = false)
     private String externalId;
 
-    @Column(name = "raw_name", nullable = false)
+    @Column(name = "raw_name", nullable = false, columnDefinition = "nvarchar(255)")
     private String rawName;
 
-    @Column(name = "normalized_name")
+    @Column(name = "normalized_name", columnDefinition = "nvarchar(255)")
     private String normalizedName;
 
-    @Column(name = "raw_address")
+    @Column(name = "raw_address", columnDefinition = "nvarchar(1000)")
     private String rawAddress;
 
     @Column(name = "province_id")
@@ -61,7 +61,7 @@ public class PropertyImportItem extends AuditableEntity {
     @Column(name = "source_url")
     private String sourceUrl;
 
-    @Column(name = "raw_payload_json", columnDefinition = "TEXT")
+    @Column(name = "raw_payload_json", columnDefinition = "nvarchar(max)")
     private String rawPayloadJson;
 
     @Column(name = "duplicate_status")
@@ -79,7 +79,7 @@ public class PropertyImportItem extends AuditableEntity {
     @Column(name = "import_status")
     private String importStatus = "PENDING"; // PENDING, IMPORTED, FAILED, IGNORED
 
-    @Column(name = "error_message", columnDefinition = "TEXT")
+    @Column(name = "error_message", columnDefinition = "nvarchar(max)")
     private String errorMessage;
 
     public Long getId() { return id; }

@@ -1,361 +1,265 @@
-import { Component, OnInit, OnDestroy, ViewChild, inject, HostListener, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { PopoverModule } from 'primeng/popover';
-import { Subject, Subscription } from 'rxjs';
-import { debounceTime, switchMap, finalize, tap } from 'rxjs/operators';
-import { HomeSearchStateService } from '../../services/home-search-state.service';
-import { ClientApiService } from '../../../../../core/services/client-api.service';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, ViewChild, effect, inject } from '@angular/core';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { Subject, merge, of } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, map, switchMap, takeUntil, tap } from 'rxjs/operators';
+import {
+  ClientApiService,
+  LocationSuggestion,
+  SearchSuggestionGroups
+} from '../../../../../core/services/client-api.service';
+import { SafeHighlightComponent } from '../../../../../shared/components/safe-highlight/safe-highlight.component';
+import { HomeSearchStateService, RecentSearch } from '../../services/home-search-state.service';
+import { ImageFallbackService } from '../../../../../core/services/image-fallback.service';
+
+interface SuggestionGroup {
+  type: LocationSuggestion['type'];
+  label: string;
+  icon: string;
+  items: LocationSuggestion[];
+}
 
 @Component({
   selector: 'app-location-autocomplete',
   standalone: true,
-  imports: [CommonModule, FormsModule, PopoverModule],
-  template: `
-    <div class="relative w-full h-full cursor-text" (click)="focusInput($event)">
-      <div class="flex items-center h-full px-3">
-        <i class="pi pi-search text-primary mr-2 text-xl"></i>
-        <input #searchInput type="text" 
-               [(ngModel)]="keyword" 
-               (ngModelChange)="onKeywordChange($event)"
-               (focus)="onFocus($event)"
-               (keydown)="onKeydown($event)"
-               placeholder="Bạn muốn đến đâu?" 
-               class="w-full h-full border-0 focus:ring-0 text-[15px] font-medium text-gray-800 bg-transparent outline-none placeholder:text-gray-400">
-      </div>
-
-      <p-popover #locOp [style]="{width: '100%', maxWidth: '800px'}" styleClass="shadow-2xl rounded-xl border border-gray-200 mt-2 p-0 overflow-hidden" (onHide)="isPopupOpen = false">
-        <ng-template pTemplate="content">
-          <div class="bg-white max-h-[400px] overflow-y-auto">
-            
-            <!-- Loading State -->
-            <div *ngIf="isLoading" class="p-8 flex justify-center items-center text-gray-400">
-              <i class="pi pi-spin pi-spinner text-2xl mr-3"></i> Đang tìm kiếm...
-            </div>
-
-            <!-- Empty State for Search -->
-            <div *ngIf="!isLoading && keyword && !isPristineSearch && searchResults.length === 0" class="p-8 text-center text-gray-500">
-              <i class="pi pi-search-minus text-3xl mb-3 text-gray-300"></i>
-              <p>Không tìm thấy kết quả phù hợp cho "{{keyword}}"</p>
-            </div>
-
-            <!-- Default View (Empty Keyword or just focused) -->
-            <div *ngIf="!keyword || isPristineSearch" class="flex flex-col md:flex-row p-0">
-              
-              <!-- Left Column: Recent & Suggestions -->
-              <div class="flex-1 min-w-0 p-5 bg-white">
-                
-                <!-- Recent Searches -->
-                <div *ngIf="recentSearches.length > 0" class="mb-6">
-                  <h4 class="text-[14px] font-normal text-gray-500 mb-3">Tìm kiếm gần đây</h4>
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div *ngFor="let item of recentSearches.slice(0, 2)" 
-                         class="p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors"
-                         (click)="selectRecent(item)">
-                      <div class="font-bold text-gray-900 text-[14px] mb-1 flex items-center justify-between">
-                        <span class="truncate pr-2">{{ item.displayLocation }}</span>
-                        <div class="flex items-center text-gray-500 text-xs flex-shrink-0">
-                          <i class="pi pi-user mr-1 text-[10px]"></i> {{ item.adultCount || 2 }}
-                        </div>
-                      </div>
-                      <div class="text-[12px] text-gray-500 truncate">
-                        <span *ngIf="item.checkInDate && item.checkOutDate">{{ item.checkInDate | date:'d/M/yyyy' }} - {{ item.checkOutDate | date:'d/M/yyyy' }}</span>
-                        <span *ngIf="!item.checkInDate">Chưa chọn ngày</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Suggested Cities (Mock) -->
-                <div class="mb-6">
-                  <h4 class="text-[14px] font-normal text-gray-500 mb-3">Thành phố</h4>
-                  <div class="flex items-center gap-3 p-2 cursor-pointer hover:bg-gray-50 rounded-xl transition-colors">
-                    <img src="https://images.unsplash.com/photo-1555921015-5532091f6026?auto=format&fit=crop&w=100&q=80" alt="Mỹ Tho" class="w-12 h-12 rounded-lg object-cover">
-                    <div class="flex flex-col">
-                      <span class="font-bold text-gray-900 text-[14px]">Mỹ Tho (Tiền Giang)</span>
-                      <span class="text-[13px] text-gray-500">(39)</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Suggested Regions (Mock) -->
-                <div>
-                  <div class="inline-block px-3 py-1 bg-gray-100 rounded-lg text-sm font-bold text-gray-700 mb-3">Khu vực</div>
-                  <div class="flex items-center gap-3 p-2 cursor-pointer hover:bg-gray-50 rounded-xl transition-colors">
-                    <img src="https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?auto=format&fit=crop&w=100&q=80" alt="Mỹ Tho Khu vực" class="w-12 h-12 rounded-lg object-cover">
-                    <div class="flex flex-col">
-                      <span class="font-bold text-gray-900 text-[14px]">Mỹ Tho <span class="text-gray-500 font-normal">(77)</span></span>
-                      <span class="text-[13px] text-blue-600">100% <span class="text-gray-500">đã ở lại đây</span></span>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-
-              <!-- Right Column: Popular Destinations -->
-              <div class="flex-1 min-w-0 p-5 border-t md:border-t-0 md:border-l border-gray-200 bg-white">
-                <h4 class="text-[14px] font-normal text-gray-500 mb-3">Các thành phố nổi tiếng ở Việt Nam</h4>
-                <div class="flex flex-col gap-1">
-                  <div *ngFor="let dest of popularDestinations" 
-                       class="flex items-center gap-3 p-2 cursor-pointer hover:bg-gray-50 rounded-xl transition-colors" 
-                       (click)="selectPopular(dest)">
-                    <img [src]="dest.image" [alt]="dest.name" class="w-12 h-12 rounded-xl object-cover">
-                    <div class="flex flex-col min-w-0">
-                      <span class="font-bold text-gray-900 text-[14px] truncate">{{ dest.name }} <span class="font-normal text-gray-500">({{ dest.properties | number }})</span></span>
-                      <span class="text-[13px] text-gray-500">{{ dest.subtitle || 'bãi biển, tham quan' }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            <!-- Search Results View -->
-            <div *ngIf="!isLoading && keyword && !isPristineSearch && searchResults.length > 0" class="py-1">
-              <div *ngFor="let res of searchResults; let i = index" 
-                   class="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-blue-50 transition-colors"
-                   [class.bg-blue-50]="i === activeIndex"
-                   (click)="selectResult(res)">
-                
-                <!-- Icon -->
-                <div class="flex-shrink-0 text-gray-500">
-                  <i *ngIf="res.type === 'PROVINCE'" class="pi pi-map-marker text-[18px]"></i>
-                  <i *ngIf="res.type === 'WARD'" class="pi pi-map-marker text-[18px]"></i>
-                  <i *ngIf="res.type === 'PROPERTY'" class="pi pi-building text-[18px]"></i>
-                </div>
-
-                <!-- Text -->
-                <div class="flex flex-col min-w-0 flex-1">
-                  <span class="text-[14px] text-gray-900 truncate">{{ res.mainText }}<span *ngIf="res.subText" class="text-gray-500">, {{ res.subText }}</span></span>
-                  <span class="text-[12px] text-gray-500">{{ res.type === 'PROVINCE' ? 'Thành phố' : res.type === 'WARD' ? 'Khu vực' : 'Nơi lưu trú' }}</span>
-                </div>
-
-              </div>
-            </div>
-
-          </div>
-        </ng-template>
-      </p-popover>
-    </div>
-  `
+  imports: [CommonModule, ReactiveFormsModule, SafeHighlightComponent],
+  templateUrl: './location-autocomplete.component.html',
+  styleUrls: ['./location-autocomplete.component.css']
 })
-export class LocationAutocompleteComponent implements OnInit, OnDestroy {
-  @ViewChild('locOp') locOp: any;
-  @ViewChild('searchInput') searchInput: any;
+export class LocationAutocompleteComponent implements OnDestroy {
+  @ViewChild('searchInput') searchInput?: ElementRef<HTMLInputElement>;
 
-  private stateService = inject(HomeSearchStateService);
-  private api = inject(ClientApiService);
+  private readonly stateService = inject(HomeSearchStateService);
+  private readonly api = inject(ClientApiService);
+  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
+  private readonly changeDetector = inject(ChangeDetectorRef);
+  private readonly destroy$ = new Subject<void>();
+  private readonly retry$ = new Subject<string>();
+  private readonly imageFallback = inject(ImageFallbackService);
 
-  keyword: string = '';
-  isPristineSearch = false;
-  isPopupOpen = false;
-  isLoading = false;
-  
-  recentSearches: any[] = [];
-  popularDestinations: any[] = [];
-  searchResults: any[] = [];
+  readonly searchControl = new FormControl('', { nonNullable: true });
+  readonly skeletonRows = [1, 2, 3, 4];
+
+  popupOpen = false;
+  loading = false;
+  loadError = false;
+  popularLoading = false;
+  popularDestinations: LocationSuggestion[] = [];
+  resultGroups: SearchSuggestionGroups = this.emptyResults();
   activeIndex = -1;
-
-  private searchSubject = new Subject<string>();
-  private sub: Subscription;
 
   constructor() {
     effect(() => {
-      const currentKeyword = this.stateService.state().keyword || this.stateService.state().locationDisplayName || '';
-      if (this.keyword !== currentKeyword) {
-        this.keyword = currentKeyword;
+      const displayName = this.stateService.state().locationDisplayName || '';
+      if (this.searchControl.value !== displayName) {
+        this.searchControl.setValue(displayName, { emitEvent: false });
       }
     });
 
-    this.sub = this.searchSubject.pipe(
-      debounceTime(300),
-      tap(() => this.isLoading = true),
-      switchMap(term => this.api.searchAutocomplete(term).pipe(
-        finalize(() => this.isLoading = false)
-      ))
-    ).subscribe(res => {
-      this.formatSearchResults(res);
-    });
-  }
-
-  ngOnInit() {
-    // Sync keyword from state (now handled by effect, but keeping it here for immediate sync)
-    this.keyword = this.stateService.state().keyword || this.stateService.state().locationDisplayName || '';
-    this.loadRecent();
-    this.loadPopular();
-  }
-
-  ngOnDestroy() {
-    if (this.sub) this.sub.unsubscribe();
-  }
-
-  focusInput(event: Event) {
-    if (this.searchInput) {
-      this.searchInput.nativeElement.focus();
-    }
-    if (!this.isPopupOpen && this.locOp) {
-      this.locOp.show(event);
-      this.isPopupOpen = true;
-    }
-  }
-
-  onFocus(event: Event) {
-    this.isPristineSearch = true;
-    if (this.searchInput) {
-      this.searchInput.nativeElement.select();
-    }
-    if (!this.isPopupOpen && this.locOp) {
-      this.locOp.show(event);
-      this.isPopupOpen = true;
-    }
-  }
-
-  onKeywordChange(val: string) {
-    this.isPristineSearch = false;
-    this.keyword = val;
-    this.activeIndex = -1;
-    // Update state directly for keyword so sticky header syncs
-    this.stateService.state.update(s => ({ ...s, keyword: val, provinceId: null, wardId: null }));
-    
-    if (val.trim().length > 0) {
-      this.searchSubject.next(val.trim());
-      if (!this.isPopupOpen && this.locOp) {
-        this.locOp.show(new Event('click')); // force open
-        this.isPopupOpen = true;
-      }
-    } else {
-      this.searchResults = [];
-    }
-  }
-
-  onKeydown(event: KeyboardEvent) {
-    if (!this.isPopupOpen || this.searchResults.length === 0) return;
-
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      this.activeIndex = (this.activeIndex + 1) % this.searchResults.length;
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      this.activeIndex = this.activeIndex <= 0 ? this.searchResults.length - 1 : this.activeIndex - 1;
-    } else if (event.key === 'Enter') {
-      event.preventDefault();
-      if (this.activeIndex >= 0 && this.activeIndex < this.searchResults.length) {
-        this.selectResult(this.searchResults[this.activeIndex]);
-      } else {
-        this.locOp.hide();
-      }
-    } else if (event.key === 'Escape') {
-      this.locOp.hide();
-    }
-  }
-
-  selectResult(res: any) {
-    this.keyword = res.mainText;
-    
-    const provinceId = res.type === 'PROVINCE' ? res.id : (res.type === 'WARD' ? res.parentId : null);
-    const wardId = res.type === 'WARD' ? res.id : null;
-    
-    // If it's a property, we might just use the keyword to search
-    // We update the global state
-    this.stateService.updateLocation(this.keyword, this.keyword, provinceId, wardId);
-    
-    this.locOp.hide();
-  }
-
-  selectRecent(item: any) {
-    this.keyword = item.displayLocation || item.keyword;
-    this.stateService.updateLocation(item.keyword, item.displayLocation, item.provinceId, item.wardId);
-    
-    if (item.checkInDate && item.checkOutDate) {
-      this.stateService.updateDates(new Date(item.checkInDate), new Date(item.checkOutDate));
-    }
-    if (item.adultCount) {
-      this.stateService.updateGuests(item.adultCount, item.childCount || 0, item.roomCount || 1);
-    }
-    
-    this.locOp.hide();
-  }
-
-  selectPopular(dest: any) {
-    this.keyword = dest.name;
-    this.stateService.updateLocation(dest.name, dest.name, dest.id, null);
-    this.locOp.hide();
-  }
-
-  private formatSearchResults(res: {locations: any[], properties: any[]}) {
-    const formatted: any[] = [];
-    
-    // Format locations
-    res.locations.forEach(loc => {
-      formatted.push({
-        id: loc.id,
-        parentId: loc.parent?.id,
-        type: loc.type,
-        mainText: loc.nameVi,
-        subText: loc.parent ? loc.parent.nameVi : 'Việt Nam',
-        original: loc
-      });
-    });
-
-    // Format properties
-    res.properties.forEach(prop => {
-      formatted.push({
-        id: prop.id,
-        type: 'PROPERTY',
-        mainText: prop.name,
-        subText: prop.addressLine || (prop.city ? prop.city : 'Việt Nam'),
-        original: prop
-      });
-    });
-
-    this.searchResults = formatted;
-  }
-
-  private loadRecent() {
-    try {
-      this.recentSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
-    } catch(e) {
-      this.recentSearches = [];
-    }
-  }
-
-  private loadPopular() {
-    this.api.getProvinces().subscribe({
-      next: (provinces) => {
-        const topNames = ['Đà Nẵng', 'Hồ Chí Minh', 'Bà Rịa - Vũng Tàu', 'Hà Nội', 'Lâm Đồng'];
-        const topProvinces = provinces.filter(p => topNames.some(name => p.nameVi.includes(name)));
-        
-        if (topProvinces.length > 0) {
-          this.popularDestinations = topProvinces.map(p => ({
-            id: p.id,
-            name: p.nameVi.replace('Tỉnh ', '').replace('Thành phố ', ''),
-            properties: Math.floor(Math.random() * 500) + 100, // mock count for UI if actual API doesn't return count quickly
-            image: this.getImageForProvince(p.nameVi)
-          }));
-        } else {
-          this.loadFallback();
+    const typedSearch$ = this.searchControl.valueChanges.pipe(
+      map(value => value.trim()),
+      tap(value => {
+        this.stateService.updateKeyword(this.searchControl.value);
+        this.activeIndex = -1;
+        this.loadError = false;
+        if (value.length < 2) {
+          this.loading = false;
+          this.resultGroups = this.emptyResults();
         }
-      },
-      error: () => this.loadFallback()
+      }),
+      debounceTime(350),
+      distinctUntilChanged()
+    );
+
+    merge(typedSearch$, this.retry$).pipe(
+      switchMap(keyword => {
+        if (keyword.length < 2) return of(null);
+        this.loading = true;
+        const state = this.stateService.state();
+        return this.api.getSearchSuggestions(
+          keyword,
+          10,
+          state.latitude ?? undefined,
+          state.longitude ?? undefined
+        ).pipe(
+          map(response => ({ response, failed: false })),
+          catchError(() => of({ response: this.emptyResults(), failed: true }))
+        );
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe(result => {
+      if (!result) return;
+      this.loading = false;
+      this.loadError = result.failed;
+      this.resultGroups = result.response;
+      this.changeDetector.markForCheck();
     });
   }
 
-  private loadFallback() {
-    this.popularDestinations = [
-      { id: null, name: 'Đà Nẵng', properties: 120, image: this.getImageForProvince('Đà Nẵng') },
-      { id: null, name: 'Hồ Chí Minh', properties: 350, image: this.getImageForProvince('Hồ Chí Minh') },
-      { id: null, name: 'Vũng Tàu', properties: 95, image: this.getImageForProvince('Vũng Tàu') },
-      { id: null, name: 'Hà Nội', properties: 210, image: this.getImageForProvince('Hà Nội') },
-      { id: null, name: 'Đà Lạt', properties: 150, image: this.getImageForProvince('Đà Lạt') }
-    ];
+  get keyword(): string {
+    return this.searchControl.value.trim();
   }
 
-  private getImageForProvince(name: string): string {
-    if (name.includes('Đà Nẵng')) return 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=600&q=80';
-    if (name.includes('Hồ Chí Minh')) return 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=600&q=80';
-    if (name.includes('Vũng Tàu')) return 'https://images.unsplash.com/photo-1574676571597-d64c12ea847a?auto=format&fit=crop&w=600&q=80';
-    if (name.includes('Lâm Đồng') || name.includes('Đà Lạt')) return 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=600&q=80';
-    if (name.includes('Khánh Hòa') || name.includes('Nha Trang')) return 'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?auto=format&fit=crop&w=600&q=80';
-    return 'https://images.unsplash.com/photo-1555921015-5532091f6026?auto=format&fit=crop&w=600&q=80';
+  get recentSearches(): RecentSearch[] {
+    return this.stateService.recentSearches();
+  }
+
+  get groupedResults(): SuggestionGroup[] {
+    const groups: SuggestionGroup[] = [
+      { type: 'PROVINCE', label: 'Tỉnh/Thành phố', icon: 'pi pi-map-marker', items: this.resultGroups.provinces || [] },
+      { type: 'WARD', label: 'Phường/Xã', icon: 'pi pi-map', items: this.resultGroups.wards || [] },
+      { type: 'PROPERTY', label: 'Cơ sở lưu trú', icon: 'pi pi-building', items: this.resultGroups.properties || [] },
+      { type: 'LANDMARK', label: 'Địa danh', icon: 'pi pi-compass', items: this.resultGroups.landmarks || [] }
+    ];
+    return groups.filter(group => group.items.length > 0);
+  }
+
+  get flatResults(): LocationSuggestion[] {
+    return this.groupedResults.flatMap(group => group.items);
+  }
+
+  get activeResult(): LocationSuggestion | null {
+    return this.flatResults[this.activeIndex] || null;
+  }
+
+  get hasResults(): boolean {
+    return this.flatResults.length > 0;
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  openPopup(): void {
+    this.popupOpen = true;
+    if (this.keyword.length < 2) this.loadPopularDestinations();
+  }
+
+  closePopup(): void {
+    this.popupOpen = false;
+    this.activeIndex = -1;
+  }
+
+  focusInput(): void {
+    this.searchInput?.nativeElement.focus();
+    this.openPopup();
+  }
+
+  clearInput(event: MouseEvent): void {
+    event.stopPropagation();
+    this.searchControl.setValue('');
+    this.stateService.clearLocation();
+    this.resultGroups = this.emptyResults();
+    this.focusInput();
+  }
+
+  onKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.closePopup();
+      return;
+    }
+    if (event.key === 'Tab') {
+      this.closePopup();
+      return;
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      if (!this.popupOpen) this.openPopup();
+      if (!this.flatResults.length) return;
+      event.preventDefault();
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      this.activeIndex = (this.activeIndex + direction + this.flatResults.length) % this.flatResults.length;
+      this.scrollActiveIntoView();
+      return;
+    }
+    if (event.key === 'Enter' && this.activeResult) {
+      event.preventDefault();
+      this.selectResult(this.activeResult);
+    }
+  }
+
+  selectResult(result: LocationSuggestion): void {
+    this.stateService.selectSuggestion({
+      type: result.type,
+      id: result.id,
+      name: result.name,
+      displayName: result.displayName || result.name,
+      provinceId: result.provinceId,
+      wardId: result.wardId
+    });
+    this.closePopup();
+  }
+
+  selectRecent(recent: RecentSearch): void {
+    this.stateService.applyRecentSearch(recent);
+    this.closePopup();
+  }
+
+  removeRecent(event: MouseEvent, recent: RecentSearch): void {
+    event.stopPropagation();
+    this.stateService.removeRecentSearch(recent);
+  }
+
+  clearRecent(): void {
+    this.stateService.clearRecentSearches();
+  }
+
+  retrySearch(): void {
+    const keyword = this.searchControl.value.trim();
+    if (keyword.length >= 2) this.retry$.next(keyword);
+  }
+
+  propertyTypeLabel(type?: string): string {
+    const labels: Record<string, string> = {
+      HOTEL: 'Khách sạn', MOTEL: 'Nhà nghỉ', HOMESTAY: 'Homestay', HOSTEL: 'Hostel',
+      APARTMENT: 'Căn hộ', VILLA: 'Villa', RESORT: 'Khu nghỉ dưỡng', GUEST_HOUSE: 'Nhà khách'
+    };
+    return type ? labels[type] || 'Cơ sở lưu trú' : 'Cơ sở lưu trú';
+  }
+
+  displayImage(imageUrl?: string, propertyType?: string): string {
+    return imageUrl || (propertyType ? this.imageFallback.property(propertyType) : this.imageFallback.destination());
+  }
+
+  handleImageError(event: Event, type?: string): void {
+    this.imageFallback.replace(event, type ? this.imageFallback.property(type) : this.imageFallback.destination());
+  }
+
+  resultIndex(result: LocationSuggestion): number {
+    return this.flatResults.indexOf(result);
+  }
+
+  @HostListener('document:mousedown', ['$event'])
+  handleOutsideClick(event: MouseEvent): void {
+    if (this.popupOpen && !this.host.nativeElement.contains(event.target as Node)) this.closePopup();
+  }
+
+  private loadPopularDestinations(): void {
+    if (this.popularDestinations.length || this.popularLoading) return;
+    this.popularLoading = true;
+    this.api.getPopularDestinations(8).pipe(takeUntil(this.destroy$)).subscribe({
+      next: destinations => {
+        this.popularDestinations = destinations;
+        this.popularLoading = false;
+        this.changeDetector.markForCheck();
+      },
+      error: () => {
+        this.popularDestinations = [];
+        this.popularLoading = false;
+        this.changeDetector.markForCheck();
+      }
+    });
+  }
+
+  private scrollActiveIntoView(): void {
+    requestAnimationFrame(() => {
+      this.host.nativeElement.querySelector<HTMLElement>(`#location-option-${this.activeIndex}`)
+        ?.scrollIntoView({ block: 'nearest' });
+    });
+  }
+
+  private emptyResults(): SearchSuggestionGroups {
+    return { provinces: [], wards: [], properties: [], landmarks: [] };
   }
 }

@@ -50,6 +50,7 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
   }
 
   checkLoginStatus() {
+    if (typeof localStorage === 'undefined') return;
     const userStr = localStorage.getItem('user');
     if (userStr) {
       try {

@@ -1,0 +1,121 @@
+<div class="location-shell" (click)="focusInput()">
+  <i class="pi pi-search location-icon" aria-hidden="true"></i>
+  <input
+    #searchInput
+    type="search"
+    autocomplete="off"
+    [formControl]="searchControl"
+    (focus)="openPopup()"
+    (keydown)="onKeydown($event)"
+    placeholder="Bạn muốn đến đâu?"
+    aria-label="Tìm tỉnh, phường xã, cơ sở hoặc địa chỉ"
+    aria-autocomplete="list"
+    [attr.aria-expanded]="popupOpen"
+    [attr.aria-activedescendant]="activeIndex >= 0 ? 'location-option-' + activeIndex : null">
+  <button *ngIf="searchControl.value" type="button" class="clear-input" (click)="clearInput($event)" title="Xóa nội dung">
+    <i class="pi pi-times" aria-hidden="true"></i>
+  </button>
+
+  <section *ngIf="popupOpen" class="location-popup" [class.search-mode]="keyword.length >= 2"
+    role="dialog" aria-label="Gợi ý địa điểm">
+    <header class="mobile-popup-header">
+      <strong>Chọn điểm đến</strong>
+      <button type="button" (click)="closePopup()" title="Đóng"><i class="pi pi-times"></i></button>
+    </header>
+
+    <div *ngIf="keyword.length < 2" class="discovery-grid">
+      <div class="recent-column">
+        <div class="section-heading">
+          <span>Tìm kiếm gần đây</span>
+          <button *ngIf="recentSearches.length" type="button" (click)="clearRecent()">Xóa tất cả</button>
+        </div>
+
+        <div *ngIf="recentSearches.length; else noRecent" class="recent-list">
+          <div *ngFor="let recent of recentSearches" class="recent-item" role="button" tabindex="0"
+            (click)="selectRecent(recent)" (keydown.enter)="selectRecent(recent)">
+            <span class="result-symbol"><i class="pi pi-history"></i></span>
+            <span class="result-copy">
+              <strong>{{ recent.displayLocation }}</strong>
+              <small>{{ recent.adultCount }} người lớn · {{ recent.roomCount }} phòng</small>
+            </span>
+            <button type="button" class="remove-recent" (click)="removeRecent($event, recent)" title="Xóa lịch sử">
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+        </div>
+        <ng-template #noRecent>
+          <div class="compact-empty">
+            <i class="pi pi-clock"></i>
+            <span>Lịch sử tìm kiếm sẽ xuất hiện tại đây.</span>
+          </div>
+        </ng-template>
+      </div>
+
+      <div class="popular-column">
+        <div class="section-heading"><span>Tỉnh/Thành phố phổ biến</span></div>
+        <div *ngIf="popularLoading" class="popular-skeleton">
+          <span *ngFor="let row of skeletonRows"></span>
+        </div>
+        <div *ngIf="!popularLoading" class="popular-list">
+          <button *ngFor="let destination of popularDestinations" type="button" class="popular-item"
+            (click)="selectResult(destination)">
+            <img [src]="displayImage(destination.imageUrl)" [alt]="destination.name" loading="lazy"
+              (error)="handleImageError($event)">
+            <span class="result-copy">
+              <strong>{{ destination.name }}</strong>
+              <small>{{ destination.propertyCount || 0 }} chỗ nghỉ · Tỉnh/Thành phố</small>
+            </span>
+            <i class="pi pi-angle-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="keyword.length >= 2" class="search-results" role="listbox">
+      <div *ngIf="loading" class="loading-results" aria-label="Đang tìm kiếm">
+        <div *ngFor="let row of skeletonRows" class="result-skeleton"><span></span><div><b></b><i></i></div></div>
+      </div>
+
+      <div *ngIf="!loading && loadError" class="message-state error-state">
+        <i class="pi pi-exclamation-circle"></i>
+        <strong>Không thể tải gợi ý.</strong>
+        <span>Vui lòng kiểm tra kết nối và thử lại.</span>
+        <button type="button" (click)="retrySearch()">Thử lại</button>
+      </div>
+
+      <ng-container *ngIf="!loading && !loadError && hasResults">
+        <div *ngFor="let group of groupedResults" class="result-group">
+          <h3><i [class]="group.icon"></i>{{ group.label }}<span>{{ group.items.length }}</span></h3>
+          <button *ngFor="let result of group.items" type="button" class="suggestion-item"
+            [id]="'location-option-' + resultIndex(result)"
+            [class.active]="activeResult === result"
+            [attr.aria-selected]="activeResult === result"
+            [attr.data-suggestion-type]="result.type"
+            role="option" (click)="selectResult(result)">
+            <img *ngIf="result.type === 'PROPERTY'" [src]="displayImage(result.thumbnailUrl, result.propertyType)"
+              [alt]="result.name" loading="lazy" (error)="handleImageError($event, result.propertyType)">
+            <span *ngIf="result.type !== 'PROPERTY'" class="result-symbol"><i [class]="group.icon"></i></span>
+            <span class="result-copy">
+              <strong><app-safe-highlight [text]="result.name" [keyword]="keyword"></app-safe-highlight></strong>
+              <small *ngIf="result.type === 'PROVINCE'">{{ result.propertyCount || 0 }} chỗ nghỉ · Tỉnh/Thành phố</small>
+              <small *ngIf="result.type === 'WARD'">{{ result.provinceName }}<ng-container *ngIf="result.propertyCount !== undefined"> · {{ result.propertyCount }} chỗ nghỉ</ng-container></small>
+              <small *ngIf="result.type === 'PROPERTY'">
+                {{ propertyTypeLabel(result.propertyType) }} · {{ result.wardName || result.provinceName }}<ng-container *ngIf="result.address"> · {{ result.address }}</ng-container>
+              </small>
+            </span>
+            <span *ngIf="result.reviewScore" class="review-score">{{ result.reviewScore | number:'1.1-1' }}</span>
+            <span *ngIf="result.distanceKm !== undefined && result.distanceKm !== null" class="distance">{{ result.distanceKm }} km</span>
+            <i class="pi pi-angle-right result-arrow"></i>
+          </button>
+        </div>
+      </ng-container>
+
+      <div *ngIf="!loading && !loadError && !hasResults" class="message-state empty-state">
+        <i class="pi pi-search-minus"></i>
+        <strong>Không tìm thấy địa điểm hoặc cơ sở phù hợp.</strong>
+        <span>Kiểm tra chính tả hoặc thử tên tỉnh, phường/xã, tên cơ sở ngắn hơn.</span>
+        <button type="button" (click)="clearInput($event)">Tìm toàn bộ chỗ nghỉ</button>
+      </div>
+    </div>
+  </section>
+</div>

@@ -27,10 +27,10 @@ public class PropertyClaimRequest extends AuditableEntity {
     @Column(name = "verification_method")
     private String verificationMethod; // EMAIL, PHONE, BUSINESS_LICENSE
 
-    @Column(name = "verification_data", columnDefinition = "TEXT")
+    @Column(name = "verification_data", columnDefinition = "nvarchar(max)")
     private String verificationData;
 
-    @Column(name = "note", columnDefinition = "TEXT")
+    @Column(name = "note", columnDefinition = "nvarchar(max)")
     private String note;
 
     @Column(name = "status", nullable = false)
@@ -43,7 +43,7 @@ public class PropertyClaimRequest extends AuditableEntity {
     @Column(name = "reviewed_at")
     private LocalDateTime reviewedAt;
 
-    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    @Column(name = "rejection_reason", columnDefinition = "nvarchar(max)")
     private String rejectionReason;
 
     public Long getId() { return id; }

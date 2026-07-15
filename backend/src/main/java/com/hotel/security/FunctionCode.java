@@ -3,8 +3,10 @@ package com.hotel.security;
 public enum FunctionCode {
     SYSTEM,
     HOTEL,
+    HOTEL_SERVICE,
     BOOKING,
     FINANCE,
+    RESERVATION_PAYMENT,
     AI,
     USER,
     ROLE,
@@ -18,5 +20,7 @@ public enum FunctionCode {
     REPORT,
     AI_CHAT,
     CUSTOMER,
-    CHAT
+    CHAT,
+    PROPERTY_IMPORT,
+    PROPERTY_CLAIM
 }

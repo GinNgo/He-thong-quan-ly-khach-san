@@ -7,12 +7,18 @@ public class RoomDTO {
     private Long id;
     private String roomNumber;
     private Long roomTypeId;
+    private Long hotelId;
     private String roomTypeCode;
     private String roomTypeNameVi;
     private Integer floor;
     private String status;
+    private String maintenanceStatus;
+    private String housekeepingStatus;
+    private Boolean isDemo;
+    private Integer maxGuests;
     private String descriptionVi;
     private String descriptionEn;
+    private String note;
     private List<RoomImageDTO> images;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -40,6 +46,9 @@ public class RoomDTO {
     public void setRoomTypeId(Long roomTypeId) {
         this.roomTypeId = roomTypeId;
     }
+
+    public Long getHotelId() { return hotelId; }
+    public void setHotelId(Long hotelId) { this.hotelId = hotelId; }
 
     public String getRoomTypeCode() {
         return roomTypeCode;
@@ -73,6 +82,15 @@ public class RoomDTO {
         this.status = status;
     }
 
+    public String getMaintenanceStatus() { return maintenanceStatus; }
+    public void setMaintenanceStatus(String maintenanceStatus) { this.maintenanceStatus = maintenanceStatus; }
+    public String getHousekeepingStatus() { return housekeepingStatus; }
+    public void setHousekeepingStatus(String housekeepingStatus) { this.housekeepingStatus = housekeepingStatus; }
+    public Boolean getIsDemo() { return isDemo; }
+    public void setIsDemo(Boolean demo) { isDemo = demo; }
+    public Integer getMaxGuests() { return maxGuests; }
+    public void setMaxGuests(Integer maxGuests) { this.maxGuests = maxGuests; }
+
     public String getDescriptionVi() {
         return descriptionVi;
     }
@@ -88,6 +106,9 @@ public class RoomDTO {
     public void setDescriptionEn(String descriptionEn) {
         this.descriptionEn = descriptionEn;
     }
+
+    public String getNote() { return note; }
+    public void setNote(String note) { this.note = note; }
 
     public List<RoomImageDTO> getImages() {
         return images;

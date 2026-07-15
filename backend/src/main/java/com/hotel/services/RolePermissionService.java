@@ -95,6 +95,9 @@ public class RolePermissionService {
     @Transactional
     public void updateRolePermissions(Long roleId, UpdateRolePermissionsRequest request) {
         Role role = roleRepository.findById(roleId).orElseThrow(() -> new RuntimeException("Role not found"));
+        if ("SUPER_ADMIN".equals(role.getCode())) {
+            throw new IllegalStateException("Không thể thay đổi phân quyền của Quản trị hệ thống.");
+        }
         
         List<RolePermission> existingPermissions = rolePermissionRepository.findByRoleId(roleId);
         Map<Long, RolePermission> existingByFunctionId = existingPermissions.stream()
@@ -113,6 +116,9 @@ public class RolePermissionService {
 
             seenFunctionIds.add(entry.getFunctionId());
             int actionMask = entry.getActionMask() != null ? entry.getActionMask() : 0;
+            if (actionMask < 0 || actionMask > 63) {
+                throw new IllegalArgumentException("Action mask phải nằm trong khoảng 0 đến 63.");
+            }
             RolePermission existing = existingByFunctionId.get(entry.getFunctionId());
             
             if (actionMask <= 0) {

@@ -24,10 +24,10 @@ public class SubscriptionPlan extends AuditableEntity {
     @Column(nullable = false, unique = true)
     private String code;
 
-    @Column(name = "name_vi", nullable = false)
+    @Column(name = "name_vi", nullable = false, columnDefinition = "nvarchar(255)")
     private String nameVi;
 
-    @Column(name = "name_en")
+    @Column(name = "name_en", columnDefinition = "nvarchar(255)")
     private String nameEn;
 
     @Column(name = "billing_type", nullable = false)

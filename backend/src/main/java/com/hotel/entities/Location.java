@@ -12,7 +12,10 @@ import jakarta.persistence.*;
 @Getter
 @Setter
 @Entity
-@Table(name = "locations")
+@Table(name = "locations", indexes = {
+        @Index(name = "IX_locations_type_parent_status", columnList = "location_type,parent_id,status"),
+        @Index(name = "IX_locations_normalized_name", columnList = "normalized_name")
+})
 public class Location extends AuditableEntity {
 
     @Id
@@ -29,22 +32,22 @@ public class Location extends AuditableEntity {
     @Column(name = "source_code")
     private String sourceCode;
 
-    @Column(name = "name_vi", nullable = false)
+    @Column(name = "name_vi", nullable = false, columnDefinition = "nvarchar(255)")
     private String nameVi;
 
-    @Column(name = "name_en")
+    @Column(name = "name_en", columnDefinition = "nvarchar(255)")
     private String nameEn;
 
-    @Column(name = "normalized_name")
+    @Column(name = "normalized_name", columnDefinition = "nvarchar(255)")
     private String normalizedName;
 
     @Column(name = "location_type", nullable = false)
     private String locationType; // PROVINCE, WARD, LANDMARK
 
-    @Column(name = "full_path")
+    @Column(name = "full_path", columnDefinition = "nvarchar(1000)")
     private String fullPath;
 
-    @Column(name = "legacy_parent_name")
+    @Column(name = "legacy_parent_name", columnDefinition = "nvarchar(255)")
     private String legacyParentName;
 
     @Column(name = "latitude")
@@ -61,4 +64,10 @@ public class Location extends AuditableEntity {
 
     @Column(unique = true)
     private String slug;
+
+    @PrePersist
+    @PreUpdate
+    void normalizeSearchFields() {
+        normalizedName = com.hotel.util.VietnameseTextNormalizer.normalize(nameVi);
+    }
 }

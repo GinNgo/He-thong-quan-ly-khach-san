@@ -1,209 +1,39 @@
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-  
-  <div class="flex flex-col lg:flex-row gap-8">
-    <!-- Sidebar -->
-    <div class="w-full lg:w-1/4">
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-24">
-        
-        <!-- User Info Summary -->
-        <div class="p-6 border-b border-gray-100 text-center">
-          <div class="w-24 h-24 mx-auto bg-gray-200 rounded-full overflow-hidden border-4 border-white shadow-md mb-4 relative">
-            <img [src]="'https://ui-avatars.com/api/?name=' + user.fullName + '&background=random&size=128'" alt="Avatar" class="w-full h-full object-cover">
-            <button class="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] py-1 hover:bg-black/70 transition-colors">THAY ĐỔI</button>
-          </div>
-          <h2 class="text-xl font-bold text-gray-900 mb-1">{{ user.fullName }}</h2>
-          <p class="text-sm text-gray-500 mb-0">{{ user.email }}</p>
-        </div>
-
-        <!-- Navigation Menu -->
-        <nav class="p-4 flex flex-col gap-1">
-          <a (click)="setActiveTab('profile')" 
-             class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors cursor-pointer"
-             [ngClass]="activeTab === 'profile' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'">
-            <span class="material-symbols-outlined text-[20px]">person</span>
-            Thông tin cá nhân
-          </a>
-          <a (click)="setActiveTab('vouchers')" 
-             class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors cursor-pointer"
-             [ngClass]="activeTab === 'vouchers' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'">
-            <span class="material-symbols-outlined text-[20px]">local_activity</span>
-            Kho Voucher & Ưu đãi
-            <span class="ml-auto bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">{{vouchers.length}}</span>
-          </a>
-          <a (click)="setActiveTab('bookings')" 
-             class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors cursor-pointer"
-             [ngClass]="activeTab === 'bookings' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'">
-            <span class="material-symbols-outlined text-[20px]">luggage</span>
-            Chuyến đi của tôi
-          </a>
-          <div class="h-px bg-gray-100 my-2"></div>
-          <a (click)="logout()" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer">
-            <span class="material-symbols-outlined text-[20px]">logout</span>
-            Đăng xuất
-          </a>
-        </nav>
-      </div>
+<main class="profile-page">
+  <aside class="profile-sidebar">
+    <div class="profile-avatar">
+      <img *ngIf="profileForm.controls.avatarUrl.value" [src]="profileForm.controls.avatarUrl.value" alt="Ảnh đại diện" (error)="avatarError()">
+      <span *ngIf="!profileForm.controls.avatarUrl.value">{{ initials }}</span>
     </div>
+    <strong>{{ user?.fullName || user?.username }}</strong><small>{{ user?.email }}</small>
+    <label class="upload-button"><i class="pi pi-camera"></i>{{ uploading ? 'Đang tải...' : 'Đổi ảnh' }}<input type="file" accept="image/*" (change)="uploadAvatar($event)" [disabled]="uploading"></label>
+    <nav>
+      <button type="button" [class.active]="activeTab === 'profile'" (click)="setActiveTab('profile')"><i class="pi pi-user"></i>Thông tin cá nhân</button>
+      <button type="button" [class.active]="activeTab === 'bookings'" (click)="setActiveTab('bookings')"><i class="pi pi-suitcase"></i>Chuyến đi của tôi</button>
+      <a routerLink="/my-invoices"><i class="pi pi-file"></i>Hóa đơn của tôi</a>
+      <button type="button" class="logout" (click)="logout()"><i class="pi pi-sign-out"></i>Đăng xuất</button>
+    </nav>
+  </aside>
 
-    <!-- Main Content Area -->
-    <div class="w-full lg:w-3/4 flex flex-col gap-6">
-      
-      <!-- Membership VIP Card -->
-      <div class="vip-card-bg rounded-2xl shadow-xl p-8 text-white">
-        <div class="flex justify-between items-start mb-8">
-          <div>
-            <p class="text-sm text-gray-400 font-medium tracking-widest uppercase mb-1">Thẻ Thành Viên</p>
-            <h3 class="text-3xl font-black flex items-center gap-2" [ngClass]="membership.color">
-              <span class="material-symbols-outlined text-[36px]">{{membership.icon}}</span>
-              {{ membership.tier }}
-            </h3>
-          </div>
-          <div class="text-right">
-            <div class="flex items-center justify-end gap-1 mb-1">
-              <span class="material-symbols-outlined text-gray-400 text-[18px]">monetization_on</span>
-              <span class="font-bold text-xl">{{ membership.points | number }}</span>
-            </div>
-            <p class="text-xs text-gray-400">Điểm tích lũy</p>
-          </div>
-        </div>
-
-        <div class="bg-white/10 backdrop-blur-md rounded-xl p-5 border border-white/10">
-          <div class="flex justify-between items-end mb-3">
-            <p class="text-sm font-medium">Tiến trình lên hạng <strong class="text-white">{{ membership.nextTier }}</strong></p>
-            <p class="text-xs text-gray-300">{{ membership.points | number }} / {{ membership.pointsNeeded | number }} điểm</p>
-          </div>
-          <div class="w-full bg-black/40 rounded-full h-2.5">
-            <div class="bg-gradient-to-r from-yellow-600 to-yellow-400 h-2.5 rounded-full" [style.width.%]="progressPercentage"></div>
-          </div>
-          <p class="text-xs text-gray-400 mt-3 mb-0">Chỉ cần tích lũy thêm <strong class="text-white">{{ (membership.pointsNeeded - membership.points) | number }} điểm</strong> để nâng hạng và nhận đặc quyền miễn phí bữa sáng!</p>
-        </div>
+  <section class="profile-content">
+    <div *ngIf="loading" class="message"><i class="pi pi-spin pi-spinner"></i>Đang tải thông tin</div>
+    <div *ngIf="error" class="alert error">{{ error }}</div><div *ngIf="success" class="alert success">{{ success }}</div>
+    <section *ngIf="!loading && activeTab === 'profile'" class="content-panel">
+      <header><h1>Thông tin cá nhân</h1><p>Cập nhật thông tin dùng cho tài khoản và đặt phòng.</p></header>
+      <form [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+        <label>Họ và tên<input formControlName="fullName" type="text"></label>
+        <label>Email<input formControlName="email" type="email"></label>
+        <label>Số điện thoại<input formControlName="phone" type="tel"></label>
+        <button type="submit" [disabled]="saving || profileForm.invalid">{{ saving ? 'Đang lưu...' : 'Lưu thay đổi' }}</button>
+      </form>
+    </section>
+    <section *ngIf="!loading && activeTab === 'bookings'" class="content-panel">
+      <header><h1>Chuyến đi của tôi</h1><p>Các đặt phòng thuộc tài khoản hiện tại.</p></header>
+      <div *ngIf="bookingsLoading" class="message"><i class="pi pi-spin pi-spinner"></i>Đang tải chuyến đi</div>
+      <div *ngIf="bookingsError" class="alert error">{{ bookingsError }}</div>
+      <div *ngIf="!bookingsLoading && !bookingsError && !bookings.length" class="empty"><i class="pi pi-suitcase"></i><strong>Chưa có chuyến đi</strong><a routerLink="/search">Tìm chỗ nghỉ</a></div>
+      <div class="booking-list" *ngIf="!bookingsLoading && bookings.length">
+        <article *ngFor="let booking of bookings"><div><small>Mã đặt phòng</small><strong>#{{ booking.id }}</strong></div><div><small>Thời gian</small><span>{{ booking.checkInDate | date:'dd/MM/yyyy' }} - {{ booking.checkOutDate | date:'dd/MM/yyyy' }}</span></div><div><small>Tổng tiền</small><strong>{{ booking.totalAmount | currency:'VND':'symbol':'1.0-0' }}</strong></div><span class="status">{{ getStatusLabel(booking.status) }}</span></article>
       </div>
-
-      <!-- Tab: Profile -->
-      <div *ngIf="activeTab === 'profile'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <div class="flex justify-between items-center mb-6">
-          <h3 class="text-2xl font-bold text-gray-900">Thông tin cá nhân</h3>
-          <button class="text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors">Chỉnh sửa</button>
-        </div>
-        
-        <form class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="space-y-2">
-            <label class="text-xs font-bold text-gray-500 uppercase">Họ và Tên</label>
-            <input type="text" [(ngModel)]="user.fullName" name="fullName" disabled class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-medium">
-          </div>
-          
-          <div class="space-y-2">
-            <label class="text-xs font-bold text-gray-500 uppercase">Email</label>
-            <input type="email" [(ngModel)]="user.email" name="email" disabled class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-medium">
-          </div>
-          
-          <div class="space-y-2">
-            <label class="text-xs font-bold text-gray-500 uppercase">Số điện thoại</label>
-            <input type="tel" [(ngModel)]="user.phone" name="phone" disabled class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-medium">
-          </div>
-          
-          <div class="space-y-2">
-            <label class="text-xs font-bold text-gray-500 uppercase">Ngày sinh</label>
-            <input type="date" [(ngModel)]="user.dob" name="dob" disabled class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-medium">
-          </div>
-
-          <div class="space-y-2 md:col-span-2">
-            <label class="text-xs font-bold text-gray-500 uppercase">Địa chỉ</label>
-            <textarea [(ngModel)]="user.address" name="address" disabled rows="2" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-medium"></textarea>
-          </div>
-        </form>
-      </div>
-
-      <!-- Tab: Vouchers -->
-      <div *ngIf="activeTab === 'vouchers'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h3 class="text-2xl font-bold text-gray-900 mb-2">Kho Voucher & Ưu đãi</h3>
-        <p class="text-gray-500 mb-6">Các mã giảm giá được lưu trữ riêng cho tài khoản của bạn.</p>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div *ngFor="let voucher of vouchers" class="flex flex-col sm:flex-row border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
-            
-            <!-- Ticket stub left side -->
-            <div class="bg-gradient-to-br from-blue-600 to-blue-800 p-4 flex flex-col items-center justify-center text-white relative w-full sm:w-1/3">
-              <span class="material-symbols-outlined text-[32px] mb-2">{{ voucher.type === 'discount' ? 'percent' : (voucher.type === 'gift' ? 'restaurant' : 'stars') }}</span>
-              <span class="text-xs font-bold uppercase tracking-wider text-center">{{ voucher.type }}</span>
-              <!-- Ticket zig-zag edge -->
-              <div class="hidden sm:block absolute -right-1.5 top-0 bottom-0 w-3 bg-dotted-y"></div>
-            </div>
-
-            <!-- Ticket content right side -->
-            <div class="p-5 w-full sm:w-2/3 bg-white flex flex-col justify-center border-l-2 border-dashed border-gray-200 sm:border-none relative">
-              <h4 class="font-bold text-gray-900 mb-1 text-lg leading-tight">{{ voucher.title }}</h4>
-              <p class="text-xs text-gray-500 mb-3">{{ voucher.desc }}</p>
-              
-              <div class="flex items-center justify-between mt-auto">
-                <div class="text-[10px] text-gray-400 font-medium">HSD: {{ voucher.exp }}</div>
-                <button (click)="copyCode(voucher.code)" class="bg-blue-50 text-blue-700 text-xs font-bold px-3 py-1.5 rounded-md hover:bg-blue-100 transition-colors flex items-center gap-1">
-                  {{ voucher.code }}
-                  <span class="material-symbols-outlined text-[14px]">content_copy</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Tab: Bookings -->
-      <div *ngIf="activeTab === 'bookings'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-          <div>
-            <h3 class="text-2xl font-bold text-gray-900 mb-1">Chuyến đi của tôi</h3>
-            <p class="text-gray-500 mb-0">Theo dõi các đặt phòng và trạng thái lưu trú của bạn.</p>
-          </div>
-          <button class="bg-[#2d53d8] hover:bg-blue-800 text-white font-bold py-2.5 px-5 rounded-lg shadow-md transition-colors" routerLink="/search">
-            Tìm khách sạn
-          </button>
-        </div>
-
-        <div *ngIf="bookingsLoading" class="flex justify-center py-12">
-          <i class="pi pi-spin pi-spinner text-3xl text-blue-700"></i>
-        </div>
-
-        <div *ngIf="bookingsError && !bookingsLoading" class="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 text-sm font-medium">
-          {{ bookingsError }}
-        </div>
-
-        <div *ngIf="!bookingsLoading && !bookingsError && bookings.length === 0" class="text-center py-12">
-          <div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
-            <span class="material-symbols-outlined text-[48px]">luggage</span>
-          </div>
-          <h3 class="text-xl font-bold text-gray-900 mb-2">Chưa có chuyến đi nào</h3>
-          <p class="text-gray-500 mb-0 max-w-md mx-auto">Bạn chưa thực hiện bất kỳ đặt phòng nào. Hãy khám phá khách sạn và lên kế hoạch cho kỳ nghỉ của bạn.</p>
-        </div>
-
-        <div *ngIf="!bookingsLoading && bookings.length > 0" class="space-y-4">
-          <article *ngFor="let booking of bookings" class="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow">
-            <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
-              <div>
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Mã đặt phòng #{{ booking.id }}</span>
-                  <span class="text-xs font-bold px-2 py-1 rounded-full"
-                        [ngClass]="booking.status === 'CANCELLED' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'">
-                    {{ getStatusLabel(booking.status) }}
-                  </span>
-                </div>
-                <h4 class="text-lg font-bold text-gray-900 mb-2">
-                  {{ booking.checkInDate | date:'dd/MM/yyyy' }} - {{ booking.checkOutDate | date:'dd/MM/yyyy' }}
-                </h4>
-                <div class="flex flex-wrap gap-3 text-sm text-gray-600">
-                  <span><i class="pi pi-user mr-1"></i>{{ booking.guests }} khách</span>
-                  <span *ngIf="booking.details?.length"><i class="pi pi-home mr-1"></i>Phòng {{ booking.details?.[0]?.roomNumber }}</span>
-                  <span><i class="pi pi-wallet mr-1"></i>{{ booking.paymentMethod }}</span>
-                </div>
-              </div>
-              <div class="text-left md:text-right">
-                <p class="text-xs text-gray-500 mb-1">Tổng tiền</p>
-                <strong class="text-xl text-gray-900">{{ booking.totalAmount | currency:'VND':'symbol':'1.0-0' }}</strong>
-              </div>
-            </div>
-          </article>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
+    </section>
+  </section>
+</main>

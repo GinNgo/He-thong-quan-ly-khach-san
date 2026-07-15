@@ -5,4 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface SubscriptionPaymentRepository extends JpaRepository<SubscriptionPayment, Long> {}
+public interface SubscriptionPaymentRepository extends JpaRepository<SubscriptionPayment, Long> {
+    java.util.Optional<SubscriptionPayment> findFirstByOrderId(Long orderId);
+}

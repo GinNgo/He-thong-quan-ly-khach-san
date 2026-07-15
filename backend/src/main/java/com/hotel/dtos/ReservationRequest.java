@@ -8,6 +8,9 @@ public class ReservationRequest {
     private LocalDate checkInDate;
     private LocalDate checkOutDate;
     private Integer guests;
+    private Integer quantity = 1;
+    private Integer adults;
+    private Integer children;
     private String specialRequests;
     private String paymentMethod;
     private String firstName;
@@ -26,6 +29,15 @@ public class ReservationRequest {
 
     public Integer getGuests() { return guests; }
     public void setGuests(Integer guests) { this.guests = guests; }
+
+    public Integer getQuantity() { return quantity; }
+    public void setQuantity(Integer quantity) { this.quantity = quantity; }
+
+    public Integer getAdults() { return adults; }
+    public void setAdults(Integer adults) { this.adults = adults; }
+
+    public Integer getChildren() { return children; }
+    public void setChildren(Integer children) { this.children = children; }
 
     public String getSpecialRequests() { return specialRequests; }
     public void setSpecialRequests(String specialRequests) { this.specialRequests = specialRequests; }

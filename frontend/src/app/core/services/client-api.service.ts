@@ -1,13 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, catchError, shareReplay, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 export interface Hotel {
   id: number;
   name: string;
   addressLine: string;
-  mainImage: string;
+  mainImage?: string;
+  mainImageUrl?: string;
   starRating: number;
   latitude: number;
   longitude: number;
@@ -18,6 +19,31 @@ export interface Hotel {
   city?: string;
   country?: string;
   description?: string;
+  slug?: string;
+  thumbnailUrl?: string;
+  galleryUrls?: string[];
+  imageCount?: number;
+  imageAltText?: string;
+  propertyType?: string;
+  provinceName?: string;
+  wardName?: string;
+  reviewScore?: number;
+  reviewCount?: number;
+  availableRoomCount?: number;
+  amenities?: string[];
+  lowestRoomType?: { id: number; name: string; maxGuests: number };
+  pricing?: {
+    nightlyPrice: number;
+    discountedNightlyPrice?: number;
+    discountedPrice: number;
+    numberOfNights: number;
+    roomQuantity?: number;
+    subtotal?: number;
+    taxAmount: number;
+    feeAmount: number;
+    totalAmount: number;
+    currency: string;
+  };
 }
 
 export interface PagedResponse<T> {
@@ -35,12 +61,18 @@ export interface RoomType {
   nameVi: string;
   nameEn: string;
   maxGuest: number;
+  maxAdults?: number;
+  maxChildren?: number;
+  maxGuests?: number;
+  bedType?: string;
+  bedCount?: number;
   basePrice: number;
   descriptionVi: string;
   descriptionEn: string;
   availableRooms?: number;
   nights?: number;
   totalPrice?: number;
+  imageUrls?: string[];
 }
 
 export interface ReservationRequest {
@@ -52,6 +84,10 @@ export interface ReservationRequest {
   lastName: string;
   phone: string;
   paymentMethod: string;
+  quantity?: number;
+  adults?: number;
+  children?: number;
+  specialRequests?: string;
 }
 
 export interface ReservationSummary {
@@ -59,6 +95,9 @@ export interface ReservationSummary {
   checkInDate: string;
   checkOutDate: string;
   guests: number;
+  quantity?: number;
+  adults?: number;
+  children?: number;
   totalAmount: number;
   status: string;
   paymentMethod: string;
@@ -70,12 +109,59 @@ export interface ReservationSummary {
   }>;
 }
 
+export interface LocationSuggestion {
+  type: 'PROVINCE' | 'WARD' | 'PROPERTY' | 'LANDMARK';
+  id: number;
+  parentId?: number;
+  name: string;
+  displayName: string;
+  secondaryText?: string;
+  address?: string;
+  provinceId?: number;
+  provinceName?: string;
+  wardId?: number;
+  wardName?: string;
+  propertyCount?: number;
+  slug?: string;
+  propertyType?: string;
+  thumbnailUrl?: string;
+  imageUrl?: string;
+  reviewScore?: number;
+  distanceKm?: number;
+}
+
+export interface SearchSuggestionGroups {
+  provinces: LocationSuggestion[];
+  wards: LocationSuggestion[];
+  properties: LocationSuggestion[];
+  landmarks: LocationSuggestion[];
+}
+
+export interface UserContext {
+  id: number;
+  username: string;
+  email: string;
+  fullName?: string;
+  phone?: string;
+  avatarUrl?: string;
+  status?: string;
+  points?: number;
+  roles: Array<string | { id?: number; code: string; name?: string }>;
+  plan?: string;
+  subscriptionStatus?: string;
+  assignedProperties?: Array<{ id: number; name: string }>;
+  partnerRegistrationStatus?: 'NONE' | 'PENDING' | 'APPROVED';
+  unreadMessageCount?: number;
+  pendingBookingCount?: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class ClientApiService {
   private http = inject(HttpClient);
   private apiUrl = environment.apiUrl;
+  private readonly popularDestinationsCache = new Map<number, Observable<LocationSuggestion[]>>();
   private hotelApiUrl = `${environment.apiUrl}/v1/hotels`;
 
   searchHotels(paramsObj: any): Observable<PagedResponse<Hotel>> {
@@ -95,6 +181,11 @@ export class ClientApiService {
 
   getProvinces(): Observable<any[]> {
     return this.http.get<any[]>(`${environment.apiUrl}/public/locations/provinces`);
+  }
+
+  getPopularProvinces(size: number = 6): Observable<LocationSuggestion[]> {
+    const params = new HttpParams().set('size', size.toString());
+    return this.http.get<LocationSuggestion[]>(`${environment.apiUrl}/public/locations/provinces/popular`, { params });
   }
 
   getAvailableRooms(hotelId: number, checkIn: string, checkOut: string, guests: number): Observable<any[]> {
@@ -127,38 +218,45 @@ export class ClientApiService {
     return this.http.get<ReservationSummary[]>(`${this.apiUrl}/reservations/my-bookings`);
   }
 
-  getProfile(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/users/me`);
+  getProfile(): Observable<UserContext> {
+    return this.http.get<UserContext>(`${this.apiUrl}/users/me`);
   }
 
-  searchLocations(keyword: string, type: string = 'WARD', page: number = 0, size: number = 20): Observable<PagedResponse<any>> {
+  searchLocations(keyword: string, size: number = 20): Observable<LocationSuggestion[]> {
     let params = new HttpParams()
       .set('keyword', keyword)
-      .set('type', type)
-      .set('page', page.toString())
       .set('size', size.toString());
-    return this.http.get<PagedResponse<any>>(`${environment.apiUrl}/public/locations/search`, { params });
+    return this.http.get<LocationSuggestion[]>(`${environment.apiUrl}/public/locations/search`, { params });
   }
 
-  searchAutocomplete(keyword: string): Observable<{ locations: any[], properties: any[] }> {
-    const locationsReq = this.searchLocations(keyword, 'WARD', 0, 5);
-    const propertiesReq = this.searchHotels({ keyword, pageNumber: 1, pageSize: 5 });
-    
-    return new Observable(observer => {
-      import('rxjs').then(({ forkJoin, of }) => {
-        import('rxjs/operators').then(({ catchError }) => {
-          forkJoin({
-            locations: locationsReq.pipe(catchError(() => of({ content: [] }))),
-            properties: propertiesReq.pipe(catchError(() => of({ content: [] })))
-          }).subscribe(res => {
-            observer.next({
-              locations: res.locations.content || [],
-              properties: res.properties.content || []
-            });
-            observer.complete();
-          });
-        });
-      });
-    });
+  searchAutocomplete(keyword: string): Observable<LocationSuggestion[]> {
+    return this.searchLocations(keyword, 15);
+  }
+
+  getSearchSuggestions(keyword: string, limit: number = 10, latitude?: number, longitude?: number): Observable<SearchSuggestionGroups> {
+    let params = new HttpParams().set('keyword', keyword).set('limit', limit.toString());
+    if (latitude !== undefined) params = params.set('latitude', latitude.toString());
+    if (longitude !== undefined) params = params.set('longitude', longitude.toString());
+    return this.http.get<SearchSuggestionGroups>(`${environment.apiUrl}/public/search/suggestions`, { params });
+  }
+
+  getPopularDestinations(limit: number = 8): Observable<LocationSuggestion[]> {
+    const safeLimit = Math.min(Math.max(limit, 1), 12);
+    const cached = this.popularDestinationsCache.get(safeLimit);
+    if (cached) return cached;
+
+    const params = new HttpParams().set('limit', safeLimit.toString());
+    const request = this.http.get<LocationSuggestion[]>(
+      `${environment.apiUrl}/public/popular-destinations`,
+      { params }
+    ).pipe(
+      catchError(error => {
+        this.popularDestinationsCache.delete(safeLimit);
+        return throwError(() => error);
+      }),
+      shareReplay({ bufferSize: 1, refCount: false })
+    );
+    this.popularDestinationsCache.set(safeLimit, request);
+    return request;
   }
 }

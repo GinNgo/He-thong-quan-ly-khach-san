@@ -2,27 +2,37 @@ package com.hotel.entities;
 
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 
 import jakarta.persistence.*;
 
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
+@Setter
 @Entity
-@Table(name = "hotels")
+@Table(name = "hotels", indexes = {
+        @Index(name = "IX_hotels_location_status", columnList = "province_id,ward_id,approval_status,operation_status"),
+        @Index(name = "IX_hotels_normalized_name", columnList = "normalized_name")
+})
 public class Hotel extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "nvarchar(255)")
     private String name;
 
-    @Column(name = "name_vi")
+    @Column(name = "name_vi", columnDefinition = "nvarchar(255)")
     private String nameVi;
 
-    @Column(name = "name_en")
+    @Column(name = "name_en", columnDefinition = "nvarchar(255)")
     private String nameEn;
+
+    @Column(name = "normalized_name", columnDefinition = "nvarchar(255)")
+    private String normalizedName;
 
     @Column(unique = true)
     private String code;
@@ -30,7 +40,7 @@ public class Hotel extends AuditableEntity {
     @Column(unique = true)
     private String slug;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "nvarchar(max)")
     private String description;
 
     @Column(name = "description_vi", columnDefinition = "NVARCHAR(MAX)")
@@ -39,8 +49,17 @@ public class Hotel extends AuditableEntity {
     @Column(name = "description_en", columnDefinition = "NVARCHAR(MAX)")
     private String descriptionEn;
 
-    @Column(name = "address", nullable = false)
+    @Column(name = "address", nullable = false, columnDefinition = "nvarchar(1000)")
     private String addressLine;
+
+    @Column(name = "normalized_address", columnDefinition = "nvarchar(1000)")
+    private String normalizedAddress;
+
+    @Column(nullable = false, columnDefinition = "nvarchar(255)")
+    private String city;
+
+    @Column(nullable = false, columnDefinition = "nvarchar(255)")
+    private String country;
 
     @Column(name = "latitude")
     private Double latitude;
@@ -105,11 +124,29 @@ public class Hotel extends AuditableEntity {
     @Column(name = "review_count")
     private Integer reviewCount;
 
+    @Column(name = "is_demo", nullable = false)
+    private Boolean isDemo = false;
+
+    @Column(name = "data_source", columnDefinition = "nvarchar(50)")
+    private String dataSource;
+
+    @Column(name = "seed_key", columnDefinition = "nvarchar(255)")
+    private String seedKey;
+
     @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL, orphanRemoval = true)
     private java.util.Set<PropertyImage> images;
 
     @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL, orphanRemoval = true)
     private java.util.Set<UserProperty> userProperties;
+
+    @PrePersist
+    @PreUpdate
+    void normalizeSearchFields() {
+        String displayName = nameVi != null && !nameVi.isBlank() ? nameVi :
+                (name != null && !name.isBlank() ? name : nameEn);
+        normalizedName = com.hotel.util.VietnameseTextNormalizer.normalize(displayName);
+        normalizedAddress = com.hotel.util.VietnameseTextNormalizer.joinAndNormalize(addressLine, city, country);
+    }
 
     public Long getId() {
         return id;
@@ -277,5 +314,13 @@ public class Hotel extends AuditableEntity {
 
     public void setReviewCount(Integer reviewCount) {
         this.reviewCount = reviewCount;
+    }
+
+    public String getOperationStatus() {
+        return operationStatus;
+    }
+
+    public void setOperationStatus(String operationStatus) {
+        this.operationStatus = operationStatus;
     }
 }

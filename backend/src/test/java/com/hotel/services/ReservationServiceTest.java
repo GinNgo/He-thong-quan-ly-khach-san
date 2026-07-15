@@ -41,6 +41,12 @@ public class ReservationServiceTest {
     private com.hotel.repositories.ReservationDetailRepository reservationDetailRepository;
 
     @Mock
+    private com.hotel.repositories.ReservationRoomRepository reservationRoomRepository;
+
+    @Mock
+    private com.hotel.repositories.RoomTypeRepository roomTypeRepository;
+
+    @Mock
     private com.hotel.services.RoomAvailabilityService roomAvailabilityService;
 
     @Mock
@@ -54,6 +60,9 @@ public class ReservationServiceTest {
 
     @Mock
     private com.hotel.repositories.HotelServiceRepository hotelServiceRepository;
+
+    @Mock
+    private com.hotel.services.PropertyAccessService propertyAccessService;
 
     @InjectMocks
     private ReservationService reservationService;
@@ -83,11 +92,13 @@ public class ReservationServiceTest {
 
     @Test
     void testCheckIn_Success() {
+        when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
         when(reservationRepository.findById(1L)).thenReturn(Optional.of(mockReservation));
         when(reservationDetailRepository.findByReservationId(1L)).thenReturn(java.util.Collections.emptyList());
+        when(reservationRoomRepository.findByReservationDetailReservationId(1L)).thenReturn(java.util.Collections.emptyList());
         when(reservationRepository.save(any(Reservation.class))).thenReturn(mockReservation);
 
-        Reservation updatedReservation = reservationService.updateReservationStatus(1L, "CHECKED_IN");
+        ReservationDTO updatedReservation = reservationService.updateReservationStatus(1L, "CHECKED_IN");
 
         assertNotNull(updatedReservation);
         assertEquals("CHECKED_IN", updatedReservation.getStatus());
@@ -102,6 +113,6 @@ public class ReservationServiceTest {
             reservationService.updateReservationStatus(99L, "CHECKED_IN");
         });
 
-        assertTrue(exception.getMessage().contains("không tìm thấy") || exception.getMessage().contains("not found"));
+        assertTrue(exception.getMessage().contains("Không tìm thấy") || exception.getMessage().contains("not found"));
     }
 }

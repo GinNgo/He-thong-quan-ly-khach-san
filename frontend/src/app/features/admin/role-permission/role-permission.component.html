@@ -1,4 +1,5 @@
 <p-toast></p-toast>
+<p-confirmDialog></p-confirmDialog>
 
 <div class="m-3">
   <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
@@ -6,15 +7,7 @@
       <h2 class="mb-1 text-dark fw-bold"><i class="pi pi-shield me-2" style="color: var(--hotel-gold);"></i>Ph&acirc;n quy&#7873;n</h2>
       <p class="text-muted mb-0">C&#7845;p quy&#7873;n xem, th&ecirc;m, s&#7917;a, x&oacute;a cho t&#7915;ng vai tr&ograve; theo trang.</p>
     </div>
-    <button
-      pButton
-      label="L&#432;u ph&acirc;n quy&#7873;n"
-      icon="pi pi-save"
-      class="btn btn-primary-hotel"
-      [disabled]="!selectedRole || saving"
-      [loading]="saving"
-      (click)="savePermissions()">
-    </button>
+    <div class="d-flex gap-2"><button pButton label="Đặt lại" icon="pi pi-undo" class="p-button-outlined" [disabled]="!dirty || saving" (click)="resetPermissions()"></button><button pButton label="Lưu phân quyền" icon="pi pi-save" class="btn btn-primary-hotel" [disabled]="!selectedRole || !dirty || saving || protectedRole" [loading]="saving" (click)="savePermissions()"></button></div>
   </div>
 
   <div class="row g-3">
@@ -55,6 +48,8 @@
             Vui l&ograve;ng ch&#7885;n vai tr&ograve;
           </h5>
         </div>
+        <div *ngIf="protectedRole" class="alert alert-info">Vai trò Quản trị hệ thống luôn có toàn quyền và không thể chỉnh sửa tại đây.</div>
+        <div *ngIf="dirty" class="alert alert-warning py-2">Có thay đổi chưa được lưu.</div>
 
         <div *ngIf="loading" class="text-center py-5">
           <i class="pi pi-spin pi-spinner" style="font-size: 2rem; color: var(--hotel-primary);"></i>
@@ -65,7 +60,7 @@
             <ng-template pTemplate="header">
               <tr>
                 <th class="fw-bold bg-light" style="min-width: 240px">Nh&oacute;m / Trang</th>
-                <th *ngFor="let act of actions" class="text-center fw-bold bg-light" style="min-width: 92px">{{ act.label }}</th>
+                <th *ngFor="let act of actions" class="text-center fw-bold bg-light" style="min-width: 92px"><span>{{ act.label }}</span><p-checkbox class="d-block mt-2" [binary]="true" [disabled]="protectedRole" [ngModel]="allHavePermission(act.value)" (onChange)="toggleAll(act.value,$event.checked)"></p-checkbox></th>
               </tr>
             </ng-template>
 
@@ -77,6 +72,7 @@
                 <td *ngFor="let act of actions" class="text-center">
                   <p-checkbox
                     [binary]="true"
+                    [disabled]="protectedRole"
                     [ngModel]="moduleHasPermission(module, act.value)"
                     (onChange)="toggleModule(module, act.value, $event.checked)">
                   </p-checkbox>
@@ -91,6 +87,7 @@
                 <td *ngFor="let act of actions" class="text-center">
                   <p-checkbox
                     [binary]="true"
+                    [disabled]="protectedRole"
                     [ngModel]="hasPermission(func, act.value)"
                     (onChange)="togglePermission(func, act.value, $event.checked)">
                   </p-checkbox>

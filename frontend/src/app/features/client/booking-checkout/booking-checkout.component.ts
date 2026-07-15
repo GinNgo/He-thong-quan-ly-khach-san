@@ -19,6 +19,10 @@ export class BookingCheckoutComponent implements OnInit {
   private paymentService = inject(PaymentService);
 
   roomTypeId: number = 0;
+  roomTypeName = '';
+  nightlyPrice = 0;
+  serverEstimate = 0;
+  hotelId = 0;
   
   bookingData: ReservationRequest = {
     roomTypeId: 0,
@@ -29,6 +33,10 @@ export class BookingCheckoutComponent implements OnInit {
     lastName: '',
     phone: '',
     paymentMethod: 'PAY_AT_HOTEL'
+    ,quantity: 1
+    ,adults: 2
+    ,children: 0
+    ,specialRequests: ''
   };
 
   isSubmitting = false;
@@ -49,6 +57,14 @@ export class BookingCheckoutComponent implements OnInit {
       if (params['checkIn']) this.bookingData.checkInDate = params['checkIn'];
       if (params['checkOut']) this.bookingData.checkOutDate = params['checkOut'];
       if (params['guests']) this.bookingData.guests = Number(params['guests']) || this.bookingData.guests;
+      this.bookingData.adults = Number(params['adultCount']) || this.bookingData.guests;
+      this.bookingData.children = Number(params['childCount']) || 0;
+      this.bookingData.quantity = Math.max(1, Number(params['quantity']) || Number(params['roomCount']) || 1);
+      this.bookingData.guests = (this.bookingData.adults || 0) + (this.bookingData.children || 0);
+      this.roomTypeName = params['roomTypeName'] || '';
+      this.nightlyPrice = Number(params['nightlyPrice']) || 0;
+      this.serverEstimate = Number(params['estimatedTotal']) || 0;
+      this.hotelId = Number(params['hotelId']) || 0;
     });
 
     this.prefillUserInfo();
@@ -62,6 +78,10 @@ export class BookingCheckoutComponent implements OnInit {
     }
     if (this.bookingData.guests < 1) {
       this.errorMessage = 'Số khách phải lớn hơn 0.';
+      return;
+    }
+    if (!this.bookingData.quantity || this.bookingData.quantity < 1) {
+      this.errorMessage = 'Số lượng phòng phải lớn hơn 0.';
       return;
     }
 
@@ -91,6 +111,10 @@ export class BookingCheckoutComponent implements OnInit {
       error: (err) => {
         console.error('Error submitting booking', err);
         this.isSubmitting = false;
+        if (err?.status === 409) {
+          this.errorMessage = 'Số phòng bạn chọn vừa hết. Vui lòng quay lại chọn phòng.';
+          return;
+        }
         if (err?.error?.message) {
           this.errorMessage = err.error.message;
           return;
@@ -98,6 +122,18 @@ export class BookingCheckoutComponent implements OnInit {
         this.errorMessage = 'Có lỗi xảy ra khi đặt phòng. Vui lòng kiểm tra thông tin và thử lại.';
       }
     });
+  }
+
+  get nights(): number {
+    return Math.max(1, Math.round((new Date(this.bookingData.checkOutDate).getTime() - new Date(this.bookingData.checkInDate).getTime()) / 86400000));
+  }
+
+  get estimatedTotal(): number {
+    return this.serverEstimate || this.nightlyPrice * this.nights * (this.bookingData.quantity || 1);
+  }
+
+  formatVnd(value: number): string {
+    return `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(value || 0)} ₫`;
   }
 
   goHome() {

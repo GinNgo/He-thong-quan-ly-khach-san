@@ -1,5 +1,5 @@
 <div class="min-h-screen bg-gray-50 pb-12 font-sans pt-8">
-  <div class="max-w-3xl mx-auto px-4 md:px-0">
+  <div class="max-w-5xl mx-auto px-4 md:px-0">
     
     <!-- Success State -->
     <div *ngIf="bookingSuccess" class="bg-white p-8 rounded-lg shadow-md text-center">
@@ -20,7 +20,8 @@
     </div>
 
     <!-- Booking Form -->
-    <div *ngIf="!bookingSuccess" class="bg-white p-6 md:p-8 rounded-lg shadow-md">
+    <div *ngIf="!bookingSuccess" class="checkout-grid">
+    <div class="bg-white p-6 md:p-8 rounded-lg shadow-md">
       <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-4">Thông tin Đặt phòng</h2>
 
       <div *ngIf="errorMessage" class="bg-red-50 border border-red-200 text-red-700 rounded p-3 mb-6 text-sm font-medium">
@@ -62,10 +63,15 @@
         </div>
 
         <div class="mb-8">
-          <label class="block text-sm font-bold text-gray-700 mb-2">Số khách</label>
-          <input type="number" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-primary" 
-                 [(ngModel)]="bookingData.guests" name="guests" min="1" required>
+          <label class="block text-sm font-bold text-gray-700 mb-2">Khách và số phòng</label>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <label class="compact-input">Người lớn<input type="number" [(ngModel)]="bookingData.adults" name="adults" min="1" readonly></label>
+            <label class="compact-input">Trẻ em<input type="number" [(ngModel)]="bookingData.children" name="children" min="0" readonly></label>
+            <label class="compact-input">Số phòng<input type="number" [(ngModel)]="bookingData.quantity" name="quantity" min="1" readonly></label>
+          </div>
         </div>
+
+        <div class="mb-8"><label class="block text-sm font-bold text-gray-700 mb-2">Yêu cầu đặc biệt</label><textarea class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-primary" rows="3" [(ngModel)]="bookingData.specialRequests" name="specialRequests" placeholder="Giờ đến dự kiến hoặc yêu cầu hỗ trợ"></textarea></div>
         
         <div class="mb-8">
           <label class="block text-sm font-bold text-gray-700 mb-3">Phương thức thanh toán</label>
@@ -126,6 +132,8 @@
         </button>
 
       </form>
+    </div>
+    <aside class="checkout-summary"><span>Tóm tắt</span><h3>{{ roomTypeName || 'Loại phòng đã chọn' }}</h3><dl><div><dt>Nhận phòng</dt><dd>{{ bookingData.checkInDate | date:'dd/MM/yyyy' }}</dd></div><div><dt>Trả phòng</dt><dd>{{ bookingData.checkOutDate | date:'dd/MM/yyyy' }}</dd></div><div><dt>Thời gian</dt><dd>{{ nights }} đêm</dd></div><div><dt>Số phòng</dt><dd>{{ bookingData.quantity }}</dd></div><div><dt>Số khách</dt><dd>{{ bookingData.adults }} người lớn<span *ngIf="bookingData.children">, {{ bookingData.children }} trẻ em</span></dd></div></dl><div class="estimate"><small>Tạm tính</small><strong>{{ formatVnd(estimatedTotal) }}</strong><p>Giá và tồn phòng được backend kiểm tra lại khi xác nhận.</p></div></aside>
     </div>
   </div>
 </div>
