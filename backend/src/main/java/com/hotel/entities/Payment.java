@@ -24,6 +24,7 @@ public class Payment extends AuditableEntity {
     @Column(nullable = false)
     private String status;
 
+    @Column(name = "transaction_id", unique = true)
     private String transactionId;
 
     private LocalDateTime paymentDate;

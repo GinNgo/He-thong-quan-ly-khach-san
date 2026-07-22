@@ -3,9 +3,11 @@ package com.hotel.controllers;
 import com.hotel.config.VnpayConfig;
 import com.hotel.dtos.PaymentDTO;
 import com.hotel.services.PaymentService;
+import com.hotel.services.ReservationService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.hotel.security.Permission;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.ActionCode;
@@ -20,6 +22,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class PaymentController {
     private final PaymentService paymentService;
+    private final ReservationService reservationService;
     private final VnpayConfig vnpayConfig;
 
     @GetMapping("/reservation/{reservationId}")
@@ -36,14 +39,19 @@ public class PaymentController {
 
     // Generate Online Payment URL
     @GetMapping("/create-url")
-    @Permission(function = FunctionCode.FINANCE, action = ActionCode.CREATE)
+    @PreAuthorize("hasAnyAuthority('CUSTOMER','PROPERTY_OWNER','HOTEL_MANAGER','RECEPTIONIST','HOTEL_ADMIN','SUPER_ADMIN','ADMIN')")
     public ResponseEntity<java.util.Map<String, String>> createPaymentUrl(
             @RequestParam Long reservationId,
             @RequestParam String method,
-            @RequestParam Double amount,
             HttpServletRequest request) {
-        
-        if ("VNPAY".equalsIgnoreCase(method)) {
+        var reservation = reservationService.getReservationById(reservationId);
+        String normalizedMethod = method == null ? "" : method.trim().toUpperCase(Locale.ROOT);
+        if (!Set.of("MOMO", "VNPAY", "STRIPE").contains(normalizedMethod)) {
+            throw new IllegalArgumentException("Phương thức thanh toán không hợp lệ.");
+        }
+        double amount = reservation.getTotalAmount().doubleValue();
+
+        if ("VNPAY".equals(normalizedMethod)) {
             String vnp_Version = vnpayConfig.getVersion();
             String vnp_Command = vnpayConfig.getCommand();
             String vnp_OrderInfo = "Thanh toan dat phong " + reservationId;
@@ -109,8 +117,9 @@ public class PaymentController {
         
         // Fallback simulator for other methods
         String baseUrl = "http://localhost:4200/payment-simulator";
-        String redirectUrl = String.format("%s?reservationId=%d&method=%s&amount=%.0f", 
-                baseUrl, reservationId, method, amount);
+        String transactionId = normalizedMethod + "_" + reservationId + "_" + UUID.randomUUID();
+        String redirectUrl = String.format("%s?reservationId=%d&method=%s&amount=%.0f&transactionId=%s",
+                baseUrl, reservationId, normalizedMethod, amount, transactionId);
                 
         return ResponseEntity.ok(Map.of("url", redirectUrl));
     }
@@ -159,7 +168,7 @@ public class PaymentController {
                 // Success
                 String txnRef = request.getParameter("vnp_TxnRef");
                 Long reservationId = Long.parseLong(txnRef.split("_")[0]);
-                paymentService.handleSuccessfulPayment(reservationId, "VNPAY");
+                paymentService.handleSuccessfulPayment(reservationId, "VNPAY", txnRef);
                 return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Payment processed successfully"));
             } else {
                 return ResponseEntity.ok(Map.of("status", "FAILED", "message", "Payment failed at gateway"));
@@ -174,10 +183,11 @@ public class PaymentController {
     public ResponseEntity<Map<String, String>> mockCallback(
             @RequestParam Long reservationId,
             @RequestParam String status,
-            @RequestParam String method) {
+            @RequestParam String method,
+            @RequestParam String transactionId) {
         
         if ("SUCCESS".equalsIgnoreCase(status)) {
-            paymentService.handleSuccessfulPayment(reservationId, method);
+            paymentService.handleSuccessfulPayment(reservationId, method, transactionId);
         }
         
         return ResponseEntity.ok(Map.of("message", "Payment callback processed successfully"));

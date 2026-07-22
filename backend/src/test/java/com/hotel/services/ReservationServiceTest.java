@@ -64,6 +64,9 @@ public class ReservationServiceTest {
     @Mock
     private com.hotel.services.PropertyAccessService propertyAccessService;
 
+    @Mock
+    private PaymentService paymentService;
+
     @InjectMocks
     private ReservationService reservationService;
 
@@ -91,9 +94,48 @@ public class ReservationServiceTest {
     }
 
     @Test
+    void getAllReservations_AsSystemAdministrator_ReturnsAllHotels() {
+        when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
+        when(reservationRepository.findAll()).thenReturn(java.util.List.of(mockReservation));
+        when(reservationDetailRepository.findByReservationId(1L)).thenReturn(java.util.List.of());
+
+        java.util.List<ReservationDTO> result = reservationService.getAllReservations();
+
+        assertEquals(java.util.List.of(1L), result.stream().map(ReservationDTO::getId).toList());
+        verify(reservationRepository).findAll();
+        verify(reservationRepository, never()).findByHotelIdIn(any());
+    }
+
+    @Test
+    void getAllReservations_AsPropertyStaff_ReturnsOnlyAccessibleHotels() {
+        when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
+        when(propertyAccessService.accessibleHotelIds()).thenReturn(java.util.Set.of(1L));
+        when(reservationRepository.findByHotelIdIn(java.util.Set.of(1L)))
+                .thenReturn(java.util.List.of(mockReservation));
+        when(reservationDetailRepository.findByReservationId(1L)).thenReturn(java.util.List.of());
+
+        java.util.List<ReservationDTO> result = reservationService.getAllReservations();
+
+        assertEquals(java.util.List.of(1L), result.stream().map(ReservationDTO::getId).toList());
+        verify(reservationRepository).findByHotelIdIn(java.util.Set.of(1L));
+        verify(reservationRepository, never()).findAll();
+    }
+
+    @Test
+    void getAllReservations_AsUnassignedStaff_ReturnsEmptyWithoutQueryingReservations() {
+        when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
+        when(propertyAccessService.accessibleHotelIds()).thenReturn(java.util.Set.of());
+
+        assertTrue(reservationService.getAllReservations().isEmpty());
+
+        verify(reservationRepository, never()).findAll();
+        verify(reservationRepository, never()).findByHotelIdIn(any());
+    }
+
+    @Test
     void testCheckIn_Success() {
         when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
-        when(reservationRepository.findById(1L)).thenReturn(Optional.of(mockReservation));
+        when(reservationRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(mockReservation));
         when(reservationDetailRepository.findByReservationId(1L)).thenReturn(java.util.Collections.emptyList());
         when(reservationRoomRepository.findByReservationDetailReservationId(1L)).thenReturn(java.util.Collections.emptyList());
         when(reservationRepository.save(any(Reservation.class))).thenReturn(mockReservation);
@@ -107,12 +149,68 @@ public class ReservationServiceTest {
 
     @Test
     void testCheckIn_Failure_NotFound() {
-        when(reservationRepository.findById(99L)).thenReturn(Optional.empty());
+        when(reservationRepository.findByIdForUpdate(99L)).thenReturn(Optional.empty());
 
         Exception exception = assertThrows(RuntimeException.class, () -> {
             reservationService.updateReservationStatus(99L, "CHECKED_IN");
         });
 
         assertTrue(exception.getMessage().contains("Không tìm thấy") || exception.getMessage().contains("not found"));
+    }
+
+    @Test
+    void cancelMyReservation_AsOwner_ShouldRefundAndReleaseRooms() {
+        mockReservation.setStatus("CONFIRMED");
+        com.hotel.entities.Room room = new com.hotel.entities.Room();
+        room.setStatus("OCCUPIED");
+        com.hotel.entities.ReservationRoom assignment = new com.hotel.entities.ReservationRoom();
+        assignment.setRoom(room);
+        assignment.setStatus("ASSIGNED");
+
+        when(reservationRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(mockReservation));
+        when(reservationRoomRepository.findByReservationDetailReservationId(1L))
+                .thenReturn(java.util.List.of(assignment));
+        when(reservationRepository.save(any(Reservation.class))).thenReturn(mockReservation);
+
+        ReservationDTO result = reservationService.cancelMyReservation(1L, "testcustomer");
+
+        assertEquals("CANCELLED", result.getStatus());
+        assertEquals("AVAILABLE", room.getStatus());
+        assertEquals("RELEASED", assignment.getStatus());
+        verify(paymentService).refundSuccessfulPayments(1L);
+        verify(reservationRepository).save(mockReservation);
+    }
+
+    @Test
+    void cancelMyReservation_AsOtherUser_ShouldReject() {
+        when(reservationRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(mockReservation));
+
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> reservationService.cancelMyReservation(1L, "attacker"));
+
+        verify(paymentService, never()).refundSuccessfulPayments(any());
+    }
+
+    @Test
+    void cancelMyReservation_AfterCheckIn_ShouldReject() {
+        mockReservation.setStatus("CHECKED_IN");
+        when(reservationRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(mockReservation));
+
+        assertThrows(IllegalStateException.class,
+                () -> reservationService.cancelMyReservation(1L, "testcustomer"));
+
+        verify(paymentService, never()).refundSuccessfulPayments(any());
+    }
+
+    @Test
+    void cancelMyReservation_AlreadyCancelled_ShouldBeNoOp() {
+        mockReservation.setStatus("CANCELLED");
+        when(reservationRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(mockReservation));
+
+        ReservationDTO result = reservationService.cancelMyReservation(1L, "testcustomer");
+
+        assertEquals("CANCELLED", result.getStatus());
+        verify(paymentService, never()).refundSuccessfulPayments(any());
+        verify(reservationRepository, never()).save(any());
     }
 }

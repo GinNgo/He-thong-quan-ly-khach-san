@@ -37,17 +37,31 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public PaymentDTO processPayment(PaymentDTO dto) {
-        Reservation reservation = reservationRepository.findById(dto.getReservationId())
+        Reservation reservation = reservationRepository.findByIdForUpdate(dto.getReservationId())
                 .orElseThrow(() -> new RuntimeException("Reservation not found"));
+
+        String transactionId = dto.getTransactionId();
+        if (transactionId == null || transactionId.isBlank()) {
+            transactionId = UUID.randomUUID().toString();
+        } else {
+            transactionId = transactionId.trim();
+            var existing = paymentRepository.findByTransactionId(transactionId);
+            if (existing.isPresent()) {
+                if (!existing.get().getReservation().getId().equals(dto.getReservationId())) {
+                    throw new IllegalArgumentException("Transaction ID belongs to another reservation.");
+                }
+                return mapToDTO(existing.get());
+            }
+        }
 
         Payment payment = new Payment();
         payment.setReservation(reservation);
         payment.setAmount(dto.getAmount());
         payment.setPaymentMethod(dto.getPaymentMethod());
         payment.setStatus("SUCCESS");
-        payment.setTransactionId(UUID.randomUUID().toString());
+        payment.setTransactionId(transactionId);
         payment.setPaymentDate(LocalDateTime.now());
-        
+
         Payment saved = paymentRepository.save(payment);
 
         // Loyalty Points: 100,000 VND = 1 point
@@ -63,22 +77,69 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public void handleSuccessfulPayment(Long reservationId, String method) {
-        Reservation reservation = reservationRepository.findById(reservationId)
+    public void refundSuccessfulPayments(Long reservationId) {
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
                 .orElseThrow(() -> new RuntimeException("Reservation not found"));
-        
-        // Update Reservation Status
+
+        List<Payment> successfulPayments = paymentRepository.findByReservationId(reservationId).stream()
+                .filter(payment -> "SUCCESS".equals(payment.getStatus()))
+                .toList();
+
+        for (Payment originalPayment : successfulPayments) {
+            String refundTransactionId = "REFUND-" + originalPayment.getId();
+            if (paymentRepository.findByTransactionId(refundTransactionId).isPresent()) {
+                continue;
+            }
+
+            Payment refund = new Payment();
+            refund.setReservation(reservation);
+            refund.setAmount(originalPayment.getAmount().negate());
+            refund.setPaymentMethod(originalPayment.getPaymentMethod());
+            refund.setStatus("REFUNDED");
+            refund.setTransactionId(refundTransactionId);
+            refund.setPaymentDate(LocalDateTime.now());
+            paymentRepository.save(refund);
+
+            if (reservation.getUser() != null) {
+                User user = reservation.getUser();
+                int earnedPoints = originalPayment.getAmount()
+                        .divide(new java.math.BigDecimal(100000), java.math.RoundingMode.DOWN)
+                        .intValue();
+                int currentPoints = user.getPoints() == null ? 0 : user.getPoints();
+                user.setPoints(Math.max(0, currentPoints - earnedPoints));
+                userRepository.save(user);
+            }
+        }
+    }
+
+    @Override
+    @Transactional
+    public void handleSuccessfulPayment(Long reservationId, String method, String transactionId) {
+        if (transactionId == null || transactionId.isBlank()) {
+            throw new IllegalArgumentException("Transaction ID is required.");
+        }
+
+        String normalizedTransactionId = transactionId.trim();
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
+                .orElseThrow(() -> new RuntimeException("Reservation not found"));
+
+        var existing = paymentRepository.findByTransactionId(normalizedTransactionId);
+        if (existing.isPresent()) {
+            if (!existing.get().getReservation().getId().equals(reservationId)) {
+                throw new IllegalArgumentException("Transaction ID belongs to another reservation.");
+            }
+            return;
+        }
+
         reservation.setStatus("CONFIRMED");
         reservation.setPaymentMethod(method);
         reservationRepository.save(reservation);
-        
-        // Create Payment Record
+
         PaymentDTO dto = new PaymentDTO();
         dto.setReservationId(reservationId);
         dto.setAmount(reservation.getTotalAmount());
         dto.setPaymentMethod(method);
-        
-        // Call existing method to create payment and handle loyalty points
+        dto.setTransactionId(normalizedTransactionId);
         this.processPayment(dto);
     }
 

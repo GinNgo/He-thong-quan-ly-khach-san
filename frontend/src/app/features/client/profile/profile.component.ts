@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '@app/core/services/auth';
 import { ClientApiService, ReservationSummary, UserContext } from '@app/core/services/client-api.service';
+import { ReservationService } from '@app/core/services/reservation.service';
 import { UserService } from '@app/core/services/user';
 
 @Component({
@@ -16,6 +17,7 @@ export class ProfileComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly clientApi = inject(ClientApiService);
   private readonly userService = inject(UserService);
+  private readonly reservationService = inject(ReservationService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
@@ -25,6 +27,7 @@ export class ProfileComponent implements OnInit {
   activeTab: 'profile' | 'bookings' = 'profile';
   bookings: ReservationSummary[] = [];
   loading = true; bookingsLoading = false; saving = false; uploading = false;
+  cancellingId: number | null = null;
   error = ''; bookingsError = ''; success = '';
 
   readonly profileForm = this.fb.nonNullable.group({
@@ -83,9 +86,37 @@ export class ProfileComponent implements OnInit {
   loadBookings(): void {
     if (this.bookingsLoading) return;
     this.bookingsLoading = true; this.bookingsError = '';
-    this.clientApi.getMyBookings().pipe(finalize(() => this.bookingsLoading = false)).subscribe({
+    this.clientApi.getMyBookings().pipe(finalize(() => {
+      this.bookingsLoading = false;
+      this.changeDetector.detectChanges();
+    })).subscribe({
       next: data => { this.bookings = data; this.changeDetector.detectChanges(); },
       error: () => { this.bookingsError = 'Không thể tải danh sách chuyến đi.'; this.changeDetector.detectChanges(); }
+    });
+  }
+
+  cancelBooking(id: number): void {
+    if (!confirm('Bạn có chắc chắn muốn hủy đặt phòng này? Khoản đã thanh toán sẽ được hoàn 100% và điểm thưởng từ đặt phòng sẽ bị thu hồi.')) return;
+
+    this.cancellingId = id;
+    this.bookingsError = '';
+    this.success = '';
+    this.reservationService.cancelMyReservation(id).pipe(
+      finalize(() => {
+        this.cancellingId = null;
+        this.changeDetector.detectChanges();
+      })
+    ).subscribe({
+      next: updated => {
+        this.bookings = this.bookings.map(booking =>
+          booking.id === id ? { ...booking, status: updated.status || 'CANCELLED' } : booking
+        );
+        this.success = 'Đã hủy đặt phòng và xử lý hoàn tiền.';
+        this.loadProfile();
+      },
+      error: err => {
+        this.bookingsError = err.error?.message || 'Không thể hủy đặt phòng. Vui lòng thử lại.';
+      }
     });
   }
 
@@ -94,7 +125,10 @@ export class ProfileComponent implements OnInit {
   getStatusLabel(status: string): string { return ({PENDING:'Chờ xác nhận',PENDING_PAYMENT:'Chờ thanh toán',CONFIRMED:'Đã xác nhận',CHECKED_IN:'Đã nhận phòng',CHECKED_OUT:'Đã trả phòng',CANCELLED:'Đã hủy'} as Record<string,string>)[status] || status; }
 
   private loadProfile(): void {
-    this.clientApi.getProfile().pipe(finalize(() => this.loading = false)).subscribe({
+    this.clientApi.getProfile().pipe(finalize(() => {
+      this.loading = false;
+      this.changeDetector.detectChanges();
+    })).subscribe({
       next: profile => {
         this.user = profile;
         this.profileForm.setValue({ fullName: profile.fullName || '', email: profile.email || '', phone: profile.phone || '', avatarUrl: profile.avatarUrl || '' });

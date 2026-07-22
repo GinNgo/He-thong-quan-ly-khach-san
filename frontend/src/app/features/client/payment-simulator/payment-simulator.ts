@@ -15,6 +15,7 @@ export class PaymentSimulatorComponent implements OnInit {
   reservationId: number = 0;
   method: string = '';
   amount: number = 0;
+  transactionId: string = '';
   isProcessing: boolean = false;
   isSuccess: boolean = false;
 
@@ -27,6 +28,7 @@ export class PaymentSimulatorComponent implements OnInit {
       this.reservationId = Number(params['reservationId']);
       this.method = params['method'] || 'MOMO';
       this.amount = Number(params['amount']) || 0;
+      this.transactionId = params['transactionId'] || '';
     });
   }
 
@@ -34,7 +36,7 @@ export class PaymentSimulatorComponent implements OnInit {
     this.isProcessing = true;
     
     // Call backend callback endpoint
-    const callbackUrl = `${environment.apiUrl}/payments/callback?reservationId=${this.reservationId}&status=SUCCESS&method=${this.method}`;
+    const callbackUrl = `${environment.apiUrl}/payments/callback?reservationId=${this.reservationId}&status=SUCCESS&method=${this.method}&transactionId=${encodeURIComponent(this.transactionId)}`;
     
     this.http.get(callbackUrl).subscribe({
       next: () => {

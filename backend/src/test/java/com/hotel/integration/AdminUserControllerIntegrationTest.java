@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hotel.dtos.UserRequest;
 import com.hotel.entities.User;
 import com.hotel.repositories.UserRepository;
+import com.hotel.security.ActionCode;
 import com.hotel.security.CustomUserDetails;
+import com.hotel.security.FunctionCode;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -43,11 +45,14 @@ class AdminUserControllerIntegrationTest {
     private ObjectMapper objectMapper;
 
     private CustomUserDetails getAdminUser() {
+        HashMap<FunctionCode, Integer> permissionMasks = new HashMap<>();
+        permissionMasks.put(FunctionCode.USER, ActionCode.VIEW | ActionCode.CREATE);
+
         return new CustomUserDetails(
                 "admin",
                 "hash",
                 Set.of(new SimpleGrantedAuthority("ADMIN")),
-                new HashMap<>(),
+                permissionMasks,
                 1L,
                 null,
                 new HashMap<>()

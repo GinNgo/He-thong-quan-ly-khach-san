@@ -51,6 +51,10 @@ export class ReservationService {
     return this.http.put<Reservation>(`${this.apiUrl}/${id}/status?status=${status}`, {});
   }
 
+  cancelMyReservation(id: number): Observable<Reservation> {
+    return this.http.post<Reservation>(`${this.apiUrl}/${id}/cancel`, {});
+  }
+
   addExtraService(id: number, serviceId: number, quantity: number): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/${id}/services`, { serviceId, quantity });
   }

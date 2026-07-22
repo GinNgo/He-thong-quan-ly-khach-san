@@ -91,6 +91,7 @@ public class DataInitializer implements CommandLineRunner {
 
         Role superAdminRole = initRole("SUPER_ADMIN", "Quản trị hệ thống", "Toàn quyền hệ thống.");
         Role adminRole = initRole("ADMIN", "Quản trị viên", "Toàn quyền hệ thống.");
+        Role propertyOwnerRole = initRole("PROPERTY_OWNER", "Chủ cơ sở", "Quản lý tài khoản nhân viên theo cơ sở.");
         Role hotelAdminRole = initRole("HOTEL_ADMIN", "Quản lý khách sạn", "Quản lý vận hành khách sạn.");
         Role hotelManagerRole = initRole("HOTEL_MANAGER", "Quản lý chi nhánh", "Quản lý vận hành theo chi nhánh.");
         Role receptionistRole = initRole("RECEPTIONIST", "Lễ tân", "Tiếp nhận khách và xử lý đặt phòng.");
@@ -104,6 +105,8 @@ public class DataInitializer implements CommandLineRunner {
         int allActions = ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.DELETE | ActionCode.EXPORT | ActionCode.APPROVE;
         syncAllPermissions(superAdminRole, allActions);
         syncAllPermissions(adminRole, allActions);
+        ensurePermission(propertyOwnerRole, FunctionCode.USER,
+                ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.DELETE);
         seedDefaultRolePermissions(hotelAdminRole);
         seedDefaultRolePermissions(hotelManagerRole);
         seedReceptionistPermissions(receptionistRole);
@@ -358,23 +361,19 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private User ensureMockUser(String username, String password, String fullName, String email, String status, Role role, Hotel hotel) {
-        User user = userRepository.findByUsername(username).orElse(null);
-        if (user == null) {
-            user = new User();
-            user.setUsername(username);
-            user.setPasswordHash(passwordEncoder.encode(password));
-            user.setFullName(fullName);
-            user.setEmail(email);
-            user.setStatus(status);
-            if (role != null) {
-                user.setRoles(new java.util.HashSet<>(Set.of(role)));
-            }
-            if (hotel != null) {
-                user.setHotel(hotel);
-            }
-            userRepository.save(user);
+        User user = userRepository.findByUsername(username).orElseGet(User::new);
+        user.setUsername(username);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setFullName(fullName);
+        user.setEmail(email);
+        user.setStatus(status);
+        if (role != null) {
+            user.setRoles(new java.util.HashSet<>(Set.of(role)));
         }
-        return user;
+        if (hotel != null) {
+            user.setHotel(hotel);
+        }
+        return userRepository.save(user);
     }
 
     private com.hotel.entities.HotelService ensureMockService(String code, String name, String description, BigDecimal price) {

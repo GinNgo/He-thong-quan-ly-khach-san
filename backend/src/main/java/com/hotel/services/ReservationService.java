@@ -33,6 +33,7 @@ public class ReservationService {
     private final HotelServiceRepository hotelServiceRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
+    private final PaymentService paymentService;
     private final HousekeepingTaskRepository housekeepingTaskRepository;
     private final PropertyAccessService propertyAccessService;
 
@@ -101,7 +102,14 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public List<ReservationDTO> getAllReservations() {
-        return reservationRepository.findAll().stream().map(this::mapToDTO).toList();
+        if (propertyAccessService.isSystemAdministrator()) {
+            return reservationRepository.findAll().stream().map(this::mapToDTO).toList();
+        }
+        Set<Long> hotelIds = propertyAccessService.accessibleHotelIds();
+        if (hotelIds.isEmpty()) {
+            return List.of();
+        }
+        return reservationRepository.findByHotelIdIn(hotelIds).stream().map(this::mapToDTO).toList();
     }
 
     @Transactional(readOnly = true)
@@ -168,15 +176,26 @@ public class ReservationService {
 
     @Transactional
     public ReservationDTO updateReservationStatus(Long id, String status) {
-        Reservation reservation = findReservation(id);
+        Reservation reservation = reservationRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy booking."));
         requireOperationalAccess(reservation);
         String normalizedStatus = status == null ? "" : status.trim().toUpperCase();
+
+        if (normalizedStatus.equals(reservation.getStatus())) {
+            return mapToDTO(reservation);
+        }
+
         List<ReservationRoom> assignments = reservationRoomRepository.findByReservationDetailReservationId(id);
 
         if ("CHECKED_OUT".equals(normalizedStatus)) {
             completeCheckout(reservation, null);
             return mapToDTO(reservation);
+        } else if ("CANCELLED".equals(normalizedStatus)) {
+            cancelLockedReservation(reservation, assignments);
         } else if ("CHECKED_IN".equals(normalizedStatus)) {
+            if (RoomAvailabilityService.RELEASED_RESERVATION_STATUSES.contains(reservation.getStatus())) {
+                throw new IllegalStateException("Không thể nhận phòng cho booking đã kết thúc hoặc bị hủy.");
+            }
             int required = reservationDetailRepository.findByReservationId(id).stream()
                     .mapToInt(detail -> detail.getQuantity() == null ? 1 : detail.getQuantity()).sum();
             long assigned = assignments.stream().filter(item -> "ASSIGNED".equals(item.getStatus())).count();
@@ -205,6 +224,42 @@ public class ReservationService {
 
         reservation.setStatus(normalizedStatus);
         return mapToDTO(reservationRepository.save(reservation));
+    }
+
+    @Transactional
+    public ReservationDTO cancelMyReservation(Long id, String username) {
+        Reservation reservation = reservationRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy booking."));
+        if (username == null || reservation.getUser() == null
+                || !username.equals(reservation.getUser().getUsername())) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Bạn không có quyền hủy booking này.");
+        }
+        if ("CANCELLED".equals(reservation.getStatus())) {
+            return mapToDTO(reservation);
+        }
+
+        cancelLockedReservation(
+                reservation,
+                reservationRoomRepository.findByReservationDetailReservationId(id));
+        reservation.setStatus("CANCELLED");
+        return mapToDTO(reservationRepository.save(reservation));
+    }
+
+    private void cancelLockedReservation(Reservation reservation, List<ReservationRoom> assignments) {
+        if (Set.of("CHECKED_IN", "CHECKED_OUT", "COMPLETED", "REJECTED", "EXPIRED", "NO_SHOW")
+                .contains(reservation.getStatus())) {
+            throw new IllegalStateException("Không thể hủy booking đã check-in hoặc kết thúc.");
+        }
+
+        paymentService.refundSuccessfulPayments(reservation.getId());
+        assignments.stream().filter(item -> "ASSIGNED".equals(item.getStatus())).forEach(item -> {
+            item.setStatus("RELEASED");
+            item.setReleasedAt(LocalDateTime.now());
+            reservationRoomRepository.save(item);
+            item.getRoom().setStatus("AVAILABLE");
+            roomRepository.save(item.getRoom());
+        });
     }
 
     @Transactional

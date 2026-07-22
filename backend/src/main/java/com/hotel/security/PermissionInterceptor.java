@@ -26,8 +26,13 @@ public class PermissionInterceptor implements HandlerInterceptor {
             permission = handlerMethod.getBeanType().getAnnotation(Permission.class);
         }
 
-        if (permission == null) {
-            return true; // No permission required
+        RequireFeature requireFeature = handlerMethod.getMethodAnnotation(RequireFeature.class);
+        if (requireFeature == null) {
+            requireFeature = handlerMethod.getBeanType().getAnnotation(RequireFeature.class);
+        }
+
+        if (permission == null && requireFeature == null) {
+            return true;
         }
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -36,42 +41,39 @@ public class PermissionInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        // Allow SUPER_ADMIN, ADMIN or username 'admin' bypass
-        boolean isAdminRole = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("SUPER_ADMIN") || a.getAuthority().equals("ADMIN"));
-        
-        if (isAdminRole || authentication.getName().equals("admin")) {
-            return true;
-        }
+        boolean isSuperAdmin = authentication.getAuthorities().stream()
+                .anyMatch(authority -> "SUPER_ADMIN".equals(authority.getAuthority())
+                        || "ROLE_SUPER_ADMIN".equals(authority.getAuthority()));
 
-        if (!(authentication.getPrincipal() instanceof CustomUserDetails)) {
+        if (!(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
+            if (isSuperAdmin) {
+                return true;
+            }
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden");
             return false;
         }
 
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        Map<FunctionCode, Integer> masks = userDetails.getPermissionMasks();
+        if (permission != null && !isSuperAdmin) {
+            Map<FunctionCode, Integer> masks = userDetails.getPermissionMasks();
+            Integer userMask = masks == null ? null : masks.get(permission.function());
+            if (userMask == null) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN,
+                        "Forbidden: No access to function " + permission.function());
+                return false;
+            }
 
-        Integer userMask = masks.get(permission.function());
-        if (userMask == null) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden: No access to function " + permission.function());
-            return false;
+            if ((userMask & permission.action()) != permission.action()) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden: Missing required action mask");
+                return false;
+            }
         }
 
-        if ((userMask & permission.action()) != permission.action()) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden: Missing required action mask");
-            return false;
-        }
-
-        RequireFeature requireFeature = handlerMethod.getMethodAnnotation(RequireFeature.class);
-        if (requireFeature == null) {
-            requireFeature = handlerMethod.getBeanType().getAnnotation(RequireFeature.class);
-        }
-
-        if (requireFeature != null) {
+        if (requireFeature != null && !isSuperAdmin) {
             Map<String, Integer> featureLimits = userDetails.getFeatureLimits();
-            if (featureLimits == null || !featureLimits.containsKey(requireFeature.value())) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden: Upgrade your subscription to use this feature (" + requireFeature.value() + ")");
+            Integer limit = featureLimits == null ? null : featureLimits.get(requireFeature.value());
+            if (limit == null || (limit != -1 && limit <= 0)) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN,
+                        "Forbidden: Upgrade your subscription to use this feature (" + requireFeature.value() + ")");
                 return false;
             }
         }

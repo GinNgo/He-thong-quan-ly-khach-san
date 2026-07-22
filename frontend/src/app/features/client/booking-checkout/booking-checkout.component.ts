@@ -92,7 +92,7 @@ export class BookingCheckoutComponent implements OnInit {
         
         if (this.bookingData.paymentMethod !== 'PAY_AT_HOTEL') {
           // Redirect to Mock Payment Simulator
-          this.paymentService.createPaymentUrl(res.id, this.bookingData.paymentMethod, res.totalAmount).subscribe({
+          this.paymentService.createPaymentUrl(res.id, this.bookingData.paymentMethod).subscribe({
             next: (paymentResponse) => {
               window.location.href = paymentResponse.url;
             },

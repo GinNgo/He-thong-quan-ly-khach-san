@@ -2,7 +2,7 @@
 
 Ngày tổng hợp: 19/07/2026.
 
-Tài liệu này tổng hợp các tính năng hiện có trong source và các báo cáo kiểm thử gần nhất. Những thay đổi payment đang nằm ngoài commit phải được chạy lại toàn bộ test trước khi được xem là hoàn thành.
+Tài liệu này tổng hợp các tính năng hiện có trong source và các báo cáo kiểm thử gần nhất. Backend test và Angular production build đã được chạy lại sau các thay đổi payment; frontend unit và Playwright vẫn cần được chạy lại trên worktree hiện hành.
 
 ## 1. Xác thực và tài khoản
 
@@ -70,8 +70,11 @@ Giới hạn hiện tại: hỗ trợ một RoomType với `quantity > 1`, chưa
 - Trang kết quả thanh toán.
 - Hóa đơn Customer và danh sách hóa đơn Admin.
 - Invoice được giới hạn theo chủ booking.
+- Callback thanh toán được xử lý idempotent và chống giao dịch trùng.
+- Hủy booking tạo giao dịch hoàn tiền âm có mã `REFUND-{paymentId}`.
+- Migration `V10__payment_idempotency_constraint.sql` bổ sung ràng buộc duy nhất ở tầng dữ liệu.
 
-Trạng thái: worktree có thay đổi chưa commit về payment idempotency, chống giao dịch trùng và E2E payment; chưa tính là hoàn thành cho đến khi test lại.
+Trạng thái: backend đã đạt 60/60 test ngày 20/07/2026, gồm nghiệp vụ payment idempotency, hủy booking và hoàn tiền. Angular production build đã thành công; frontend unit và Playwright E2E chưa được chạy lại trên các thay đổi payment hiện hành.
 
 ## 8. Quản lý cơ sở
 
@@ -150,12 +153,12 @@ Theo báo cáo seed STANDARD gần nhất:
 
 ## 14. Kết quả kiểm thử gần nhất
 
-- Backend: 35/35 test pass.
-- Frontend unit: 20/20 test pass.
-- Home Search Playwright: 10/10 pass.
-- Public/Customer Playwright: 5/5 pass.
-- Search Result Playwright: 2/2 pass.
-- Admin Playwright: 3/3 pass.
-- Angular production build: pass, còn warning bundle/CommonJS.
+- Backend Maven test: 60/60 pass, không có failure, error hoặc skipped (ngày 20/07/2026).
+- Frontend unit: 20/20 test pass (mốc ngày 15/07/2026).
+- Home Search Playwright: 10/10 pass (mốc ngày 15/07/2026).
+- Public/Customer Playwright: 5/5 pass (mốc ngày 15/07/2026).
+- Search Result Playwright: 2/2 pass (mốc ngày 15/07/2026).
+- Admin Playwright: 3/3 pass (mốc ngày 15/07/2026).
+- Angular production build: pass, còn warning bundle/CommonJS (ngày 20/07/2026).
 
-Các kết quả trên là mốc đã ghi nhận trong báo cáo ngày 15/07/2026. Cần chạy lại sau khi hoàn tất các thay đổi payment đang có trong worktree.
+Kết quả backend và Angular build là lần chạy mới nhất. Backend bao gồm các test về payment, cancellation, refund, subscription và profile. Kết quả frontend unit và Playwright vẫn là bằng chứng lịch sử ngày 15/07/2026; chưa được chạy lại trên worktree hiện hành.

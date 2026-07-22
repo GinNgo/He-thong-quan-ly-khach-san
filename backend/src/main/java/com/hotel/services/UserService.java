@@ -5,6 +5,7 @@ import com.hotel.dtos.UserDto;
 import com.hotel.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,13 +27,26 @@ public class UserService {
     @Autowired
     private com.hotel.repositories.HotelRepository hotelRepository;
 
+    @Autowired
+    private PropertyAccessService propertyAccessService;
+
     public List<UserDto> getAllUsers() {
-        return userRepository.findAll().stream()
+        List<User> users;
+        if (propertyAccessService.isSystemAdministrator()) {
+            users = userRepository.findAll();
+        } else {
+            java.util.Set<Long> hotelIds = propertyAccessService.accessibleHotelIds();
+            users = hotelIds.isEmpty() ? List.of() : userRepository.findAccessibleUsers(hotelIds);
+        }
+        return users.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
 
     public Optional<UserDto> getUserById(Long id) {
+        if (!propertyAccessService.isSystemAdministrator() && !isAccessibleUser(id)) {
+            return Optional.empty();
+        }
         return userRepository.findById(id).map(this::convertToDto);
     }
 
@@ -40,6 +54,7 @@ public class UserService {
         return userRepository.findById(id);
     }
 
+    @Transactional
     public UserDto createUser(User user, java.util.Set<Long> roleIds, Long hotelId) {
         if (userRepository.existsByUsername(user.getUsername())) {
             throw new RuntimeException("Username is already taken!");
@@ -48,23 +63,86 @@ public class UserService {
             throw new RuntimeException("Email is already taken!");
         }
 
+        boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
+        java.util.Set<com.hotel.entities.Role> roles = roleIds == null
+                ? java.util.Set.of()
+                : new java.util.HashSet<>(roleRepository.findAllById(roleIds));
+        if (roleIds != null && roles.size() != roleIds.size()) {
+            throw new IllegalArgumentException("Vai trò không hợp lệ.");
+        }
+        if (!systemAdministrator && roles.stream()
+                .map(com.hotel.entities.Role::getCode)
+                .anyMatch(java.util.Set.of("SUPER_ADMIN", "ADMIN", "PROPERTY_OWNER")::contains)) {
+            throw new SecurityException("Bạn không được cấp vai trò quản trị hệ thống hoặc chủ cơ sở.");
+        }
+
+        com.hotel.entities.Hotel hotel = null;
+        if (hotelId != null) {
+            hotel = systemAdministrator
+                    ? hotelRepository.findById(hotelId)
+                            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy cơ sở."))
+                    : propertyAccessService.requireManagedHotel(hotelId);
+        } else if (!systemAdministrator) {
+            throw new IllegalArgumentException("Vui lòng chọn cơ sở cho nhân viên.");
+        }
+
+        if (!systemAdministrator) {
+            java.util.Set<Long> accessibleHotelIds = propertyAccessService.accessibleHotelIds();
+            long currentStaff = accessibleHotelIds.isEmpty()
+                    ? 0
+                    : userPropertyRepository.countActiveStaffByHotelIds(accessibleHotelIds);
+            subscriptionFeatureService.checkFeatureLimit(
+                    propertyAccessService.currentUser().getId(),
+                    "MAX_STAFF",
+                    Math.toIntExact(currentStaff));
+        }
+
         user.setPasswordHash(passwordEncoder.encode(user.getPasswordHash() != null ? user.getPasswordHash() : "123456"));
         user.setCreatedAt(java.time.LocalDateTime.now());
-        
-        if (roleIds != null && !roleIds.isEmpty()) {
-            user.setRoles(new java.util.HashSet<>(roleRepository.findAllById(roleIds)));
+        user.setRoles(roles);
+        user.setHotel(hotel);
+        User saved = userRepository.save(user);
+
+        if (!systemAdministrator) {
+            com.hotel.entities.UserProperty mapping = new com.hotel.entities.UserProperty();
+            mapping.setUser(saved);
+            mapping.setHotel(hotel);
+            mapping.setRelationshipType("STAFF");
+            mapping.setIsPrimaryOwner(false);
+            mapping.setStatus("ACTIVE");
+            mapping.setStartDate(java.time.LocalDateTime.now());
+            userPropertyRepository.save(mapping);
         }
 
-        if (hotelId != null) {
-            user.setHotel(hotelRepository.findById(hotelId).orElse(null));
-        }
-
-        return convertToDto(userRepository.save(user));
+        return convertToDto(saved);
     }
 
+    @Transactional
     public UserDto updateUser(Long id, User userDetails, java.util.Set<Long> roleIds, Long hotelId) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
+        User user = requireManageableUser(id, systemAdministrator);
+
+        java.util.Set<com.hotel.entities.Role> roles = roleIds == null
+                ? user.getRoles()
+                : new java.util.HashSet<>(roleRepository.findAllById(roleIds));
+        if (roleIds != null && roles.size() != roleIds.size()) {
+            throw new IllegalArgumentException("Vai trò không hợp lệ.");
+        }
+        if (!systemAdministrator && roles != null && roles.stream()
+                .map(com.hotel.entities.Role::getCode)
+                .anyMatch(java.util.Set.of("SUPER_ADMIN", "ADMIN", "PROPERTY_OWNER")::contains)) {
+            throw new SecurityException("Bạn không được cấp vai trò quản trị hệ thống hoặc chủ cơ sở.");
+        }
+
+        com.hotel.entities.Hotel hotel = null;
+        if (hotelId != null) {
+            hotel = systemAdministrator
+                    ? hotelRepository.findById(hotelId)
+                            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy cơ sở."))
+                    : propertyAccessService.requireManagedHotel(hotelId);
+        } else if (!systemAdministrator) {
+            throw new IllegalArgumentException("Vui lòng chọn cơ sở cho nhân viên.");
+        }
 
         user.setFullName(userDetails.getFullName());
         if (userDetails.getEmail() != null && !userDetails.getEmail().equalsIgnoreCase(user.getEmail())) {
@@ -83,21 +161,46 @@ public class UserService {
             user.setPasswordHash(passwordEncoder.encode(userDetails.getPasswordHash()));
         }
 
-        if (roleIds != null) {
-            user.setRoles(new java.util.HashSet<>(roleRepository.findAllById(roleIds)));
+        user.setRoles(roles);
+        user.setHotel(hotel);
+        User saved = userRepository.save(user);
+
+        if (!systemAdministrator) {
+            List<com.hotel.entities.UserProperty> mappings =
+                    userPropertyRepository.findByUserIdAndRelationshipType(id, "STAFF");
+            com.hotel.entities.UserProperty mapping = mappings.stream()
+                    .filter(item -> item.getHotel() != null && item.getHotel().getId().equals(hotelId))
+                    .findFirst()
+                    .orElseGet(com.hotel.entities.UserProperty::new);
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            mappings.stream()
+                    .filter(item -> item != mapping && "ACTIVE".equals(item.getStatus()))
+                    .forEach(item -> {
+                        item.setStatus("INACTIVE");
+                        item.setEndDate(now);
+                    });
+            mapping.setUser(saved);
+            mapping.setHotel(hotel);
+            mapping.setRelationshipType("STAFF");
+            mapping.setIsPrimaryOwner(false);
+            mapping.setStatus("ACTIVE");
+            mapping.setEndDate(null);
+            if (mapping.getStartDate() == null) {
+                mapping.setStartDate(now);
+            }
+            userPropertyRepository.saveAll(mappings);
+            userPropertyRepository.save(mapping);
         }
 
-        if (hotelId != null) {
-            user.setHotel(hotelRepository.findById(hotelId).orElse(null));
-        } else {
-            user.setHotel(null);
-        }
-
-        return convertToDto(userRepository.save(user));
+        return convertToDto(saved);
     }
 
+    @Transactional
     public void deleteUser(Long id) {
-        userRepository.deleteById(id);
+        boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
+        User user = requireManageableUser(id, systemAdministrator);
+        userPropertyRepository.deleteAll(userPropertyRepository.findByUserId(id));
+        userRepository.delete(user);
     }
 
     public UserDto updateProfile(Long id, String fullName, String email, String phone, String avatarUrl) {
@@ -125,6 +228,31 @@ public class UserService {
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+    }
+
+    private User requireManageableUser(Long id, boolean systemAdministrator) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (systemAdministrator) {
+            return user;
+        }
+        if (propertyAccessService.currentUser().getId().equals(id)) {
+            throw new SecurityException("Bạn không thể sửa hoặc xóa chính tài khoản đang đăng nhập.");
+        }
+        if (!isAccessibleUser(id)) {
+            throw new SecurityException("Bạn không có quyền quản lý tài khoản này.");
+        }
+        if (user.getRoles() != null && user.getRoles().stream()
+                .map(com.hotel.entities.Role::getCode)
+                .anyMatch(java.util.Set.of("SUPER_ADMIN", "ADMIN", "PROPERTY_OWNER")::contains)) {
+            throw new SecurityException("Bạn không có quyền quản lý tài khoản đặc quyền.");
+        }
+        return user;
+    }
+
+    private boolean isAccessibleUser(Long id) {
+        java.util.Set<Long> hotelIds = propertyAccessService.accessibleHotelIds();
+        return !hotelIds.isEmpty() && userRepository.isUserAccessible(id, hotelIds);
     }
 
     private UserDto convertToDto(User user) {

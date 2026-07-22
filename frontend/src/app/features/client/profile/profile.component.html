@@ -32,7 +32,23 @@
       <div *ngIf="bookingsError" class="alert error">{{ bookingsError }}</div>
       <div *ngIf="!bookingsLoading && !bookingsError && !bookings.length" class="empty"><i class="pi pi-suitcase"></i><strong>Chưa có chuyến đi</strong><a routerLink="/search">Tìm chỗ nghỉ</a></div>
       <div class="booking-list" *ngIf="!bookingsLoading && bookings.length">
-        <article *ngFor="let booking of bookings"><div><small>Mã đặt phòng</small><strong>#{{ booking.id }}</strong></div><div><small>Thời gian</small><span>{{ booking.checkInDate | date:'dd/MM/yyyy' }} - {{ booking.checkOutDate | date:'dd/MM/yyyy' }}</span></div><div><small>Tổng tiền</small><strong>{{ booking.totalAmount | currency:'VND':'symbol':'1.0-0' }}</strong></div><span class="status">{{ getStatusLabel(booking.status) }}</span></article>
+        <article *ngFor="let booking of bookings">
+          <div><small>Mã đặt phòng</small><strong>#{{ booking.id }}</strong></div>
+          <div><small>Thời gian</small><span>{{ booking.checkInDate | date:'dd/MM/yyyy' }} - {{ booking.checkOutDate | date:'dd/MM/yyyy' }}</span></div>
+          <div><small>Tổng tiền</small><strong>{{ booking.totalAmount | currency:'VND':'symbol':'1.0-0' }}</strong></div>
+          <div class="booking-actions">
+            <span class="status">{{ getStatusLabel(booking.status) }}</span>
+            <button
+              *ngIf="booking.status === 'PENDING' || booking.status === 'PENDING_PAYMENT' || booking.status === 'CONFIRMED'"
+              type="button"
+              class="cancel-btn"
+              [disabled]="cancellingId === booking.id"
+              [attr.aria-busy]="cancellingId === booking.id"
+              (click)="cancelBooking(booking.id)">
+              {{ cancellingId === booking.id ? 'Đang hủy...' : 'Hủy đặt phòng' }}
+            </button>
+          </div>
+        </article>
       </div>
     </section>
   </section>

@@ -50,6 +50,9 @@ class HotelControllerIntegrationTest {
         mockUser.setPasswordHash("hash");
         mockUser.setRoles(new HashSet<>());
         
+        Map<String, Integer> featureLimits = new HashMap<>();
+        featureLimits.put("HOTEL", 1);
+
         CustomUserDetails userDetails = new CustomUserDetails(
                 mockUser.getUsername(),
                 mockUser.getPasswordHash(),
@@ -57,7 +60,7 @@ class HotelControllerIntegrationTest {
                 new HashMap<>(),
                 mockUser.getId(),
                 null,
-                new HashMap<>()
+                featureLimits
         );
 
         mockMvc.perform(get("/api/v1/hotels/my-hotels")

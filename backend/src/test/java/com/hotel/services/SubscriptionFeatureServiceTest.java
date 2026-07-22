@@ -11,7 +11,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -65,7 +64,7 @@ class SubscriptionFeatureServiceTest {
 
     @Test
     void getActiveFeaturesForUser_WithNoActiveSubscriptions_ShouldReturnEmptyMap() {
-        when(accountSubscriptionRepository.findByUserIdAndStatus(1L, "ACTIVE")).thenReturn(List.of());
+        when(accountSubscriptionRepository.findEffectiveSubscriptionsByUserId(1L)).thenReturn(List.of());
 
         Map<String, Integer> features = subscriptionFeatureService.getActiveFeaturesForUser(1L);
 
@@ -74,7 +73,8 @@ class SubscriptionFeatureServiceTest {
 
     @Test
     void getActiveFeaturesForUser_WithBasicSubscription_ShouldReturnBasicLimits() {
-        when(accountSubscriptionRepository.findByUserIdAndStatus(1L, "ACTIVE")).thenReturn(List.of(basicSubscription));
+        when(accountSubscriptionRepository.findEffectiveSubscriptionsByUserId(1L))
+                .thenReturn(List.of(basicSubscription));
 
         Map<String, Integer> features = subscriptionFeatureService.getActiveFeaturesForUser(1L);
 
@@ -85,8 +85,8 @@ class SubscriptionFeatureServiceTest {
 
     @Test
     void getActiveFeaturesForUser_WithMultipleSubscriptions_ShouldReturnMaxLimits() {
-        when(accountSubscriptionRepository.findByUserIdAndStatus(1L, "ACTIVE"))
-                .thenReturn(Arrays.asList(basicSubscription, premiumSubscription));
+        when(accountSubscriptionRepository.findEffectiveSubscriptionsByUserId(1L))
+                .thenReturn(List.of(basicSubscription, premiumSubscription));
 
         Map<String, Integer> features = subscriptionFeatureService.getActiveFeaturesForUser(1L);
 

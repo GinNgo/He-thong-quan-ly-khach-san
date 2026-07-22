@@ -47,6 +47,12 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.getMyReservations(authentication.getName()));
     }
 
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAuthority('CUSTOMER')")
+    public ResponseEntity<ReservationDTO> cancelMyReservation(Authentication authentication, @PathVariable Long id) {
+        return ResponseEntity.ok(reservationService.cancelMyReservation(id, authentication.getName()));
+    }
+
     @PutMapping("/{id}/status")
     @PreAuthorize("hasAnyAuthority('PROPERTY_OWNER','HOTEL_MANAGER','RECEPTIONIST','HOTEL_ADMIN','SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ReservationDTO> updateStatus(@PathVariable Long id, @RequestParam String status) {

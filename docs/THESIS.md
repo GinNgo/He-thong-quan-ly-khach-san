@@ -2,300 +2,500 @@
 # TỔNG QUAN ĐỀ TÀI
 
 ## 1.1. LÝ DO CHỌN ĐỀ TÀI
-Trong bối cảnh ngành du lịch và dịch vụ khách sạn đang trên đà phục hồi và phát triển mạnh mẽ sau đại dịch, việc áp dụng công nghệ thông tin vào quản lý và vận hành không còn là một lựa chọn mà đã trở thành yếu tố bắt buộc để cạnh tranh. Tuy nhiên, nhiều khách sạn quy mô vừa và nhỏ (SME) hiện nay vẫn đang chật vật với các quy trình quản lý thủ công, sổ sách giấy tờ, hoặc sử dụng các phần mềm rời rạc, lỗi thời. Điều này không chỉ gây thất thoát doanh thu, sai sót trong nghiệp vụ đặt/trả phòng mà còn làm giảm trải nghiệm của khách hàng.
 
-Nhận thấy nhu cầu cấp thiết về một giải pháp phần mềm quản trị toàn diện, tập trung và dễ sử dụng, nhóm quyết định chọn đề tài **"Xây dựng Hệ thống Quản lý Khách sạn (Hotel Management System)"**. Hệ thống được thiết kế dựa trên kiến trúc hiện đại (Spring Boot & Angular), tích hợp các tính năng thông minh (AI Chatbot) nhằm tối ưu hóa quy trình nghiệp vụ cho Lễ tân, Quản lý, đồng thời cung cấp trải nghiệm số hóa liền mạch cho khách lưu trú.
+Ngành du lịch và lưu trú ngày càng phụ thuộc vào khả năng cung cấp thông tin nhanh, quản lý tồn phòng chính xác và phục vụ khách hàng trên nhiều thiết bị. Tuy nhiên, nhiều cơ sở lưu trú quy mô vừa và nhỏ vẫn sử dụng bảng tính, sổ sách hoặc nhiều phần mềm rời rạc. Cách vận hành này dễ dẫn đến đặt phòng vượt mức, sai lệch trạng thái phòng, khó kiểm soát doanh thu và thiếu dữ liệu hỗ trợ quyết định.
+
+Từ nhu cầu trên, đề tài **“Xây dựng hệ thống quản lý khách sạn và đặt phòng trực tuyến LuxeStay”** được thực hiện nhằm xây dựng một nền tảng thống nhất cho ba nhóm hoạt động: khách hàng tìm kiếm và đặt chỗ; chủ cơ sở quản lý tài nguyên lưu trú; quản trị viên vận hành nền tảng và phân quyền người dùng.
+
+LuxeStay được định hướng theo mô hình phần mềm dịch vụ. Một tài khoản chủ cơ sở có thể quản lý nhiều cơ sở, trong khi giới hạn sử dụng được xác định bởi gói đăng ký. Hệ thống đồng thời giải quyết những vấn đề đặc thù của dữ liệu Việt Nam như tìm kiếm có dấu và không dấu, mô hình địa giới hai cấp và lưu trữ Unicode.
 
 ## 1.2. MỤC TIÊU NGHIÊN CỨU
+
 ### 1.2.1. Mục tiêu tổng quát
-Phân tích, thiết kế và xây dựng thành công một hệ thống phần mềm quản lý khách sạn hoàn chỉnh (Full-stack), đáp ứng được các nghiệp vụ cốt lõi của một cơ sở lưu trú như: quản lý phòng, quản lý đặt phòng, xử lý thanh toán, và báo cáo thống kê doanh thu theo thời gian thực.
+
+Xây dựng ứng dụng web full-stack hỗ trợ quản lý khách sạn và đặt phòng trực tuyến, bảo đảm tính đúng đắn của nghiệp vụ tồn phòng, phân quyền, thanh toán và vận hành lưu trú.
 
 ### 1.2.2. Mục tiêu cụ thể
-- **Về mặt lý thuyết:** Tìm hiểu và ứng dụng thành thạo các quy trình phát triển phần mềm Agile/Scrum. Phân tích rõ ràng các yêu cầu nghiệp vụ (Business Requirements) của quy trình quản trị khách sạn.
-- **Về mặt công nghệ:** Nắm vững và áp dụng kiến trúc phát triển ứng dụng nhiều tầng (N-tier architecture) bằng cách kết hợp Java Spring Boot 3 (Backend) và Angular 22 (Frontend).
-- **Về mặt thực tiễn:** 
-  - Triển khai thành công phân hệ Quản lý cốt lõi (Room, Reservation, Invoice).
-  - Tích hợp biểu đồ thống kê trực quan bằng thư viện Chart.js.
-  - Ứng dụng Trí tuệ Nhân tạo (AI Chatbot) để nâng cao trải nghiệm hỗ trợ khách hàng và tối ưu công việc của Lễ tân.
+
+- Xây dựng REST API bằng Java 21 và Spring Boot 3.
+- Xây dựng giao diện responsive bằng Angular 22.
+- Xác thực bằng JWT và kiểm soát quyền độc lập tại backend.
+- Quản lý vai trò, chức năng và Action Mask.
+- Hỗ trợ tìm kiếm cơ sở theo tỉnh, phường/xã, tên và địa chỉ tiếng Việt.
+- Quản lý cơ sở, loại phòng, phòng vật lý, dịch vụ và ảnh.
+- Thực hiện quy trình đặt phòng, gán phòng, check-in, sử dụng dịch vụ, check-out và dọn phòng.
+- Ghi nhận thanh toán, xử lý callback idempotent, hoàn tiền khi hủy và lập hóa đơn.
+- Quản lý nhiều cơ sở và giới hạn chức năng theo gói đăng ký.
+- Xây dựng dữ liệu demo có kiểm soát, không sửa dữ liệu cơ sở thật.
+- Kiểm thử các nghiệp vụ quan trọng ở tầng đơn vị, tích hợp và đầu cuối.
+
+## 1.3. ĐỐI TƯỢNG VÀ PHẠM VI NGHIÊN CỨU
+
+Đối tượng nghiên cứu gồm quy trình tìm kiếm và đặt phòng, quản lý tài nguyên lưu trú, xác thực và phân quyền, thanh toán, hóa đơn, đăng ký gói dịch vụ và quản trị cơ sở.
+
+Các tác nhân chính gồm:
+
+- **Khách chưa đăng nhập:** tìm kiếm, xem chi tiết cơ sở và xem loại phòng.
+- **Khách hàng:** đặt phòng, thanh toán, theo dõi và hủy booking, xem hóa đơn.
+- **Chủ cơ sở:** quản lý cơ sở được gán và theo dõi giới hạn gói.
+- **Quản lý, lễ tân và nhân viên:** quản lý booking, phòng và quy trình lưu trú trong phạm vi được cấp.
+- **Quản trị viên hệ thống:** quản lý người dùng, vai trò, quyền, cơ sở, dữ liệu nhập và subscription.
+
+Phạm vi hiện tại chưa bao gồm nhiều loại phòng trong cùng một booking, đánh giá thực từ khách hàng, yêu thích, đối soát tài chính chuyên biệt và quy trình nâng/hạ/gia hạn gói đầy đủ.
+
+## 1.4. PHƯƠNG PHÁP THỰC HIỆN
+
+Đề tài được thực hiện theo các bước:
+
+1. Khảo sát quy trình nghiệp vụ và xác định tác nhân.
+2. Phân tích yêu cầu chức năng, dữ liệu và bảo mật.
+3. Thiết kế kiến trúc nhiều tầng, REST API, cơ sở dữ liệu và giao diện.
+4. Cài đặt theo từng phân hệ có thể kiểm thử độc lập.
+5. Áp dụng migration để quản lý thay đổi cơ sở dữ liệu.
+6. Kiểm thử đơn vị, tích hợp, giao diện và luồng đầu cuối.
+7. Đối chiếu kết quả kiểm thử với yêu cầu trước khi tổng hợp báo cáo.
+
+## 1.5. KẾT CẤU BÁO CÁO
+
+Báo cáo gồm năm chương. Chương 1 trình bày bối cảnh, mục tiêu và phạm vi. Chương 2 giới thiệu cơ sở lý thuyết và công nghệ. Chương 3 phân tích yêu cầu và thiết kế hệ thống. Chương 4 mô tả cài đặt, giao diện và kết quả kiểm thử. Chương 5 tổng kết kết quả, hạn chế và hướng phát triển.
 
 ---
 
 # CHƯƠNG 2
 # CƠ SỞ LÝ THUYẾT
 
-## 2.1. CÔNG NGHỆ BACKEND
-Hệ thống sử dụng ngôn ngữ lập trình Java 21 và framework Spring Boot 3 để xây dựng các API (Application Programming Interface) theo tiêu chuẩn RESTful. Vấn đề bảo mật hệ thống được đảm bảo bằng Spring Security kết hợp với kỹ thuật xác thực qua JSON Web Token (JWT).
+## 2.1. KIẾN TRÚC ỨNG DỤNG WEB NHIỀU TẦNG
 
-## 2.2. CÔNG NGHỆ FRONTEND
-Phía máy khách (Client-side) được xây dựng dựa trên nền tảng Angular 22. Ứng dụng áp dụng kiến trúc Standalone Components nhằm giảm thiểu sự phụ thuộc vào các module dư thừa, kết hợp với bộ thư viện PrimeNG để thiết kế giao diện người dùng (UI) đồng nhất và chuyên nghiệp.
+Hệ thống được tổ chức thành frontend, backend và tầng dữ liệu. Frontend chịu trách nhiệm trình bày và tương tác. Backend cung cấp REST API, xác thực, phân quyền và xử lý nghiệp vụ. Tầng dữ liệu lưu trữ trạng thái bền vững và thực thi các ràng buộc toàn vẹn.
 
-## 2.3. HỆ QUẢN TRỊ CƠ SỞ DỮ LIỆU
-Hệ thống sử dụng Microsoft SQL Server làm hệ quản trị cơ sở dữ liệu quan hệ chính. Các thao tác tương tác với cơ sở dữ liệu được thực hiện gián tiếp thông qua JPA (Java Persistence API) và Hibernate.
+Cách phân chia này giúp giảm phụ thuộc giữa giao diện và nghiệp vụ, hỗ trợ kiểm thử từng tầng, đồng thời cho phép thay đổi cách trình bày mà không làm thay đổi quy tắc nghiệp vụ cốt lõi.
+
+## 2.2. REST API VÀ DTO
+
+REST tổ chức tài nguyên qua URL và sử dụng phương thức HTTP để biểu diễn thao tác. LuxeStay dùng DTO cho dữ liệu trao đổi nhằm tránh lộ cấu trúc thực thể, hạn chế JSON đệ quy và kiểm soát dữ liệu đầu vào, đầu ra.
+
+Các mã trạng thái chính gồm:
+
+- `200 OK`: yêu cầu thành công.
+- `201 Created`: tạo tài nguyên thành công.
+- `400 Bad Request`: dữ liệu đầu vào không hợp lệ.
+- `401 Unauthorized`: chưa xác thực hoặc token không hợp lệ.
+- `403 Forbidden`: không đủ quyền hoặc vượt giới hạn gói.
+- `404 Not Found`: không tìm thấy tài nguyên.
+- `409 Conflict`: xung đột tồn phòng hoặc trạng thái nghiệp vụ.
+
+## 2.3. XÁC THỰC JWT VÀ PHÂN QUYỀN
+
+JWT là chuỗi token có chữ ký, chứa thông tin nhận dạng và thời hạn. Sau khi đăng nhập, client gửi token trong tiêu đề `Authorization`. Backend xác minh chữ ký, thời hạn và dựng ngữ cảnh bảo mật cho từng yêu cầu.
+
+Hệ thống kết hợp ba lớp kiểm soát:
+
+1. **Role:** xác định nhóm người dùng.
+2. **Permission và Action Mask:** xác định hành động VIEW, CREATE, UPDATE, DELETE, EXPORT hoặc APPROVE trên chức năng.
+3. **Feature Gate:** giới hạn tài nguyên theo gói đăng ký.
+
+Backend là nơi quyết định quyền cuối cùng. Route Guard phía Angular chỉ hỗ trợ trải nghiệm và không thay thế kiểm tra tại máy chủ.
+
+## 2.4. QUẢN LÝ TỒN PHÒNG VÀ GIAO DỊCH
+
+Tồn phòng được xác định theo loại phòng, khoảng ngày và số lượng đã giữ bởi các booking có hiệu lực. Khi tạo booking, backend phải kiểm tra lại giá, sức chứa và số phòng còn lại thay vì tin dữ liệu từ client.
+
+Giao dịch cơ sở dữ liệu bảo đảm chuỗi thao tác được hoàn thành toàn bộ hoặc hoàn tác. Khóa bản ghi khi xử lý thanh toán, hủy booking và cập nhật tài nguyên giúp giảm nguy cơ hai yêu cầu đồng thời tạo dữ liệu không nhất quán.
+
+## 2.5. IDEMPOTENCY TRONG THANH TOÁN
+
+Một callback thanh toán có thể được cổng thanh toán gửi nhiều lần. Idempotency bảo đảm cùng một giao dịch chỉ tạo một kết quả nghiệp vụ. LuxeStay dùng mã giao dịch duy nhất và ràng buộc cơ sở dữ liệu để chống ghi nhận trùng.
+
+Hoàn tiền được lưu bằng giao dịch âm có mã xác định từ giao dịch gốc. Cách lưu này giữ được lịch sử thay vì sửa hoặc xóa giao dịch đã thành công.
+
+## 2.6. UNICODE VÀ TÌM KIẾM TIẾNG VIỆT
+
+Dữ liệu tiếng Việt cần được lưu bằng kiểu Unicode. Hệ thống sử dụng các cột `NVARCHAR`, đọc dữ liệu nhập bằng UTF-8 và xử lý BOM. Giá trị tìm kiếm được chuẩn hóa để người dùng có thể nhập có dấu hoặc không dấu.
+
+Mô hình địa giới gồm tỉnh/thành phố và phường/xã, không dùng quận/huyện. Cấu trúc này phù hợp tập dữ liệu hiện hành của dự án và giảm số bước chọn địa điểm.
+
+## 2.7. CÔNG NGHỆ SỬ DỤNG
+
+**Bảng 2.1. Công nghệ chính của hệ thống**
+
+| Tầng | Công nghệ | Vai trò |
+|---|---|---|
+| Backend | Java 21, Spring Boot 3.2.5 | REST API và nghiệp vụ |
+| Bảo mật | Spring Security, JWT | Xác thực và phân quyền |
+| Dữ liệu | Spring Data JPA, Hibernate | Ánh xạ và truy cập dữ liệu |
+| Migration | Flyway | Quản lý thay đổi schema |
+| API | springdoc-openapi | Tài liệu và kiểm tra endpoint |
+| Frontend | Angular 22, TypeScript 6 | Giao diện ứng dụng |
+| UI | PrimeNG 21, Tailwind CSS 3 | Thành phần và định dạng |
+| Biểu đồ | Chart.js 4 | Trực quan hóa số liệu |
+| Kiểm thử | JUnit, Mockito, Spring Test, Playwright | Kiểm thử tự động |
+| Triển khai | Docker Compose | Khởi tạo các dịch vụ |
+
+Bảng 2.1 cho thấy hệ thống sử dụng các công nghệ phổ biến, có hệ sinh thái kiểm thử và hỗ trợ tốt cho kiến trúc web nhiều tầng.
 
 ---
 
 # CHƯƠNG 3
 # PHÂN TÍCH VÀ THIẾT KẾ HỆ THỐNG
 
-## 3.1. THIẾT KẾ KIẾN TRÚC TỔNG THỂ CỦA MODULE XÁC THỰC
-Module xác thực và phân quyền đóng vai trò là chốt chặn an ninh đầu tiên của hệ thống. Nhằm đảm bảo tính an toàn dữ liệu, module được thiết kế dựa trên cơ chế RBAC (Role-Based Access Control).
+## 3.1. PHÂN TÍCH TÁC NHÂN VÀ CHỨC NĂNG
 
-### 3.1.1. Biểu đồ lớp (Class Diagram)
-Biểu đồ lớp dưới đây mô tả chi tiết các thực thể và các thành phần cấu hình bảo mật được cài đặt trong Spring Security.
+**Bảng 3.1. Tác nhân và nhóm chức năng**
+
+| Tác nhân | Nhóm chức năng |
+|---|---|
+| Khách chưa đăng nhập | Tìm kiếm, xem cơ sở, xem phòng |
+| Khách hàng | Đặt phòng, thanh toán, hủy booking, xem lịch sử và hóa đơn |
+| Chủ cơ sở | Quản lý cơ sở, loại phòng, phòng và giới hạn gói |
+| Quản lý/Lễ tân | Quản lý booking, gán phòng, check-in, check-out |
+| Nhân viên | Thực hiện chức năng được cấp trong phạm vi cơ sở |
+| Quản trị viên | Người dùng, role, permission, cơ sở, import, claim và subscription |
+
+Bảng 3.1 thể hiện chức năng được tách theo trách nhiệm. Quyền thực tế còn phụ thuộc Action Mask, phạm vi cơ sở và trạng thái subscription.
+
+### 3.1.1. Use Case tổng quát
+
+```mermaid
+flowchart LR
+    Guest[Khách] --> Search[Tìm kiếm cơ sở]
+    Guest --> Detail[Xem chi tiết]
+    Customer[Khách hàng] --> Book[Đặt phòng]
+    Customer --> Pay[Thanh toán]
+    Customer --> Cancel[Hủy booking]
+    Staff[Quản lý / Lễ tân] --> Assign[Gán phòng]
+    Staff --> Checkin[Check-in]
+    Staff --> Checkout[Check-out]
+    Owner[Chủ cơ sở] --> Inventory[Quản lý loại phòng và phòng]
+    Admin[Quản trị viên] --> Access[Quản lý role và permission]
+    Admin --> Platform[Quản trị nền tảng]
+```
+
+Hình 3.1. Sơ đồ Use Case tổng quát
+
+Mục đích của Hình 3.1 là xác định ranh giới chức năng theo tác nhân. Khách hàng tương tác với luồng thương mại; nhân viên xử lý lưu trú; chủ cơ sở quản lý tài nguyên; quản trị viên kiểm soát nền tảng. Kết quả phân tích cho thấy mọi thao tác ghi dữ liệu cần được kiểm tra cả quyền và phạm vi tài nguyên.
+
+## 3.2. KIẾN TRÚC TỔNG THỂ
+
+```mermaid
+flowchart TB
+    Browser[Trình duyệt] --> Angular[Angular 22]
+    Angular -->|HTTPS / JSON| Security[Spring Security và JWT]
+    Security --> Controller[REST Controller]
+    Controller --> Service[Service nghiệp vụ]
+    Service --> Repository[Spring Data Repository]
+    Repository --> DB[(SQL Server / H2 test)]
+    Service --> Payment[Cổng thanh toán / Simulator]
+    DB --> Flyway[Flyway Migration]
+```
+
+Hình 3.2. Kiến trúc tổng thể của hệ thống
+
+Hình 3.2 mô tả đường đi của yêu cầu từ giao diện đến dữ liệu. Controller tiếp nhận và chuẩn hóa yêu cầu; Service thực thi nghiệp vụ; Repository truy cập dữ liệu. Spring Security chặn yêu cầu trước Controller. Flyway quản lý phiên bản schema. Kiến trúc này giúp quy tắc nghiệp vụ không phụ thuộc giao diện.
+
+## 3.3. THIẾT KẾ XÁC THỰC VÀ PHÂN QUYỀN
+
+### 3.3.1. Biểu đồ lớp phân quyền
 
 ```mermaid
 classDiagram
     class User {
-        +Long id
-        +String username
-        +String email
-        +String passwordHash
-        +String status
-        +Set~Role~ roles
+      +Long id
+      +String username
+      +String email
+      +String status
     }
-
     class Role {
-        +Long id
-        +String code
-        +String name
-        +Set~RolePermission~ rolePermissions
+      +Long id
+      +String code
+      +String name
     }
-
     class AppModule {
-        +Long id
-        +String code
-        +String name
+      +Long id
+      +String code
+      +String name
     }
-
     class AppFunction {
-        +Long id
-        +String code
-        +String name
-        +String url
-        +String icon
-        +Integer sortOrder
+      +Long id
+      +String code
+      +String url
     }
-
     class RolePermission {
-        +Long id
-        +Integer actionMask
+      +Long id
+      +Integer actionMask
     }
-
     class JwtTokenProvider {
-        +generateToken(Authentication auth) String
-        +validateToken(String authToken) boolean
+      +generateToken(authentication) String
+      +validateToken(token) boolean
     }
 
-    class CustomUserDetailsService {
-        +loadUserByUsername(String username) UserDetails
-    }
-
-    User "1" --> "*" Role : has
-    Role "1" --> "*" RolePermission : has
-    AppModule "1" --> "*" AppFunction : contains
-    AppFunction "1" <-- "*" RolePermission : applies to
-    CustomUserDetailsService --> User : loads
-
-    style User fill:#f9d0c4,stroke:#333,stroke-width:1px
-    style Role fill:#d4e1f9,stroke:#333,stroke-width:1px
-    style AppModule fill:#ffe6cc,stroke:#333,stroke-width:1px
-    style AppFunction fill:#ffe6cc,stroke:#333,stroke-width:1px
-    style RolePermission fill:#e6ccff,stroke:#333,stroke-width:1px
-    style JwtTokenProvider fill:#fdf2d0,stroke:#333,stroke-width:1px
-    style CustomUserDetailsService fill:#fdf2d0,stroke:#333,stroke-width:1px
+    User "*" -- "*" Role
+    AppModule "1" --> "*" AppFunction
+    Role "1" --> "*" RolePermission
+    AppFunction "1" --> "*" RolePermission
 ```
-Hình 3.1. Biểu đồ lớp của phân hệ Xác thực và Phân quyền
 
-Biểu đồ lớp trên được thiết kế nhằm mục đích khái quát hóa toàn bộ cấu trúc hướng đối tượng của phân hệ bảo mật tại tầng Backend. Khối kiến trúc này giúp đảm bảo nguyên tắc phân chia trách nhiệm rõ ràng (Separation of Concerns) trong quá trình xác thực và cấp quyền cho người dùng.
+Hình 3.3. Biểu đồ lớp phân hệ xác thực và phân quyền
 
-Về mặt cấu trúc, biểu đồ định nghĩa các thực thể cốt lõi tham gia vào quá trình bảo mật, bao gồm lớp `User` (đại diện cho người dùng) và lớp `Role` (đại diện cho vai trò). Ở mức độ phân quyền chi tiết (Fine-grained Authorization), hệ thống sử dụng `AppModule` (Nhóm chức năng chính) và `AppFunction` (Các chức năng cụ thể). Bảng trung gian `RolePermission` đóng vai trò liên kết giữa Vai trò và Chức năng. Bên cạnh các lớp thực thể, hệ thống còn tích hợp các lớp xử lý nghiệp vụ bảo mật cốt lõi, tiêu biểu là `JwtTokenProvider` dùng để tạo và xác thực chữ ký điện tử, cùng với `CustomUserDetailsService` dùng để nạp thông tin người dùng từ cơ sở dữ liệu.
+Mục đích của Hình 3.3 là mô tả cấu trúc RBAC động. `RolePermission` liên kết vai trò với chức năng và lưu `actionMask`. Bit mask cho phép kết hợp nhiều hành động trong một giá trị. `JwtTokenProvider` chịu trách nhiệm phát hành và xác minh token. Thiết kế hỗ trợ thay đổi menu và quyền từ dữ liệu mà không phải mã hóa cứng toàn bộ trong giao diện.
 
-Phân tích sâu vào các mối quan hệ, có thể thấy mối quan hệ giữa người dùng và vai trò là quan hệ nhiều - nhiều, được thể hiện thông qua thuộc tính `roles` mang kiểu dữ liệu tập hợp (`Set`). Hệ thống không cấp quyền hạn trực tiếp cho từng cá nhân người dùng; thay vào đó, các quyền hạn thao tác sẽ được gán cho một hoặc nhiều vai trò cụ thể thông qua bảng `RolePermission`.
+### 3.3.2. Trình tự xác thực yêu cầu
 
-**Cơ chế Bitmask Authorization:**
-Một điểm nhấn kỹ thuật quan trọng trong thiết kế này là việc sử dụng thuộc tính `actionMask` kiểu số nguyên (Integer) bên trong `RolePermission`. Thay vì phải tạo riêng lẻ từng quyền như (VIEW, ADD, EDIT, DELETE) thành các bản ghi khác nhau, hệ thống gộp chúng lại bằng phép toán thao tác bit (Bitwise). Ví dụ: VIEW = 1, ADD = 2, EDIT = 4, DELETE = 8. Nếu một vai trò có quyền Xem và Thêm, `actionMask` sẽ là 1 + 2 = 3. Cách tiếp cận này giúp giảm thiểu tối đa sự phình to của cơ sở dữ liệu, tối ưu hóa tốc độ truy vấn kiểm tra quyền, đồng thời tuân thủ đúng nguyên lý Kiểm soát truy cập dựa trên vai trò (Role-Based Access Control).
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as Angular
+    participant Auth as AuthController
+    participant JWT as JwtTokenProvider
+    participant API as Protected API
 
-Qua các phân tích trên, có thể kết luận rằng kiến trúc lớp bảo mật này đã đáp ứng đầy đủ và chặt chẽ các tiêu chuẩn của framework Spring Security. Mô hình không chỉ đảm bảo tính toàn vẹn và bảo mật của dữ liệu người dùng mà còn hỗ trợ mạnh mẽ cho kỹ thuật phân quyền động (Dynamic RBAC) vô cùng linh hoạt.
+    User->>UI: Nhập thông tin đăng nhập
+    UI->>Auth: POST /login
+    Auth->>JWT: Tạo token
+    JWT-->>Auth: JWT
+    Auth-->>UI: Token và thông tin người dùng
+    UI->>API: Authorization: Bearer token
+    API->>JWT: Xác minh token
+    JWT-->>API: Danh tính và quyền
+    API-->>UI: Dữ liệu hoặc HTTP 403
+```
 
-### 3.1.2. Thiết kế Cơ sở dữ liệu (Database Design)
-Việc lưu trữ thông tin phân quyền đòi hỏi một cấu trúc cơ sở dữ liệu chuẩn hóa nhằm hạn chế dư thừa dữ liệu.
+Hình 3.4. Biểu đồ tuần tự xác thực và gọi API
+
+Hình 3.4 cho thấy JWT được kiểm tra trên từng yêu cầu. Token hợp lệ chỉ chứng minh danh tính; endpoint vẫn phải kiểm tra role, permission và phạm vi cơ sở. Kết luận, bảo vệ route phía client không phải lớp bảo mật cuối cùng.
+
+## 3.4. THIẾT KẾ DỮ LIỆU NGHIỆP VỤ
 
 ```mermaid
 erDiagram
-    users ||--o{ user_roles : has
-    roles ||--o{ user_roles : belongs_to
-    app_modules ||--o{ app_functions : contains
-    roles ||--o{ app_role_permissions : has
-    app_functions ||--o{ app_role_permissions : belongs_to
+    USERS ||--o{ USER_ROLES : has
+    ROLES ||--o{ USER_ROLES : assigned
+    ROLES ||--o{ ROLE_PERMISSIONS : grants
+    APP_FUNCTIONS ||--o{ ROLE_PERMISSIONS : controls
+
+    USERS ||--o{ USER_PROPERTIES : assigned
+    HOTELS ||--o{ USER_PROPERTIES : scoped
+    HOTELS ||--o{ ROOM_TYPES : contains
+    ROOM_TYPES ||--o{ ROOMS : defines
+
+    USERS ||--o{ RESERVATIONS : books
+    HOTELS ||--o{ RESERVATIONS : receives
+    RESERVATIONS ||--|{ RESERVATION_DETAILS : includes
+    ROOM_TYPES ||--o{ RESERVATION_DETAILS : selected
+    RESERVATIONS ||--o{ RESERVATION_ROOMS : assigns
+    ROOMS ||--o{ RESERVATION_ROOMS : occupied
+    RESERVATIONS ||--o{ PAYMENTS : paid
+    RESERVATIONS ||--o| INVOICES : billed
+
+    USERS ||--o{ ACCOUNT_SUBSCRIPTIONS : owns
+    SUBSCRIPTION_PLANS ||--o{ ACCOUNT_SUBSCRIPTIONS : configures
 ```
-Hình 3.2. Sơ đồ thực thể kết hợp (ERD) cho module RBAC
 
-Bảng 3.1. Mô tả chi tiết các bảng trong cơ sở dữ liệu của phân hệ bảo mật
+Hình 3.5. Sơ đồ ERD rút gọn của hệ thống
 
-| Tên bảng | Chức năng | Khóa chính | Ràng buộc đặc biệt |
-|----------|-----------|------------|--------------------|
-| users | Lưu trữ thông tin định danh của người dùng | id | username (Unique), email (Unique) |
-| roles | Danh mục các vai trò của hệ thống | id | code (Unique) |
-| app_modules | Danh mục các phân hệ (Module) lớn của hệ thống | id | code (Unique) |
-| app_functions | Danh mục các chức năng chi tiết nằm trong từng Module | id | code (Unique), Khóa ngoại tới app_modules |
-| user_roles | Bảng trung gian ánh xạ giữa Users và Roles | user_id, role_id | Khóa ngoại tới users và roles |
-| app_role_permissions | Bảng trung gian ánh xạ Roles và AppFunctions, lưu trữ `action_mask` | id | Khóa ngoại tới roles và app_functions |
+Mục đích của Hình 3.5 là thể hiện các quan hệ dữ liệu quan trọng. `ReservationDetail` giữ loại phòng và số lượng khi đặt. `ReservationRoom` chỉ được tạo khi nhân viên gán phòng vật lý. Sự tách biệt này cho phép bán theo loại phòng trước khi biết số phòng cụ thể.
 
-### 3.1.3. Thiết kế kiến trúc cho phân hệ Quản lý Phòng và Dịch vụ
-Sau khi thiết lập hệ thống phân quyền, module tiếp theo được xây dựng là hệ thống quản lý danh mục phòng và dịch vụ khách sạn. Đây là phần lõi lưu trữ toàn bộ các thông tin về khả năng cung ứng dịch vụ của khách sạn.
+`UserProperty` giới hạn phạm vi cơ sở mà chủ sở hữu hoặc nhân viên được thao tác. `AccountSubscription` tách trạng thái gói khỏi trạng thái tài khoản và cơ sở. `Payment` giữ lịch sử giao dịch, kể cả hoàn tiền. Thiết kế bảo đảm dữ liệu vận hành không bị xóa khi subscription hết hạn.
 
-Biểu đồ lớp dưới đây thể hiện mối quan hệ giữa các thực thể chính trong phân hệ này:
+## 3.5. THIẾT KẾ QUY TRÌNH ĐẶT VÀ HỦY PHÒNG
+
+### 3.5.1. Activity Diagram đặt phòng
 
 ```mermaid
-classDiagram
-    class RoomType {
-        +Long id
-        +String code
-        +String nameVi
-        +String nameEn
-        +Integer maxGuest
-        +BigDecimal basePrice
-    }
-
-    class Room {
-        +Long id
-        +String roomNumber
-        +Integer floor
-        +String status
-    }
-
-    class RoomImage {
-        +Long id
-        +String imageUrl
-        +Boolean isPrimary
-    }
-
-    class HotelService {
-        +Long id
-        +String code
-        +String nameVi
-        +String nameEn
-        +BigDecimal price
-        +String status
-    }
-
-    RoomType "1" --> "*" Room : includes
-    Room "1" --> "*" RoomImage : has
-
-    style RoomType fill:#f9d0c4,stroke:#333,stroke-width:1px
-    style Room fill:#d4e1f9,stroke:#333,stroke-width:1px
-    style RoomImage fill:#ffe6cc,stroke:#333,stroke-width:1px
-    style HotelService fill:#fdf2d0,stroke:#333,stroke-width:1px
+flowchart TD
+    A[Bắt đầu] --> B[Chọn địa điểm, ngày và số khách]
+    B --> C[Tìm cơ sở còn phòng]
+    C --> D[Chọn RoomType và số lượng]
+    D --> E{Dữ liệu hợp lệ?}
+    E -- Không --> F[Hiển thị lỗi]
+    F --> D
+    E -- Có --> G[Backend kiểm tra giá, sức chứa và tồn phòng]
+    G --> H{Còn đủ phòng?}
+    H -- Không --> I[HTTP 409 Conflict]
+    H -- Có --> J[Tạo Reservation và ReservationDetail]
+    J --> K[Chọn phương thức thanh toán]
+    K --> L[Kết thúc]
 ```
-Hình 3.3. Biểu đồ lớp của phân hệ Quản lý Phòng và Dịch vụ
 
-Kiến trúc trên được thiết kế nhằm tách biệt rõ ràng giữa định nghĩa loại phòng (RoomType) và các phòng vật lý cụ thể (Room). Một loại phòng (ví dụ: Standard) có thể được áp dụng cho nhiều phòng khác nhau, giúp việc cấu hình giá cả và sức chứa trở nên linh hoạt. Hình ảnh mô tả cũng được liên kết trực tiếp vào từng phòng thực tế, cho phép khách hàng có cái nhìn chính xác nhất về không gian họ sẽ sử dụng. Các dịch vụ đi kèm (HotelService) được tổ chức thành một danh mục độc lập, sẵn sàng để liên kết vào các giao dịch đặt phòng sau này.
+Hình 3.6. Biểu đồ hoạt động đặt phòng
 
-Về mặt cơ sở dữ liệu, sơ đồ thực thể kết hợp (ERD) được thể hiện như sau:
+Hình 3.6 mô tả hai lớp kiểm tra. Frontend phản hồi sớm cho lỗi nhập liệu; backend kiểm tra lại dữ liệu tại biên tin cậy. HTTP 409 được dùng khi tài nguyên đã thay đổi giữa lúc tìm kiếm và xác nhận.
+
+### 3.5.2. Trình tự hủy và hoàn tiền
 
 ```mermaid
-erDiagram
-    room_types ||--o{ rooms : contains
-    rooms ||--o{ room_images : has
-    services
+sequenceDiagram
+    actor Customer
+    participant UI as Angular
+    participant RC as ReservationController
+    participant RS as ReservationService
+    participant PS as PaymentService
+    participant DB as Database
+
+    Customer->>UI: Chọn hủy booking
+    UI->>RC: POST /reservations/{id}/cancel
+    RC->>RS: Hủy reservation của khách hiện tại
+    RS->>DB: Khóa và kiểm tra reservation
+    RS->>PS: Hoàn các payment thành công
+    PS->>DB: Tạo giao dịch âm REFUND-{paymentId}
+    RS->>DB: Hủy gán phòng và cập nhật trạng thái
+    RS-->>RC: Reservation đã hủy
+    RC-->>UI: Kết quả thành công
 ```
-Hình 3.4. Sơ đồ thực thể kết hợp (ERD) cho module Phòng và Dịch vụ
 
-Bảng 3.2. Mô tả chi tiết các bảng trong phân hệ Phòng và Dịch vụ
+Hình 3.7. Biểu đồ tuần tự hủy booking và hoàn tiền
 
-| Tên bảng | Chức năng | Khóa chính | Ràng buộc đặc biệt |
-|----------|-----------|------------|--------------------|
-| room_types | Lưu trữ thông tin chung về loại phòng và giá cơ bản | id | code (Unique) |
-| rooms | Lưu trữ thông tin từng phòng vật lý, bao gồm số phòng, số tầng và trạng thái | id | room_number (Unique), room_type_id (Foreign Key) |
-| room_images | Lưu trữ đường dẫn ảnh thực tế của từng phòng | id | room_id (Foreign Key) |
-| services | Danh mục các dịch vụ phụ trợ do khách sạn cung cấp | id | code (Unique) |
+Mục đích của Hình 3.7 là bảo đảm hủy booking thuộc đúng khách hàng và hoàn tiền không bị lặp. Mã `REFUND-{paymentId}` cùng kiểm tra giao dịch tồn tại giúp thao tác hoàn tiền idempotent. Lịch sử tài chính được bảo toàn bằng bản ghi âm thay vì sửa giao dịch gốc.
 
-### 3.1.4. Thiết kế phân hệ Đặt phòng và Thanh toán (Reservation & Payment Management)
-Phân hệ Đặt phòng và Thanh toán là lõi giao dịch thương mại của hệ thống. Phân hệ này chịu trách nhiệm quản lý vòng đời của một phiên lưu trú, từ lúc khách hàng tạo yêu cầu đặt phòng (Booking), tiến hành nhận phòng (Check-in), sử dụng dịch vụ phát sinh, cho đến lúc trả phòng (Check-out) và xuất hóa đơn (Invoice).
+## 3.6. THIẾT KẾ QUY TRÌNH VẬN HÀNH LƯU TRÚ
 
-**Các nghiệp vụ cốt lõi:**
-- **Quản lý Đặt phòng (Reservation):** Hỗ trợ theo dõi trạng thái phòng, ghi nhận thông tin khách hàng, ngày dự kiến đến/đi và các yêu cầu đặc biệt.
-- **Thanh toán (Payment):** Xử lý giao dịch tài chính, hỗ trợ đa phương thức thanh toán (Tiền mặt, Thẻ tín dụng, Chuyển khoản) và ghi nhận lịch sử giao dịch.
-- **Hóa đơn (Invoice):** Tự động tổng hợp chi phí tiền phòng và các dịch vụ phát sinh để xuất hóa đơn điện tử minh bạch cho khách hàng.
+```mermaid
+stateDiagram-v2
+    [*] --> RESERVED
+    RESERVED --> ASSIGNED: Gán đủ phòng đúng loại
+    ASSIGNED --> OCCUPIED: Check-in
+    OCCUPIED --> DIRTY: Check-out
+    DIRTY --> AVAILABLE: Hoàn tất housekeeping
+    RESERVED --> CANCELLED: Khách hủy
+    ASSIGNED --> CANCELLED: Khách hủy
+```
 
-Thiết kế này đảm bảo mọi giao dịch đều được lưu vết chặt chẽ, hỗ trợ tối đa cho bộ phận Lễ tân và Kế toán trong việc đối soát doanh thu.
+Hình 3.8. Sơ đồ trạng thái phòng trong quy trình lưu trú
 
-### 3.1.5. Thiết kế kiến trúc phân hệ Đa cơ sở (Multi-Property Management)
-Với định hướng trở thành một nền tảng (Platform) quản lý lưu trú quy mô lớn, hệ thống được thiết kế mở rộng sang mô hình Đa cơ sở (Multi-Property). 
+Hình 3.8 phân biệt booking với trạng thái phòng vật lý. Check-in chặn phòng sai loại, sai cơ sở, đang có khách hoặc bảo trì. Check-out tạo hóa đơn, chuyển phòng sang `DIRTY` và tạo tác vụ dọn phòng. Phòng chỉ trở lại `AVAILABLE` sau khi housekeeping hoàn tất.
 
-**Mô hình cấp bậc địa điểm:**
-Hệ thống quản lý cây địa lý linh hoạt (Locations) với cấu trúc cha - con (Tỉnh/Thành -> Quận/Huyện -> Phường/Xã), giúp tối ưu hóa khả năng tìm kiếm của khách hàng. Mỗi cơ sở lưu trú (Hotel/Property) sẽ được gán tọa độ và mã địa lý chuẩn xác.
+## 3.7. THIẾT KẾ TÌM KIẾM VÀ DỮ LIỆU ĐỊA GIỚI
 
-**Quản lý chủ sở hữu và nhân sự:**
-Thực thể `UserProperty` đóng vai trò bản lề, liên kết một người dùng (`User`) với một hoặc nhiều cơ sở lưu trú (`Hotel`). Thuộc tính `relationshipType` phân định rõ quyền hạn: OWNER (Chủ sở hữu cơ sở) hoặc STAFF (Nhân viên lễ tân/quản lý được thuê). Sự phân tách này giúp một cá nhân có thể đầu tư nhiều khách sạn khác nhau mà chỉ cần dùng duy nhất một tài khoản đăng nhập để theo dõi chéo.
+Tìm kiếm công khai sử dụng mô hình tỉnh và phường/xã. Autocomplete trả kết quả theo nhóm và hỗ trợ điều hướng bàn phím. Search State giữ địa điểm, ngày, số khách và số phòng khi chuyển từ trang chủ sang kết quả.
 
-### 3.1.6. Thiết kế phân hệ Gói dịch vụ (Subscription Feature Gate)
-Để thương mại hóa nền tảng thông qua hình thức SaaS (Software as a Service), hệ thống tích hợp phân hệ Gói dịch vụ (Subscription).
+Hệ thống chuẩn hóa chuỗi tiếng Việt để so khớp có dấu và không dấu. Kết quả có thể lọc theo tỉnh, phường/xã, loại cơ sở, giá, hạng sao và điểm đánh giá; sắp xếp và phân trang được thực hiện phía server.
 
-**Cơ chế hoạt động:**
-Khác với RBAC (Role-Based Access Control) thông thường chỉ chặn người dùng theo chức danh (Lễ tân không được làm Admin), Feature Gate kết hợp thêm giới hạn dịch vụ (Subscription-Based Access Control). 
-- Các thực thể cốt lõi bao gồm: `SubscriptionPlan` (Gói: Free, Pro, Lifetime), `PlanFeature` (Giới hạn: Tối đa 10 phòng, Tối đa 5 ảnh).
-- Khi người dùng tạo một cơ sở, hệ thống sẽ ánh xạ chủ sở hữu với gói cước hiện hành của họ thông qua `AccountSubscription`.
+## 3.8. THIẾT KẾ MULTI-PROPERTY VÀ SUBSCRIPTION
 
-**Triển khai kỹ thuật:**
-Cơ chế kiểm duyệt này được thực thi ở tầng Backend thông qua Annotation tùy chỉnh (ví dụ: `@RequireFeature`). Khi Owner hoặc Staff gọi API tạo phòng mới, Interceptor sẽ chạy ngầm, kiểm tra đếm số lượng phòng hiện tại trong cơ sở dữ liệu. Nếu vượt mức cho phép của `PlanFeature`, hệ thống sẽ trả về lỗi HTTP 403 Forbidden kèm thông báo yêu cầu nâng cấp gói, từ đó thúc đẩy doanh thu cho nền tảng.
+`UserProperty` ánh xạ tài khoản với cơ sở và loại quan hệ. Mọi truy vấn quản trị theo cơ sở phải dùng Active Property Context hoặc phạm vi được gán. Chủ cơ sở không được truy cập tài nguyên của cơ sở khác bằng cách thay ID trên URL.
 
-## 3.2. THIẾT KẾ GIAO DIỆN
-Trải nghiệm người dùng đóng vai trò cốt lõi trong việc đánh giá chất lượng của một hệ thống phần mềm. Do đó, quy trình thiết kế giao diện được thực hiện dựa trên các nguyên tắc thiết kế hiện đại, tập trung vào tính tương tác và sự thuận tiện trong thao tác nghiệp vụ.
+Feature Gate kiểm tra trạng thái gói và lượng tài nguyên đã sử dụng. Các trạng thái hiện có gồm `FREE`, `NO_PLAN`, `STANDARD`, `BUSINESS`, `LIFETIME` và `EXPIRED`. Khi vượt giới hạn, backend trả HTTP 403 cùng thông báo nâng cấp; dữ liệu hiện có không bị xóa.
 
-Hệ thống sử dụng một khung giao diện thống nhất cho khu vực quản trị, được cấu thành từ thanh điều hướng bên trái (Sidebar) và vùng hiển thị dữ liệu chính. Thanh điều hướng được thiết kế tĩnh, cung cấp các lối tắt truy cập nhanh đến các phân hệ quản lý quan trọng như phòng, đặt phòng và người dùng. Trong khi đó, giao diện đăng nhập được thiết kế theo hình thức thẻ thông tin (Card) đặt tại trung tâm màn hình, kết hợp cùng hiệu ứng đổ bóng nhẹ nhằm thu hút sự tập trung của người dùng vào biểu mẫu xác thực.
+## 3.9. THIẾT KẾ DỮ LIỆU DEMO VÀ IMPORT
 
-Đối với phân hệ quản lý người dùng, giao diện được xây dựng dựa trên cấu trúc bảng dữ liệu (Data Table). Bảng dữ liệu cung cấp khả năng phân trang, sắp xếp và tích hợp các thao tác cập nhật trực tiếp trên từng hàng. Cách thiết kế này không chỉ giúp tối ưu hóa không gian hiển thị mà còn rút ngắn quy trình thao tác của nhân viên quản trị, từ đó nâng cao hiệu suất làm việc tổng thể.
+Dữ liệu demo dùng địa giới đã nhập làm nguồn, được đánh dấu `is_demo`, `data_source=DEMO` và `seed_key` duy nhất. Seeder dùng cơ chế upsert, có thể chạy lại và không sửa cơ sở thật. Chế độ STANDARD tạo tập hữu hạn phục vụ local; không được hiểu là bao phủ toàn bộ phường/xã.
 
-### 3.2.1. Chiến lược xây dựng các thành phần dùng chung (Shared Components)
-Để đảm bảo tính nhất quán của giao diện và giảm thiểu mã nguồn lặp lại, hệ thống áp dụng triệt để mẫu thiết kế Component-based của Angular thông qua việc xây dựng một bộ thư viện nội bộ các thành phần dùng chung (Shared Components). 
+Quy trình import dữ liệu mở đưa kết quả vào vùng tạm, thực hiện chống trùng theo mã ngoài, tên và địa giới, điện thoại, website và khoảng cách. Quản trị viên xem xét trước khi nhập chính thức. Cơ sở nhập chưa mặc nhiên có phòng, giá hoặc chủ sở hữu; chủ cơ sở phải gửi yêu cầu claim và được duyệt.
 
-Các thành phần tiêu biểu bao gồm:
-- **Data Table (`app-data-table`)**: Tích hợp sẵn cơ chế phân trang phía máy chủ (Server-side Pagination), sắp xếp, lọc toàn cục, và khả năng xử lý trạng thái rỗng (Empty State) với giao diện hiện đại.
-- **Stat Card (`app-stat-card`)**: Thẻ thống kê trực quan hiển thị các số liệu tổng quan kèm biểu tượng và chỉ số tăng trưởng, sử dụng rộng rãi trên Dashboard.
-- **Confirm Dialog**: Hộp thoại xác nhận thao tác tập trung, giúp chuẩn hóa trải nghiệm cảnh báo (xóa, hủy) trên toàn hệ thống.
+## 3.10. THIẾT KẾ GIAO DIỆN
 
-Việc đóng gói các tính năng phức tạp vào Shared Components giúp các phân hệ nghiệp vụ sau này (như Quản lý phòng, Quản lý nhân viên) chỉ cần khai báo thông số đầu vào (Inputs) và lắng nghe sự kiện (Outputs) mà không cần quan tâm đến logic hiển thị bên dưới.
+Giao diện public ưu tiên tìm kiếm, xem cơ sở và đặt phòng trên desktop lẫn mobile. Các trạng thái loading, empty, error và retry được thể hiện rõ. Ảnh local có fallback khi tài nguyên lỗi.
 
-### 3.2.2. Thiết kế Giao diện Bảng điều khiển (Admin Dashboard)
-Bảng điều khiển (Dashboard) đóng vai trò là trung tâm chỉ huy số, cung cấp cho quản lý cái nhìn toàn cảnh về tình trạng hoạt động của khách sạn theo thời gian thực.
-Giao diện được phân bổ thành ba khu vực chính:
-1. **Chỉ số tóm tắt (KPI Cards)**: Cung cấp tức thì các số liệu quan trọng nhất (như sự cố khẩn cấp, yêu cầu sửa chữa).
-2. **Biểu đồ phân tích (Analytics Charts)**: Tích hợp thư viện Chart.js để biểu diễn biến động doanh thu và tỷ lệ lấp đầy phòng dưới dạng đồ thị trực quan.
-3. **Danh sách tương tác nhanh**: Bảng danh sách các tác vụ hoặc yêu cầu bảo trì đang chờ xử lý, được ứng dụng kỹ thuật tải lười (Lazy Loading) để tối ưu hóa hiệu suất bộ nhớ. Mọi thao tác truy xuất ban đầu đều được thiết kế thông qua dữ liệu giả lập (Mock Data) nhằm chốt phương án hiển thị (UI) trước khi tiến hành tích hợp với Backend API.
-
-### 3.2.3. Giao diện Quản lý Đặt phòng (Reservation Management)
-Giao diện quản lý đặt phòng được thiết kế chuyên biệt để hỗ trợ nhân viên Lễ tân thao tác nhanh chóng và chính xác.
-- **Danh sách đặt phòng:** Kế thừa thành phần dùng chung `DataTable` để hiển thị danh sách khách hàng đặt phòng với đầy đủ các tính năng lọc theo ngày, trạng thái (Chờ xác nhận, Đã Check-in, Đã Check-out).
-- **Thao tác nhanh:** Tích hợp trực tiếp các nút chức năng nhận phòng, trả phòng và thanh toán ngay trên từng dòng dữ liệu, giúp giảm thiểu số lần chuyển trang và tối ưu hóa luồng công việc (Workflow) của nhân viên.
+Khu vực quản trị dùng sidebar, bảng dữ liệu và form nhất quán. Menu được tạo từ dữ liệu quyền thay vì hiển thị cố định. Những thành phần dùng chung gồm bảng dữ liệu, thẻ thống kê và hộp thoại xác nhận nhằm giảm mã lặp và chuẩn hóa thao tác.
 
 ---
 
 # CHƯƠNG 4
 # CÀI ĐẶT VÀ KIỂM THỬ HỆ THỐNG
 
-## 4.1. CÀI ĐẶT MÔI TRƯỜNG VÀ CƠ SỞ DỮ LIỆU
-### 4.1.1. Cài đặt kỹ thuật Auditing
-Để hỗ trợ việc truy vết dữ liệu (Data Tracking), toàn bộ các thực thể trong cơ sở dữ liệu đều được thiết kế để kế thừa từ lớp `AuditableEntity`. 
+## 4.1. CẤU TRÚC CÀI ĐẶT
 
-**Mô tả cài đặt:** Annotation `@EnableJpaAuditing` được kích hoạt ở cấp độ ứng dụng. Lớp `AuditableEntity` cung cấp bốn thuộc tính cơ bản: `created_at` (thời điểm khởi tạo), `updated_at` (thời điểm chỉnh sửa cuối), `created_by` (người tạo), và `updated_by` (người chỉnh sửa).
+Backend được tổ chức theo các nhóm `controllers`, `services`, `repositories`, `entities`, `dtos` và `security`. Controller không chứa nghiệp vụ phức tạp; Service điều phối giao dịch và kiểm tra quy tắc; Repository đóng gói truy vấn dữ liệu.
 
-### 4.1.2. Cài đặt Giao diện Front-end
-Giao diện của ứng dụng được xây dựng hoàn toàn dựa trên kiến trúc Standalone Components của Angular 22, loại bỏ hoàn toàn sự phụ thuộc vào khái niệm NgModules truyền thống. Việc này giúp cải thiện đáng kể tốc độ tải trang và quá trình biên dịch của trình duyệt. 
+Frontend tổ chức theo `core`, `shared` và `features`. Core chứa dịch vụ dùng toàn ứng dụng, interceptor và guard. Shared chứa thành phần trình bày dùng lại. Features chứa màn hình theo nghiệp vụ.
 
-Để hiện thực hóa các bản thiết kế giao diện, hệ thống tích hợp bộ thư viện PrimeNG phiên bản 21. Các thành phần giao diện phức tạp như bảng dữ liệu, hộp thoại và các trường nhập liệu mật khẩu đều được cung cấp sẵn bởi PrimeNG, giúp giảm thiểu thời gian lập trình và đảm bảo tính đồng bộ về mặt thẩm mỹ. Ngoài ra, việc tổ chức tệp tin được phân chia rõ ràng giữa các thành phần dùng chung (SharedModule), thành phần bảo vệ tuyến đường (Guards) và các thành phần chức năng (Features), tạo tiền đề vững chắc cho các giai đoạn mở rộng tính năng trong tương lai.
+Flyway quản lý các thay đổi schema. Các migration hiện hành bao gồm chuẩn hóa Unicode, ràng buộc tồn phòng theo phạm vi, dữ liệu demo, chỉ mục tìm kiếm, dữ liệu role/menu và ràng buộc idempotency cho payment.
 
-## 4.2. KIỂM THỬ CHỨC NĂNG BẢO MẬT
-### 4.2.1. Đánh giá kiểm thử
-Hệ thống API đã được tích hợp công cụ `springdoc-openapi`. Bằng cách truy cập Swagger UI, người lập trình có thể kiểm chứng trực tiếp các điểm cuối (endpoints) mà không cần thông qua ứng dụng máy khách. Quá trình kiểm thử cho thấy bộ lọc `JwtAuthenticationFilter` hoạt động chính xác, từ chối mọi yêu cầu (HTTP 401 Unauthorized) không chứa Token hợp lệ.
+## 4.2. CÀI ĐẶT XÁC THỰC VÀ PHÂN QUYỀN
 
-## 4.3. KIẾN TRÚC TÌM KIẾM THEO KHU VỰC VÀ GEOLOCATION
+Endpoint đăng nhập phát hành JWT sau khi kiểm tra thông tin tài khoản. Bộ lọc bảo mật đọc token và tạo `Authentication`. Annotation `@Permission` kiểm tra chức năng và hành động. Các endpoint nhạy cảm còn dùng `@PreAuthorize` để giới hạn role.
 
-### 4.3.1. Mô hình hành chính 2 cấp
-Để tối ưu hóa trải nghiệm tìm kiếm, hệ thống đã loại bỏ cấp Quận/Huyện, rút gọn cấu trúc địa lý thành mô hình 2 cấp: Tỉnh/Thành phố -> Phường/Xã. Việc này được thực hiện thông qua module `LocationImportService`, tự động đọc và flatten dữ liệu JSON chuẩn. Các phường/xã trùng tên được phân biệt qua mã hành chính.
+Menu của người dùng được trả từ API `my-menu`. Frontend chỉ dựng route và mục điều hướng được cấp, trong khi backend tiếp tục kiểm tra độc lập. `SUPER_ADMIN` có quyền nền tảng; yêu cầu thiếu quyền nhận HTTP 403.
 
-### 4.3.2. Geocoding và Khoảng cách (Haversine)
-Mỗi cơ sở lưu trú được gắn tọa độ vĩ độ (latitude) và kinh độ (longitude). Khi người dùng cho phép định vị hoặc tìm kiếm một địa danh cụ thể, hệ thống gọi API phân giải địa chỉ thành tọa độ. Khoảng cách thực tế từ vị trí người dùng đến khách sạn được tính toán trực tiếp trong câu lệnh SQL native bằng công thức Haversine, đảm bảo hiệu năng tính toán cao và tránh lỗi N+1 query. Hệ thống tự động fallback về sắp xếp mặc định nếu không có tọa độ người dùng, không hiển thị lỗi 0 km.
+## 4.3. CÀI ĐẶT TÌM KIẾM VÀ ĐẶT PHÒNG
+
+Trang chủ cung cấp autocomplete theo địa điểm và cơ sở. Trang kết quả nhận bộ lọc, sắp xếp và phân trang từ URL hoặc Search State. Giá được hiển thị theo số đêm và số lượng phòng.
+
+Khi xác nhận booking, backend kiểm tra:
+
+- Ngày nhận và trả phòng.
+- Số người lớn, trẻ em và sức chứa.
+- RoomType thuộc đúng cơ sở.
+- Số lượng phòng còn lại.
+- Giá hiện hành và tổng tiền.
+
+Booking hiện hỗ trợ một RoomType với `quantity > 1`. Nếu không đủ tồn phòng, API trả HTTP 409.
+
+## 4.4. CÀI ĐẶT THANH TOÁN, HỦY VÀ HOÀN TIỀN
+
+Hệ thống hỗ trợ tạo payment, URL VNPay, callback VNPay và callback simulator. Callback chỉ ghi nhận thành công khi mã giao dịch chưa tồn tại. Migration `V10__payment_idempotency_constraint.sql` bổ sung ràng buộc dữ liệu chống giao dịch trùng.
+
+Khách hàng hủy booking qua endpoint chuyên biệt. Service kiểm tra quyền sở hữu, trạng thái được phép hủy, khóa reservation và tạo giao dịch hoàn tiền âm cho các payment thành công. Việc gọi lại không tạo thêm refund cho cùng payment.
+
+## 4.5. CÀI ĐẶT VẬN HÀNH LƯU TRÚ
+
+Nhân viên có thể xem phòng còn trống, gán nhiều phòng vật lý và thực hiện check-in. Backend từ chối phòng không thuộc cơ sở, sai RoomType, `OCCUPIED` hoặc `MAINTENANCE`.
+
+Dịch vụ phát sinh được thêm trong thời gian lưu trú và lưu snapshot đơn giá. Check-out tổng hợp chi phí, tạo hóa đơn, cập nhật phòng thành `DIRTY` và tạo housekeeping task. Khi tác vụ hoàn tất, phòng chuyển thành `AVAILABLE/CLEAN`.
+
+## 4.6. CÀI ĐẶT MULTI-PROPERTY VÀ FEATURE GATE
+
+Active Property Context xác định cơ sở đang được quản lý. Repository và Service lọc dữ liệu theo các quan hệ trong `user_properties`. Feature Gate kiểm tra `AccountSubscription` và giới hạn của gói trước thao tác tạo tài nguyên.
+
+Thiết kế này ngăn hai lỗi độc lập: người dùng thao tác ngoài phạm vi cơ sở và người dùng tạo vượt hạn mức gói. Việc chỉ ẩn nút trên frontend không được xem là kiểm soát hợp lệ.
+
+## 4.7. GIAO DIỆN ĐÃ CÀI ĐẶT
+
+**Bảng 4.1. Nhóm màn hình chính**
+
+| Nhóm màn hình | Chức năng | Vai trò |
+|---|---|---|
+| Trang chủ và kết quả | Tìm kiếm, lọc, sắp xếp | Công khai |
+| Chi tiết cơ sở | Xem ảnh, RoomType, giá và tồn phòng | Công khai |
+| Checkout | Xác nhận khách, số phòng và chi phí | Khách hàng |
+| Payment Simulator | Mô phỏng callback và kết quả thanh toán | Khách hàng/Test |
+| Hồ sơ cá nhân | Thông tin, mật khẩu, booking và hóa đơn | Khách hàng |
+| Dashboard quản trị | Chỉ số và điều hướng nghiệp vụ | Nhân viên quản trị |
+| Role và Permission | Role, Action Mask và menu | Quản trị viên |
+| RoomType và Room | Quản lý tài nguyên lưu trú | Chủ cơ sở/Nhân viên |
+| Reservation | Gán phòng, check-in, dịch vụ, check-out | Lễ tân/Quản lý |
+
+Bảng 4.1 tổng hợp màn hình đã có trong mã nguồn. Mỗi màn hình chỉ hiển thị chức năng phù hợp vai trò, nhưng quyền cuối cùng vẫn do backend quyết định.
+
+Ảnh minh họa hiện có trong `docs/screenshots/` gồm trang tìm kiếm desktop/mobile, quản lý role và quản lý phòng. Khi xuất báo cáo Word hoặc PDF, ảnh phải được đặt dưới phần mô tả liên quan, có chú thích “Hình 4.x” và được tham chiếu trong nội dung.
+
+## 4.8. CHIẾN LƯỢC KIỂM THỬ
+
+Kiểm thử được chia thành:
+
+- **Unit test:** kiểm tra Service với dependency giả lập.
+- **Integration test:** khởi tạo Spring context, MockMvc và H2.
+- **Frontend unit test:** kiểm tra component và service.
+- **E2E test:** Playwright chạy các luồng public, customer, payment và admin.
+- **Build verification:** biên dịch production để phát hiện lỗi kiểu và đóng gói.
+
+Các trường hợp quan trọng gồm quyền truy cập, tìm kiếm Unicode, tồn phòng, booking nhiều phòng cùng loại, gán phòng đúng phạm vi, payment idempotency, hủy booking, hoàn tiền và giới hạn subscription.
+
+## 4.9. KẾT QUẢ KIỂM THỬ
+
+**Bảng 4.2. Kết quả kiểm thử được xác minh**
+
+| Hạng mục | Kết quả | Thời điểm |
+|---|---:|---|
+| Backend Maven test | 49/49 pass | 19/07/2026 |
+| Failure | 0 | 19/07/2026 |
+| Error | 0 | 19/07/2026 |
+| Skipped | 0 | 19/07/2026 |
+| Frontend unit | 20/20 pass | Mốc báo cáo 15/07/2026 |
+| Home Search Playwright | 10/10 pass | Mốc báo cáo 15/07/2026 |
+| Public/Customer Playwright | 5/5 pass | Mốc báo cáo 15/07/2026 |
+| Search Result Playwright | 2/2 pass | Mốc báo cáo 15/07/2026 |
+| Admin Playwright | 3/3 pass | Mốc báo cáo 15/07/2026 |
+| Angular production build | Pass, còn warning bundle/CommonJS | Mốc báo cáo 15/07/2026 |
+
+Bảng 4.2 phân biệt kết quả vừa chạy với mốc lịch sử. Lệnh backend `mvn test` hoàn tất `BUILD SUCCESS` trong 1 phút 24 giây. Toàn bộ 49 test đều đạt, gồm 7 test `PaymentServiceImplTest`, 6 test `ReservationServiceTest` và 3 test `PaymentControllerIntegrationTest`.
+
+Kết quả frontend trong bảng là bằng chứng lịch sử ngày 15/07/2026, chưa phải lần chạy lại sau thay đổi payment hiện hành. Vì vậy, báo cáo không khẳng định E2E payment mới đã đạt cho đến khi bộ Playwright được chạy lại.
+
+## 4.10. ĐÁNH GIÁ KẾT QUẢ
+
+Backend đã vượt qua toàn bộ test hiện hành và chứng minh các thay đổi payment, hủy booking, hoàn tiền và subscription không làm hỏng bộ kiểm thử. Quá trình build phát sinh cảnh báo Lombok `@Builder` tại một số entity subscription, cảnh báo H2 dialect, `open-in-view` và Java agent; không có lỗi biên dịch hoặc lỗi test.
+
+Hệ thống đáp ứng các luồng cốt lõi từ tìm kiếm đến vận hành lưu trú. Tuy nhiên, cần tiếp tục chạy lại frontend unit, production build và toàn bộ Playwright trên worktree hiện hành để có bộ bằng chứng đồng nhất cho phiên bản cuối.
 
 ---
 
@@ -303,40 +503,55 @@ Mỗi cơ sở lưu trú được gắn tọa độ vĩ độ (latitude) và kin
 # KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN
 
 ## 5.1. KẾT LUẬN
-(Nội dung đang được cập nhật)
 
-## 5.2. HƯỚNG PHÁT TRIỂN
-(Nội dung đang được cập nhật)
+Đề tài đã xây dựng được hệ thống quản lý khách sạn và đặt phòng trực tuyến trên kiến trúc Angular và Spring Boot. Hệ thống hỗ trợ tìm kiếm tiếng Việt, đặt nhiều phòng cùng loại, quản lý tồn phòng, gán phòng vật lý, check-in, dịch vụ phát sinh, check-out, hóa đơn và housekeeping.
 
-## Chương X. Tự Động Bổ Sung Dữ Liệu Khách Sạn & Thuật Toán Deduplication
+Phân hệ bảo mật kết hợp JWT, role, Action Mask, phạm vi cơ sở và Feature Gate. Mô hình này phù hợp nền tảng nhiều cơ sở vì quyền thao tác và giới hạn thương mại được kiểm tra độc lập.
 
-### 1. Vấn Đề Đặt Ra & Phương Pháp Giải Quyết
-Trong quá trình khởi tạo một nền tảng OTA, vấn đề "Cold Start" (thiếu dữ liệu ban đầu) là một thách thức rất lớn. Việc yêu cầu hàng ngàn chủ cơ sở tự đăng ký từ đầu tốn rất nhiều nguồn lực.
-Tuy nhiên, hệ thống không được phép thu thập dữ liệu trái phép (scraping) từ các bên thứ ba (OTA khác) vì vấn đề bản quyền và đạo đức.
+Phân hệ thanh toán đã có cơ chế chống callback trùng và hoàn tiền khi hủy. Ràng buộc cơ sở dữ liệu cùng kiểm tra tại Service bảo vệ tính nhất quán khi yêu cầu lặp lại. Kết quả backend ngày 19/07/2026 đạt 49/49 test, không có failure, error hoặc skipped.
 
-**Giải pháp:**
-Tích hợp API cung cấp Dữ Liệu Mở (Open Data) hoặc dịch vụ cung cấp thông tin POI hợp pháp (như Nominatim, Google Places) để tạo dựng danh mục cơ sở lưu trú nền tảng. Hệ thống sử dụng một Provider Abstraction Layer (interface AccommodationDataProvider), cho phép hoán đổi provider tùy theo cấu hình.
+Dữ liệu địa giới, tìm kiếm Unicode và seeder demo giúp hệ thống có dữ liệu trình diễn có thể lặp lại mà không sao chép từ OTA hoặc sửa cơ sở thật. Các báo cáo và mã nguồn cũng phân biệt rõ dữ liệu STANDARD với phạm vi bao phủ toàn bộ.
 
-### 2. Thuật Toán Chống Trùng Lặp 5 Cấp (Deduplication)
-Khi lấy dữ liệu từ Provider, một rủi ro lớn là nhập nhiều lần một cơ sở hoặc cơ sở đã tồn tại trong DB. Quá trình kiểm tra trùng được thực hiện ở 5 mức:
-- **Mức 1 (External ID)**: Trùng mã định danh do Provider cung cấp (EXACT_DUPLICATE).
-- **Mức 2 (Tên + Tỉnh + Phường)**: So khớp dựa trên tên chuẩn hóa (Normalized Name) trong cùng một khu vực hành chính (POSSIBLE_DUPLICATE).
-- **Mức 3 (Điện thoại)**: Nếu Provider có cung cấp SĐT, kiểm tra trùng SĐT.
-- **Mức 4 (Website)**: Trùng domain trang web chính thức.
-- **Mức 5 (Không Gian - Geo Spatial)**: Sử dụng Haversine tính khoảng cách giữa hai cơ sở. Nếu khoảng cách dưới 50m và tên có độ tương đồng (String Distance) cao thì đưa vào POSSIBLE_DUPLICATE.
+## 5.2. HẠN CHẾ
 
-Tất cả các bản ghi tìm được đều lưu vào bảng tạm (property_import_items). Quản trị viên phải xác nhận (Link/Ignore) trước khi import chính thức.
+- Một booking mới hỗ trợ một RoomType với số lượng nhiều phòng.
+- Khách chưa chọn dịch vụ bổ sung ngay tại checkout.
+- Favorites và Customer Reviews chưa hoàn thiện.
+- Điểm đánh giá chưa được tổng hợp từ quy trình review thật.
+- Subscription chưa có đầy đủ lịch sử activate, renew, upgrade, downgrade và revoke.
+- Đối soát thanh toán và báo cáo tài chính chuyên sâu chưa hoàn chỉnh.
+- Giao diện Owner chưa bao phủ toàn bộ ảnh, nhân viên, dịch vụ và vận hành.
+- Báo cáo doanh thu và công suất chưa đầy đủ theo cơ sở và khoảng ngày.
+- Frontend và Playwright chưa được chạy lại sau thay đổi payment hiện hành.
+- Một số cảnh báo build và cấu hình JPA cần được xử lý trước triển khai production.
 
-### 3. Nhận Quyền Sở Hữu (Claim Ownership)
-Dữ liệu tự động nhập chỉ tạo một *Hồ sơ Cơ sở (Property Profile)* ở trạng thái IMPORTED_PENDING_REVIEW, chưa có phòng, chưa có giá và chưa có người quản lý.
-Chủ cơ sở có thể truy cập hệ thống, tìm khách sạn của mình và gửi yêu cầu PropertyClaimRequest. Sau khi xác minh pháp lý (giấy phép kinh doanh, v.v.), quản trị viên duyệt và hệ thống gán role OWNER cho tài khoản yêu cầu. Từ đó, chủ cơ sở có thể bán phòng.
+## 5.3. HƯỚNG PHÁT TRIỂN
 
-## Chương X+1. Dữ liệu demo có kiểm soát và cổng quản lý cơ sở
+1. Hỗ trợ nhiều RoomType trong cùng một booking bằng cấu trúc giỏ phòng.
+2. Bổ sung dịch vụ tùy chọn tại checkout và chính sách giá theo ngày.
+3. Xây dựng Favorites, Review, duyệt nội dung và điểm đánh giá xác thực.
+4. Hoàn thiện vòng đời subscription và lịch sử thay đổi gói.
+5. Bổ sung đối soát payment, webhook có chữ ký và nhật ký kiểm toán.
+6. Hoàn thiện Owner Portal cho ảnh, nhân viên, dịch vụ và báo cáo.
+7. Xây dựng báo cáo doanh thu, công suất, tỷ lệ hủy theo cơ sở và thời gian.
+8. Bổ sung lịch sử trạng thái phòng và tiện nghi theo RoomType.
+9. Tăng kiểm thử đồng thời cho tồn phòng, callback và hoàn tiền.
+10. Chuẩn hóa pipeline CI để chạy backend, frontend, build và Playwright trên mỗi thay đổi.
 
-Phase dữ liệu demo dùng dữ liệu địa giới đã import làm nguồn duy nhất để tạo tập kiểm thử có thể lặp lại. Mỗi bản ghi được đánh dấu `is_demo`, `data_source=DEMO` và `seed_key` duy nhất, vì vậy hệ thống có thể upsert mà không sửa cơ sở thật. Chế độ STANDARD tạo một số lượng hữu hạn theo tỉnh để local khởi động nhanh; FULL_COVERAGE xử lý theo Ward, theo batch và progress, phù hợp riêng cho demo/test. Tên thương hiệu, điện thoại, email, địa chỉ và ảnh đều là dữ liệu trình diễn có ghi nhãn, không sao chép từ OTA hoặc cơ sở thật.
+## 5.4. KẾT LUẬN CHUNG
 
-Mô hình SaaS phân tách ba trục trạng thái: tài khoản người dùng, subscription và duyệt/vận hành cơ sở. `UserProperty` quyết định phạm vi dữ liệu mà Owner/Receptionist/Staff được xem; `AccountSubscription` và `PlanFeature` quyết định giới hạn cơ sở, loại phòng, phòng vật lý, ảnh và nhân viên. Các trạng thái NO_PLAN, FREE, STANDARD, BUSINESS, LIFETIME và EXPIRED được giữ độc lập để dữ liệu người dùng không bị xóa khi gói hết hạn.
+LuxeStay đã đạt mục tiêu xây dựng nền tảng quản lý và đặt phòng có các nghiệp vụ cốt lõi, bảo mật nhiều lớp và khả năng quản lý nhiều cơ sở. Kiến trúc hiện tại tạo nền tảng phù hợp để tiếp tục phát triển thành sản phẩm SaaS hoàn chỉnh. Các giới hạn còn lại đã được xác định rõ, không được trình bày như chức năng hoàn thành và có thể triển khai theo từng giai đoạn mà không phải thay đổi nền tảng kiến trúc chính.
 
-Quy trình lưu trú dùng `ReservationDetail` để đặt RoomType và quantity trước khi biết số phòng vật lý. Khi check-in, nhân viên gán đủ phòng đúng loại trong `ReservationRoom`; dịch vụ lưu giá tại thời điểm sử dụng; check-out tổng hợp invoice rồi chuyển phòng sang DIRTY và tạo tác vụ dọn phòng. Phòng chỉ trở lại AVAILABLE sau khi tác vụ housekeeping hoàn tất, nhờ đó trạng thái tồn phòng phản ánh đúng vận hành thực tế.
+---
 
-Kiểm thử phase phải chứng minh seeder idempotent, không tác động dữ liệu thật, owner bị giới hạn đúng property/subscription, search có dấu và không dấu, availability/booking quantity đúng, check-in không gán chéo cơ sở, dịch vụ dùng giá snapshot, invoice được tạo và phòng đi qua chuỗi OCCUPIED -> DIRTY -> AVAILABLE. Báo cáo không được gọi STANDARD là bao phủ toàn bộ Ward và không xác nhận check-out nếu chưa kiểm tra cả invoice lẫn trạng thái phòng.
+# TÀI LIỆU THAM KHẢO
+
+1. Angular, “Angular Documentation,” https://angular.dev/.
+2. Chart.js, “Chart.js Documentation,” https://www.chartjs.org/docs/.
+3. Docker, “Docker Documentation,” https://docs.docker.com/.
+4. Flyway, “Flyway Documentation,” https://documentation.red-gate.com/flyway/.
+5. Oracle, “Java Platform, Standard Edition Documentation,” https://docs.oracle.com/en/java/javase/21/.
+6. Playwright, “Playwright Documentation,” https://playwright.dev/docs/intro.
+7. PrimeTek, “PrimeNG Documentation,” https://primeng.org/.
+8. Spring, “Spring Boot Reference Documentation,” https://docs.spring.io/spring-boot/docs/3.2.5/reference/html/.
+9. Spring, “Spring Security Reference,” https://docs.spring.io/spring-security/reference/.

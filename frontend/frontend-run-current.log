@@ -1,0 +1,134 @@
+
+> frontend@0.0.0 start
+> ng serve --host 127.0.0.1 --port 4200
+
+❯ Building...
+✔ Building...
+Initial chunk files | Names                          |  Raw size
+main.js             | main                           |   1.10 MB | 
+styles.css          | styles                         | 339.23 kB | 
+chunk-COFIHD2I.js   | -                              |   5.06 kB | 
+chunk-CSZMKHZ7.js   | -                              |   4.43 kB | 
+chunk-ENJHROTE.js   | -                              |   3.67 kB | 
+chunk-YOXOBUKX.js   | -                              |   3.37 kB | 
+chunk-H4ONM2CX.js   | -                              |   1.81 kB | 
+chunk-CZJLB7T5.js   | -                              |   1.08 kB | 
+chunk-PUUYRYQZ.js   | -                              | 187 bytes | 
+
+                    | Initial total                  |   1.46 MB
+
+Lazy chunk files    | Names                          |  Raw size
+chunk-TB6LVEV4.js   | role-management-component      |  37.02 kB | 
+chunk-YK37CZ6S.js   | role-permission-component      |  33.67 kB | 
+chunk-ODKMS6D2.js   | management-inventory-component |  33.11 kB | 
+chunk-YWDVLHTG.js   | module-management              |  32.88 kB | 
+chunk-6PK7ZAKP.js   | partner-register-component     |  26.43 kB | 
+chunk-6SEKQEQM.js   | subscription-billing-component |  23.78 kB | 
+chunk-6TVRRENP.js   | management-layout              |  23.68 kB | 
+chunk-A7ZPY3GT.js   | chat-dashboard                 |  21.77 kB | 
+chunk-56CWBJOJ.js   | subscription-plans             |  19.60 kB | 
+chunk-5PXJHLXP.js   | property-imports-component     |  19.41 kB | 
+chunk-CKIADHPE.js   | property-management            |  18.48 kB | 
+chunk-E4UKK7WB.js   | management-dashboard-component |  18.39 kB | 
+chunk-TZ3REEN5.js   | forbidden-component            |  15.42 kB | 
+chunk-AAEET4J6.js   | my-invoices-component          |  14.65 kB | 
+chunk-IKHS3OSW.js   | payment-simulator              |  13.93 kB | 
+...and 7 more lazy chunks files. Use "--verbose" to show all the files.
+
+Application bundle generation complete. [20.129 seconds] - 2026-07-18T18:21:50.819Z
+
+Watch mode enabled. Watching for file changes...
+NOTE: Raw file sizes do not reflect development server per-request transformations.
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m4200[22m/[39m
+[2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
+❯ Changes detected. Rebuilding...
+✔ Changes detected. Rebuilding...
+Application bundle generation failed. [16.894 seconds] - 2026-07-18T19:01:18.625Z
+
+❯ Changes detected. Rebuilding...
+✔ Changes detected. Rebuilding...
+Initial chunk files | Names                          |  Raw size
+main.js             | main                           |   1.10 MB | 
+styles.css          | styles                         | 339.23 kB | 
+chunk-COFIHD2I.js   | -                              |   5.06 kB | 
+chunk-CSZMKHZ7.js   | -                              |   4.43 kB | 
+chunk-ENJHROTE.js   | -                              |   3.67 kB | 
+chunk-YOXOBUKX.js   | -                              |   3.37 kB | 
+chunk-H4ONM2CX.js   | -                              |   1.81 kB | 
+chunk-CZJLB7T5.js   | -                              |   1.08 kB | 
+chunk-PUUYRYQZ.js   | -                              | 187 bytes | 
+
+                    | Initial total                  |   1.46 MB
+
+Lazy chunk files    | Names                          |  Raw size
+chunk-TB6LVEV4.js   | role-management-component      |  37.02 kB | 
+chunk-YK37CZ6S.js   | role-permission-component      |  33.67 kB | 
+chunk-ODKMS6D2.js   | management-inventory-component |  33.11 kB | 
+chunk-YWDVLHTG.js   | module-management              |  32.88 kB | 
+chunk-6PK7ZAKP.js   | partner-register-component     |  26.43 kB | 
+chunk-6SEKQEQM.js   | subscription-billing-component |  23.78 kB | 
+chunk-6TVRRENP.js   | management-layout              |  23.68 kB | 
+chunk-A7ZPY3GT.js   | chat-dashboard                 |  21.77 kB | 
+chunk-56CWBJOJ.js   | subscription-plans             |  19.60 kB | 
+chunk-5PXJHLXP.js   | property-imports-component     |  19.41 kB | 
+chunk-CKIADHPE.js   | property-management            |  18.48 kB | 
+chunk-E4UKK7WB.js   | management-dashboard-component |  18.39 kB | 
+chunk-TZ3REEN5.js   | forbidden-component            |  15.42 kB | 
+chunk-AAEET4J6.js   | my-invoices-component          |  14.65 kB | 
+chunk-IKHS3OSW.js   | payment-simulator              |  13.93 kB | 
+...and 7 more lazy chunks files. Use "--verbose" to show all the files.
+
+Application bundle generation complete. [6.748 seconds] - 2026-07-18T19:01:57.740Z
+
+Page reload sent to client(s).
+❯ Changes detected. Rebuilding...
+✔ Changes detected. Rebuilding...
+Initial chunk files | Names             | Raw size
+main.js             | main              |  1.10 MB | 
+
+Lazy chunk files    | Names             | Raw size
+chunk-2L26ZOTA.js   | payment-simulator | 14.07 kB | 
+
+Application bundle generation complete. [3.412 seconds] - 2026-07-18T20:15:26.270Z
+
+Page reload sent to client(s).
+❯ Changes detected. Rebuilding...
+✔ Changes detected. Rebuilding...
+Initial chunk files | Names | Raw size
+main.js             | main  |  1.10 MB | 
+
+Application bundle generation complete. [4.714 seconds] - 2026-07-19T10:44:03.971Z
+
+Page reload sent to client(s).
+❯ Changes detected. Rebuilding...
+✔ Changes detected. Rebuilding...
+Initial chunk files | Names | Raw size
+main.js             | main  |  1.11 MB | 
+
+Application bundle generation complete. [5.276 seconds] - 2026-07-19T10:53:44.586Z
+
+Page reload sent to client(s).
+❯ Changes detected. Rebuilding...
+✔ Changes detected. Rebuilding...
+Initial chunk files | Names | Raw size
+main.js             | main  |  1.11 MB | 
+
+Application bundle generation complete. [8.239 seconds] - 2026-07-19T10:56:16.556Z
+
+Component update sent to client(s).
+❯ Changes detected. Rebuilding...
+✔ Changes detected. Rebuilding...
+Initial chunk files | Names | Raw size
+main.js             | main  |  1.11 MB | 
+
+Application bundle generation complete. [3.963 seconds] - 2026-07-19T10:57:09.878Z
+
+Component update sent to client(s).
+❯ Changes detected. Rebuilding...
+✔ Changes detected. Rebuilding...
+Initial chunk files | Names | Raw size
+main.js             | main  |  1.11 MB | 
+
+Application bundle generation complete. [3.801 seconds] - 2026-07-19T11:20:49.040Z
+
+Page reload sent to client(s).
