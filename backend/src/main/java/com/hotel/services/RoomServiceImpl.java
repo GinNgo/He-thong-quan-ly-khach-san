@@ -40,8 +40,8 @@ public class RoomServiceImpl implements RoomService {
     @Override
     public RoomDTO getRoomById(Long id) {
         Room room = roomRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Room not found"));
-        propertyAccessService.requireCanManage(room.getHotel().getId());
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy phòng."));
+        propertyAccessService.requireAccessibleOrNotFound(room.getHotel().getId(), "phòng");
         return mapToDTO(room);
     }
 
@@ -50,8 +50,8 @@ public class RoomServiceImpl implements RoomService {
     public RoomDTO createRoom(RoomDTO dto) {
         Room room = new Room();
         RoomType roomType = roomTypeRepository.findById(dto.getRoomTypeId())
-                .orElseThrow(() -> new RuntimeException("RoomType not found"));
-        propertyAccessService.requireCanManage(roomType.getHotel().getId());
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
+        propertyAccessService.requireAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
         if (dto.getHotelId() != null && !dto.getHotelId().equals(roomType.getHotel().getId())) {
             throw new IllegalArgumentException("Loại phòng không thuộc cơ sở đã chọn.");
         }
@@ -80,11 +80,11 @@ public class RoomServiceImpl implements RoomService {
     @Transactional
     public RoomDTO updateRoom(Long id, RoomDTO dto) {
         Room room = roomRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Room not found"));
-        propertyAccessService.requireCanManage(room.getHotel().getId());
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy phòng."));
+        propertyAccessService.requireAccessibleOrNotFound(room.getHotel().getId(), "phòng");
                 
         RoomType roomType = roomTypeRepository.findById(dto.getRoomTypeId())
-                .orElseThrow(() -> new RuntimeException("RoomType not found"));
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
         if (!roomType.getHotel().getId().equals(room.getHotel().getId())) {
             throw new IllegalArgumentException("Không thể chuyển phòng sang loại phòng của cơ sở khác.");
         }
@@ -105,8 +105,8 @@ public class RoomServiceImpl implements RoomService {
     @Transactional
     public void deleteRoom(Long id) {
         Room room = roomRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Room not found"));
-        propertyAccessService.requireCanManage(room.getHotel().getId());
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy phòng."));
+        propertyAccessService.requireAccessibleOrNotFound(room.getHotel().getId(), "phòng");
         if ("OCCUPIED".equals(room.getStatus())) {
             throw new IllegalStateException("Không thể ngừng phòng đang có khách.");
         }
@@ -127,8 +127,8 @@ public class RoomServiceImpl implements RoomService {
             throw new IllegalArgumentException("Mỗi lần chỉ được tạo tối đa 200 phòng.");
         }
         RoomType roomType = roomTypeRepository.findById(request.getRoomTypeId())
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy loại phòng."));
-        propertyAccessService.requireCanManage(roomType.getHotel().getId());
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
+        propertyAccessService.requireAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
         if (request.getHotelId() != null && !request.getHotelId().equals(roomType.getHotel().getId())) {
             throw new IllegalArgumentException("Loại phòng không thuộc cơ sở đã chọn.");
         }

@@ -23,6 +23,9 @@ public class HotelController {
     @Autowired
     private RoomTypeService roomTypeService;
 
+    @Autowired
+    private com.hotel.services.PropertyAccessService propertyAccessService;
+
     @GetMapping("/public/search")
     public ResponseEntity<List<Hotel>> searchHotels(
             @RequestParam(required = false) String city,
@@ -64,6 +67,9 @@ public class HotelController {
     @com.hotel.security.RequireFeature("HOTEL")
     @GetMapping("/my-hotels")
     public ResponseEntity<List<Hotel>> getMyHotels(@org.springframework.security.core.annotation.AuthenticationPrincipal com.hotel.security.CustomUserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
         return ResponseEntity.ok(hotelService.getHotelsByOwnerId(userDetails.getUserId()));
     }
 
@@ -94,12 +100,14 @@ public class HotelController {
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasAnyAuthority('PROPERTY_OWNER', 'SUPER_ADMIN')")
     @PostMapping("/{id}/submit")
     public ResponseEntity<Hotel> submitHotel(@PathVariable Long id) {
-        return hotelService.getHotelById(id).map(hotel -> {
-            hotel.setStatus("PENDING");
-            return ResponseEntity.ok(hotelService.updateHotel(id, hotel));
-        }).orElse(ResponseEntity.notFound().build());
+        Hotel hotel = hotelService.getHotelById(id)
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy cơ sở."));
+        propertyAccessService.requireAccessibleOrNotFound(id, "cơ sở");
+        hotel.setStatus("PENDING");
+        return ResponseEntity.ok(hotelService.updateHotel(id, hotel));
     }
 
     @PreAuthorize("hasAuthority('SUPER_ADMIN')")
@@ -108,7 +116,7 @@ public class HotelController {
         return hotelService.getHotelById(id).map(hotel -> {
             hotel.setStatus("ACTIVE");
             return ResponseEntity.ok(hotelService.updateHotel(id, hotel));
-        }).orElse(ResponseEntity.notFound().build());
+        }).orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy cơ sở."));
     }
 
     @PreAuthorize("hasAuthority('SUPER_ADMIN')")
@@ -117,6 +125,6 @@ public class HotelController {
         return hotelService.getHotelById(id).map(hotel -> {
             hotel.setStatus("REJECTED");
             return ResponseEntity.ok(hotelService.updateHotel(id, hotel));
-        }).orElse(ResponseEntity.notFound().build());
+        }).orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy cơ sở."));
     }
 }

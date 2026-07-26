@@ -2,6 +2,7 @@ package com.hotel.services.impl;
 
 import com.hotel.dtos.InvoiceDTO;
 import com.hotel.services.InvoiceService;
+import com.hotel.services.ReservationService;
 import com.hotel.entities.Invoice;
 import com.hotel.entities.Reservation;
 import com.hotel.repositories.InvoiceRepository;
@@ -15,15 +16,19 @@ import java.util.UUID;
 public class InvoiceServiceImpl implements InvoiceService {
     private final InvoiceRepository invoiceRepository;
     private final ReservationRepository reservationRepository;
+    private final ReservationService reservationService;
 
-    public InvoiceServiceImpl(InvoiceRepository invoiceRepository, ReservationRepository reservationRepository) {
+    public InvoiceServiceImpl(InvoiceRepository invoiceRepository, ReservationRepository reservationRepository,
+                              ReservationService reservationService) {
         this.invoiceRepository = invoiceRepository;
         this.reservationRepository = reservationRepository;
+        this.reservationService = reservationService;
     }
 
     @Override
     @Transactional(readOnly = true)
     public InvoiceDTO getInvoiceByReservation(Long reservationId) {
+        reservationService.getReservationById(reservationId);
         return invoiceRepository.findAll().stream()
                 .filter(inv -> inv.getReservation().getId().equals(reservationId))
                 .map(this::mapToDTO)
@@ -34,6 +39,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Override
     @Transactional
     public InvoiceDTO generateInvoice(Long reservationId) {
+        reservationService.getReservationById(reservationId);
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new RuntimeException("Reservation not found"));
         

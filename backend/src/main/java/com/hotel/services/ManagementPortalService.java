@@ -162,6 +162,9 @@ public class ManagementPortalService {
 
     @Transactional
     public RoomTypeDTO updateRoomType(Long id, RoomTypeDTO dto) {
+        RoomType roomType = roomTypeRepository.findById(id)
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
+        propertyAccessService.requireAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
         return roomTypeService.updateRoomType(id, dto);
     }
 
@@ -185,6 +188,9 @@ public class ManagementPortalService {
 
     @Transactional
     public RoomDTO updateRoom(Long id, RoomDTO dto) {
+        Room room = roomRepository.findById(id)
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy phòng."));
+        propertyAccessService.requireAccessibleOrNotFound(room.getHotel().getId(), "phòng");
         return roomService.updateRoom(id, dto);
     }
 
@@ -230,8 +236,8 @@ public class ManagementPortalService {
     @Transactional
     public Map<String, Object> completeHousekeeping(Long taskId) {
         HousekeepingTask task = housekeepingTaskRepository.findById(taskId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tác vụ dọn phòng."));
-        propertyAccessService.requireCanManage(task.getHotel().getId());
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy tác vụ dọn phòng."));
+        propertyAccessService.requireAccessibleOrNotFound(task.getHotel().getId(), "tác vụ dọn phòng");
         if (!Set.of("PENDING", "IN_PROGRESS").contains(task.getStatus())) {
             throw new IllegalStateException("Tác vụ dọn phòng đã kết thúc.");
         }

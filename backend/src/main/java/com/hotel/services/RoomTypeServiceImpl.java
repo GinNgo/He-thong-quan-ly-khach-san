@@ -58,8 +58,8 @@ public class RoomTypeServiceImpl implements RoomTypeService {
     @Transactional(readOnly = true)
     public RoomTypeDTO getRoomTypeById(Long id) {
         RoomType roomType = roomTypeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Room type not found"));
-        propertyAccessService.requireCanManage(roomType.getHotel().getId());
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
+        propertyAccessService.requireAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
         return mapToDTO(roomType);
     }
 
@@ -85,8 +85,8 @@ public class RoomTypeServiceImpl implements RoomTypeService {
     @Transactional
     public RoomTypeDTO updateRoomType(Long id, RoomTypeDTO dto) {
         RoomType roomType = roomTypeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Room type not found"));
-        propertyAccessService.requireCanManage(roomType.getHotel().getId());
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
+        propertyAccessService.requireAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
         if (dto.getHotelId() != null && !dto.getHotelId().equals(roomType.getHotel().getId())) {
             throw new IllegalArgumentException("Không thể chuyển loại phòng sang cơ sở khác.");
         }
@@ -104,8 +104,8 @@ public class RoomTypeServiceImpl implements RoomTypeService {
     @Transactional
     public void deleteRoomType(Long id) {
         RoomType roomType = roomTypeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Room type not found"));
-        propertyAccessService.requireCanManage(roomType.getHotel().getId());
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
+        propertyAccessService.requireAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
         roomType.setStatus("INACTIVE");
         roomTypeRepository.save(roomType);
     }

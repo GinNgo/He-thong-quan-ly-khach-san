@@ -6,7 +6,9 @@ import com.hotel.controllers.PaymentController;
 import com.hotel.dtos.ReservationDTO;
 import com.hotel.entities.User;
 import com.hotel.security.CustomUserDetails;
+import com.hotel.security.JwtAccessDeniedHandler;
 import com.hotel.security.JwtAuthFilter;
+import com.hotel.security.JwtAuthenticationEntryPoint;
 import com.hotel.security.JwtTokenProvider;
 import com.hotel.services.PaymentService;
 import com.hotel.services.ReservationService;
@@ -31,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(PaymentController.class)
-@Import({SecurityConfig.class, JwtAuthFilter.class, JwtTokenProvider.class})
+@Import({SecurityConfig.class, JwtAuthFilter.class, JwtTokenProvider.class, JwtAuthenticationEntryPoint.class, JwtAccessDeniedHandler.class})
 class PaymentControllerIntegrationTest {
 
     @Autowired
@@ -67,11 +69,11 @@ class PaymentControllerIntegrationTest {
     }
 
     @Test
-    void createPaymentUrl_WithoutAuth_ShouldReturn403() throws Exception {
+    void createPaymentUrl_WithoutAuth_ShouldReturn401() throws Exception {
         mockMvc.perform(get("/api/payments/create-url")
                         .param("reservationId", "42")
                         .param("method", "MOMO"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

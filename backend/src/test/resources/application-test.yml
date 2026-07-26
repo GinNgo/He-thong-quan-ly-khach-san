@@ -16,8 +16,14 @@ spring:
         format_sql: true
 
 jwt:
-  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  secret: test_secret_for_unit_test_only_do_not_use_in_prod
   expiration: 86400000
+
+payment:
+  vnpay:
+    tmn-code: test_code
+    hash-secret: test_hash
+    url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
 
 server:
   port: 8080

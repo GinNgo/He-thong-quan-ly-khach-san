@@ -1,8 +1,10 @@
 package com.hotel.services.impl;
 
 import com.hotel.entities.Hotel;
+import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.services.HotelManagementService;
+import com.hotel.services.PropertyAccessService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +17,9 @@ public class HotelManagementServiceImpl implements HotelManagementService {
 
     @Autowired
     private HotelRepository hotelRepository;
+
+    @Autowired
+    private PropertyAccessService propertyAccessService;
 
     @Override
     public List<Hotel> getAllHotels() {
@@ -43,7 +48,9 @@ public class HotelManagementServiceImpl implements HotelManagementService {
     @Override
     @Transactional
     public Hotel updateHotel(Long id, Hotel hotel) {
-        Hotel existingHotel = hotelRepository.findById(id).orElseThrow(() -> new RuntimeException("Hotel not found"));
+        Hotel existingHotel = hotelRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cơ sở."));
+        propertyAccessService.requireAccessibleOrNotFound(id, "cơ sở");
         existingHotel.setName(hotel.getName());
         existingHotel.setDescription(hotel.getDescription());
         existingHotel.setAddressLine(hotel.getAddressLine());
@@ -58,6 +65,10 @@ public class HotelManagementServiceImpl implements HotelManagementService {
     @Override
     @Transactional
     public void deleteHotel(Long id) {
+        if (!hotelRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Không tìm thấy cơ sở.");
+        }
+        propertyAccessService.requireAccessibleOrNotFound(id, "cơ sở");
         hotelRepository.deleteById(id);
     }
 

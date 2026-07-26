@@ -15,15 +15,21 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       const isProtectedClientArea = ['/booking', '/profile', '/booking-history', '/my-invoices', '/settings']
         .some(path => currentUrl.startsWith(path));
 
-      if (error.status === 403 && isAdminArea) {
-        router.navigate(['/403']);
+      if (error.status === 403) {
+        const errCode = error.error?.code || 'ACCESS_DENIED';
+        if (!currentUrl.includes('/403')) {
+          router.navigate(['/403'], { queryParams: { reason: errCode } });
+        }
       } else if (error.status === 401) {
         if (!req.url.includes('/api/auth/login')) {
           authService.logout();
           localStorage.removeItem('permissions');
           // A stale token from another portal must not replace a public page with Login/403.
-          if (isAdminArea) router.navigate(['/admin/login']);
-          else if (isProtectedClientArea) router.navigate(['/login'], { queryParams: { returnUrl: currentUrl } });
+          if (isAdminArea && !currentUrl.includes('/admin/login')) {
+            router.navigate(['/admin/login']);
+          } else if (isProtectedClientArea && !currentUrl.includes('/login')) {
+            router.navigate(['/login'], { queryParams: { returnUrl: currentUrl } });
+          }
         }
       }
       return throwError(() => error);

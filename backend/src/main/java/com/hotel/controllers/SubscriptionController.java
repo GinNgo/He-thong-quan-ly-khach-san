@@ -8,6 +8,7 @@ import com.hotel.security.CustomUserDetails;
 import com.hotel.services.SubscriptionFeatureService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +29,7 @@ public class SubscriptionController {
         return ResponseEntity.ok(planRepository.findAll());
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/me")
     public ResponseEntity<List<AccountSubscription>> getMySubscriptions(@AuthenticationPrincipal CustomUserDetails userDetails) {
         if (userDetails == null) {
@@ -36,6 +38,7 @@ public class SubscriptionController {
         return ResponseEntity.ok(accountSubscriptionRepository.findByUserIdAndStatus(userDetails.getUserId(), "ACTIVE"));
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/me/features")
     public ResponseEntity<Map<String, Integer>> getMyFeatures(@AuthenticationPrincipal CustomUserDetails userDetails) {
         if (userDetails == null) {

@@ -1,5 +1,23 @@
 # ĐẶC TẢ API (API SPECIFICATIONS)
 
+## Chuẩn hóa lỗi xác thực và phân quyền
+
+Các lỗi auth/authz thuộc P0-B trả JSON thống nhất, không trả trang HTML:
+
+```json
+{
+  "status": 401,
+  "error": "Unauthorized",
+  "message": "Unauthorized",
+  "path": "/api/endpoint"
+}
+```
+
+- `401 Unauthorized`: không có, sai hoặc hết hạn access token.
+- `403 Forbidden`: danh tính hợp lệ nhưng thiếu role hoặc permission bitmask.
+- `403 Forbidden`: tính năng bị subscription restriction. P0-B chỉ chuẩn hóa response; không đổi điều kiện gói hoặc luồng gia hạn.
+- Tenant restriction khác subscription restriction. Tenant IDOR và chính sách `403`/`404` chống lộ tài nguyên thuộc P0-D, ngoài phạm vi P0-B.
+
 ## Hệ thống Quản lý Đa Cơ sở & Gói Dịch vụ
 
 ### 1. User Context & Auth

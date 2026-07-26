@@ -32,3 +32,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Local database artefacts ###
+hoteldb.mv.db
+hoteldb.trace.db

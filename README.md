@@ -47,7 +47,7 @@ Dự án Đồ án xây dựng Hệ thống Quản lý Khách sạn toàn diện
     datasource:
       url: jdbc:sqlserver://localhost:1433;databaseName=HotelDB;encrypt=true;trustServerCertificate=true
       username: sa             # Thay bằng username SQL Server ở nhà của bạn
-      password: HotelAdmin@2026! # Thay bằng mật khẩu SQL Server ở nhà của bạn
+      password: ${DB_PASSWORD} # Thay bằng mật khẩu SQL Server ở nhà của bạn
   ```
 
 ### 2. Chạy Backend

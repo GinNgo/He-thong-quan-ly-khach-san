@@ -121,10 +121,9 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public List<ReservationDTO> getMyReservations(String username) {
-        return reservationRepository.findAll().stream()
-                .filter(reservation -> reservation.getUser().getUsername().equals(username))
-                .map(this::mapToDTO)
-                .toList();
+        if (username == null) return List.of();
+        return reservationRepository.findByUserUsername(username).stream()
+                .map(this::mapToDTO).toList();
     }
 
     @Transactional
@@ -177,7 +176,7 @@ public class ReservationService {
     @Transactional
     public ReservationDTO updateReservationStatus(Long id, String status) {
         Reservation reservation = reservationRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy booking."));
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy booking."));
         requireOperationalAccess(reservation);
         String normalizedStatus = status == null ? "" : status.trim().toUpperCase();
 
@@ -229,7 +228,7 @@ public class ReservationService {
     @Transactional
     public ReservationDTO cancelMyReservation(Long id, String username) {
         Reservation reservation = reservationRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy booking."));
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy booking."));
         if (username == null || reservation.getUser() == null
                 || !username.equals(reservation.getUser().getUsername())) {
             throw new org.springframework.security.access.AccessDeniedException(
@@ -434,7 +433,7 @@ public class ReservationService {
 
     private void requireOperationalAccess(Reservation reservation) {
         if (!propertyAccessService.isSystemAdministrator()) {
-            propertyAccessService.requireCanManage(reservation.getHotel().getId());
+            propertyAccessService.requireAccessibleOrNotFound(reservation.getHotel().getId(), "booking");
         }
     }
 
@@ -442,7 +441,7 @@ public class ReservationService {
         if (propertyAccessService.isSystemAdministrator()) return;
         User currentUser = propertyAccessService.currentUser();
         if (reservation.getUser().getId().equals(currentUser.getId())) return;
-        propertyAccessService.requireCanManage(reservation.getHotel().getId());
+        propertyAccessService.requireAccessibleOrNotFound(reservation.getHotel().getId(), "booking");
     }
 
     private User createGuestUser(ReservationRequest request) {
@@ -471,7 +470,7 @@ public class ReservationService {
 
     private Reservation findReservation(Long id) {
         return reservationRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy booking."));
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy booking."));
     }
 
     private ReservationDTO mapToDTO(Reservation reservation) {

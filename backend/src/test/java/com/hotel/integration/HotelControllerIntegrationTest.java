@@ -5,6 +5,7 @@ import com.hotel.entities.User;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.security.FunctionCode;
 import com.hotel.services.HotelManagementService;
+import com.hotel.services.PropertyAccessService;
 import com.hotel.services.RoomTypeService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +20,9 @@ import java.util.HashSet;
 import java.util.Map;
 
 import com.hotel.config.SecurityConfig;
+import com.hotel.security.JwtAccessDeniedHandler;
 import com.hotel.security.JwtAuthFilter;
+import com.hotel.security.JwtAuthenticationEntryPoint;
 import com.hotel.security.JwtTokenProvider;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -27,7 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(HotelController.class)
-@Import({SecurityConfig.class, JwtAuthFilter.class, JwtTokenProvider.class})
+@Import({SecurityConfig.class, JwtAuthFilter.class, JwtTokenProvider.class, JwtAuthenticationEntryPoint.class, JwtAccessDeniedHandler.class})
 class HotelControllerIntegrationTest {
 
     @Autowired
@@ -38,6 +41,9 @@ class HotelControllerIntegrationTest {
 
     @MockBean
     private RoomTypeService roomTypeService;
+
+    @MockBean
+    private PropertyAccessService propertyAccessService;
 
     @MockBean
     private UserDetailsService userDetailsService;
@@ -69,9 +75,9 @@ class HotelControllerIntegrationTest {
     }
 
     @Test
-    void getMyHotels_WithoutAuth_ShouldReturn403() throws Exception {
+    void getMyHotels_WithoutAuth_ShouldReturn401() throws Exception {
         mockMvc.perform(get("/api/v1/hotels/my-hotels"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
 }

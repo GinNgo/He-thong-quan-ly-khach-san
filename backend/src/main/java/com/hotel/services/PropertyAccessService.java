@@ -3,6 +3,7 @@ package com.hotel.services;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.User;
 import com.hotel.entities.UserProperty;
+import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.UserPropertyRepository;
 import com.hotel.repositories.UserRepository;
@@ -39,6 +40,19 @@ public class PropertyAccessService {
         requireManagedHotel(hotelId);
     }
 
+    /**
+     * Same as requireCanManage but throws ResourceNotFoundException (→ 404)
+     * to prevent IDOR enumeration across tenants.
+     */
+    public void requireAccessibleOrNotFound(Long hotelId, String entityName) {
+        if (hotelId == null || (!isSystemAdministrator() && !accessibleHotelIds().contains(hotelId))) {
+            throw new ResourceNotFoundException("Không tìm thấy " + entityName + ".");
+        }
+        if (!hotelRepository.existsById(hotelId)) {
+            throw new ResourceNotFoundException("Không tìm thấy " + entityName + ".");
+        }
+    }
+
     public Set<Long> accessibleHotelIds() {
         User user = currentUser();
         Set<Long> hotelIds = new LinkedHashSet<>();
@@ -57,7 +71,7 @@ public class PropertyAccessService {
         Authentication authentication = authentication();
         return authentication.getAuthorities().stream()
                 .map(item -> item.getAuthority().replace("ROLE_", ""))
-                .anyMatch(authority -> Set.of("SUPER_ADMIN", "ADMIN").contains(authority));
+                .anyMatch(authority -> Set.of("SUPER_ADMIN").contains(authority));
     }
 
     public User currentUser() {

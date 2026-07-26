@@ -5,6 +5,7 @@ import com.hotel.dtos.UserDto;
 import com.hotel.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.hotel.security.Permission;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.ActionCode;
@@ -67,6 +68,7 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/me")
     public ResponseEntity<UserDto> getCurrentUser() {
         com.hotel.security.CustomUserDetails userDetails = (com.hotel.security.CustomUserDetails) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -74,6 +76,7 @@ public class UserController {
         return user.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize("isAuthenticated()")
     @PutMapping("/me")
     public ResponseEntity<UserDto> updateCurrentUser(@RequestBody com.hotel.dtos.UserRequest request) {
         com.hotel.security.CustomUserDetails userDetails = (com.hotel.security.CustomUserDetails) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -86,6 +89,7 @@ public class UserController {
         ));
     }
 
+    @PreAuthorize("isAuthenticated()")
     @PutMapping("/me/password")
     public ResponseEntity<Void> changePassword(@RequestBody com.hotel.dtos.ChangePasswordRequest request) {
         com.hotel.security.CustomUserDetails userDetails = (com.hotel.security.CustomUserDetails) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();

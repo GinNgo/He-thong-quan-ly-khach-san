@@ -5,6 +5,7 @@ import com.hotel.entities.Invoice;
 import com.hotel.repositories.InvoiceRepository;
 import com.hotel.services.InvoiceService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.hotel.security.Permission;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.ActionCode;
@@ -27,6 +28,7 @@ public class InvoiceController {
         this.invoiceService = invoiceService;
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/my")
     public ResponseEntity<List<InvoiceDTO>> getMyInvoices(@AuthenticationPrincipal CustomUserDetails userDetails) {
         if (userDetails == null) return ResponseEntity.status(401).build();

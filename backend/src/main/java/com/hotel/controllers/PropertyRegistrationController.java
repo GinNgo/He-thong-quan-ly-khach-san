@@ -2,6 +2,7 @@ package com.hotel.controllers;
 
 import com.hotel.services.PropertyRegistrationService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.Data;
@@ -33,6 +34,7 @@ public class PropertyRegistrationController {
         }
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/registration-status")
     public ResponseEntity<?> registrationStatus(org.springframework.security.core.Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {

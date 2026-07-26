@@ -25,11 +25,13 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import com.hotel.config.SecurityConfig;
+import com.hotel.security.JwtAccessDeniedHandler;
 import com.hotel.security.JwtAuthFilter;
+import com.hotel.security.JwtAuthenticationEntryPoint;
 import com.hotel.security.JwtTokenProvider;
 
 @WebMvcTest(SubscriptionController.class)
-@Import({SecurityConfig.class, JwtAuthFilter.class, JwtTokenProvider.class})
+@Import({SecurityConfig.class, JwtAuthFilter.class, JwtTokenProvider.class, JwtAuthenticationEntryPoint.class, JwtAccessDeniedHandler.class})
 class SubscriptionControllerIntegrationTest {
 
     @Autowired
@@ -55,9 +57,9 @@ class SubscriptionControllerIntegrationTest {
     }
 
     @Test
-    void getMySubscriptions_WithoutAuth_ShouldReturn403() throws Exception {
+    void getMySubscriptions_WithoutAuth_ShouldReturn401() throws Exception {
         mockMvc.perform(get("/api/subscriptions/me"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

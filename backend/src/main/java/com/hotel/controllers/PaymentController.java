@@ -28,6 +28,7 @@ public class PaymentController {
     @GetMapping("/reservation/{reservationId}")
     @Permission(function = FunctionCode.FINANCE, action = ActionCode.VIEW)
     public ResponseEntity<List<PaymentDTO>> getPaymentsByReservation(@PathVariable Long reservationId) {
+        reservationService.getReservationById(reservationId);
         return ResponseEntity.ok(paymentService.getPaymentsByReservation(reservationId));
     }
 
@@ -178,18 +179,4 @@ public class PaymentController {
         }
     }
 
-    // Callback for Simulator (MoMo, Stripe)
-    @GetMapping("/callback")
-    public ResponseEntity<Map<String, String>> mockCallback(
-            @RequestParam Long reservationId,
-            @RequestParam String status,
-            @RequestParam String method,
-            @RequestParam String transactionId) {
-        
-        if ("SUCCESS".equalsIgnoreCase(status)) {
-            paymentService.handleSuccessfulPayment(reservationId, method, transactionId);
-        }
-        
-        return ResponseEntity.ok(Map.of("message", "Payment callback processed successfully"));
-    }
 }

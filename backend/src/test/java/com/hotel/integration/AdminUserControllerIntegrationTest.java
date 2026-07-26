@@ -51,7 +51,7 @@ class AdminUserControllerIntegrationTest {
         return new CustomUserDetails(
                 "admin",
                 "hash",
-                Set.of(new SimpleGrantedAuthority("ADMIN")),
+                Set.of(new SimpleGrantedAuthority("SUPER_ADMIN")),
                 permissionMasks,
                 1L,
                 null,

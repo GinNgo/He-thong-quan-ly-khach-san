@@ -10,10 +10,9 @@ export const authGuard: CanActivateFn = (route, state) => {
     return true;
   }
 
-  if (state.url.startsWith('/admin')) {
-    router.navigate(['/admin/login']);
+  if (state.url.startsWith('/admin') || state.url.startsWith('/management')) {
+    return router.createUrlTree(['/admin/login'], { queryParams: { returnUrl: state.url } });
   } else {
-    router.navigate(['/login']);
+    return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
   }
-  return false;
 };
