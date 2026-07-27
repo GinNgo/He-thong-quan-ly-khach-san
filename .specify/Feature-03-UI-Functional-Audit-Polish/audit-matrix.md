@@ -4,7 +4,7 @@
 **Audit started**: 2026-07-27
 **Runtime**: Frontend `4200` and temporary audit backend `8081` were verified on 2026-07-28; repository frontend API configuration was restored to `http://localhost:8080/api` before handoff.
 **Final status legend**: `COMPLETE`, `PARTIAL`, `MISSING`, `BLOCKED`, `BROKEN`
-**Evidence registry**: `EVD-001` to `EVD-067` are unique, contiguous definitions; multiple references are comma-separated.
+**Evidence registry**: `EVD-001` to `EVD-068` are unique, contiguous definitions; multiple references are comma-separated.
 
 > Rows remain non-complete unless the primary path and required branches were observed through the real UI. Browser evidence below is concise and intentionally omits credentials.
 
@@ -20,7 +20,7 @@
 | System Admin account/data | Local seeded or existing account | COMPLETE | Admin login succeeded and admin dashboard, CRUD, partner and alias routes were exercised without recording credentials |
 | Property actor/context | Local owner/manager with assigned property | PARTIAL | Manager session verified dashboard, billing, rooms and property context; complete room-type/property-switch matrix remains pending |
 | Frontend unit tests | `npm test -- --watch=false` | COMPLETE | Exit 0; 29 test files and 47 tests passed in 50.81s on the final run; jsdom canvas warnings only |
-| Frontend production build | `npm run build -- --no-progress` | COMPLETE | Exit 0; initial bundle 2.54MB exceeds 2.00MB budget; font-inline and CommonJS warnings recorded as performance follow-up |
+| Frontend production build | `npm run build -- --stats-json --no-progress` | COMPLETE | Exit 0; route-level lazy loading and duplicate-style cleanup reduced initial bundle from 2.54MB to 1.08MB, below the 2.00MB budget. Font-inline warnings are resolved; CommonJS warnings for STOMP/SockJS remain documented and isolated behind the lazy admin shell. |
 | Backend regression | `.\mvnw.cmd test` | COMPLETE | Exit 0; 86 tests passed, 0 failures/errors in 6m44s |
 
 ## Public and Customer Routes
@@ -186,6 +186,7 @@ Evidence was collected through the real local browser session on 2026-07-28 (Asi
 - **EVD-065** — Targeted backend regression. Steps: run `.\mvnw.cmd '-Dtest=PaymentServiceImplTest,ReservationServiceTest,TenantIsolationIntegrationTest' test`. Expected: duplicate payment, reservation ownership and tenant isolation checks pass. Actual: 26 tests passed, 0 failures/errors; payment service returns existing transaction and rejects cross-reservation transaction IDs; tenant tests deny cross-property mutations. Result: PASS for source/test evidence; demo callback authorization remains a separate blocker.
 - **EVD-066** — Frontend post-change regression. Steps: run `npm test -- --watch=false` and `npm run build -- --no-progress` from `frontend/`. Expected: the new recovery/duplicate-submit changes compile and regressions stay green. Actual: 29 test files / 47 tests passed; production build exited 0 with the documented bundle/font/CommonJS warnings. Result: PASS.
 - **EVD-067** — `/booking/1` with complete room-selection query context, Customer, 375px. Steps: open checkout with valid dates, room/property identifiers, room name, quantity and estimate; inspect form/summary and page width without submitting. Expected: checkout form mounts, estimate is readable and no horizontal page overflow occurs. Actual: `Thông tin Đặt phòng`, `Hoàn tất Đặt phòng` and `1.000.000 ₫` rendered; `scrollWidth === clientWidth` (360px effective layout width). Result: PASS for valid-context presentation/responsive branch; reservation mutation remains blocked by approved/public inventory.
+- **EVD-068** — Frontend route-boundary performance regression, local build/browser, default viewport. Steps: convert public/auth/admin route components to `loadComponent`, remove duplicate Bootstrap/PrimeIcons imports, consolidate external fonts, run `npm test -- --watch=false`, run `npm run build -- --stats-json --no-progress`, then navigate `/`, `/login`, `/admin/dashboard` and `/management/dashboard`. Expected: initial bundle below 2.00MB, no font budget warning, route guards/shells still resolve and no console error appears. Actual: 29 test files / 47 tests passed; initial bundle reduced from 2.54MB to 1.08MB with no initial/font budget warning; home/login loaded, denied admin navigation recovered at `/403`, management no-property state loaded, sampled pages had no horizontal overflow and browser console errors were empty. `@stomp/stompjs` and `sockjs-client` remain CommonJS-only upstream packages but are isolated to the lazy admin/realtime boundary and documented in `docs/FRONTEND_STANDARDS.md`. Result: PASS for T051.
 
 ## Coverage Summary
 

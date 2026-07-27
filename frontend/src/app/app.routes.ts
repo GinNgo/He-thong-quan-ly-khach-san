@@ -1,69 +1,48 @@
 import { Routes } from '@angular/router';
-import { LoginComponent } from './features/auth/login/login.component';
-import { AdminLayout } from './layout/admin-layout/admin-layout';
-import { UserManagement } from './features/admin/user-management/user-management';
-import { RoomTypeManagement } from './features/admin/room-type-management/room-type-management';
-import { RoomManagement } from './features/admin/room-management/room-management';
-import { ServiceManagement } from './features/admin/service-management/service-management';
-import { ReservationManagement } from './features/admin/reservation-management/reservation-management';
-import { ReservationTimelineComponent } from './features/admin/reservation-timeline/reservation-timeline.component';
-import { ReservationCreate } from './features/admin/reservation-create/reservation-create';
-import { InvoiceManagement } from './features/admin/invoice-management/invoice-management';
-import { Dashboard } from './features/admin/dashboard/dashboard';
 import { authGuard } from './core/guards/auth-guard';
 import { permissionGuard } from './core/guards/permission.guard';
 import { FunctionCode, ActionCode } from './core/services/permission.service';
-
-import { ClientLayout } from './layout/client-layout/client-layout';
-import { HomeComponent } from './features/client/home/home';
-import { PropertySearchPageComponent } from './features/property-search/pages/property-search-page/property-search-page';
-import { RegisterComponent } from './features/auth/register/register.component';
-import { AdminLoginComponent } from './features/auth/admin-login/admin-login.component';
-import { AdminProfileComponent } from './features/admin/profile/profile.component';
-import { ProfileComponent } from './features/client/profile/profile.component';
-import { HotelDetailComponent } from './features/client/hotel-detail/hotel-detail.component';
-import { BookingCheckoutComponent } from './features/client/booking-checkout/booking-checkout.component';
 import { clientAuthGuard } from './core/guards/client-auth.guard';
 
 export const routes: Routes = [
   {
     path: '',
-    component: ClientLayout,
+    loadComponent: () => import('./layout/client-layout/client-layout').then(m => m.ClientLayout),
     children: [
-      { path: '', component: HomeComponent, pathMatch: 'full' },
-      { path: 'search', component: PropertySearchPageComponent },
-      { path: 'hotel/:id', component: HotelDetailComponent },
-      { path: 'booking/:roomTypeId', component: BookingCheckoutComponent, canActivate: [clientAuthGuard] },
-      { path: 'profile', component: ProfileComponent, canActivate: [clientAuthGuard] }
-      ,{ path: 'booking-history', component: ProfileComponent, canActivate: [clientAuthGuard], data: { tab: 'bookings' } }
-      ,{ path: 'my-invoices', loadComponent: () => import('./features/client/my-invoices/my-invoices.component').then(m => m.MyInvoicesComponent), canActivate: [clientAuthGuard] }
-      ,{ path: 'settings', loadComponent: () => import('./features/client/account-settings/account-settings.component').then(m => m.AccountSettingsComponent), canActivate: [clientAuthGuard] }
+      { path: '', loadComponent: () => import('./features/client/home/home').then(m => m.HomeComponent), pathMatch: 'full' },
+      { path: 'search', loadComponent: () => import('./features/property-search/pages/property-search-page/property-search-page').then(m => m.PropertySearchPageComponent) },
+      { path: 'hotel/:id', loadComponent: () => import('./features/client/hotel-detail/hotel-detail.component').then(m => m.HotelDetailComponent) },
+      { path: 'booking/:roomTypeId', loadComponent: () => import('./features/client/booking-checkout/booking-checkout.component').then(m => m.BookingCheckoutComponent), canActivate: [clientAuthGuard] },
+      { path: 'profile', loadComponent: () => import('./features/client/profile/profile.component').then(m => m.ProfileComponent), canActivate: [clientAuthGuard] },
+      { path: 'booking-history', loadComponent: () => import('./features/client/profile/profile.component').then(m => m.ProfileComponent), canActivate: [clientAuthGuard], data: { tab: 'bookings' } },
+      { path: 'my-invoices', loadComponent: () => import('./features/client/my-invoices/my-invoices.component').then(m => m.MyInvoicesComponent), canActivate: [clientAuthGuard] },
+      { path: 'settings', loadComponent: () => import('./features/client/account-settings/account-settings.component').then(m => m.AccountSettingsComponent), canActivate: [clientAuthGuard] }
     ]
   },
   { path: 'payment-simulator', loadComponent: () => import('./features/client/payment-simulator/payment-simulator').then(m => m.PaymentSimulatorComponent) },
   { path: 'payment-result', loadComponent: () => import('./features/client/payment-result/payment-result').then(m => m.PaymentResultComponent) },
-  { path: 'login', component: LoginComponent },
-  { path: 'register', component: RegisterComponent },
+  { path: 'login', loadComponent: () => import('./features/auth/login/login.component').then(m => m.LoginComponent) },
+  { path: 'register', loadComponent: () => import('./features/auth/register/register.component').then(m => m.RegisterComponent) },
   { path: 'partner/register', loadComponent: () => import('./features/client/partner-register/partner-register.component').then(m => m.PartnerRegisterComponent) },
   { path: 'partner/registration-status', loadComponent: () => import('./features/client/partner-registration-status/partner-registration-status.component').then(m => m.PartnerRegistrationStatusComponent), canActivate: [clientAuthGuard] },
-  { path: 'admin/login', component: AdminLoginComponent },
+  { path: 'admin/login', loadComponent: () => import('./features/auth/admin-login/admin-login.component').then(m => m.AdminLoginComponent) },
   {
     path: 'admin',
-    component: AdminLayout,
+    loadComponent: () => import('./layout/admin-layout/admin-layout').then(m => m.AdminLayout),
     canActivate: [authGuard],
     children: [
-      { path: 'dashboard', component: Dashboard, canActivate: [permissionGuard], data: { functionCode: FunctionCode.REPORT, actionCode: ActionCode.VIEW } },
-      { path: 'profile', component: AdminProfileComponent },
-      { path: 'users', component: UserManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.USER, actionCode: ActionCode.VIEW, userType: 'STAFF' } },
-      { path: 'customers', component: UserManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.CUSTOMER, actionCode: ActionCode.VIEW, userType: 'CUSTOMER' } },
+      { path: 'dashboard', loadComponent: () => import('./features/admin/dashboard/dashboard').then(m => m.Dashboard), canActivate: [permissionGuard], data: { functionCode: FunctionCode.REPORT, actionCode: ActionCode.VIEW } },
+      { path: 'profile', loadComponent: () => import('./features/admin/profile/profile.component').then(m => m.AdminProfileComponent) },
+      { path: 'users', loadComponent: () => import('./features/admin/user-management/user-management').then(m => m.UserManagement), canActivate: [permissionGuard], data: { functionCode: FunctionCode.USER, actionCode: ActionCode.VIEW, userType: 'STAFF' } },
+      { path: 'customers', loadComponent: () => import('./features/admin/user-management/user-management').then(m => m.UserManagement), canActivate: [permissionGuard], data: { functionCode: FunctionCode.CUSTOMER, actionCode: ActionCode.VIEW, userType: 'CUSTOMER' } },
 
-      { path: 'room-types', component: RoomTypeManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROOM_TYPE, actionCode: ActionCode.VIEW } },
-      { path: 'rooms', component: RoomManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROOM, actionCode: ActionCode.VIEW } },
-      { path: 'services', component: ServiceManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.HOTEL_SERVICE, actionCode: ActionCode.VIEW } },
-      { path: 'reservations', component: ReservationManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.RESERVATION, actionCode: ActionCode.VIEW } },
-      { path: 'reservations/timeline', component: ReservationTimelineComponent, canActivate: [permissionGuard], data: { functionCode: FunctionCode.RESERVATION, actionCode: ActionCode.VIEW } },
-      { path: 'reservations/create', component: ReservationCreate, canActivate: [permissionGuard], data: { functionCode: FunctionCode.RESERVATION, actionCode: ActionCode.CREATE } },
-      { path: 'invoices', component: InvoiceManagement, canActivate: [permissionGuard], data: { functionCode: FunctionCode.INVOICE, actionCode: ActionCode.VIEW } },
+      { path: 'room-types', loadComponent: () => import('./features/admin/room-type-management/room-type-management').then(m => m.RoomTypeManagement), canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROOM_TYPE, actionCode: ActionCode.VIEW } },
+      { path: 'rooms', loadComponent: () => import('./features/admin/room-management/room-management').then(m => m.RoomManagement), canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROOM, actionCode: ActionCode.VIEW } },
+      { path: 'services', loadComponent: () => import('./features/admin/service-management/service-management').then(m => m.ServiceManagement), canActivate: [permissionGuard], data: { functionCode: FunctionCode.HOTEL_SERVICE, actionCode: ActionCode.VIEW } },
+      { path: 'reservations', loadComponent: () => import('./features/admin/reservation-management/reservation-management').then(m => m.ReservationManagement), canActivate: [permissionGuard], data: { functionCode: FunctionCode.RESERVATION, actionCode: ActionCode.VIEW } },
+      { path: 'reservations/timeline', loadComponent: () => import('./features/admin/reservation-timeline/reservation-timeline.component').then(m => m.ReservationTimelineComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.RESERVATION, actionCode: ActionCode.VIEW } },
+      { path: 'reservations/create', loadComponent: () => import('./features/admin/reservation-create/reservation-create').then(m => m.ReservationCreate), canActivate: [permissionGuard], data: { functionCode: FunctionCode.RESERVATION, actionCode: ActionCode.CREATE } },
+      { path: 'invoices', loadComponent: () => import('./features/admin/invoice-management/invoice-management').then(m => m.InvoiceManagement), canActivate: [permissionGuard], data: { functionCode: FunctionCode.INVOICE, actionCode: ActionCode.VIEW } },
       { path: 'modules', loadComponent: () => import('./features/system/module-management/module-management').then(m => m.ModuleManagementComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.SYSTEM, actionCode: ActionCode.VIEW } },
       { path: 'chat', loadComponent: () => import('./features/admin/chat-dashboard/chat-dashboard').then(m => m.ChatDashboardComponent) },
       { path: 'properties', loadComponent: () => import('./features/admin/property-management/property-management').then(m => m.PropertyManagementComponent) },

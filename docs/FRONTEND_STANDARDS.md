@@ -329,6 +329,16 @@ Avoid duplicate UI code.
 
 ---
 
+## Route-Level Bundle Boundaries
+
+- Route shells and leaf pages must use `loadComponent` unless measured startup behavior requires eager loading.
+- Shared global CSS such as Bootstrap and PrimeIcons must be registered once; do not import the same stylesheet from both `angular.json` and `styles.css`.
+- External font declarations belong in the global stylesheet and must not be repeated in component CSS.
+- CommonJS-only realtime dependencies must stay behind a lazy route boundary and be documented in build evidence; do not hide optimization warnings without recording the package and reason.
+- Production initial bundles must remain below the configured Angular budget, and route-boundary changes require unit, build and representative browser navigation checks.
+
+---
+
 ## Angular Zoneless Async State
 
 Angular 22 của dự án chạy không khai báo `zone.js`. Component cập nhật state trong `HttpClient`, WebSocket hoặc callback bất đồng bộ phải dùng một trong hai pattern:
