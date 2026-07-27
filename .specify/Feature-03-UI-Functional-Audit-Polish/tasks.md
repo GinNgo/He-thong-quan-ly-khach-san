@@ -39,7 +39,7 @@ description: "Dependency-ordered tasks for exhaustive UI audit and premium polis
 - [X] T007 [US3] Create the actionable gap register structure and migrate still-valid historical hypotheses from `.specify/Feature-02-Frontend-UX-Redesign/audit-matrix.md`, `docs/audit/FAKE_OR_DISCONNECTED_FEATURES.md`, and `docs/audit/BUG_BACKLOG.md` into `.specify/Feature-03-UI-Functional-Audit-Polish/gap-register.md`
 - [X] T008 [P] [US5] Record the current frontend unit/build and backend Maven baseline in `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md` after running commands from `.specify/Feature-03-UI-Functional-Audit-Polish/quickstart.md`
 - [X] T009 [P] [US1] Start the real backend/frontend, verify API/app health, and record environment prerequisites without secrets in `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
-- [ ] T010 [US1] Confirm representative Customer, System Admin and Property Owner/Manager accounts plus property/data scope; record unavailable roles/data as explicit blockers in `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
+- [X] T010 [US1] Confirm representative Customer, System Admin and Property Owner/Manager accounts plus property/data scope; record unavailable roles/data as explicit blockers in `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
 
 **Checkpoint**: Route inventory, evidence format, runtime and actor prerequisites are ready.
 
@@ -51,13 +51,13 @@ description: "Dependency-ordered tasks for exhaustive UI audit and premium polis
 
 **Independent Test**: Every inventory row in `audit-matrix.md` has scenarios, status, evidence and a gap/next step when not complete.
 
-- [ ] T011 [US1] Browser-test public home, search, property detail, customer login/register, `/admin/login`, payment result/simulator and error navigation at their canonical routes; update `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
-- [ ] T012 [US1] Browser-test authenticated customer checkout, profile, booking history, invoices, settings and partner registration/status flows; update `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
-- [ ] T013 [US1] Browser-test System Admin dashboard, profile, users, customers, modules, chat, properties, plans, roles, permissions, imports and claims; update `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
-- [ ] T014 [US1] Browser-test hotel operations room types, rooms, services, reservations list/timeline/create and invoices with valid and denied permissions; update `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
+- [X] T011 [US1] Browser-test public home, search, property detail, customer login/register, `/admin/login`, payment result/simulator and error navigation at their canonical routes; update `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
+- [X] T012 [US1] Browser-test authenticated customer checkout, profile, booking history, invoices, settings and partner registration/status flows; update `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
+- [X] T013 [US1] Browser-test System Admin dashboard, profile, users, customers, modules, chat, properties, plans, roles, permissions, imports and claims; update `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
+- [X] T014 [US1] Browser-test hotel operations room types, rooms, services, reservations list/timeline/create and invoices with valid and denied permissions; update `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
 - [X] T015 [US1] Browser-test all generic partner administration routes selected by route data in `frontend/src/app/app.routes.ts`; update `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
-- [ ] T016 [US1] Browser-test management property context, dashboard/properties, room types, rooms and billing/subscription redirects; update `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
-- [ ] T017 [US1] Verify unauthorized, expired-session, unknown-route, redirect-alias and cross-property navigation behavior; update `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md` and `.specify/Feature-03-UI-Functional-Audit-Polish/gap-register.md`
+- [X] T016 [US1] Browser-test management property context, dashboard/properties, room types, rooms and billing/subscription redirects; update `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
+- [X] T017 [US1] Verify unauthorized, expired-session, unknown-route, redirect-alias and cross-property navigation behavior; update `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md` and `.specify/Feature-03-UI-Functional-Audit-Polish/gap-register.md`
 
 **Checkpoint**: 100% route/menu coverage is evidence-backed even when the outcome is `BLOCKED`, `PARTIAL`, `MISSING` or `BROKEN`.
 
@@ -183,7 +183,7 @@ description: "Dependency-ordered tasks for exhaustive UI audit and premium polis
 
 ## Phase 9: Convergence
 
-- [ ] T046 [US1] Complete real-browser evidence for the still-unvisited public, customer, admin and management audit rows, including permission/error/recovery branches, and attach `EVD-###` metadata per FR-001/FR-002/SC-001 (partial)
+- [X] T046 [US1] Complete real-browser evidence for the still-unvisited public, customer, admin and management audit rows, including permission/error/recovery branches, and attach `EVD-###` metadata per FR-001/FR-002/SC-001 (partial outcomes remain explicitly blocked/broken where actor, data or route contracts are unavailable)
 - [ ] T047 [US2] Implement the `/admin/properties` create journey or replace the inert `Thêm mới` control with an explicit supported/unavailable state after confirming the property-create API contract per GAP-015 (missing)
 - [ ] T048 [US1] Replace generic partner overview rendering with endpoint-specific columns, actions, loading/error/empty contracts and permission UX for AUD-041 to AUD-050 per FR-007/GAP-008/GAP-016 (partial)
 - [ ] T049 [US2] Complete customer search-to-detail-to-checkout-payment/history browser coverage and verify duplicate-submit, payment idempotency and ownership behavior per FR-005/FR-018/GAP-001/GAP-005/GAP-006 (partial)
