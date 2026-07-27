@@ -4,7 +4,7 @@
 **Audit started**: 2026-07-27
 **Runtime**: Frontend `4200` and temporary audit backend `8081` were verified on 2026-07-28; repository frontend API configuration was restored to `http://localhost:8080/api` before handoff.
 **Final status legend**: `COMPLETE`, `PARTIAL`, `MISSING`, `BLOCKED`, `BROKEN`
-**Evidence registry**: `EVD-001` to `EVD-069` are unique, contiguous definitions; multiple references are comma-separated.
+**Evidence registry**: `EVD-001` to `EVD-070` are unique, contiguous definitions; multiple references are comma-separated.
 
 > Rows remain non-complete unless the primary path and required branches were observed through the real UI. Browser evidence below is concise and intentionally omits credentials.
 
@@ -22,6 +22,7 @@
 | Frontend unit tests | `npm test -- --watch=false` | COMPLETE | Exit 0; 29 test files and 50 tests passed on the latest run; jsdom canvas warnings only |
 | Frontend production build | `npm run build -- --stats-json --no-progress` | COMPLETE | Exit 0; route-level lazy loading and duplicate-style cleanup reduced initial bundle from 2.54MB to 1.08MB, below the 2.00MB budget. Font-inline warnings are resolved; CommonJS warnings for STOMP/SockJS remain documented and isolated behind the lazy admin shell. |
 | Backend regression | `.\mvnw.cmd test` | COMPLETE | Exit 0; 86 tests passed, 0 failures/errors in 6m44s |
+| Real-environment smoke definition | `npx playwright test e2e/real-environment-smoke.spec.ts --list` | COMPLETE | Four read-only public/customer/admin/owner scenarios discovered. Authenticated branches require local `LUXESTAY_E2E_*` variables and skip explicitly when unavailable; the spec contains no route interception, fake token or hardcoded credential. |
 
 ## Public and Customer Routes
 
@@ -188,6 +189,7 @@ Evidence was collected through the real local browser session on 2026-07-28 (Asi
 - **EVD-067** — `/booking/1` with complete room-selection query context, Customer, 375px. Steps: open checkout with valid dates, room/property identifiers, room name, quantity and estimate; inspect form/summary and page width without submitting. Expected: checkout form mounts, estimate is readable and no horizontal page overflow occurs. Actual: `Thông tin Đặt phòng`, `Hoàn tất Đặt phòng` and `1.000.000 ₫` rendered; `scrollWidth === clientWidth` (360px effective layout width). Result: PASS for valid-context presentation/responsive branch; reservation mutation remains blocked by approved/public inventory.
 - **EVD-068** — Frontend route-boundary performance regression, local build/browser, default viewport. Steps: convert public/auth/admin route components to `loadComponent`, remove duplicate Bootstrap/PrimeIcons imports, consolidate external fonts, run `npm test -- --watch=false`, run `npm run build -- --stats-json --no-progress`, then navigate `/`, `/login`, `/admin/dashboard` and `/management/dashboard`. Expected: initial bundle below 2.00MB, no font budget warning, route guards/shells still resolve and no console error appears. Actual: 29 test files / 47 tests passed; initial bundle reduced from 2.54MB to 1.08MB with no initial/font budget warning; home/login loaded, denied admin navigation recovered at `/403`, management no-property state loaded, sampled pages had no horizontal overflow and browser console errors were empty. `@stomp/stompjs` and `sockjs-client` remain CommonJS-only upstream packages but are isolated to the lazy admin/realtime boundary and documented in `docs/FRONTEND_STANDARDS.md`. Result: PASS for T051.
 - **EVD-069** — Frontend constitution/error-handling regression. Steps: replace the three empty scroll exception handlers in AI assistant, client chat widget and admin chat dashboard with typed optional `ElementRef<HTMLElement>` guards; add pre-mount scroll safety tests; run `npm test -- --watch=false` and `npm run build -- --no-progress`. Expected: no empty `catch` remains in the affected files, pre-mount lifecycle calls do not throw and the optimized build remains below budget. Actual: 29 test files / 50 tests passed; production build exited 0 at 1.08MB initial with only the documented STOMP/SockJS CommonJS warnings. Result: PASS for T054 and Constitution 5 compliance in the affected scope.
+- **EVD-070** — `frontend/e2e/real-environment-smoke.spec.ts`, Playwright discovery. Steps: add read-only public/customer/System Admin/owner smoke journeys that use only local `LUXESTAY_E2E_*` credential variables, then run `npx playwright test e2e/real-environment-smoke.spec.ts --list`. Expected: concise real-integration scenarios compile without mocks, fake tokens, hardcoded passwords or data mutation. Actual: four Chromium tests were discovered; public recovery plus authenticated read-only route checks are defined, and missing actor variables produce an explicit skip prerequisite. Result: PASS for T037 suite definition; full runtime timing remains T040/T041.
 
 ## Coverage Summary
 

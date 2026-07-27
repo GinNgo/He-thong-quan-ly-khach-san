@@ -126,7 +126,7 @@ description: "Dependency-ordered tasks for exhaustive UI audit and premium polis
 
 **Independent Test**: A clean local run can reproduce pass/fail/blocker outcomes for all high-risk journeys.
 
-- [ ] T037 [US5] Update or add concise real-environment smoke scenarios for public/customer/admin/owner flows in `frontend/e2e/` without using mocks as completion evidence
+- [X] T037 [US5] Update or add concise real-environment smoke scenarios for public/customer/admin/owner flows in `frontend/e2e/` without using mocks as completion evidence
 - [X] T038 [US5] Run `npm test -- --watch=false` and `npm run build` in `frontend/`; record command outcomes in `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
 - [X] T039 [US5] Run `.\mvnw.cmd test` in `backend/`; record command outcomes in `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
 - [ ] T040 [US5] Time and re-run the P1 browser regression plus permission/responsive samples after all changes; calculate the P1 completion rate (target at least 90%) and verify the smoke run completes within 45 minutes in `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`

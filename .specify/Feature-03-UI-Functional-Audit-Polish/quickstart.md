@@ -7,6 +7,19 @@
 - Các biến môi trường nhạy cảm chỉ đặt trong terminal/local secret store, không ghi vào artifact.
 - Tài khoản đại diện cho Customer, System Admin và Property Owner/Manager; nếu thiếu phải ghi `BLOCKED` cho actor tương ứng.
 
+Để chạy smoke spec môi trường thật mà không hardcode credential, đặt các cặp biến cục bộ tương ứng với actor đang có:
+
+```powershell
+$env:LUXESTAY_E2E_CUSTOMER_USERNAME = '<local-customer>'
+$env:LUXESTAY_E2E_CUSTOMER_PASSWORD = '<local-only>'
+$env:LUXESTAY_E2E_ADMIN_USERNAME = '<local-system-admin>'
+$env:LUXESTAY_E2E_ADMIN_PASSWORD = '<local-only>'
+$env:LUXESTAY_E2E_OWNER_USERNAME = '<local-owner-or-manager>'
+$env:LUXESTAY_E2E_OWNER_PASSWORD = '<local-only>'
+```
+
+Không ghi các giá trị này vào `.env`, screenshot, trace hoặc artifact Git.
+
 ## 1. Check workspace
 
 ```powershell
@@ -63,6 +76,14 @@ Nếu cần chạy regression Playwright đã có và môi trường đủ dữ 
 ```powershell
 npx playwright test
 ```
+
+Smoke suite không dùng mock và không mutation dữ liệu:
+
+```powershell
+npx playwright test e2e/real-environment-smoke.spec.ts
+```
+
+Nhánh actor thiếu biến môi trường sẽ được đánh dấu `skipped` với prerequisite cụ thể thay vì dùng tài khoản giả.
 
 Không dùng mocked Playwright result làm bằng chứng duy nhất cho runtime integration.
 
