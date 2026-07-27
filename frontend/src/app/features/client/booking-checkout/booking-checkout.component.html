@@ -19,8 +19,16 @@
       </div>
     </div>
 
+    <section *ngIf="!bookingSuccess && !bookingContextValid" class="checkout-state" role="alert" aria-live="polite">
+      <span class="checkout-state-icon" aria-hidden="true"><i class="pi pi-link-slash"></i></span>
+      <p class="eyebrow">Phiên đặt phòng không hợp lệ</p>
+      <h2>Chọn phòng lại để tiếp tục</h2>
+      <p>{{ contextError }}</p>
+      <button type="button" class="primary-action" (click)="goToSearch()"><i class="pi pi-search"></i> Quay lại tìm kiếm</button>
+    </section>
+
     <!-- Booking Form -->
-    <div *ngIf="!bookingSuccess" class="checkout-grid">
+    <div *ngIf="!bookingSuccess && bookingContextValid" class="checkout-grid">
     <div class="bg-white p-6 md:p-8 rounded-lg shadow-md">
       <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-4">Thông tin Đặt phòng</h2>
 
@@ -126,7 +134,8 @@
 
         <button type="submit" 
                 class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
-                [disabled]="!bookingForm.valid || isSubmitting">
+                [disabled]="!bookingForm.valid || !bookingContextValid || isSubmitting"
+                [attr.aria-busy]="isSubmitting">
           <i class="pi pi-spin pi-spinner" *ngIf="isSubmitting"></i>
           <span>Hoàn tất Đặt phòng</span>
         </button>

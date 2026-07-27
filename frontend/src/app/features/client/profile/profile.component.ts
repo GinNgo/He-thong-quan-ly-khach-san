@@ -96,6 +96,7 @@ export class ProfileComponent implements OnInit {
   }
 
   cancelBooking(id: number): void {
+    if (this.cancellingId !== null) return;
     if (!confirm('Bạn có chắc chắn muốn hủy đặt phòng này? Khoản đã thanh toán sẽ được hoàn 100% và điểm thưởng từ đặt phòng sẽ bị thu hồi.')) return;
 
     this.cancellingId = id;

@@ -29,7 +29,7 @@
     <section *ngIf="!loading && activeTab === 'bookings'" class="content-panel">
       <header><h1>Chuyến đi của tôi</h1><p>Các đặt phòng thuộc tài khoản hiện tại.</p></header>
       <div *ngIf="bookingsLoading" class="message"><i class="pi pi-spin pi-spinner"></i>Đang tải chuyến đi</div>
-      <div *ngIf="bookingsError" class="alert error">{{ bookingsError }}</div>
+      <div *ngIf="bookingsError" class="alert error">{{ bookingsError }} <button type="button" (click)="loadBookings()">Thử lại</button></div>
       <div *ngIf="!bookingsLoading && !bookingsError && !bookings.length" class="empty"><i class="pi pi-suitcase"></i><strong>Chưa có chuyến đi</strong><a routerLink="/search">Tìm chỗ nghỉ</a></div>
       <div class="booking-list" *ngIf="!bookingsLoading && bookings.length">
         <article *ngFor="let booking of bookings">
@@ -42,7 +42,7 @@
               *ngIf="booking.status === 'PENDING' || booking.status === 'PENDING_PAYMENT' || booking.status === 'CONFIRMED'"
               type="button"
               class="cancel-btn"
-              [disabled]="cancellingId === booking.id"
+              [disabled]="cancellingId !== null"
               [attr.aria-busy]="cancellingId === booking.id"
               (click)="cancelBooking(booking.id)">
               {{ cancellingId === booking.id ? 'Đang hủy...' : 'Hủy đặt phòng' }}

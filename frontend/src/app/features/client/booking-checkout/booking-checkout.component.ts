@@ -26,8 +26,8 @@ export class BookingCheckoutComponent implements OnInit {
   
   bookingData: ReservationRequest = {
     roomTypeId: 0,
-    checkInDate: new Date().toISOString().split('T')[0], // Default today
-    checkOutDate: new Date(new Date().getTime() + 86400000).toISOString().split('T')[0], // Default tomorrow
+    checkInDate: '',
+    checkOutDate: '',
     guests: 2,
     firstName: '',
     lastName: '',
@@ -42,6 +42,7 @@ export class BookingCheckoutComponent implements OnInit {
   isSubmitting = false;
   bookingSuccess = false;
   errorMessage = '';
+  contextError = '';
   reservationDetails: any = null;
 
   ngOnInit(): void {
@@ -50,6 +51,7 @@ export class BookingCheckoutComponent implements OnInit {
       if (id) {
         this.roomTypeId = Number(id);
         this.bookingData.roomTypeId = this.roomTypeId;
+        this.validateBookingContext();
       }
     });
 
@@ -65,12 +67,14 @@ export class BookingCheckoutComponent implements OnInit {
       this.nightlyPrice = Number(params['nightlyPrice']) || 0;
       this.serverEstimate = Number(params['estimatedTotal']) || 0;
       this.hotelId = Number(params['hotelId']) || 0;
+      this.validateBookingContext();
     });
 
     this.prefillUserInfo();
   }
 
-  submitBooking() {
+  submitBooking(): void {
+    if (this.isSubmitting || !this.bookingContextValid) return;
     this.errorMessage = '';
     if (this.bookingData.checkOutDate <= this.bookingData.checkInDate) {
       this.errorMessage = 'Ngày trả phòng phải sau ngày nhận phòng.';
@@ -125,6 +129,7 @@ export class BookingCheckoutComponent implements OnInit {
   }
 
   get nights(): number {
+    if (!this.bookingData.checkInDate || !this.bookingData.checkOutDate) return 0;
     return Math.max(1, Math.round((new Date(this.bookingData.checkOutDate).getTime() - new Date(this.bookingData.checkInDate).getTime()) / 86400000));
   }
 
@@ -142,6 +147,27 @@ export class BookingCheckoutComponent implements OnInit {
 
   goToProfileBookings() {
     this.router.navigate(['/profile'], { queryParams: { tab: 'bookings' } });
+  }
+
+  goToSearch(): void {
+    this.router.navigate(['/search']);
+  }
+
+  get bookingContextValid(): boolean {
+    return !this.contextError;
+  }
+
+  private validateBookingContext(): void {
+    const validRoom = Number.isInteger(this.roomTypeId) && this.roomTypeId > 0;
+    const validHotel = Number.isInteger(this.hotelId) && this.hotelId > 0;
+    const validDates = !!this.bookingData.checkInDate && !!this.bookingData.checkOutDate
+      && this.bookingData.checkOutDate > this.bookingData.checkInDate;
+    const validPrice = this.nightlyPrice > 0 || this.serverEstimate > 0;
+    const validName = !!this.roomTypeName.trim();
+
+    this.contextError = validRoom && validHotel && validDates && validPrice && validName
+      ? ''
+      : 'Phiên đặt phòng đã hết hoặc thiếu thông tin loại phòng. Hãy quay lại tìm kiếm và chọn phòng lại để tiếp tục.';
   }
 
   private prefillUserInfo() {

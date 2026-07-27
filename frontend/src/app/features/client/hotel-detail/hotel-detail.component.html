@@ -1,5 +1,15 @@
 <main class="detail-page">
   <div *ngIf="isLoading" class="loading"><i class="pi pi-spin pi-spinner"></i><span>Đang kiểm tra phòng trống...</span></div>
+  <section *ngIf="!isLoading && !hotel && pageError" class="detail-state" role="alert" aria-live="polite">
+    <span class="state-icon" aria-hidden="true"><i class="pi pi-map-marker"></i></span>
+    <p class="eyebrow">Không thể mở chỗ nghỉ</p>
+    <h1>Chuyến đi vẫn có thể tiếp tục</h1>
+    <p>{{ pageError }}</p>
+    <div class="state-actions">
+      <button *ngIf="hotelId" type="button" class="secondary-action" (click)="retry()"><i class="pi pi-refresh"></i> Thử lại</button>
+      <button type="button" class="primary-action" (click)="browseProperties()"><i class="pi pi-search"></i> Tìm chỗ nghỉ khác</button>
+    </div>
+  </section>
   <ng-container *ngIf="!isLoading && hotel">
     <header class="property-hero">
       <img [src]="hotel.mainImageUrl || hotel.mainImage || fallback.property(hotel.propertyType)" [alt]="hotel.name" (error)="handleHotelImageError($event)">
