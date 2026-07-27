@@ -602,3 +602,13 @@ sequenceDiagram
 ```
 
 Sidebar, quick search và breadcrumb lấy route canonical từ cùng inventory. Backend tiếp tục là authorization boundary; frontend guard chỉ cải thiện điều hướng và thông báo từ chối.
+
+## Deferred Customer Domains (2026-07-28)
+
+Các domain sau không thuộc mô hình triển khai hiện tại và phải có feature specification riêng trước khi thêm entity/API/UI:
+
+- Booking nhiều `RoomType` trong cùng một giỏ/aggregate.
+- Khách tự chọn dịch vụ bổ sung với price snapshot, invoice và refund ownership.
+- Review từ khách đã lưu trú với moderation và cơ chế tổng hợp điểm.
+
+`ReservationServiceItem` hiện mô tả thao tác vận hành phía nhân viên; `reviewScore`/`reviewCount` hiện là metadata tổng hợp. Không suy diễn hai phần này thành customer mutation contract.

@@ -377,6 +377,16 @@ one-based at the API boundary.
 - The backend locks the RoomType row, validates property state, capacity and
   overlapping reservations, recalculates the price, and returns HTTP 409 when
   the requested inventory is no longer available. Client totals are never used.
+
+## Deferred customer booking domains (2026-07-28)
+
+The following capabilities are intentionally `DEFER_FEATURE`; the current UI must not fabricate payloads or completion evidence for them:
+
+- **Mixed RoomType booking**: the advertised contract remains one `roomTypeId` plus `quantity`. A cart containing multiple RoomTypes requires a new aggregate request, inventory lock strategy, pricing and cancellation rules.
+- **Customer add-on services**: `ReservationServiceItem` and `AddServiceRequest` support staff-side reservation operations. There is no customer-owned browse/select/price/refund contract in the routed checkout flow.
+- **Customer reviews**: public `reviewScore`/`reviewCount` values are aggregate search metadata, not proof of a Review entity or customer submission API. Review creation requires ownership/verified-stay rules, moderation, edit/delete policy and score aggregation.
+
+Until separate feature specifications define those contracts, customer checkout must submit only the current reservation fields and property detail must present rating metadata honestly without a review-submission affordance.
 # Admin Roles and Inventory Contract (2026-07-15)
 
 - `GET/POST /api/roles`, `GET/PUT/DELETE /api/roles/{id}` manage roles. Delete

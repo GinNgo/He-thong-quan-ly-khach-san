@@ -94,9 +94,9 @@ description: "Dependency-ordered tasks for exhaustive UI audit and premium polis
 **Independent Test**: Any P1/P2 gap can be traced from actor/route to reproduction, evidence, severity, disposition and next task.
 
 - [ ] T026 [US3] Classify every non-complete audit row by UI/UX, responsive, accessibility, navigation, permission, API contract, data, business rule or testability in `.specify/Feature-03-UI-Functional-Audit-Polish/gap-register.md`
-- [ ] T027 [US3] Revalidate historical mixed-room booking, customer add-on services, reviews, subscription quota, payment idempotency and owner isolation claims against current source/runtime; update `.specify/Feature-03-UI-Functional-Audit-Polish/gap-register.md`
+- [X] T027 [US3] Revalidate historical mixed-room booking, customer add-on services, reviews, subscription quota, payment idempotency and owner isolation claims against current source/runtime; update `.specify/Feature-03-UI-Functional-Audit-Polish/gap-register.md`
 - [ ] T028 [US3] Add severity, reproduction, expected/actual result, disposition and next step for every P1/P2 gap in `.specify/Feature-03-UI-Functional-Audit-Polish/gap-register.md`
-- [ ] T029 [US3] Mark backend/data-model work that exceeds this iteration as `DEFER_FEATURE` and link it to relevant documentation in `docs/API_SPEC.md`, `docs/UML.md`, or `docs/THESIS.md`
+- [X] T029 [US3] Mark backend/data-model work that exceeds this iteration as `DEFER_FEATURE` and link it to relevant documentation in `docs/API_SPEC.md`, `docs/UML.md`, or `docs/THESIS.md`
 
 **Checkpoint**: The gap register is suitable for planning subsequent features without fake completion.
 

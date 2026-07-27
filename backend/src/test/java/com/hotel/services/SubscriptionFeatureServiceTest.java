@@ -15,7 +15,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
@@ -93,5 +95,34 @@ class SubscriptionFeatureServiceTest {
         assertEquals(2, features.size());
         assertEquals(-1, features.get("MAX_PROPERTIES")); // Unlimited (-1) > 1
         assertEquals(1, features.get("ADVANCED_REPORTS")); // 1 > 0
+    }
+
+    @Test
+    void checkFeatureLimit_WithNoEffectiveSubscription_ShouldRequireUpgrade() {
+        when(accountSubscriptionRepository.findEffectiveSubscriptionsByUserId(1L)).thenReturn(List.of());
+
+        RuntimeException error = assertThrows(RuntimeException.class,
+                () -> subscriptionFeatureService.checkFeatureLimit(1L, "MAX_PROPERTIES", 0));
+
+        assertTrue(error.getMessage().contains("nâng cấp"));
+    }
+
+    @Test
+    void checkFeatureLimit_WhenUsageReachedLimit_ShouldRejectMutation() {
+        when(accountSubscriptionRepository.findEffectiveSubscriptionsByUserId(1L))
+                .thenReturn(List.of(basicSubscription));
+
+        RuntimeException error = assertThrows(RuntimeException.class,
+                () -> subscriptionFeatureService.checkFeatureLimit(1L, "MAX_PROPERTIES", 1));
+
+        assertTrue(error.getMessage().contains("đạt giới hạn"));
+    }
+
+    @Test
+    void checkFeatureLimit_WithUnlimitedPlan_ShouldAllowMutation() {
+        when(accountSubscriptionRepository.findEffectiveSubscriptionsByUserId(1L))
+                .thenReturn(List.of(premiumSubscription));
+
+        assertDoesNotThrow(() -> subscriptionFeatureService.checkFeatureLimit(1L, "MAX_PROPERTIES", 10_000));
     }
 }
