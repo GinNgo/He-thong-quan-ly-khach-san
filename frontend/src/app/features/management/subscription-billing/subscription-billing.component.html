@@ -12,9 +12,12 @@
       </div>
     </div>
   </div>
+  <app-feedback-state *ngIf="subscriptionError && !mySubscription" state="error" title="Không thể tải gói hiện tại" [message]="subscriptionError" actionLabel="Thử lại" (actionTriggered)="loadMySubscription()" />
 
   <h2 class="section-title">Nâng cấp gói dịch vụ</h2>
-  <div class="pricing-grid" *ngIf="!isLoading">
+  <app-feedback-state *ngIf="plansError && !isLoading" state="error" title="Không thể tải danh sách gói" [message]="plansError" actionLabel="Thử lại" (actionTriggered)="loadPlans()" />
+  <app-feedback-state *ngIf="!isLoading && !plansError && !plans.length" state="empty" title="Chưa có gói dịch vụ" message="Quản trị viên chưa công bố gói để nâng cấp." />
+  <div class="pricing-grid" *ngIf="!isLoading && !plansError && plans.length">
     <div class="pricing-card" *ngFor="let plan of plans" [class.highlight]="plan.code === 'PRO'">
       <div class="card-header">
         <h4>{{ plan.name }}</h4>
@@ -34,16 +37,14 @@
         </ul>
       </div>
       <div class="card-footer">
-        <button class="btn btn-primary w-full"
-                [disabled]="mySubscription?.plan?.id === plan.id"
-                (click)="buyPlan(plan.id)">
-          {{ mySubscription?.plan?.id === plan.id ? 'Đang sử dụng' : 'Mua ngay' }}
+        <button class="btn btn-primary w-full" type="button" disabled [attr.aria-label]="mySubscription?.plan?.id === plan.id ? 'Gói đang sử dụng' : purchaseUnavailableMessage">
+          {{ mySubscription?.plan?.id === plan.id ? 'Đang sử dụng' : 'Thanh toán online chưa hỗ trợ' }}
         </button>
       </div>
     </div>
   </div>
 
-  <div class="loading-state" *ngIf="isLoading">
+  <div class="loading-state" *ngIf="isLoading" role="status" aria-live="polite">
     <div class="spinner"></div>
     <p>Đang tải thông tin gói...</p>
   </div>

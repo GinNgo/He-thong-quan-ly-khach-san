@@ -1,0 +1,40 @@
+import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { Subject } from 'rxjs';
+import { ManagementApiService, ManagementContext } from '../../../core/services/management-api.service';
+import { ManagementDashboardComponent } from './management-dashboard.component';
+
+describe('ManagementDashboardComponent', () => {
+  it('renders loaded context in zoneless mode', async () => {
+    const context$ = new Subject<ManagementContext>();
+
+    await TestBed.configureTestingModule({
+      imports: [ManagementDashboardComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ManagementApiService, useValue: { context: () => context$ } },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManagementDashboardComponent);
+    fixture.detectChanges();
+
+    context$.next({
+      properties: [{ id: 1, code: 'HOTEL-1', nameVi: 'LuxeStay Hà Nội', propertyType: 'HOTEL', address: 'Hà Nội', approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', isDemo: false }],
+      activePropertyId: 1,
+      planCode: 'STANDARD',
+      subscriptionStatus: 'ACTIVE',
+      lifetime: false,
+      limits: { MAX_ROOMS: 50, MAX_PROPERTIES: 1 },
+      usage: { rooms: 9, properties: 1 },
+      upgradeRequired: false,
+      dashboard: { availableRooms: 6, occupiedRooms: 3 },
+    });
+    await fixture.whenStable();
+
+    const element: HTMLElement = fixture.nativeElement;
+    expect(element.textContent).not.toContain('Đang tải tổng quan...');
+    expect(element.textContent).toContain('LuxeStay Hà Nội');
+    expect(element.textContent).toContain('STANDARD');
+  });
+});

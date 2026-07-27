@@ -122,11 +122,18 @@ export class AdminProfileComponent implements OnInit {
 
   get avatarSrc(): string {
     const avatarUrl = this.user?.avatarUrl;
-    if (avatarUrl?.startsWith('http') || avatarUrl?.startsWith('data:')) return avatarUrl;
+    if (avatarUrl?.startsWith('data:')) return avatarUrl;
     if (avatarUrl?.startsWith('/')) return `${this.apiOrigin}${avatarUrl}`;
+    return '';
+  }
 
-    const name = encodeURIComponent(this.user?.fullName || this.user?.username || 'User');
-    return `https://ui-avatars.com/api/?name=${name}&background=1a56db&color=fff&size=128`;
+  get avatarInitials(): string {
+    return (this.user?.fullName || this.user?.username || 'User')
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part: string) => part[0]?.toUpperCase() || '')
+      .join('');
   }
 
   changePassword() {

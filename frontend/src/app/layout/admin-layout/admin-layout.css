@@ -453,3 +453,15 @@
     transition: none;
   }
 }
+
+.profile-initials {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  color: #fff;
+  border-radius: 50%;
+  background: var(--hotel-primary);
+  font-size: .8rem;
+  font-weight: 800;
+}

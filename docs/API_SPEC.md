@@ -393,3 +393,15 @@ one-based at the API boundary.
 
 Action masks remain `VIEW=1`, `CREATE=2`, `UPDATE=4`, `DELETE=8`, `EXPORT=16`,
 `APPROVE=32`.
+
+## UI Audit Integration Notes (2026-07-27)
+
+Không bổ sung endpoint mới trong đợt UI audit. Frontend xác minh và tiếp tục dùng các contract hiện có:
+
+- `GET /api/auth/my-menu`: menu theo quyền; URL trả về phải tồn tại trong Angular route inventory.
+- `GET /api/management/context?activePropertyId={id}`: trả property được cấp, active property, plan/limits/usage và dashboard. Frontend phải hiển thị success, empty hoặc error thay vì loading vô hạn.
+- `GET /api/management/room-types?propertyId={id}` và `GET /api/management/rooms?propertyId={id}`: `propertyId` là context yêu cầu, backend vẫn xác minh assignment.
+- `GET /api/subscriptions/plans` và `GET /api/subscriptions/me`: billing UI chỉ hiển thị hành động mua/nâng cấp khi có contract order/payment thật; không mô phỏng bằng alert.
+- `GET /api/admin/{partner-endpoint}`: generic partner page phải kết thúc loading ở success/error và không suy diễn schema/action không được API trả về.
+
+Response 401/403/404/409/422/500 phải tạo state có thể phục hồi. UI guard hoặc menu visibility không thay thế backend authorization.

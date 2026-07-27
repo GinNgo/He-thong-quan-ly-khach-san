@@ -575,3 +575,30 @@ sequenceDiagram
     Staff->>API: hoàn tất dọn phòng
     API->>DB: Room=AVAILABLE, housekeeping=CLEAN
 ```
+
+## UI Async State in Angular Zoneless (2026-07-27)
+
+```mermaid
+sequenceDiagram
+    actor User as Người dùng
+    participant View as Angular Component
+    participant API as HttpClient/API
+    participant CD as Change Detection
+
+    User->>View: Mở trang hoặc Retry
+    View->>View: loading=true, error=""
+    View->>API: request với JWT/property context
+    alt Thành công
+        API-->>View: typed response
+        View->>View: data=response, loading=false
+        View->>CD: signal update hoặc markForCheck()
+        CD-->>User: content/empty state
+    else Thất bại
+        API-->>View: 4xx/5xx/network error
+        View->>View: error=message, loading=false
+        View->>CD: signal update hoặc markForCheck()
+        CD-->>User: error + retry action
+    end
+```
+
+Sidebar, quick search và breadcrumb lấy route canonical từ cùng inventory. Backend tiếp tục là authorization boundary; frontend guard chỉ cải thiện điều hướng và thông báo từ chối.

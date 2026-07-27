@@ -4,18 +4,18 @@
       <h1>{{ title }}</h1>
       <p>Theo dõi dữ liệu cơ sở, tài khoản và gói dịch vụ trên toàn hệ thống.</p>
     </div>
-    <button type="button" class="icon-button" title="Tải lại" (click)="load()">
+    <button type="button" class="icon-button" title="Tải lại" aria-label="Tải lại dữ liệu" [disabled]="loading" (click)="load()">
       <i class="pi pi-refresh" [class.pi-spin]="loading"></i>
     </button>
   </header>
 
   <div class="data-panel">
     @if (error) {
-      <div class="state error">{{ error }}</div>
+      <app-feedback-state state="error" title="Không thể tải dữ liệu" [message]="error" actionLabel="Thử lại" (actionTriggered)="load()" />
     } @else if (loading) {
-      <div class="state"><i class="pi pi-spin pi-spinner"></i> Đang tải dữ liệu...</div>
+      <app-feedback-state state="loading" title="Đang tải dữ liệu" message="Đang đồng bộ dữ liệu đối tác và cơ sở." />
     } @else if (!rows.length) {
-      <div class="state">Chưa có dữ liệu phù hợp.</div>
+      <app-feedback-state state="empty" title="Chưa có dữ liệu" message="Chưa có bản ghi phù hợp với quyền truy cập hiện tại." />
     } @else {
       <div class="table-scroll">
         <table>

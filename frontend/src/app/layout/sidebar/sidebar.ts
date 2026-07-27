@@ -61,10 +61,11 @@ export class Sidebar implements OnInit {
   private deduplicateMenu(modules: AppModuleDto[]): AppModuleDto[] {
     const seenCodes = new Set<string>();
     const seenRoutes = new Set<string>();
+    const unsupportedRoutes = new Set(['/ai', '/admin/ai']);
     return modules.map(module => ({
       ...module,
       functions: (module.functions || []).filter(func => {
-        if (!func.url || seenCodes.has(func.code) || seenRoutes.has(func.url)) return false;
+        if (!func.url || unsupportedRoutes.has(func.url) || seenCodes.has(func.code) || seenRoutes.has(func.url)) return false;
         seenCodes.add(func.code);
         seenRoutes.add(func.url);
         return true;

@@ -105,3 +105,15 @@ Hệ thống sử dụng các font chữ mặc định của hệ điều hành 
 - **Do:** Tuân thủ chuẩn accessibility WCAG và giữ khoảng cách/màu sắc đồng nhất.
 - **Don't:** Không hardcode mã màu Hex vào trong các file CSS Component hoặc HTML inline style.
 - **Don't:** Lạm dụng màu Đỏ (chỉ dùng cho destructive actions) và màu Gold.
+
+## UI Runtime Audit and Brand Convergence (2026-07-27)
+
+Các shell Public, Admin và Management phải cùng nhận diện LuxeStay. Không sử dụng tên thương hiệu tạm như Aurora, Hotel System hoặc Lumina trong logo, footer, login screen hay accessible name.
+
+- Admin/Management dùng navy surface có chiều sâu, Primary Blue cho CTA và Gold chỉ cho dấu ấn premium.
+- Avatar thiếu ảnh dùng initials nội bộ; không gọi dịch vụ avatar bên ngoài.
+- Login hero dùng gradient/pattern và asset local để tránh phụ thuộc ảnh remote.
+- Route title, breadcrumb, sidebar và quick search phải trỏ đến route canonical đang tồn tại.
+- Async surface không được mắc kẹt ở loading. Success/error callback phải cập nhật view trong Angular zoneless bằng signal hoặc `ChangeDetectorRef.markForCheck()`.
+- Loading, empty, error/retry và unavailable state dùng thông điệp rõ ràng; không hiển thị nút mua/thanh toán giả bằng `alert()`.
+- Touch target chính tối thiểu 44px, focus ring luôn nhìn thấy và animation tôn trọng `prefers-reduced-motion`.

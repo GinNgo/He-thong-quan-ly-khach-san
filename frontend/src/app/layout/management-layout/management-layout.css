@@ -9,6 +9,7 @@
   min-height: 100dvh;
   color: var(--hotel-text-primary, #172033);
   background: var(--hotel-bg, #f4f6f9);
+  background-image: radial-gradient(circle at top right, rgb(20 184 166 / 8%), transparent 32rem);
 }
 
 .management-shell.sidebar-collapsed {
@@ -139,7 +140,7 @@
   gap: var(--hotel-space-4, 1rem);
   padding: var(--hotel-space-2, 0.5rem) var(--hotel-space-6, 1.5rem);
   border-bottom: 1px solid var(--hotel-border, #dce2ea);
-  background: rgb(255 255 255 / 96%);
+  background: rgb(255 255 255 / 92%);
   box-shadow: var(--hotel-shadow-sm, 0 1px 3px rgb(15 23 42 / 8%));
 }
 

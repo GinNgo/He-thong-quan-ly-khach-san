@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, RouterModule, RouterOutlet } from '@angular/router';
 import { Subscription, filter } from 'rxjs';
 import { AuthService } from '../../core/services/auth';
@@ -26,6 +26,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
   private managementApi = inject(ManagementApiService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
 
   readonly navigationGroups: ReadonlyArray<{
     label: string;
@@ -68,6 +69,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
     this.subscriptions.add(
       this.authService.currentUser$.subscribe((user) => {
         this.username = user.fullName || user.username || 'Đối tác';
+        this.cdr.markForCheck();
       }),
     );
 
@@ -77,6 +79,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
         .subscribe((event) => {
           this.updatePageTitle(event.urlAfterRedirects);
           this.closeOverlays();
+          this.cdr.markForCheck();
         }),
     );
 
@@ -106,12 +109,14 @@ export class ManagementLayout implements OnInit, OnDestroy {
               queryParamsHandling: 'merge',
             });
           }
+          this.cdr.markForCheck();
         },
         error: () => {
           this.properties = [];
           this.activePropertyId = undefined;
           this.contextLoading = false;
           this.contextError = 'Không thể tải danh sách cơ sở.';
+          this.cdr.markForCheck();
         },
       }),
     );

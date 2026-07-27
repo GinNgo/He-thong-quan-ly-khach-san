@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -44,12 +44,10 @@ export class AdminLayout implements OnInit, OnDestroy {
     { label: 'Hóa đơn', url: '/admin/invoices' },
     { label: 'Phân quyền', url: '/admin/role-permissions' },
     { label: 'Cơ sở lưu trú', url: '/admin/properties' },
-    { label: 'Duyệt cơ sở', url: '/admin/property-verifications' },
-    { label: 'Gói thuê bao', url: '/admin/subscription-plans' },
-    { label: 'Thuê bao', url: '/admin/subscriptions' },
-    { label: 'Quyền', url: '/admin/permissions' },
-    { label: 'Nhật ký hệ thống', url: '/admin/audit-logs' },
-    { label: 'Trạng thái phòng', url: '/admin/room-status-management' },
+    { label: 'Nhập cơ sở', url: '/admin/property-imports' },
+    { label: 'Khiếu nại cơ sở', url: '/admin/property-claims' },
+    { label: 'Gói dịch vụ', url: '/admin/plans' },
+    { label: 'Vai trò', url: '/admin/roles' },
     { label: 'Dịch vụ', url: '/admin/services' },
   ];
 
@@ -59,14 +57,17 @@ export class AdminLayout implements OnInit, OnDestroy {
   private authSub?: Subscription;
   private routerSub?: Subscription;
   private apiOrigin = environment.apiUrl.replace(/\/api\/?$/, '');
+  private cdr: ChangeDetectorRef;
 
   constructor(
     private authService: AuthService,
     private userService: UserService,
     private router: Router,
     private notificationService: NotificationService,
-    private messageService: MessageService
+    private messageService: MessageService,
+    cdr: ChangeDetectorRef
   ) {
+    this.cdr = cdr;
     const authState = this.authService.getAuthState();
     this.currentUserName = authState.username || 'Admin';
     this.currentRoleLabel = this.toRoleLabel(authState.roles[0]);
@@ -85,10 +86,12 @@ export class AdminLayout implements OnInit, OnDestroy {
       this.currentUserName = authState.fullName || authState.username || 'Admin';
       this.currentAvatarUrl = authState.avatarUrl;
       this.currentRoleLabel = this.toRoleLabel(authState.roles[0]);
+      this.cdr.markForCheck();
     });
 
     this.userService.getProfile().subscribe({
-      next: (profile) => this.authService.updateCurrentUser(profile)
+      next: (profile) => this.authService.updateCurrentUser(profile),
+      error: () => this.cdr.markForCheck()
     });
 
     this.notificationService.connect();
@@ -108,6 +111,7 @@ export class AdminLayout implements OnInit, OnDestroy {
         detail: notif.message,
         life: 5000
       });
+      this.cdr.markForCheck();
     });
   }
 
@@ -119,15 +123,20 @@ export class AdminLayout implements OnInit, OnDestroy {
   }
 
   get currentAvatarSrc(): string {
-    if (this.currentAvatarUrl.startsWith('http') || this.currentAvatarUrl.startsWith('data:')) {
-      return this.currentAvatarUrl;
-    }
+    if (this.currentAvatarUrl.startsWith('data:')) return this.currentAvatarUrl;
     if (this.currentAvatarUrl.startsWith('/')) {
       return `${this.apiOrigin}${this.currentAvatarUrl}`;
     }
+    return '';
+  }
 
-    const name = encodeURIComponent(this.currentUserName || 'Admin');
-    return `https://ui-avatars.com/api/?name=${name}&background=1a56db&color=fff`;
+  get currentUserInitials(): string {
+    return (this.currentUserName || 'Admin')
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0]?.toUpperCase() || '')
+      .join('');
   }
 
   loadNotifications(): void {
@@ -138,10 +147,12 @@ export class AdminLayout implements OnInit, OnDestroy {
         this.notifications = data;
         this.updateUnreadCount();
         this.notificationsLoading = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.notificationsLoading = false;
         this.notificationsError = 'Không thể tải thông báo.';
+        this.cdr.markForCheck();
       }
     });
   }
@@ -155,6 +166,7 @@ export class AdminLayout implements OnInit, OnDestroy {
       this.notificationService.markAsRead(notif.id).subscribe(() => {
         notif.isRead = true;
         this.updateUnreadCount();
+        this.cdr.markForCheck();
       });
     }
   }

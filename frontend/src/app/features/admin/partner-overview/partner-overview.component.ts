@@ -1,19 +1,21 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { environment } from '../../../../environments/environment';
+import { FeedbackStateComponent } from '../../../shared/components/feedback-state/feedback-state.component';
 
 @Component({
   selector: 'app-partner-overview',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FeedbackStateComponent],
   templateUrl: './partner-overview.component.html',
   styleUrl: './partner-overview.component.css'
 })
 export class PartnerOverviewComponent implements OnInit {
   private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
+  private cdr = inject(ChangeDetectorRef);
   title = 'Đối tác & Cơ sở';
   endpoint = 'properties';
   rows: Record<string, unknown>[] = [];
@@ -35,10 +37,12 @@ export class PartnerOverviewComponent implements OnInit {
         this.rows = rows;
         this.columns = rows.length ? Object.keys(rows[0]) : [];
         this.loading = false;
+        this.cdr.markForCheck();
       },
       error: error => {
         this.error = error?.error?.message || 'Không thể tải dữ liệu.';
         this.loading = false;
+        this.cdr.markForCheck();
       }
     });
   }

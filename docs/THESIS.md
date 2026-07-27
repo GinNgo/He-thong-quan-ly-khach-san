@@ -542,6 +542,20 @@ Dữ liệu địa giới, tìm kiếm Unicode và seeder demo giúp hệ thốn
 
 LuxeStay đã đạt mục tiêu xây dựng nền tảng quản lý và đặt phòng có các nghiệp vụ cốt lõi, bảo mật nhiều lớp và khả năng quản lý nhiều cơ sở. Kiến trúc hiện tại tạo nền tảng phù hợp để tiếp tục phát triển thành sản phẩm SaaS hoàn chỉnh. Các giới hạn còn lại đã được xác định rõ, không được trình bày như chức năng hoàn thành và có thể triển khai theo từng giai đoạn mà không phải thay đổi nền tảng kiến trúc chính.
 
+## 5.5. KIỂM TRA GIAO DIỆN TOÀN HỆ THỐNG NGÀY 27/07/2026
+
+Đợt audit dùng frontend/backend local thật và tài khoản đại diện Customer, System Admin, Hotel Manager. Frontend unit test đạt 32/32, production build thành công; backend đạt 86/86 test.
+
+Kết quả chính:
+
+- Public search, property detail, single-RoomType selection, customer login, booking history và invoice hiển thị dữ liệu thật. UI hiện tự giới hạn lựa chọn một RoomType nên claim “mixed RoomType bị mất dữ liệu” của audit cũ không còn đúng với implementation hiện tại.
+- Admin route chính tải được, nhưng nhận diện bị trộn LuxeStay/Aurora/Hotel System/Lumina; dynamic menu và quick search có URL không tồn tại.
+- Generic partner administration và Management Portal có request/API nhưng view mắc kẹt loading do callback bất đồng bộ chưa kích hoạt cập nhật view trong Angular zoneless.
+- Subscription billing vẫn chứa hành động mô phỏng bằng `confirm()`/`alert()` và chưa được coi là chức năng thanh toán hoàn thiện.
+- Các form/controls được sửa phải có label liên kết, focus rõ, responsive 375/768/1024/1440 và state loading/error/retry.
+
+Đợt cải tiến ưu tiên sửa state dùng chung, navigation canonical và brand shell trước khi mở rộng domain mới như reviews, customer add-on services hoặc multi-RoomType cart.
+
 ---
 
 # TÀI LIỆU THAM KHẢO

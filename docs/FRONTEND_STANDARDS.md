@@ -326,3 +326,26 @@ Use feature modules.
 Use reusable services.
 
 Avoid duplicate UI code.
+
+---
+
+## Angular Zoneless Async State
+
+Angular 22 của dự án chạy không khai báo `zone.js`. Component cập nhật state trong `HttpClient`, WebSocket hoặc callback bất đồng bộ phải dùng một trong hai pattern:
+
+1. Signal/computed state trong template; hoặc
+2. Inject `ChangeDetectorRef` và gọi `markForCheck()` sau mọi nhánh `next`, `error`, `complete` làm thay đổi view state.
+
+Mọi async page phải thoát khỏi loading ở cả success và error. Retry button phải gọi lại cùng request contract và có `aria-live`/`role="alert"` phù hợp.
+
+## Canonical Navigation
+
+- Menu động, quick search, breadcrumb và page title chỉ dùng route có trong `app.routes.ts`.
+- Route alias phải redirect tới route canonical; không để search/menu dẫn tới admin 404.
+- Permission denial phải tới `/403` hoặc state giải thích rõ, không blank screen hoặc redirect loop.
+
+## Honest Feature States
+
+- Không dùng `confirm()`/`alert()` để mô phỏng payment, subscription hoặc mutation chưa nối API.
+- Chức năng chưa có contract thật phải disabled với nhãn “Chưa hỗ trợ” hoặc ghi `MISSING/PARTIAL` trong audit.
+- Không dùng dữ liệu mock hoặc UI giả làm bằng chứng hoàn thiện.

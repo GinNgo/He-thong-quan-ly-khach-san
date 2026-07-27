@@ -3,6 +3,8 @@
   margin: 0 auto;
 }
 
+:host { display: block; }
+
 .current-plan-card {
   background: white;
   border-radius: var(--hotel-radius-lg);
@@ -184,7 +186,7 @@
 }
 
 .btn-primary:disabled {
-  background-color: #cbd5e1;
+  background-color: var(--hotel-border-strong);
   cursor: not-allowed;
 }
 

@@ -8,7 +8,7 @@
 
 .login-hero {
   flex: 1;
-  background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDVlqfrCUpDG2pLrYghend0Bvqs4hbHxZGuGU0ioLQJKOJeJ78SrR6SI5tJRUZlBGYt5TnEVTdPmJwuxHhvDbYwfC7F4LcdVeMX2DsPvPC8CZd2v0ZqwbXXTgZoSgVezKsciG_4e0QRO5f72wW7veCb-bK3nV0mC-_8LR1b2s2R3TgP28WmR9gLZ-CNdbehLstooNV4K0LgDXnjylTBVYM0hcExAS3V9M9tkhXBVQA-GuF1GBwFNB8fPLAXc7DOfVoXOV5JcRg5Ii4');
+  background-image: url('/assets/images/login-bg.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

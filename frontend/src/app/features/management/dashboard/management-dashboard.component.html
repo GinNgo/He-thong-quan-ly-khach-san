@@ -5,9 +5,13 @@
       @for (property of context?.properties || []; track property.id) { <option [ngValue]="property.id">{{ property.nameVi }}</option> }
     </select>
   </header>
-  @if (error) { <div class="notice error">{{ error }}</div> }
-  @if (loading) { <div class="notice">Đang tải tổng quan...</div> }
-  @if (context && !loading) {
+  @if (error) {
+    <app-feedback-state state="error" title="Không thể tải tổng quan" [message]="error" actionLabel="Thử lại" (actionTriggered)="load(selectedPropertyId)" />
+  } @else if (loading) {
+    <app-feedback-state state="loading" title="Đang tải tổng quan" message="Đang đồng bộ số liệu vận hành và giới hạn gói." />
+  } @else if (!context || !context.properties.length) {
+    <app-feedback-state state="empty" title="Chưa có cơ sở được cấp" message="Tài khoản này chưa có cơ sở lưu trú để hiển thị tổng quan." />
+  } @else if (context) {
     @if (context.upgradeRequired) { <div class="upgrade"><strong>Gói {{ context.planCode }}</strong><span>Một số chức năng nâng cao đang bị giới hạn. Dữ liệu đã nhập vẫn được giữ nguyên.</span><a routerLink="/management/billing">Xem gói dịch vụ</a></div> }
     <div class="summary"><div><span>Gói hiện tại</span><strong>{{ context.planCode }}</strong></div><div><span>Trạng thái</span><strong>{{ context.subscriptionStatus }}</strong></div><div><span>Cơ sở</span><strong>{{ context.usage['properties'] || 0 }} / {{ limit('MAX_PROPERTIES') }}</strong></div><div><span>Phòng</span><strong>{{ context.usage['rooms'] || 0 }} / {{ limit('MAX_ROOMS') }}</strong></div></div>
     <div class="metrics">

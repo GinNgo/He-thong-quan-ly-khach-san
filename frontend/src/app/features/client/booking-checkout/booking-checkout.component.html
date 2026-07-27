@@ -24,7 +24,7 @@
     <div class="bg-white p-6 md:p-8 rounded-lg shadow-md">
       <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-4">Thông tin Đặt phòng</h2>
 
-      <div *ngIf="errorMessage" class="bg-red-50 border border-red-200 text-red-700 rounded p-3 mb-6 text-sm font-medium">
+      <div *ngIf="errorMessage" class="bg-red-50 border border-red-200 text-red-700 rounded p-3 mb-6 text-sm font-medium" role="alert" aria-live="assertive">
         {{ errorMessage }}
       </div>
       
@@ -32,32 +32,32 @@
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
-            <label class="block text-sm font-bold text-gray-700 mb-2">Họ</label>
-            <input type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#0071c2]" 
+            <label for="booking-last-name" class="block text-sm font-bold text-gray-700 mb-2">Họ</label>
+            <input id="booking-last-name" type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#0071c2]"
                    [(ngModel)]="bookingData.lastName" name="lastName" required>
           </div>
           <div>
-            <label class="block text-sm font-bold text-gray-700 mb-2">Tên</label>
-            <input type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#0071c2]" 
+            <label for="booking-first-name" class="block text-sm font-bold text-gray-700 mb-2">Tên</label>
+            <input id="booking-first-name" type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#0071c2]"
                    [(ngModel)]="bookingData.firstName" name="firstName" required>
           </div>
         </div>
 
         <div class="mb-6">
-          <label class="block text-sm font-bold text-gray-700 mb-2">Số điện thoại</label>
-          <input type="tel" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#0071c2]" 
+          <label for="booking-phone" class="block text-sm font-bold text-gray-700 mb-2">Số điện thoại</label>
+          <input id="booking-phone" type="tel" autocomplete="tel" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#0071c2]"
                  [(ngModel)]="bookingData.phone" name="phone" required>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
-            <label class="block text-sm font-bold text-gray-700 mb-2">Ngày nhận phòng</label>
-            <input type="date" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#0071c2]" 
+            <label for="booking-check-in" class="block text-sm font-bold text-gray-700 mb-2">Ngày nhận phòng</label>
+            <input id="booking-check-in" type="date" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#0071c2]"
                    [(ngModel)]="bookingData.checkInDate" name="checkInDate" required>
           </div>
           <div>
-            <label class="block text-sm font-bold text-gray-700 mb-2">Ngày trả phòng</label>
-            <input type="date" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#0071c2]" 
+            <label for="booking-check-out" class="block text-sm font-bold text-gray-700 mb-2">Ngày trả phòng</label>
+            <input id="booking-check-out" type="date" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#0071c2]"
                    [(ngModel)]="bookingData.checkOutDate" name="checkOutDate" [min]="bookingData.checkInDate" required>
           </div>
         </div>
@@ -71,7 +71,7 @@
           </div>
         </div>
 
-        <div class="mb-8"><label class="block text-sm font-bold text-gray-700 mb-2">Yêu cầu đặc biệt</label><textarea class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-primary" rows="3" [(ngModel)]="bookingData.specialRequests" name="specialRequests" placeholder="Giờ đến dự kiến hoặc yêu cầu hỗ trợ"></textarea></div>
+        <div class="mb-8"><label for="booking-special-requests" class="block text-sm font-bold text-gray-700 mb-2">Yêu cầu đặc biệt</label><textarea id="booking-special-requests" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-primary" rows="3" [(ngModel)]="bookingData.specialRequests" name="specialRequests" placeholder="Giờ đến dự kiến hoặc yêu cầu hỗ trợ"></textarea></div>
         
         <div class="mb-8">
           <label class="block text-sm font-bold text-gray-700 mb-3">Phương thức thanh toán</label>

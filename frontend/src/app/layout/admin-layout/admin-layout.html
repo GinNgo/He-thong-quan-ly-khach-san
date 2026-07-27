@@ -130,7 +130,11 @@
             aria-controls="user-menu"
             aria-haspopup="menu"
           >
-            <img [src]="currentAvatarSrc" alt="" />
+            @if (currentAvatarSrc) {
+              <img [src]="currentAvatarSrc" alt="" />
+            } @else {
+              <span class="profile-initials" aria-hidden="true">{{ currentUserInitials }}</span>
+            }
             <span class="profile-copy">
               <strong>{{ currentUserName }}</strong>
               <small>{{ currentRoleLabel }}</small>
@@ -162,7 +166,7 @@
     </main>
 
     <footer class="admin-footer">
-      &copy; 2026 Aurora Hotel Management
+      &copy; 2026 LuxeStay Hospitality Group
     </footer>
   </div>
 </div>

@@ -64,7 +64,7 @@ public class DataInitializer implements CommandLineRunner {
         initFunction(systemModule, FunctionCode.ROLE.name(), "Vai trò", "/admin/roles", "pi pi-key", 3);
         initFunction(systemModule, FunctionCode.ROLE_PERMISSION.name(), "Phân quyền", "/admin/role-permissions", "pi pi-shield", 4);
         initFunction(systemModule, FunctionCode.USER.name(), "Người dùng", "/admin/users", "pi pi-users", 5);
-        initFunction(systemModule, FunctionCode.AI_CHAT.name(), "AI Chatbot", "/ai", "pi pi-android", 6);
+        initFunction(systemModule, FunctionCode.AI_CHAT.name(), "Chat hỗ trợ", "/admin/chat", "pi pi-comments", 6);
 
         initFunction(hotelModule, FunctionCode.CUSTOMER.name(), "Khách hàng", "/admin/customers", "pi pi-id-card", 1);
         initFunction(hotelModule, FunctionCode.ROOM_TYPE.name(), "Loại phòng", "/admin/room-types", "pi pi-list", 2);
