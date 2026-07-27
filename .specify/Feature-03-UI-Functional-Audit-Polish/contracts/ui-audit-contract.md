@@ -43,6 +43,13 @@ Evidence tối thiểu gồm:
 
 E2E dùng mock hoặc source review không được gán `COMPLETE` thay cho browser integration thật.
 
+Quy tắc định danh evidence:
+
+1. Mỗi record dùng một ID duy nhất dạng `EVD-###` và chỉ được định nghĩa một lần trong evidence catalog.
+2. ID tăng tuần tự, không tái sử dụng ID đã có; mọi tham chiếu phải trỏ tới một record tồn tại.
+3. Khi một audit row hoặc gap dùng nhiều evidence, liệt kê ID bằng dấu phẩy, ví dụ `EVD-012, EVD-013`; không dùng dấu gạch chéo hoặc mô tả khoảng mơ hồ.
+4. Evidence trước và sau sửa được giữ riêng để không làm mất lịch sử lỗi; record sau sửa phải nêu rõ phạm vi đã PASS và phần còn bị chặn.
+
 ## 4. Premium UI contract
 
 Mọi surface được sửa phải thỏa:
@@ -65,6 +72,15 @@ Expected | Actual | Evidence | Disposition | Next step | Verification
 ```
 
 Gap cần backend/domain lớn phải dùng disposition `DEFER_FEATURE`; không dựng fake UI để đóng gap.
+
+`State` của gap là vòng đời xác minh, tách biệt với audit status và disposition, và chỉ dùng một trong bốn giá trị:
+
+- `REVALIDATE`: giả thuyết lịch sử/source chưa đủ bằng chứng runtime hiện tại.
+- `CONFIRMED_PARTIAL`: đã có bằng chứng hiện tại; một phần hành vi đúng nhưng acceptance hoặc nhánh quan trọng vẫn thiếu/bị chặn.
+- `CONFIRMED_BROKEN`: đã có bằng chứng hiện tại rằng hành vi được công bố thất bại, không nối hoặc không thể bắt đầu.
+- `FIXED`: phạm vi lỗi đã được sửa và có source/test/browser evidence sau sửa; blocker còn lại phải được ghi riêng, không ẩn trong trạng thái này.
+
+Không dùng trạng thái trung gian như `SOURCE_OBSERVED`; source-only hypothesis thuộc `REVALIDATE`, còn lỗi đã có runtime evidence thuộc `CONFIRMED_BROKEN` hoặc `CONFIRMED_PARTIAL`.
 
 ## 6. Completion contract
 
