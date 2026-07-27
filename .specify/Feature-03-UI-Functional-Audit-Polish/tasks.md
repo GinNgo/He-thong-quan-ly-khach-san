@@ -184,7 +184,7 @@ description: "Dependency-ordered tasks for exhaustive UI audit and premium polis
 ## Phase 9: Convergence
 
 - [X] T046 [US1] Complete real-browser evidence for the still-unvisited public, customer, admin and management audit rows, including permission/error/recovery branches, and attach `EVD-###` metadata per FR-001/FR-002/SC-001 (partial outcomes remain explicitly blocked/broken where actor, data or route contracts are unavailable)
-- [ ] T047 [US2] Implement the `/admin/properties` create journey or replace the inert `Thêm mới` control with an explicit supported/unavailable state after confirming the property-create API contract per GAP-015 (missing)
+- [X] T047 [US2] Implement the `/admin/properties` create journey or replace the inert `Thêm mới` control with an explicit supported/unavailable state after confirming the property-create API contract per GAP-015 (browser-verified dialog/validation; real submission blocked by missing location data)
 - [ ] T048 [US1] Replace generic partner overview rendering with endpoint-specific columns, actions, loading/error/empty contracts and permission UX for AUD-041 to AUD-050 per FR-007/GAP-008/GAP-016 (partial)
 - [ ] T049 [US2] Complete customer search-to-detail-to-checkout-payment/history browser coverage and verify duplicate-submit, payment idempotency and ownership behavior per FR-005/FR-018/GAP-001/GAP-005/GAP-006 (partial)
 - [ ] T050 [US3] Normalize audit evidence IDs and gap state taxonomy (`REVALIDATE`, `FIXED`, `CONFIRMED_PARTIAL`, `CONFIRMED_BROKEN`) across `audit-matrix.md`, `gap-register.md` and the contract per FR-002/FR-020 (partial)

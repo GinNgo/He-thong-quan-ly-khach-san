@@ -4,6 +4,46 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Hotel } from './client-api.service';
 
+export interface AdminProperty extends Hotel {
+  nameVi?: string;
+  nameEn?: string;
+  status?: string;
+  operationStatus?: string;
+}
+
+export interface PropertyLocation {
+  id: number;
+  nameVi: string;
+  nameEn?: string;
+  locationType: 'PROVINCE' | 'WARD';
+  parent?: { id: number };
+}
+
+export interface CreatePropertyRequest {
+  name: string;
+  nameVi: string;
+  nameEn?: string;
+  propertyType: string;
+  addressLine: string;
+  city: string;
+  country: string;
+  provinceId: number;
+  wardId: number;
+  description?: string;
+  descriptionVi?: string;
+  descriptionEn?: string;
+  starRating?: number;
+  phone?: string;
+  email?: string;
+  website?: string;
+  mainImage?: string;
+  status: 'DRAFT';
+  approvalStatus: 'DRAFT';
+  operationStatus: 'INACTIVE';
+  isDemo: false;
+  dataSource: 'ADMIN';
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -11,27 +51,35 @@ export class PropertyService {
   private http = inject(HttpClient);
   private apiUrl = `${environment.apiUrl}/v1/hotels`;
 
-  getAllProperties(): Observable<Hotel[]> {
-    return this.http.get<Hotel[]>(this.apiUrl);
+  getAllProperties(): Observable<AdminProperty[]> {
+    return this.http.get<AdminProperty[]>(this.apiUrl);
   }
 
-  createProperty(property: any): Observable<Hotel> {
-    return this.http.post<Hotel>(this.apiUrl, property);
+  getProvinces(): Observable<PropertyLocation[]> {
+    return this.http.get<PropertyLocation[]>(`${environment.apiUrl}/public/locations/provinces`);
   }
 
-  updateProperty(id: number, property: any): Observable<Hotel> {
-    return this.http.put<Hotel>(`${this.apiUrl}/${id}`, property);
+  getWards(provinceId: number): Observable<PropertyLocation[]> {
+    return this.http.get<PropertyLocation[]>(`${environment.apiUrl}/public/locations/provinces/${provinceId}/wards`);
   }
 
-  submitProperty(id: number): Observable<Hotel> {
-    return this.http.post<Hotel>(`${this.apiUrl}/${id}/submit`, {});
+  createProperty(property: CreatePropertyRequest): Observable<AdminProperty> {
+    return this.http.post<AdminProperty>(this.apiUrl, property);
   }
 
-  approveProperty(id: number): Observable<Hotel> {
-    return this.http.post<Hotel>(`${this.apiUrl}/${id}/approve`, {});
+  updateProperty(id: number, property: Partial<CreatePropertyRequest>): Observable<AdminProperty> {
+    return this.http.put<AdminProperty>(`${this.apiUrl}/${id}`, property);
   }
 
-  rejectProperty(id: number): Observable<Hotel> {
-    return this.http.post<Hotel>(`${this.apiUrl}/${id}/reject`, {});
+  submitProperty(id: number): Observable<AdminProperty> {
+    return this.http.post<AdminProperty>(`${this.apiUrl}/${id}/submit`, {});
+  }
+
+  approveProperty(id: number): Observable<AdminProperty> {
+    return this.http.post<AdminProperty>(`${this.apiUrl}/${id}/approve`, {});
+  }
+
+  rejectProperty(id: number): Observable<AdminProperty> {
+    return this.http.post<AdminProperty>(`${this.apiUrl}/${id}/reject`, {});
   }
 }
