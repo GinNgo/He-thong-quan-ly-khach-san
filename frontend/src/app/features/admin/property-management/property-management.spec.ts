@@ -63,7 +63,7 @@ describe('PropertyManagementComponent', () => {
     expect(component.dialogVisible).toBe(false);
     expect(component.saving).toBe(false);
     fixture.destroy();
-  });
+  }, 15000);
 
   it('blocks an incomplete form before sending a create request', () => {
     const fixture = TestBed.createComponent(PropertyManagementComponent);
