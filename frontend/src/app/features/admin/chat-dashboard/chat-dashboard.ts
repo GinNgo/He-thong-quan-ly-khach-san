@@ -19,7 +19,7 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
   private userService = inject(UserService);
   private http = inject(HttpClient);
   
-  @ViewChild('scrollMe') private myScrollContainer!: ElementRef;
+  @ViewChild('scrollMe') private myScrollContainer?: ElementRef<HTMLElement>;
 
   adminId = 1; // Default admin ID
   activeUserIds: number[] = [];
@@ -70,11 +70,10 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
   } 
 
   scrollToBottom(): void {
-    try {
-      if (this.myScrollContainer) {
-        this.myScrollContainer.nativeElement.scrollTop = this.myScrollContainer.nativeElement.scrollHeight;
-      }
-    } catch(err) { }                 
+    const container = this.myScrollContainer?.nativeElement;
+    if (!container) return;
+
+    container.scrollTop = container.scrollHeight;
   }
 
   loadActiveChats() {

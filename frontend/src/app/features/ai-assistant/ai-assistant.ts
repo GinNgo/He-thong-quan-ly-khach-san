@@ -18,7 +18,7 @@ interface ChatMessage {
   styleUrl: './ai-assistant.css'
 })
 export class AiAssistant implements AfterViewChecked {
-  @ViewChild('scrollMe') private myScrollContainer!: ElementRef;
+  @ViewChild('scrollMe') private myScrollContainer?: ElementRef<HTMLElement>;
 
   isOpen = false;
   messages: ChatMessage[] = [];
@@ -32,9 +32,10 @@ export class AiAssistant implements AfterViewChecked {
   }
 
   scrollToBottom(): void {
-    try {
-      this.myScrollContainer.nativeElement.scrollTop = this.myScrollContainer.nativeElement.scrollHeight;
-    } catch(err) { }
+    const container = this.myScrollContainer?.nativeElement;
+    if (!container) return;
+
+    container.scrollTop = container.scrollHeight;
   }
 
   toggleChat() {

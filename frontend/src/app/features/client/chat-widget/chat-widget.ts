@@ -17,7 +17,7 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
   private chatService = inject(ChatService);
   private http = inject(HttpClient);
   
-  @ViewChild('scrollMe') private myScrollContainer!: ElementRef;
+  @ViewChild('scrollMe') private myScrollContainer?: ElementRef<HTMLElement>;
 
   isOpen = false;
   isLoggedIn = false;
@@ -42,11 +42,10 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
   } 
 
   scrollToBottom(): void {
-    try {
-      if (this.myScrollContainer) {
-        this.myScrollContainer.nativeElement.scrollTop = this.myScrollContainer.nativeElement.scrollHeight;
-      }
-    } catch(err) { }                 
+    const container = this.myScrollContainer?.nativeElement;
+    if (!container) return;
+
+    container.scrollTop = container.scrollHeight;
   }
 
   checkLoginStatus() {

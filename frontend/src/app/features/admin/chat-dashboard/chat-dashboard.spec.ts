@@ -29,4 +29,8 @@ describe('ChatDashboard', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('does not fail before a conversation body is mounted', () => {
+    expect(() => component.scrollToBottom()).not.toThrow();
+  });
 });

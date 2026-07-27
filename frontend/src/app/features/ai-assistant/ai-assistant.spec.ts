@@ -19,4 +19,8 @@ describe('AiAssistant', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('does not fail when the chat body is not mounted', () => {
+    expect(() => component.scrollToBottom()).not.toThrow();
+  });
 });

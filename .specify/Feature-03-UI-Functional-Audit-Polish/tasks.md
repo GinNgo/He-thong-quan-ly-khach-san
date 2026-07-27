@@ -138,8 +138,8 @@ description: "Dependency-ordered tasks for exhaustive UI audit and premium polis
 
 **Purpose**: Reconcile artifacts with implementation and prepare a safe Git handoff.
 
-- [ ] T042 Run Spec Kit analyze read-only across `.specify/Feature-03-UI-Functional-Audit-Polish/spec.md`, `plan.md`, and `tasks.md`; request user approval before any remediation edits required by analyze findings
-- [ ] T043 Run Spec Kit converge and append only genuinely unbuilt work to the Convergence phase in `.specify/Feature-03-UI-Functional-Audit-Polish/tasks.md`
+- [X] T042 Run Spec Kit analyze read-only across `.specify/Feature-03-UI-Functional-Audit-Polish/spec.md`, `plan.md`, and `tasks.md`; request user approval before any remediation edits required by analyze findings
+- [X] T043 Run Spec Kit converge and append only genuinely unbuilt work to the Convergence phase in `.specify/Feature-03-UI-Functional-Audit-Polish/tasks.md`
 - [X] T044 Run `git diff --check`, inspect `git status --short`, and verify no secret, generated build artifact or unrelated user change is staged
 - [ ] T045 Prepare final handoff with completed routes, unresolved gaps, test/build/browser evidence and branch status; commit/push only when explicitly requested by the user
 
@@ -192,3 +192,8 @@ description: "Dependency-ordered tasks for exhaustive UI audit and premium polis
 - [X] T051 [US5] Reduce the production initial bundle below its configured budget and resolve or document the `@stomp/stompjs`, `sockjs-client` and inline-font warnings per SC-010/GAP-017
 - [ ] T052 [US1] Re-run denied-actor, expired-session, forged-property-context and management property-switch scenarios per FR-008/FR-013/GAP-013 (missing)
 - [ ] T053 [US3] Update the feature status and final completion metrics only after the remaining evidence-backed tasks converge per SC-003/SC-004/FR-020 (partial)
+
+## Phase 10: Convergence
+
+- [X] T054 [US4] Replace empty exception handlers in `frontend/src/app/features/ai-assistant/ai-assistant.ts`, `frontend/src/app/features/client/chat-widget/chat-widget.ts` and `frontend/src/app/features/admin/chat-dashboard/chat-dashboard.ts` with null-safe guards or explicit non-user-facing logging, preserving reduced-motion/scroll behavior (contradicts Constitution 5)
+- [ ] T055 [US1] Browser-test the actual admin notification panel and AI assistant widget controls mounted by `AdminLayout`, including open/close, loading/empty/error/retry, send failure and realtime/mark-read branches; update AUD-057/AUD-058 and add evidence IDs without introducing standalone routes (partial, GAP-020)
