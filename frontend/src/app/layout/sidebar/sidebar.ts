@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnInit, inject, Input } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, OnInit, inject, Input, Output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
@@ -26,19 +26,33 @@ export interface AppModuleDto {
 })
 export class Sidebar implements OnInit {
   @Input() isCollapsed = false;
-  http = inject(HttpClient);
-  cdr = inject(ChangeDetectorRef);
-  
-  menuItems: AppModuleDto[] = [];
+  @Output() navigated = new EventEmitter<void>();
 
-  ngOnInit() {
+  private http = inject(HttpClient);
+  private cdr = inject(ChangeDetectorRef);
+
+  menuItems: AppModuleDto[] = [];
+  isLoading = true;
+  errorMessage = '';
+
+  ngOnInit(): void {
+    this.loadMenu();
+  }
+
+  loadMenu(): void {
+    this.isLoading = true;
+    this.errorMessage = '';
+
     this.http.get<AppModuleDto[]>(`${environment.apiUrl}/auth/my-menu`).subscribe({
       next: (res) => {
         this.menuItems = this.deduplicateMenu(res);
+        this.isLoading = false;
         this.cdr.detectChanges();
       },
       error: () => {
-        this.menuItems = this.getFallbackMenu();
+        this.menuItems = [];
+        this.isLoading = false;
+        this.errorMessage = 'Không thể tải menu theo quyền.';
         this.cdr.detectChanges();
       }
     });
@@ -58,17 +72,7 @@ export class Sidebar implements OnInit {
     })).filter(module => module.functions.length > 0);
   }
 
-  private getFallbackMenu(): AppModuleDto[] {
-    return [
-      {
-        id: 1,
-        code: 'SYSTEM',
-        name: 'Tổng quan',
-        functions: [
-          { id: 1, code: 'DASHBOARD', name: 'Bảng điều khiển', url: '/admin/dashboard', icon: 'pi pi-chart-bar' },
-          { id: 2, code: 'PROFILE', name: 'Hồ sơ', url: '/admin/profile', icon: 'pi pi-user' },
-        ],
-      },
-    ];
+  onNavigate(): void {
+    this.navigated.emit();
   }
 }

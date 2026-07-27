@@ -1,6 +1,7 @@
 HELP.md
 target/
 backend-serve.*.log
+*.log
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
@@ -36,3 +37,4 @@ build/
 ### Local database artefacts ###
 hoteldb.mv.db
 hoteldb.trace.db
+uploads/

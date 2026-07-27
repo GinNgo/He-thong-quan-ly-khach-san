@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NavigationEnd, RouterOutlet, Router } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { Sidebar } from '../sidebar/sidebar';
 import { AuthService } from '../../core/services/auth';
@@ -16,13 +16,14 @@ import { environment } from '../../../environments/environment';
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterOutlet, Sidebar, AiAssistant, ToastModule],
+  imports: [CommonModule, FormsModule, RouterLink, RouterOutlet, Sidebar, AiAssistant, ToastModule],
   providers: [MessageService],
   templateUrl: './admin-layout.html',
   styleUrl: './admin-layout.css'
 })
 export class AdminLayout implements OnInit, OnDestroy {
   isSidebarCollapsed = false;
+  isMobileSidebarOpen = false;
   isNotificationOpen = false;
   isUserMenuOpen = false;
   globalSearchTerm = '';
@@ -30,8 +31,10 @@ export class AdminLayout implements OnInit, OnDestroy {
   currentUserName = 'Admin';
   currentAvatarUrl = '';
   currentRoleLabel = 'Quản trị hệ thống';
+  notificationsLoading = true;
+  notificationsError = '';
 
-  quickLinks = [
+  readonly quickLinks = [
     { label: 'Bảng điều khiển', url: '/admin/dashboard' },
     { label: 'Đặt phòng', url: '/admin/reservations' },
     { label: 'Phòng', url: '/admin/rooms' },
@@ -40,12 +43,21 @@ export class AdminLayout implements OnInit, OnDestroy {
     { label: 'Nhân sự', url: '/admin/users' },
     { label: 'Hóa đơn', url: '/admin/invoices' },
     { label: 'Phân quyền', url: '/admin/role-permissions' },
+    { label: 'Cơ sở lưu trú', url: '/admin/properties' },
+    { label: 'Duyệt cơ sở', url: '/admin/property-verifications' },
+    { label: 'Gói thuê bao', url: '/admin/subscription-plans' },
+    { label: 'Thuê bao', url: '/admin/subscriptions' },
+    { label: 'Quyền', url: '/admin/permissions' },
+    { label: 'Nhật ký hệ thống', url: '/admin/audit-logs' },
+    { label: 'Trạng thái phòng', url: '/admin/room-status-management' },
+    { label: 'Dịch vụ', url: '/admin/services' },
   ];
 
   notifications: AppNotification[] = [];
   unreadCount = 0;
   private notifSub?: Subscription;
   private authSub?: Subscription;
+  private routerSub?: Subscription;
   private apiOrigin = environment.apiUrl.replace(/\/api\/?$/, '');
 
   constructor(
@@ -60,9 +72,12 @@ export class AdminLayout implements OnInit, OnDestroy {
     this.currentRoleLabel = this.toRoleLabel(authState.roles[0]);
     this.updatePageTitle(this.router.url);
 
-    this.router.events
+    this.routerSub = this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-      .subscribe((event) => this.updatePageTitle(event.urlAfterRedirects));
+      .subscribe((event) => {
+        this.updatePageTitle(event.urlAfterRedirects);
+        this.closeOverlays();
+      });
   }
 
   ngOnInit() {
@@ -79,12 +94,7 @@ export class AdminLayout implements OnInit, OnDestroy {
     this.notificationService.connect();
     
     // Tải thông báo cũ
-    this.notificationService.getAdminNotifications().subscribe({
-      next: (data) => {
-        this.notifications = data;
-        this.updateUnreadCount();
-      }
-    });
+    this.loadNotifications();
 
     // Lắng nghe thông báo mới realtime
     this.notifSub = this.notificationService.notifications$.subscribe((notif) => {
@@ -104,6 +114,7 @@ export class AdminLayout implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.notifSub?.unsubscribe();
     this.authSub?.unsubscribe();
+    this.routerSub?.unsubscribe();
     this.notificationService.disconnect();
   }
 
@@ -119,11 +130,27 @@ export class AdminLayout implements OnInit, OnDestroy {
     return `https://ui-avatars.com/api/?name=${name}&background=1a56db&color=fff`;
   }
 
-  updateUnreadCount() {
+  loadNotifications(): void {
+    this.notificationsLoading = true;
+    this.notificationsError = '';
+    this.notificationService.getAdminNotifications().subscribe({
+      next: (data) => {
+        this.notifications = data;
+        this.updateUnreadCount();
+        this.notificationsLoading = false;
+      },
+      error: () => {
+        this.notificationsLoading = false;
+        this.notificationsError = 'Không thể tải thông báo.';
+      }
+    });
+  }
+
+  updateUnreadCount(): void {
     this.unreadCount = this.notifications.filter(n => !n.isRead).length;
   }
 
-  markAsRead(notif: AppNotification) {
+  markAsRead(notif: AppNotification): void {
     if (!notif.isRead) {
       this.notificationService.markAsRead(notif.id).subscribe(() => {
         notif.isRead = true;
@@ -132,21 +159,29 @@ export class AdminLayout implements OnInit, OnDestroy {
     }
   }
 
-  toggleSidebar() {
+  toggleSidebar(): void {
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 991px)').matches) {
+      this.isMobileSidebarOpen = !this.isMobileSidebarOpen;
+      return;
+    }
     this.isSidebarCollapsed = !this.isSidebarCollapsed;
   }
 
-  toggleNotifications() {
+  closeMobileNavigation(): void {
+    this.isMobileSidebarOpen = false;
+  }
+
+  toggleNotifications(): void {
     this.isNotificationOpen = !this.isNotificationOpen;
     this.isUserMenuOpen = false;
   }
 
-  toggleUserMenu() {
+  toggleUserMenu(): void {
     this.isUserMenuOpen = !this.isUserMenuOpen;
     this.isNotificationOpen = false;
   }
 
-  executeGlobalSearch() {
+  executeGlobalSearch(): void {
     const term = this.globalSearchTerm.trim().toLowerCase();
     if (!term) return;
 
@@ -157,18 +192,28 @@ export class AdminLayout implements OnInit, OnDestroy {
     }
   }
 
-  logout() {
+  logout(): void {
     this.authService.logout();
     this.router.navigate(['/login']);
   }
 
-  viewProfile() {
+  viewProfile(): void {
     this.isUserMenuOpen = false;
     this.router.navigate(['/admin/profile']);
   }
 
-  private updatePageTitle(url: string) {
-    const match = this.quickLinks.find((link) => url.startsWith(link.url));
+  @HostListener('document:keydown.escape')
+  closeOverlays(): void {
+    this.isMobileSidebarOpen = false;
+    this.isNotificationOpen = false;
+    this.isUserMenuOpen = false;
+  }
+
+  private updatePageTitle(url: string): void {
+    const normalizedUrl = url.split('?')[0];
+    const match = [...this.quickLinks]
+      .sort((left, right) => right.url.length - left.url.length)
+      .find((link) => normalizedUrl.startsWith(link.url));
     this.pageTitle = match?.label || 'Bảng điều khiển';
   }
 

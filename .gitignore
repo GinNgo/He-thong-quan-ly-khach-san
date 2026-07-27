@@ -1,2 +1,24 @@
+# Local environment
 .env
+.env.local
+.env.*.local
+
+# Local databases and backups
 HotelDB.bak
+*.bak
+*.mv.db
+*.trace.db
+
+# Runtime and generated output
+*.log
+*.vsix
+/uploads/
+/test_output.txt
+/indent
+/tmp-spa-server.js
+__pycache__/
+*.py[cod]
+
+# Operating system files
+.DS_Store
+Thumbs.db

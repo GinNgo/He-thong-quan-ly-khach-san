@@ -8,7 +8,7 @@
 | AT-02A-004 | FR-02A-008 | `npm test -- --watch=false` | Exit 0; 21 files, 30 tests passed | PASSED |
 | AT-02A-005 | SC-02A-003 | `npm run build -- --configuration production` | Exit 0 | PASSED |
 | AT-02A-006 | SC-02A-004/005 | Git whitespace and staged-content gates | Exit 0; 19 text files; no forbidden artifact/secret | PASSED |
-| AT-02A-007 | SC-02A-006 | Commit and `git push -u origin feature/frontend-ux-redesign` | Remote commit visible | PENDING |
+| AT-02A-007 | SC-02A-006 | Commit and `git push -u origin feature/frontend-ux-redesign` | `1d393df` visible on `origin/feature/frontend-ux-redesign`; exit 0 | PASSED |
 
 ## Manual accessibility checks
 

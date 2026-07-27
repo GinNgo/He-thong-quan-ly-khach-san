@@ -19,5 +19,5 @@
 ## Delivery
 
 - [x] CHK-02A-011 No secret/generated/log/temp artifact staged.
-- [ ] CHK-02A-012 Commit created from explicit file list.
-- [ ] CHK-02A-013 Remote feature branch updated without force.
+- [x] CHK-02A-012 Commit `1d393df` created from explicit file list.
+- [x] CHK-02A-013 Remote feature branch updated without force.

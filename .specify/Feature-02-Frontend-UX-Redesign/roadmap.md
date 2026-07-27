@@ -19,8 +19,8 @@ Frontend menu/guard chỉ cải thiện UX. Backend tiếp tục là nguồn s�
 
 | ID | Sub-feature | Scope | Dependency | Status |
 |---|---|---|---|---|
-| 02A | Design System & Shared Components | Tokens, focus, shared feedback states, shared component consistency | Feature-01 | IN PROGRESS |
-| 02B | App Shell, Sidebar, Header & Role Navigation | Desktop/mobile shell, role menu, active route, breadcrumbs, property context | 02A | NOT STARTED |
+| 02A | Design System & Shared Components | Tokens, focus, shared feedback states, shared component consistency | Feature-01 | PASSED (`1d393df`) |
+| 02B | App Shell, Sidebar, Header & Role Navigation | Desktop/mobile shell, role menu, active route, breadcrumbs, property context | 02A | IN PROGRESS |
 | 02C | Hotel, Room Type, Room & Housekeeping Management | Property and inventory operations | 02A, 02B | NOT STARTED |
 | 02D | Reservation, Check-in, Check-out & Extra Services | Reservation lifecycle and operation desk | 02A, 02B, 02C | NOT STARTED |
 | 02E | Invoice, Payment, Revenue & Reports | Billing lifecycle and reporting UX | 02A, 02B, 02D | NOT STARTED |

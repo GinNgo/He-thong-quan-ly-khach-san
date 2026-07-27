@@ -1,25 +1,59 @@
-<div class="d-flex flex-column flex-shrink-0 p-3 sidebar-container" [class.collapsed]="isCollapsed" style="background-color: #1e293b; color: #fff; height: 100vh; overflow-y: auto;">
-  <div class="d-flex align-items-center mb-4 mt-2 px-2 brand-container">
-    <div class="d-flex align-items-center justify-content-center fw-bold text-white rounded-1 me-3 shadow-sm brand-logo" style="width: 32px; height: 32px; background-color: #f59e0b; flex-shrink: 0;">A</div>
-    <div class="text-uppercase fw-bold sidebar-text" style="letter-spacing: 0.1em; font-size: 0.875rem; line-height: 1.2; white-space: nowrap;">
-      AURORA <br> 
-      <span class="text-white-50" style="font-size: 0.65rem;">HOTEL MANAGEMENT</span>
-    </div>
-  </div>
-  
-  <ul class="nav nav-pills flex-column mb-auto gap-1 px-1">
-    @for (module of menuItems; track module.id) {
-      <li class="nav-item mt-3 px-3">
-        <span class="text-uppercase fw-bold text-white-50" style="font-size: 0.7rem; letter-spacing: 0.1em;">{{module.name}}</span>
-      </li>
-      @for (func of module.functions; track func.id) {
-        <li class="nav-item" [title]="func.name">
-          <a [routerLink]="func.url" routerLinkActive="sidebar-active text-white" [routerLinkActiveOptions]="{exact: func.url === '/admin/dashboard'}" class="nav-link text-white-50 d-flex align-items-center rounded-2 sidebar-link py-3 px-3 fw-medium">
-            <i [class]="func.icon" class="me-3 fs-5 sidebar-icon"></i>
-            <span class="sidebar-text text-truncate d-block">{{func.name}}</span>
-          </a>
-        </li>
-      }
+<div class="sidebar-container" [class.collapsed]="isCollapsed">
+  <a class="brand-container" routerLink="/admin/dashboard" (click)="onNavigate()" aria-label="Aurora Hotel Management">
+    <span class="brand-logo" aria-hidden="true">A</span>
+    <span class="brand-copy sidebar-text">
+      AURORA
+      <small>HOTEL MANAGEMENT</small>
+    </span>
+  </a>
+
+  <nav class="sidebar-nav" aria-label="Điều hướng quản trị">
+    @if (isLoading) {
+      <div class="sidebar-state" role="status" aria-live="polite">
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        <span class="sidebar-text">Đang tải menu...</span>
+      </div>
+    } @else if (errorMessage) {
+      <div class="sidebar-state sidebar-error" role="alert">
+        <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+        <span class="sidebar-text">{{ errorMessage }}</span>
+        <button type="button" class="sidebar-retry" (click)="loadMenu()" aria-label="Tải lại menu">
+          <i class="pi pi-refresh" aria-hidden="true"></i>
+          <span class="sidebar-text">Thử lại</span>
+        </button>
+      </div>
+    } @else if (menuItems.length === 0) {
+      <p class="sidebar-state" role="status">
+        <i class="pi pi-info-circle" aria-hidden="true"></i>
+        <span class="sidebar-text">Chưa có chức năng được cấp.</span>
+      </p>
+    } @else {
+      <ul class="sidebar-list">
+        @for (module of menuItems; track module.id) {
+          <li class="module-group">
+            <h2 class="module-title sidebar-text">{{ module.name }}</h2>
+            <ul class="module-links">
+              @for (func of module.functions; track func.id) {
+                <li>
+                  <a
+                    #activeLink="routerLinkActive"
+                    [routerLink]="func.url"
+                    routerLinkActive="sidebar-active"
+                    [routerLinkActiveOptions]="{ exact: func.url === '/admin/dashboard' }"
+                    [attr.aria-current]="activeLink.isActive ? 'page' : null"
+                    class="sidebar-link"
+                    [title]="isCollapsed ? func.name : null"
+                    (click)="onNavigate()"
+                  >
+                    <i [class]="func.icon + ' sidebar-icon'" aria-hidden="true"></i>
+                    <span class="sidebar-text">{{ func.name }}</span>
+                  </a>
+                </li>
+              }
+            </ul>
+          </li>
+        }
+      </ul>
     }
-  </ul>
+  </nav>
 </div>

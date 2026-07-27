@@ -11,6 +11,7 @@
 npm-debug.log
 yarn-error.log
 ng-serve.*.log
+*.log
 
 # IDEs and editors
 .idea/
@@ -39,6 +40,11 @@ ng-serve.*.log
 testem.log
 /typings
 __screenshots__/
+/playwright-report/
+/test-results/
+/booking-cancelled.png
+/booking-history.png
+/payment-simulator.png
 
 # System files
 .DS_Store

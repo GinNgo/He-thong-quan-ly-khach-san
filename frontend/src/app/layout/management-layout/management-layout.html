@@ -1,82 +1,145 @@
-<div class="management-container">
-  <!-- Sidebar -->
-  <aside class="sidebar" [class.collapsed]="isSidebarCollapsed">
-    <div class="sidebar-header">
-      <div class="logo">
-        <span class="material-symbols-outlined text-accent" style="font-size: 28px;">business</span>
-        <span class="logo-text" *ngIf="!isSidebarCollapsed">Partner Portal</span>
-      </div>
-      <button class="toggle-btn" (click)="toggleSidebar()">
-        <span class="material-symbols-outlined">{{ isSidebarCollapsed ? 'menu' : 'chevron_left' }}</span>
-      </button>
+<div
+  class="management-shell"
+  [class.sidebar-collapsed]="isSidebarCollapsed"
+  [class.mobile-nav-open]="isMobileSidebarOpen"
+>
+  <aside id="management-navigation" class="management-sidebar" aria-label="Điều hướng đối tác">
+    <div class="management-brand">
+      <span class="material-symbols-outlined brand-mark" aria-hidden="true">business</span>
+      <span class="sidebar-copy">
+        <strong>LuxeStay</strong>
+        <small>Partner Portal</small>
+      </span>
     </div>
 
-    <nav class="sidebar-nav">
-      <a routerLink="/management/dashboard" routerLinkActive="active" class="nav-item">
-        <span class="material-symbols-outlined">dashboard</span>
-        <span class="nav-text" *ngIf="!isSidebarCollapsed">Tổng quan</span>
-      </a>
-
-      <div class="nav-divider" *ngIf="!isSidebarCollapsed">QUẢN LÝ</div>
-
-      <a routerLink="/management/properties" routerLinkActive="active" class="nav-item">
-        <span class="material-symbols-outlined">domain</span>
-        <span class="nav-text" *ngIf="!isSidebarCollapsed">Cơ sở lưu trú</span>
-      </a>
-      <a routerLink="/management/room-types" routerLinkActive="active" class="nav-item">
-        <span class="material-symbols-outlined">bed</span>
-        <span class="nav-text" *ngIf="!isSidebarCollapsed">Loại phòng</span>
-      </a>
-      <a routerLink="/management/rooms" routerLinkActive="active" class="nav-item">
-        <span class="material-symbols-outlined">meeting_room</span>
-        <span class="nav-text" *ngIf="!isSidebarCollapsed">Phòng vật lý</span>
-      </a>
-      <a routerLink="/management/bookings" routerLinkActive="active" class="nav-item">
-        <span class="material-symbols-outlined">book_online</span>
-        <span class="nav-text" *ngIf="!isSidebarCollapsed">Đặt phòng</span>
-      </a>
-
-      <div class="nav-divider" *ngIf="!isSidebarCollapsed">SaaS & TÀI KHOẢN</div>
-
-      <a routerLink="/management/billing" routerLinkActive="active" class="nav-item">
-        <span class="material-symbols-outlined">workspace_premium</span>
-        <span class="nav-text" *ngIf="!isSidebarCollapsed">Gói dịch vụ (SaaS)</span>
-      </a>
-      <a routerLink="/management/staff" routerLinkActive="active" class="nav-item">
-        <span class="material-symbols-outlined">group</span>
-        <span class="nav-text" *ngIf="!isSidebarCollapsed">Nhân viên</span>
-      </a>
+    <nav class="management-nav" aria-label="Chức năng quản lý">
+      @for (group of navigationGroups; track group.label) {
+        <section class="nav-group" [attr.aria-labelledby]="'nav-group-' + $index">
+          <h2 [id]="'nav-group-' + $index" class="sidebar-copy">{{ group.label }}</h2>
+          <ul>
+            @for (link of group.links; track link.url) {
+              <li>
+                <a
+                  #activeLink="routerLinkActive"
+                  [routerLink]="link.url"
+                  routerLinkActive="active"
+                  [routerLinkActiveOptions]="{ exact: link.url === '/management/dashboard' }"
+                  [queryParams]="activePropertyId ? { propertyId: activePropertyId } : null"
+                  [attr.aria-current]="activeLink.isActive ? 'page' : null"
+                  [title]="isSidebarCollapsed ? link.label : null"
+                  (click)="closeMobileNavigation()"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">{{ link.icon }}</span>
+                  <span class="sidebar-copy">{{ link.label }}</span>
+                </a>
+              </li>
+            }
+          </ul>
+        </section>
+      }
     </nav>
   </aside>
 
-  <!-- Main Content -->
-  <main class="main-content">
-    <header class="topbar">
-      <div class="topbar-left">
-        <h2 class="page-title">Quản lý dành cho Đối tác</h2>
-      </div>
-      <div class="topbar-right">
-        <div class="user-profile group">
-          <div class="avatar">
-            <span class="material-symbols-outlined">person</span>
-          </div>
-          <span class="username">{{ username }}</span>
-          <span class="material-symbols-outlined text-gray-500">arrow_drop_down</span>
+  @if (isMobileSidebarOpen) {
+    <button
+      type="button"
+      class="management-backdrop"
+      aria-label="Đóng điều hướng"
+      (click)="closeMobileNavigation()"
+    ></button>
+  }
 
-          <div class="dropdown-menu">
-            <a routerLink="/" class="dropdown-item">
-              <span class="material-symbols-outlined">home</span> Về trang chủ
-            </a>
-            <a (click)="logout()" class="dropdown-item text-red">
-              <span class="material-symbols-outlined">logout</span> Đăng xuất
-            </a>
-          </div>
+  <div class="management-workspace">
+    <header class="management-header">
+      <div class="header-leading">
+        <button
+          type="button"
+          class="management-icon-button"
+          (click)="toggleSidebar()"
+          [attr.aria-expanded]="isMobileSidebarOpen || !isSidebarCollapsed"
+          aria-controls="management-navigation"
+          [attr.aria-label]="isMobileSidebarOpen ? 'Đóng điều hướng' : 'Mở hoặc thu gọn điều hướng'"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">menu</span>
+        </button>
+
+        <div class="page-context">
+          <nav aria-label="Đường dẫn trang">
+            <ol class="management-breadcrumbs">
+              <li><a routerLink="/management/dashboard">Đối tác</a></li>
+              <li aria-current="page">{{ pageTitle }}</li>
+            </ol>
+          </nav>
+          <h1>{{ pageTitle }}</h1>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="property-context">
+          <label for="active-property">Cơ sở đang quản lý</label>
+          @if (contextLoading) {
+            <div class="context-state" role="status" aria-live="polite">
+              <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+              Đang tải...
+            </div>
+          } @else if (contextError) {
+            <div class="context-state context-error" role="alert">
+              <span>{{ contextError }}</span>
+              <button type="button" (click)="loadContext()">Thử lại</button>
+            </div>
+          } @else if (properties.length === 0) {
+            <div class="context-state" role="status">Chưa có cơ sở được cấp.</div>
+          } @else {
+            <select
+              #propertySelect
+              id="active-property"
+              [value]="activePropertyId"
+              (change)="selectProperty(propertySelect.value)"
+            >
+              @for (property of properties; track property.id) {
+                <option [value]="property.id">{{ property.nameVi }}</option>
+              }
+            </select>
+          }
+        </div>
+
+        <div class="user-menu-anchor">
+          <button
+            type="button"
+            class="management-profile-button"
+            (click)="toggleUserMenu()"
+            [attr.aria-expanded]="isUserMenuOpen"
+            aria-controls="management-user-menu"
+            aria-haspopup="menu"
+          >
+            <span class="profile-avatar material-symbols-outlined" aria-hidden="true">person</span>
+            <span class="profile-name">{{ username }}</span>
+            <span class="material-symbols-outlined" aria-hidden="true">arrow_drop_down</span>
+            <span class="visually-hidden">Mở menu tài khoản</span>
+          </button>
+
+          @if (isUserMenuOpen) {
+            <ul id="management-user-menu" class="management-user-menu" role="menu">
+              <li role="none">
+                <a routerLink="/" role="menuitem">
+                  <span class="material-symbols-outlined" aria-hidden="true">home</span>
+                  Về trang chủ
+                </a>
+              </li>
+              <li role="none">
+                <button type="button" role="menuitem" (click)="logout()">
+                  <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+                  Đăng xuất
+                </button>
+              </li>
+            </ul>
+          }
         </div>
       </div>
     </header>
 
-    <div class="content-wrapper">
+    <main id="management-main-content" class="management-content" tabindex="-1">
       <router-outlet></router-outlet>
-    </div>
-  </main>
+    </main>
+  </div>
 </div>

@@ -1,58 +1,176 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
 .sidebar-container {
-  width: 250px;
-  transition: width 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  width: 16rem;
+  height: 100%;
+  overflow: hidden;
+  color: #e2e8f0;
+  background: #172033;
+  transition: width var(--hotel-transition-base, 200ms ease);
 }
 
-.sidebar-container.collapsed {
-  width: 80px;
-  padding-left: 0.5rem !important;
-  padding-right: 0.5rem !important;
+.brand-container {
+  display: flex;
+  align-items: center;
+  min-height: 4.5rem;
+  gap: var(--hotel-space-3, 0.75rem);
+  padding: var(--hotel-space-4, 1rem);
+  color: #fff;
+  text-decoration: none;
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
 }
 
-.sidebar-container.collapsed .sidebar-text {
-  display: none !important;
+.brand-logo {
+  display: grid;
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  color: #172033;
+  font-weight: 800;
+  border-radius: var(--hotel-radius-md, 0.5rem);
+  background: var(--hotel-accent, #f3b765);
 }
 
-.sidebar-text {
+.brand-copy {
+  display: grid;
+  gap: 0.1rem;
+  overflow: hidden;
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   white-space: nowrap;
 }
 
-.sidebar-container.collapsed .sidebar-icon {
-  margin-right: 0 !important;
-  font-size: 1.5rem !important;
+.brand-copy small {
+  color: #aebbd0;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
 }
 
-.sidebar-icon {
-  flex-shrink: 0;
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--hotel-space-3, 0.75rem);
 }
 
-.sidebar-container.collapsed .nav-link {
-  justify-content: center;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
+.sidebar-list,
+.module-links {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.sidebar-container.collapsed .brand-container {
-  justify-content: center;
+.module-group + .module-group {
+  margin-top: var(--hotel-space-5, 1.25rem);
 }
 
-.sidebar-container.collapsed .brand-logo {
-  margin-right: 0 !important;
+.module-title {
+  margin: 0 0 var(--hotel-space-2, 0.5rem);
+  padding: 0 var(--hotel-space-3, 0.75rem);
+  color: #aebbd0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-.sidebar-link {
-  transition: all 0.2s ease-in-out;
-  border-left: 4px solid transparent;
+.sidebar-link,
+.sidebar-retry {
+  display: flex;
+  width: 100%;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--hotel-space-3, 0.75rem);
+  padding: var(--hotel-space-2, 0.5rem) var(--hotel-space-3, 0.75rem);
+  color: #d7dfec;
+  border: 1px solid transparent;
+  border-radius: var(--hotel-radius-md, 0.5rem);
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  transition:
+    color var(--hotel-transition-fast, 150ms ease),
+    background var(--hotel-transition-fast, 150ms ease),
+    border-color var(--hotel-transition-fast, 150ms ease);
 }
 
-.sidebar-link:hover {
-  background-color: #334155;
-  color: #ffffff !important;
+.sidebar-link:hover,
+.sidebar-link.sidebar-active,
+.sidebar-retry:hover {
+  color: #fff;
+  background: #27344a;
 }
 
 .sidebar-link.sidebar-active {
-  background-color: #334155;
-  color: #ffffff !important;
-  border-left: 4px solid #c49a6c;
-  font-weight: 600;
+  border-color: rgb(243 183 101 / 55%);
+  box-shadow: inset 0.2rem 0 var(--hotel-accent, #f3b765);
+}
+
+.sidebar-link:focus-visible,
+.sidebar-retry:focus-visible,
+.brand-container:focus-visible {
+  outline: var(--hotel-focus-width, 3px) solid var(--hotel-focus-ring, #8ab4f8);
+  outline-offset: -3px;
+}
+
+.sidebar-icon {
+  flex: 0 0 1.25rem;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.sidebar-state {
+  display: flex;
+  align-items: center;
+  gap: var(--hotel-space-2, 0.5rem);
+  margin: 0;
+  padding: var(--hotel-space-3, 0.75rem);
+  color: #cbd5e1;
+  font-size: 0.875rem;
+}
+
+.sidebar-error {
+  flex-wrap: wrap;
+  color: #fecaca;
+}
+
+.sidebar-error .sidebar-retry {
+  margin-top: var(--hotel-space-2, 0.5rem);
+  color: #fff;
+  border-color: rgb(255 255 255 / 24%);
+}
+
+.sidebar-container.collapsed {
+  width: 4.75rem;
+}
+
+.sidebar-container.collapsed .sidebar-text {
+  display: none;
+}
+
+.sidebar-container.collapsed .brand-container,
+.sidebar-container.collapsed .sidebar-link,
+.sidebar-container.collapsed .sidebar-state {
+  justify-content: center;
+}
+
+.sidebar-container.collapsed .module-group + .module-group {
+  margin-top: var(--hotel-space-2, 0.5rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-container,
+  .sidebar-link,
+  .sidebar-retry {
+    transition: none;
+  }
 }

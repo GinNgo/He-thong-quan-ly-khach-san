@@ -1,6 +1,6 @@
 # Tasks: Feature-02A Design System & Shared Components
 
-**Status:** IN PROGRESS
+**Status:** PASSED
 
 ## Specify and analyze
 
@@ -26,5 +26,5 @@
 ## Deliver
 
 - [x] T02A-013 Update acceptance/checklist evidence.
-- [ ] T02A-014 Commit explicit green files.
-- [ ] T02A-015 Push `feature/frontend-ux-redesign` non-force.
+- [x] T02A-014 Commit explicit green files: `1d393df`.
+- [x] T02A-015 Push `feature/frontend-ux-redesign` non-force: exit 0.
