@@ -9,7 +9,14 @@
       <a routerLink="/" fragment="services">Dịch vụ</a><a routerLink="/" fragment="offers">Ưu đãi</a>
     </nav>
     <div class="header-actions">
-      <button type="button" class="locale-button" title="Ngôn ngữ và tiền tệ"><span>VI</span><small>VND</small></button>
+      <div
+        class="locale-status"
+        role="group"
+        aria-label="Thiết lập hiện tại: Tiếng Việt, tiền tệ Việt Nam đồng"
+        title="Hiện tại LuxeStay chỉ hỗ trợ Tiếng Việt và VND"
+      >
+        <span aria-hidden="true">VI</span><small aria-hidden="true">VND</small>
+      </div>
       <button type="button" class="partner-button" (click)="navigatePartner()" [disabled]="partnerLabel === 'Tài khoản bị khóa'">{{ partnerLabel }}</button>
       <a *ngIf="!isLoggedIn" routerLink="/login" class="login-button">Đăng nhập</a>
       <div *ngIf="isLoggedIn" class="account-area">

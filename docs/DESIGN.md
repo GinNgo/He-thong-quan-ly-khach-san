@@ -117,3 +117,4 @@ Các shell Public, Admin và Management phải cùng nhận diện LuxeStay. Kh�
 - Async surface không được mắc kẹt ở loading. Success/error callback phải cập nhật view trong Angular zoneless bằng signal hoặc `ChangeDetectorRef.markForCheck()`.
 - Loading, empty, error/retry và unavailable state dùng thông điệp rõ ràng; không hiển thị nút mua/thanh toán giả bằng `alert()`.
 - Touch target chính tối thiểu 44px, focus ring luôn nhìn thấy và animation tôn trọng `prefers-reduced-motion`.
+- Khi hệ thống chỉ hỗ trợ một ngôn ngữ/tiền tệ, header hiển thị đó là status không tương tác. Chỉ dùng button/menu khi có state chuyển đổi và formatting contract thực sự.

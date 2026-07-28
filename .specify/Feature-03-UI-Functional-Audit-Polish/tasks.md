@@ -110,6 +110,7 @@ description: "Dependency-ordered tasks for exhaustive UI audit and premium polis
 
 - [ ] T030 [P] [US4] Add or refine semantic spacing, radius, elevation, focus, state and motion tokens in `frontend/src/styles.css` and `frontend/src/app/core/theme.ts` without introducing hardcoded component colors
 - [ ] T031 [US4] Refine client navigation/header/footer hierarchy, mobile menu and active/recovery states in `frontend/src/app/layout/client-layout/`
+  - Progress 2026-07-28: GAP-010 is fixed by rendering the supported Vietnamese/VND setting as a non-interactive status; desktop semantics and 375px overflow pass, and header interactive targets are at least 44px. Fragment/active-state and remaining footer/mobile-menu refinements are still pending.
 - [ ] T032 [US4] Refine admin sidebar/topbar/content hierarchy, active state, density and mobile behavior in `frontend/src/app/layout/admin-layout/` and `frontend/src/app/layout/sidebar/`
 - [ ] T033 [US4] Refine management property context, navigation hierarchy and responsive shell in `frontend/src/app/layout/management-layout/`
 - [ ] T034 [US4] Normalize shared table, filter, select, date, stat-card and dialog presentation in `frontend/src/app/shared/components/` using existing PrimeNG APIs and tokens
