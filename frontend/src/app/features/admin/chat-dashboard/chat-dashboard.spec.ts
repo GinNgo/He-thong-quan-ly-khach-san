@@ -3,7 +3,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ChatDashboardComponent } from './chat-dashboard';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
+import { AuthService } from '../../../core/services/auth';
 import { ChatService } from '../../../core/services/chat.service';
 import { UserService } from '../../../core/services/user.service';
 
@@ -16,7 +17,26 @@ describe('ChatDashboard', () => {
       imports: [ChatDashboardComponent],
       providers: [
         provideHttpClient(), provideHttpClientTesting(),
-        { provide: ChatService, useValue: { connect: () => undefined, disconnect: () => undefined, message$: of(null) } },
+        {
+          provide: AuthService,
+          useValue: {
+            getCurrentUserId: () => 7,
+            getAccessToken: () => 'test-token',
+          }
+        },
+        {
+          provide: ChatService,
+          useValue: {
+            connect: () => undefined,
+            disconnect: () => undefined,
+            message$: new Subject(),
+            connectionState$: of('idle'),
+            connectionError$: of(''),
+            getSupportConversations: () => of([]),
+            getSupportHistory: () => of([]),
+            isConnected: () => false,
+          }
+        },
         { provide: UserService, useValue: { getAllUsers: () => of([]) } }
       ],
     }).compileComponents();

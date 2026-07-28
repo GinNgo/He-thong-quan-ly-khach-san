@@ -20,7 +20,6 @@ public enum FunctionCode {
     REPORT,
     AI_CHAT,
     CUSTOMER,
-    CHAT,
     PROPERTY_IMPORT,
     PROPERTY_CLAIM
 }

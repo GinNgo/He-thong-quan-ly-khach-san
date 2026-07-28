@@ -1,0 +1,395 @@
+:host {
+  --support-panel-width: min(24rem, calc(100vw - 2rem));
+}
+
+.support-widget {
+  position: fixed;
+  right: var(--hotel-space-6);
+  bottom: var(--hotel-space-6);
+  z-index: 50;
+  display: grid;
+  justify-items: end;
+  gap: var(--hotel-space-3);
+}
+
+.support-panel {
+  display: flex;
+  flex-direction: column;
+  width: var(--support-panel-width);
+  height: min(34rem, calc(100dvh - 7rem));
+  overflow: hidden;
+  background: var(--hotel-card-bg);
+  border: 1px solid var(--hotel-border);
+  border-radius: var(--hotel-radius-lg);
+  box-shadow: var(--hotel-shadow-lg);
+  animation: support-panel-enter var(--hotel-transition-base) ease-out;
+}
+
+.support-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--hotel-space-3);
+  padding: var(--hotel-space-4);
+  color: var(--hotel-card-bg);
+  background: linear-gradient(135deg, var(--hotel-secondary), var(--hotel-primary));
+}
+
+.support-brand-mark,
+.state-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  color: var(--hotel-primary);
+  background: var(--hotel-primary-light);
+  border-radius: 50%;
+}
+
+.support-brand-mark {
+  color: var(--hotel-card-bg);
+  background: color-mix(in srgb, var(--hotel-card-bg) 16%, transparent);
+}
+
+.support-heading {
+  min-width: 0;
+  flex: 1;
+}
+
+.support-heading h2,
+.support-heading p {
+  margin: 0;
+}
+
+.support-heading h2 {
+  font-family: var(--hotel-font-heading);
+  font-size: var(--hotel-text-lg);
+  font-weight: 700;
+}
+
+.support-heading p {
+  margin-top: 0.125rem;
+  color: color-mix(in srgb, var(--hotel-card-bg) 78%, transparent);
+  font-size: var(--hotel-text-xs);
+}
+
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: var(--hotel-space-2);
+  color: color-mix(in srgb, var(--hotel-card-bg) 72%, transparent);
+  font-size: var(--hotel-text-xs);
+}
+
+.connection-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  background: currentColor;
+  border-radius: 50%;
+}
+
+.connection-status.is-connected {
+  color: var(--hotel-success-light);
+}
+
+.icon-button,
+.support-trigger,
+.send-button {
+  cursor: pointer;
+  transition: transform var(--hotel-transition-fast) ease, box-shadow var(--hotel-transition-fast) ease, background-color var(--hotel-transition-fast) ease;
+}
+
+.icon-button {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  color: var(--hotel-card-bg);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+}
+
+.icon-button:hover,
+.icon-button:focus-visible {
+  background: color-mix(in srgb, var(--hotel-card-bg) 16%, transparent);
+}
+
+.support-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--hotel-space-3);
+  min-height: 0;
+  padding: var(--hotel-space-4);
+  overflow-y: auto;
+  background: var(--hotel-surface-muted);
+}
+
+.support-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--hotel-space-2);
+  padding: var(--hotel-space-4);
+  color: var(--hotel-text-muted);
+  font-size: var(--hotel-text-sm);
+  text-align: center;
+}
+
+.support-state-centered {
+  flex: 1;
+  flex-direction: column;
+}
+
+.support-state h3,
+.support-state p {
+  max-width: 18rem;
+  margin: 0;
+}
+
+.support-state h3 {
+  color: var(--hotel-heading);
+  font-size: var(--hotel-text-base);
+}
+
+.support-state p {
+  line-height: var(--hotel-leading-body);
+}
+
+.state-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-bottom: var(--hotel-space-2);
+  font-size: var(--hotel-text-xl);
+}
+
+.support-error,
+.connection-alert {
+  color: var(--hotel-danger);
+  background: var(--hotel-danger-light);
+  border-radius: var(--hotel-radius-md);
+}
+
+.connection-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--hotel-space-2);
+  padding: var(--hotel-space-2) var(--hotel-space-3);
+  font-size: var(--hotel-text-xs);
+}
+
+.text-action,
+.support-primary-link {
+  color: var(--hotel-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.text-action {
+  padding: 0.25rem 0.5rem;
+  background: transparent;
+  border: 0;
+}
+
+.support-primary-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 var(--hotel-space-4);
+  color: var(--hotel-card-bg);
+  background: var(--hotel-primary);
+  border-radius: var(--hotel-radius-pill);
+}
+
+.message-row {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.message-row.is-own {
+  justify-content: flex-end;
+}
+
+.message-bubble {
+  max-width: 82%;
+  padding: var(--hotel-space-3) var(--hotel-space-4);
+  color: var(--hotel-text);
+  background: var(--hotel-card-bg);
+  border: 1px solid var(--hotel-border);
+  border-radius: var(--hotel-radius-md) var(--hotel-radius-md) var(--hotel-radius-md) 0.25rem;
+  box-shadow: var(--hotel-shadow-sm);
+}
+
+.message-bubble.is-own {
+  color: var(--hotel-card-bg);
+  background: var(--hotel-primary);
+  border-color: var(--hotel-primary);
+  border-radius: var(--hotel-radius-md) var(--hotel-radius-md) 0.25rem var(--hotel-radius-md);
+}
+
+.message-bubble p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--hotel-text-sm);
+}
+
+.message-bubble time {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--hotel-text-muted);
+  font-size: var(--hotel-text-xs);
+  text-align: right;
+}
+
+.message-bubble.is-own time {
+  color: color-mix(in srgb, var(--hotel-card-bg) 72%, transparent);
+}
+
+.support-composer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--hotel-space-2);
+  padding: var(--hotel-space-3);
+  background: var(--hotel-card-bg);
+  border-top: 1px solid var(--hotel-border);
+}
+
+.support-composer input {
+  min-width: 0;
+  min-height: 2.75rem;
+  flex: 1;
+  padding: 0 var(--hotel-space-4);
+  color: var(--hotel-text);
+  background: var(--hotel-surface-muted);
+  border: 1px solid transparent;
+  border-radius: var(--hotel-radius-pill);
+}
+
+.support-composer input:focus {
+  background: var(--hotel-card-bg);
+  border-color: var(--hotel-primary);
+}
+
+.send-button,
+.support-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--hotel-card-bg);
+  background: var(--hotel-primary);
+  border: 0;
+}
+
+.send-button {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+}
+
+.send-button:hover:not(:disabled),
+.support-trigger:hover {
+  background: var(--hotel-primary-hover);
+  box-shadow: var(--hotel-shadow-md);
+  transform: translateY(-1px);
+}
+
+.send-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.composer-status {
+  position: absolute;
+  right: var(--hotel-space-3);
+  bottom: -1.25rem;
+  margin: 0;
+  color: var(--hotel-text-muted);
+  font-size: var(--hotel-text-xs);
+}
+
+.composer-status.has-error {
+  color: var(--hotel-danger);
+}
+
+.support-trigger {
+  gap: var(--hotel-space-2);
+  min-width: 3.5rem;
+  min-height: 3.5rem;
+  padding: 0 var(--hotel-space-4);
+  border-radius: var(--hotel-radius-pill);
+  box-shadow: var(--hotel-shadow-lg);
+}
+
+.support-trigger i {
+  font-size: var(--hotel-text-lg);
+}
+
+.support-trigger span {
+  font-size: var(--hotel-text-sm);
+  font-weight: 600;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes support-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 36rem) {
+  .support-widget {
+    right: var(--hotel-space-3);
+    bottom: var(--hotel-space-3);
+  }
+
+  .support-panel {
+    height: min(32rem, calc(100dvh - 5rem));
+  }
+
+  .support-trigger {
+    min-width: 3.5rem;
+    min-height: 3.5rem;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .support-trigger span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .support-panel,
+  .icon-button,
+  .support-trigger,
+  .send-button {
+    animation: none;
+    transition: none;
+  }
+}

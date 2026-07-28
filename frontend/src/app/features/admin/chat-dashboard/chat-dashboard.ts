@@ -1,114 +1,207 @@
-import { Component, OnInit, OnDestroy, inject, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import {
+  AfterViewChecked,
+  Component,
+  DestroyRef,
+  ElementRef,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+  inject,
+  signal
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
-import { ChatService, ChatMessage } from '../../../core/services/chat.service';
-import { UserService, User } from '../../../core/services/user.service';
-import { environment } from '../../../../environments/environment';
-import { Subscription } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
+import {
+  ChatConnectionState,
+  ChatConversation,
+  ChatMessage,
+  ChatService
+} from '../../../core/services/chat.service';
+import { AuthService } from '../../../core/services/auth';
+
+const SEND_ACK_TIMEOUT_MS = 10_000;
 
 @Component({
   selector: 'app-chat-dashboard',
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './chat-dashboard.html',
-  styleUrls: ['./chat-dashboard.css']
+  styleUrl: './chat-dashboard.css'
 })
 export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewChecked {
-  private chatService = inject(ChatService);
-  private userService = inject(UserService);
-  private http = inject(HttpClient);
-  
-  @ViewChild('scrollMe') private myScrollContainer?: ElementRef<HTMLElement>;
+  private readonly chatService = inject(ChatService);
+  private readonly authService = inject(AuthService);
+  private readonly destroyRef = inject(DestroyRef);
 
-  adminId = 1; // Default admin ID
-  activeUserIds: number[] = [];
-  usersMap = new Map<number, User>();
-  
-  selectedUserId: number | null = null;
-  messages: ChatMessage[] = [];
+  @ViewChild('scrollMe') private scrollContainer?: ElementRef<HTMLElement>;
+
+  readonly conversations = signal<ChatConversation[]>([]);
+  readonly selectedCustomerId = signal<number | null>(null);
+  readonly messages = signal<ChatMessage[]>([]);
+  readonly currentUserId = signal<number | null>(null);
+  readonly connectionState = signal<ChatConnectionState>('idle');
+  readonly connectionError = signal('');
+  readonly conversationState = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  readonly conversationError = signal('');
+  readonly messagesState = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  readonly messagesError = signal('');
+  readonly isSending = signal(false);
+  readonly sendError = signal('');
+
   newMessage = '';
-  
-  private msgSub!: Subscription;
+  private renderedMessageCount = 0;
+  private sendTimeoutId?: ReturnType<typeof setTimeout>;
 
-  ngOnInit() {
-    this.chatService.connect(this.adminId);
-    
-    // Load all users to get names
-    this.userService.getAllUsers().subscribe(users => {
-      users.forEach((u: User) => {
-        if (u.id) {
-          this.usersMap.set(u.id, u);
-        }
-      });
-      this.loadActiveChats();
-    });
+  ngOnInit(): void {
+    this.currentUserId.set(this.authService.getCurrentUserId());
+    this.chatService.message$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((message) => this.handleIncomingMessage(message));
+    this.chatService.connectionState$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((state) => this.connectionState.set(state));
+    this.chatService.connectionError$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((error) => this.connectionError.set(error));
 
-    this.msgSub = this.chatService.message$.subscribe(msg => {
-      if (msg) {
-        // If message is from currently selected user, add it to view
-        if (msg.senderId === this.selectedUserId || msg.receiverId === this.selectedUserId) {
-          this.messages.push(msg);
-        }
-        
-        // Update active users list if it's a new sender
-        if (msg.senderId !== this.adminId && !this.activeUserIds.includes(msg.senderId)) {
-          this.activeUserIds.unshift(msg.senderId);
-        }
+    this.chatService.connect('support');
+    this.loadConversations();
+  }
+
+  ngOnDestroy(): void {
+    this.clearSendTimeout();
+    this.chatService.disconnect();
+  }
+
+  ngAfterViewChecked(): void {
+    if (this.messages().length !== this.renderedMessageCount) {
+      this.renderedMessageCount = this.messages().length;
+      this.scrollToBottom();
+    }
+  }
+
+  scrollToBottom(): void {
+    const container = this.scrollContainer?.nativeElement;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
+  }
+
+  loadConversations(): void {
+    this.conversationState.set('loading');
+    this.conversationError.set('');
+    this.chatService.getSupportConversations().subscribe({
+      next: (conversations) => {
+        this.conversations.set(conversations);
+        this.conversationState.set('ready');
+      },
+      error: () => {
+        this.conversationState.set('error');
+        this.conversationError.set('Không thể tải danh sách hội thoại hỗ trợ.');
       }
     });
   }
 
-  ngOnDestroy() {
-    if (this.msgSub) this.msgSub.unsubscribe();
-    // Chat widget and dashboard share same service, so be careful disconnecting
-    // this.chatService.disconnect();
+  retryConnection(): void {
+    this.chatService.connect('support');
+    this.loadConversations();
   }
 
-  ngAfterViewChecked() {        
-    this.scrollToBottom();        
-  } 
-
-  scrollToBottom(): void {
-    const container = this.myScrollContainer?.nativeElement;
-    if (!container) return;
-
-    container.scrollTop = container.scrollHeight;
-  }
-
-  loadActiveChats() {
-    this.http.get<number[]>(`${environment.apiUrl}/chat/active-users/${this.adminId}`).subscribe(ids => {
-      // Exclude self
-      this.activeUserIds = ids.filter(id => id !== this.adminId);
+  selectConversation(conversation: ChatConversation): void {
+    this.selectedCustomerId.set(conversation.customerId);
+    this.messages.set([]);
+    this.messagesState.set('loading');
+    this.messagesError.set('');
+    this.chatService.getSupportHistory(conversation.customerId).subscribe({
+      next: (messages) => {
+        this.messages.set(messages);
+        this.messagesState.set('ready');
+      },
+      error: () => {
+        this.messagesState.set('error');
+        this.messagesError.set('Không thể tải lịch sử hội thoại này.');
+      }
     });
   }
 
-  selectUser(userId: number) {
-    this.selectedUserId = userId;
-    this.messages = [];
-    this.http.get<ChatMessage[]>(`${environment.apiUrl}/chat/history/${userId}/${this.adminId}`)
-      .subscribe(res => {
-        this.messages = res;
-      });
-  }
+  sendMessage(): void {
+    const customerId = this.selectedCustomerId();
+    const content = this.newMessage.trim();
+    if (!customerId || !content || this.isSending()) return;
 
-  getUserName(userId: number): string {
-    const user = this.usersMap.get(userId);
-    return user ? (user.fullName || user.username) : `Khách hàng #${userId}`;
-  }
+    if (!this.chatService.isConnected()) {
+      this.sendError.set('Chat đang offline. Hãy kết nối lại trước khi gửi.');
+      return;
+    }
 
-  sendMessage() {
-    if (!this.newMessage.trim() || !this.selectedUserId) return;
-    
-    const msg: ChatMessage = {
-      senderId: this.adminId,
-      receiverId: this.selectedUserId,
-      content: this.newMessage,
-      timestamp: new Date().toISOString()
-    };
-    
-    this.chatService.sendMessage(this.selectedUserId, this.newMessage);
-    this.messages.push(msg);
+    this.sendError.set('');
+    this.isSending.set(true);
+    if (!this.chatService.sendSupportReply(customerId, content)) {
+      this.isSending.set(false);
+      this.sendError.set('Không thể gửi phản hồi. Hãy thử lại.');
+      return;
+    }
+
     this.newMessage = '';
+    this.clearSendTimeout();
+    this.sendTimeoutId = setTimeout(() => {
+      if (!this.isSending()) return;
+      this.isSending.set(false);
+      this.sendError.set('Chưa nhận được xác nhận gửi. Bạn có thể thử lại.');
+    }, SEND_ACK_TIMEOUT_MS);
+  }
+
+  isOwnMessage(message: ChatMessage): boolean {
+    return message.senderId === this.currentUserId();
+  }
+
+  connectionLabel(): string {
+    switch (this.connectionState()) {
+      case 'connected': return 'Đã kết nối';
+      case 'connecting': return 'Đang kết nối…';
+      case 'reconnecting': return 'Đang kết nối lại…';
+      case 'error': return 'Mất kết nối';
+      default: return 'Chưa kết nối';
+    }
+  }
+
+  conversationInitials(conversation: ChatConversation): string {
+    return conversation.customerName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(-2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('') || '?';
+  }
+
+  getConversation(customerId: number): ChatConversation | undefined {
+    return this.conversations().find((conversation) => conversation.customerId === customerId);
+  }
+
+  private handleIncomingMessage(message: ChatMessage | null): void {
+    if (!message) return;
+    const selectedCustomerId = this.selectedCustomerId();
+    if (message.receiverId === 0 && !this.conversations().some((item) => item.customerId === message.senderId)) {
+      this.loadConversations();
+    }
+
+    if (message.senderId !== selectedCustomerId && message.receiverId !== selectedCustomerId) return;
+    this.messages.update((messages) => {
+      if (message.id && messages.some((item) => item.id === message.id)) return messages;
+      return [...messages, message];
+    });
+
+    if (message.senderId === this.currentUserId()) {
+      this.isSending.set(false);
+      this.clearSendTimeout();
+    }
+  }
+
+  private clearSendTimeout(): void {
+    if (this.sendTimeoutId !== undefined) {
+      clearTimeout(this.sendTimeoutId);
+      this.sendTimeoutId = undefined;
+    }
   }
 }

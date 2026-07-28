@@ -1,8 +1,10 @@
 import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Client, Message } from '@stomp/stompjs';
-import * as SockJS from 'sockjs-client';
+import SockJS from 'sockjs-client';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { AuthService } from './auth';
 
 export interface ChatMessage {
   id?: number;
@@ -13,76 +15,151 @@ export interface ChatMessage {
   isRead?: boolean;
 }
 
+export interface ChatConversation {
+  customerId: number;
+  customerName: string;
+  lastMessage: string;
+  lastMessageAt?: string;
+}
+
+export type ChatMode = 'customer' | 'support';
+export type ChatConnectionState = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error';
+
 @Injectable({
   providedIn: 'root'
 })
 export class ChatService {
-  private stompClient!: Client;
-  private currentUserId: number | null = null;
-  
-  // Observable for new incoming messages
-  private messageSubject = new BehaviorSubject<ChatMessage | null>(null);
-  public message$ = this.messageSubject.asObservable();
+  private readonly http = inject(HttpClient);
+  private readonly authService = inject(AuthService);
+  private readonly apiUrl = `${environment.apiUrl}/chat`;
+  private stompClient: Client | null = null;
+  private connectionMode: ChatMode | null = null;
+  private connected = false;
 
-  constructor() {}
+  private readonly messageSubject = new BehaviorSubject<ChatMessage | null>(null);
+  private readonly connectionStateSubject = new BehaviorSubject<ChatConnectionState>('idle');
+  private readonly connectionErrorSubject = new BehaviorSubject<string>('');
 
-  connect(userId: number) {
-    this.currentUserId = userId;
-    
-    // For SockJS fallback if needed:
-    // const socket = new SockJS('http://localhost:8080/ws');
-    // this.stompClient = new Client({
-    //   webSocketFactory: () => socket as any,
-    //   ...
-    // });
-    
-    this.stompClient = new Client({
-      brokerURL: environment.apiUrl.replace('http', 'ws') + '/ws',
+  readonly message$ = this.messageSubject.asObservable();
+  readonly connectionState$ = this.connectionStateSubject.asObservable();
+  readonly connectionError$ = this.connectionErrorSubject.asObservable();
+
+  connect(mode: ChatMode): void {
+    const token = this.authService.getAccessToken();
+    if (!token) {
+      this.setConnectionState('error', 'Phiên đăng nhập không còn hợp lệ.');
+      return;
+    }
+
+    if (this.stompClient?.active && this.connectionMode === mode) {
+      return;
+    }
+
+    this.disconnect();
+    this.connectionMode = mode;
+    this.setConnectionState('connecting', '');
+
+    const client = new Client({
+      webSocketFactory: () => new SockJS(`${this.apiOrigin()}/ws-chat`) as WebSocket,
+      connectHeaders: {
+        Authorization: `Bearer ${token}`
+      },
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
+      onConnect: () => {
+        this.connected = true;
+        this.setConnectionState('connected', '');
+        client.subscribe('/user/queue/messages', (message: Message) => this.publishIncoming(message));
+        if (mode === 'support') {
+          client.subscribe('/topic/support/messages', (message: Message) => this.publishIncoming(message));
+        }
+      },
+      onStompError: (frame) => {
+        this.connected = false;
+        this.setConnectionState('error', frame.headers['message'] || 'Kết nối chat bị từ chối.');
+      },
+      onWebSocketClose: () => {
+        this.connected = false;
+        if (client.active) {
+          this.setConnectionState('reconnecting', 'Đang thử kết nối lại…');
+        }
+      },
+      onWebSocketError: () => {
+        this.connected = false;
+        this.setConnectionState('error', 'Không thể kết nối tới CSKH.');
+      }
     });
 
-    this.stompClient.onConnect = (frame) => {
-      console.log('Connected to Chat WS: ' + frame);
-      
-      // Subscribe to private messages queue
-      this.stompClient.subscribe(`/user/${userId}/queue/messages`, (message: Message) => {
-        if (message.body) {
-          const chatMsg: ChatMessage = JSON.parse(message.body);
-          this.messageSubject.next(chatMsg);
-        }
-      });
-    };
-
-    this.stompClient.onStompError = (frame) => {
-      console.error('Broker reported error: ' + frame.headers['message']);
-      console.error('Additional details: ' + frame.body);
-    };
-
-    this.stompClient.activate();
+    this.stompClient = client;
+    client.activate();
   }
 
-  disconnect() {
-    if (this.stompClient && this.stompClient.active) {
-      this.stompClient.deactivate();
+  disconnect(): void {
+    const client = this.stompClient;
+    this.connected = false;
+    this.stompClient = null;
+    this.connectionMode = null;
+    this.setConnectionState('idle', '');
+    if (client?.active) {
+      void client.deactivate();
     }
   }
 
-  sendMessage(receiverId: number, content: string) {
-    if (this.stompClient && this.stompClient.active && this.currentUserId) {
-      const chatMessage: ChatMessage = {
-        senderId: this.currentUserId,
-        receiverId: receiverId,
-        content: content
-      };
-      
-      this.stompClient.publish({
-        destination: '/app/chat.sendMessage',
-        body: JSON.stringify(chatMessage)
-      });
-    } else {
-      console.error('Cannot send message. STOMP client is not connected.');
+  sendCustomerMessage(content: string): boolean {
+    return this.publish('/app/chat.support.send', { content });
+  }
+
+  sendSupportReply(customerId: number, content: string): boolean {
+    return this.publish('/app/chat.support.reply', { customerId, content });
+  }
+
+  getMyHistory(): Observable<ChatMessage[]> {
+    return this.http.get<ChatMessage[]>(`${this.apiUrl}/me/history`);
+  }
+
+  getSupportConversations(): Observable<ChatConversation[]> {
+    return this.http.get<ChatConversation[]>(`${this.apiUrl}/support/conversations`);
+  }
+
+  getSupportHistory(customerId: number): Observable<ChatMessage[]> {
+    return this.http.get<ChatMessage[]>(`${this.apiUrl}/support/conversations/${customerId}`);
+  }
+
+  isConnected(): boolean {
+    return this.connected;
+  }
+
+  private publish(destination: string, body: object): boolean {
+    if (!this.stompClient || !this.connected) {
+      this.setConnectionState(this.connectionStateSubject.value, 'Chat đang offline. Hãy thử lại khi đã kết nối.');
+      return false;
     }
+
+    try {
+      this.stompClient.publish({ destination, body: JSON.stringify(body) });
+      return true;
+    } catch {
+      this.setConnectionState('error', 'Không thể gửi tin nhắn. Hãy thử lại.');
+      return false;
+    }
+  }
+
+  private publishIncoming(message: Message): void {
+    if (!message.body) return;
+    try {
+      this.messageSubject.next(JSON.parse(message.body) as ChatMessage);
+    } catch {
+      this.setConnectionState('error', 'Tin nhắn nhận được không hợp lệ.');
+    }
+  }
+
+  private setConnectionState(state: ChatConnectionState, error: string): void {
+    this.connectionStateSubject.next(state);
+    this.connectionErrorSubject.next(error);
+  }
+
+  private apiOrigin(): string {
+    return environment.apiUrl.replace(/\/api\/?$/, '');
   }
 }

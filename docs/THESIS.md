@@ -263,6 +263,14 @@ Hình 3.4. Biểu đồ tuần tự xác thực và gọi API
 
 Hình 3.4 cho thấy JWT được kiểm tra trên từng yêu cầu. Token hợp lệ chỉ chứng minh danh tính; endpoint vẫn phải kiểm tra role, permission và phạm vi cơ sở. Kết luận, bảo vệ route phía client không phải lớp bảo mật cuối cùng.
 
+### 3.3.3. Chat hỗ trợ khách hàng trung tâm
+
+Chat hỗ trợ được thiết kế là một hàng đợi CSKH ở cấp nền tảng, thuộc module `SYSTEM` với function `AI_CHAT`. Hệ thống không gán hội thoại cho một cơ sở khi chưa có quan hệ conversation-property-reservation đầy đủ. Customer message được lưu với `receiver_id = 0` để biểu diễn hàng đợi trung tâm; reply vẫn lưu ID thật của nhân viên và khách hàng.
+
+Kết nối chat dùng endpoint SockJS/STOMP riêng. HTTP handshake chỉ phục vụ quá trình nâng cấp kết nối, còn STOMP `CONNECT` phải mang JWT. Backend lấy sender từ principal đã xác thực, kiểm tra `AI_CHAT:VIEW` khi nhân viên đọc hàng đợi và `AI_CHAT:CREATE` khi reply. Customer chỉ đọc lịch sử của chính mình và nhận tin qua `/user/queue/messages`; do đó ID trong local storage hoặc payload giao diện không phải nguồn quyết định quyền.
+
+Thiết kế này giữ kiến trúc nhỏ nhất phù hợp với phạm vi hiện có, loại bỏ phụ thuộc `adminId = 1` và tránh tạo mô hình chat theo tenant khi chưa có quy tắc assignment. Nếu sau này cần trao đổi theo cơ sở hoặc booking, hệ thống phải bổ sung conversation aggregate, property ownership và routing rule trong một feature riêng.
+
 ## 3.4. THIẾT KẾ DỮ LIỆU NGHIỆP VỤ
 
 ```mermaid

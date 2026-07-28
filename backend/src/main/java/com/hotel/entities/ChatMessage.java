@@ -16,13 +16,12 @@ public class ChatMessage {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // The user who sends the message (Could be Client or Admin)
+    // Always derived from the authenticated principal by the chat controller.
     @Column(name = "sender_id", nullable = false)
     private Long senderId;
 
-    // The intended recipient (Client or Admin). 
-    // If Admin sends to Client, receiverId is Client's ID.
-    // If Client sends to Admin, receiverId can be Admin's ID or 0 for a general inbox.
+    // Customer messages use receiverId=0 for the central SYSTEM.AI_CHAT queue;
+    // support replies use the customer's user ID.
     @Column(name = "receiver_id", nullable = false)
     private Long receiverId;
 

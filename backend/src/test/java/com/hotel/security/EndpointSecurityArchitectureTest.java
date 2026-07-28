@@ -19,7 +19,7 @@ class EndpointSecurityArchitectureTest {
 
     // Controllers skipped entirely (own auth flow or non-production)
     private static final List<String> SKIP_CONTROLLERS = List.of(
-            "MockPaymentController", "AuthController", "ChatController"
+            "MockPaymentController", "AuthController"
     );
 
     // Endpoints intentionally public via SecurityConfig.permitAll()

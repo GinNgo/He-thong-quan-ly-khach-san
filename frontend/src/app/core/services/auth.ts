@@ -148,4 +148,20 @@ export class AuthService {
   getRoles(): string[] {
     return this.getAuthState().roles;
   }
+
+  getAccessToken(): string | null {
+    if (!isPlatformBrowser(this.platformId)) return null;
+    return localStorage.getItem('token');
+  }
+
+  getCurrentUserId(): number | null {
+    if (!isPlatformBrowser(this.platformId)) return null;
+    try {
+      const rawUser = localStorage.getItem('user');
+      const user = rawUser ? JSON.parse(rawUser) as { id?: number } : null;
+      return typeof user?.id === 'number' ? user.id : null;
+    } catch {
+      return null;
+    }
+  }
 }

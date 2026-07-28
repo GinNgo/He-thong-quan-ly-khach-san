@@ -71,7 +71,7 @@ public class DataInitializer implements CommandLineRunner {
         initFunction(hotelModule, FunctionCode.ROOM.name(), "Phòng", "/admin/rooms", "pi pi-home", 3);
         initFunction(hotelModule, FunctionCode.RESERVATION.name(), "Đặt phòng", "/admin/reservations", "pi pi-calendar", 4);
         initFunction(hotelModule, FunctionCode.HOTEL_SERVICE.name(), "Dịch vụ khách sạn", "/admin/services", "pi pi-box", 5);
-        initFunction(hotelModule, FunctionCode.CHAT.name(), "Chat trực tuyến", "/admin/chat", "pi pi-comments", 6);
+        deprecateFunction("CHAT");
 
         initFunction(financeModule, FunctionCode.INVOICE.name(), "Hóa đơn", "/admin/invoices", "pi pi-file-o", 1);
 
@@ -179,6 +179,14 @@ public class DataInitializer implements CommandLineRunner {
         appFunctionRepository.save(function);
     }
 
+    private void deprecateFunction(String code) {
+        AppFunction function = appFunctionRepository.findByCode(code);
+        if (function != null && function.getUrl() != null) {
+            function.setUrl(null);
+            appFunctionRepository.save(function);
+        }
+    }
+
     private Role initRole(String code, String name, String description) {
         Role role = roleRepository.findByCode(code).orElseGet(Role::new);
         role.setCode(code);
@@ -282,7 +290,6 @@ public class DataInitializer implements CommandLineRunner {
         ensurePermission(role, FunctionCode.HOTEL_SERVICE, manage);
         ensurePermission(role, FunctionCode.INVOICE, manageAndExport);
         ensurePermission(role, FunctionCode.RESERVATION_PAYMENT, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE);
-        ensurePermission(role, FunctionCode.CHAT, manage);
     }
 
     private void seedReceptionistPermissions(Role role) {
@@ -292,7 +299,6 @@ public class DataInitializer implements CommandLineRunner {
         ensurePermission(role, FunctionCode.ROOM, ActionCode.VIEW | ActionCode.UPDATE);
         ensurePermission(role, FunctionCode.RESERVATION, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE);
         ensurePermission(role, FunctionCode.INVOICE, ActionCode.VIEW | ActionCode.CREATE);
-        ensurePermission(role, FunctionCode.CHAT, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE);
     }
 
     private void seedAccountantPermissions(Role role) {

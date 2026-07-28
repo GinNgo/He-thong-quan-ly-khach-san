@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { BehaviorSubject, Subject } from 'rxjs';
+import { BehaviorSubject, Subject, of } from 'rxjs';
 
 import { AuthService, AuthState } from '../../core/services/auth';
 import { ChatService } from '../../core/services/chat.service';
@@ -28,7 +28,10 @@ describe('ClientLayout', () => {
         {
           provide: AuthService,
           useValue: {
-            currentUser$,
+          currentUser$,
+            isLoggedIn: vi.fn(() => false),
+            getCurrentUserId: vi.fn(() => null),
+            getAccessToken: vi.fn(() => null),
             logout: vi.fn(),
             updateCurrentUser: vi.fn(),
           },
@@ -39,8 +42,12 @@ describe('ClientLayout', () => {
           useValue: {
             connect: vi.fn(),
             disconnect: vi.fn(),
-            sendMessage: vi.fn(),
+            sendCustomerMessage: vi.fn(() => false),
+            getMyHistory: vi.fn(() => of([])),
             message$: new Subject(),
+            connectionState$: of('idle'),
+            connectionError$: of(''),
+            isConnected: vi.fn(() => false),
           },
         },
       ],

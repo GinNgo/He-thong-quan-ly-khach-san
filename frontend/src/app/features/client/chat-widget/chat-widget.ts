@@ -1,114 +1,199 @@
-import { Component, OnInit, OnDestroy, inject, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import {
+  AfterViewChecked,
+  Component,
+  DestroyRef,
+  ElementRef,
+  HostListener,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+  inject,
+  signal
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
-import { ChatService, ChatMessage } from '../../../core/services/chat.service';
-import { environment } from '../../../../environments/environment';
-import { Subscription } from 'rxjs';
+import { RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
+import {
+  ChatConnectionState,
+  ChatMessage,
+  ChatService
+} from '../../../core/services/chat.service';
+import { AuthService } from '../../../core/services/auth';
+
+const SEND_ACK_TIMEOUT_MS = 10_000;
 
 @Component({
   selector: 'app-chat-widget',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './chat-widget.html',
-  styleUrls: ['./chat-widget.css']
+  styleUrl: './chat-widget.css'
 })
 export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked {
-  private chatService = inject(ChatService);
-  private http = inject(HttpClient);
-  
-  @ViewChild('scrollMe') private myScrollContainer?: ElementRef<HTMLElement>;
+  private readonly chatService = inject(ChatService);
+  private readonly authService = inject(AuthService);
+  private readonly destroyRef = inject(DestroyRef);
 
-  isOpen = false;
-  isLoggedIn = false;
-  currentUserId: number | null = null;
-  adminId = 1; // Default admin ID for CSKH
+  @ViewChild('scrollMe') private scrollContainer?: ElementRef<HTMLElement>;
+  @ViewChild('triggerButton') private triggerButton?: ElementRef<HTMLButtonElement>;
+  @ViewChild('messageInput') private messageInput?: ElementRef<HTMLInputElement>;
 
-  messages: ChatMessage[] = [];
+  readonly isOpen = signal(false);
+  readonly isLoggedIn = signal(false);
+  readonly currentUserId = signal<number | null>(null);
+  readonly messages = signal<ChatMessage[]>([]);
+  readonly historyState = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  readonly historyError = signal('');
+  readonly connectionState = signal<ChatConnectionState>('idle');
+  readonly connectionError = signal('');
+  readonly isSending = signal(false);
+  readonly sendError = signal('');
+
   newMessage = '';
-  private msgSub!: Subscription;
+  private renderedMessageCount = 0;
+  private sendTimeoutId?: ReturnType<typeof setTimeout>;
 
-  ngOnInit() {
-    this.checkLoginStatus();
+  ngOnInit(): void {
+    const userId = this.authService.getCurrentUserId();
+    const loggedIn = this.authService.isLoggedIn() && userId !== null;
+    this.currentUserId.set(userId);
+    this.isLoggedIn.set(loggedIn);
+
+    if (!loggedIn) return;
+
+    this.chatService.message$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((message) => this.handleIncomingMessage(message));
+    this.chatService.connectionState$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((state) => this.connectionState.set(state));
+    this.chatService.connectionError$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((error) => this.connectionError.set(error));
+
+    this.chatService.connect('customer');
+    this.loadHistory();
   }
 
-  ngOnDestroy() {
-    if (this.msgSub) this.msgSub.unsubscribe();
+  ngOnDestroy(): void {
+    this.clearSendTimeout();
     this.chatService.disconnect();
   }
 
-  ngAfterViewChecked() {        
-    this.scrollToBottom();        
-  } 
+  ngAfterViewChecked(): void {
+    if (this.messages().length !== this.renderedMessageCount) {
+      this.renderedMessageCount = this.messages().length;
+      this.scrollToBottom();
+    }
+  }
 
   scrollToBottom(): void {
-    const container = this.myScrollContainer?.nativeElement;
+    const container = this.scrollContainer?.nativeElement;
     if (!container) return;
-
     container.scrollTop = container.scrollHeight;
   }
 
-  checkLoginStatus() {
-    if (typeof localStorage === 'undefined') return;
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        this.currentUserId = user.id;
-        this.isLoggedIn = true;
-        
-        // Connect WS
-        this.chatService.connect(this.currentUserId!);
-        
-        // Listen for incoming messages
-        this.msgSub = this.chatService.message$.subscribe(msg => {
-          if (msg) {
-            this.messages.push(msg);
-          }
-        });
+  loadHistory(): void {
+    if (!this.isLoggedIn() || this.historyState() === 'loading') return;
+    this.historyState.set('loading');
+    this.historyError.set('');
 
-        // Fetch history
-        this.loadHistory();
-      } catch (e) {
-        this.isLoggedIn = false;
+    this.chatService.getMyHistory().subscribe({
+      next: (messages) => {
+        this.messages.set(messages);
+        this.historyState.set('ready');
+      },
+      error: () => {
+        this.historyState.set('error');
+        this.historyError.set('Không thể tải lịch sử hỗ trợ.');
       }
+    });
+  }
+
+  toggleChat(): void {
+    if (this.isOpen()) {
+      this.closeChat();
+      return;
     }
+
+    this.isOpen.set(true);
+    queueMicrotask(() => this.messageInput?.nativeElement.focus());
   }
 
-  loadHistory() {
-    if (!this.currentUserId) return;
-    this.http.get<ChatMessage[]>(`${environment.apiUrl}/chat/history/${this.currentUserId}/${this.adminId}`)
-      .subscribe({
-        next: (res) => {
-          this.messages = res;
-        },
-        error: (err) => console.error('Failed to load chat history', err)
-      });
+  @HostListener('document:keydown.escape')
+  closeChat(): void {
+    if (!this.isOpen()) return;
+    this.isOpen.set(false);
+    queueMicrotask(() => this.triggerButton?.nativeElement.focus());
   }
 
-  toggleChat() {
-    this.isOpen = !this.isOpen;
-    if (this.isOpen && this.isLoggedIn && this.messages.length === 0) {
-      this.loadHistory();
+  retryConnection(): void {
+    this.sendError.set('');
+    this.chatService.connect('customer');
+  }
+
+  sendMessage(): void {
+    const content = this.newMessage.trim();
+    if (!content || this.isSending()) return;
+
+    if (!this.chatService.isConnected()) {
+      this.sendError.set('Chat đang offline. Hãy kết nối lại trước khi gửi.');
+      return;
     }
-  }
 
-  sendMessage() {
-    if (!this.newMessage.trim() || !this.currentUserId) return;
-    
-    // Add locally to UI immediately
-    const msg: ChatMessage = {
-      senderId: this.currentUserId,
-      receiverId: this.adminId,
-      content: this.newMessage,
-      timestamp: new Date().toISOString()
-    };
-    
-    // Send to WS
-    this.chatService.sendMessage(this.adminId, this.newMessage);
-    
-    // Optimistic UI update
-    this.messages.push(msg);
+    this.sendError.set('');
+    this.isSending.set(true);
+    if (!this.chatService.sendCustomerMessage(content)) {
+      this.isSending.set(false);
+      this.sendError.set('Không thể gửi tin nhắn. Hãy thử lại.');
+      return;
+    }
+
     this.newMessage = '';
+    this.clearSendTimeout();
+    this.sendTimeoutId = setTimeout(() => {
+      if (!this.isSending()) return;
+      this.isSending.set(false);
+      this.sendError.set('Chưa nhận được xác nhận gửi. Bạn có thể thử lại.');
+    }, SEND_ACK_TIMEOUT_MS);
+  }
+
+  connectionLabel(): string {
+    switch (this.connectionState()) {
+      case 'connected': return 'Đã kết nối';
+      case 'connecting': return 'Đang kết nối…';
+      case 'reconnecting': return 'Đang kết nối lại…';
+      case 'error': return 'Mất kết nối';
+      default: return 'Chưa kết nối';
+    }
+  }
+
+  isOwnMessage(message: ChatMessage): boolean {
+    return message.senderId === this.currentUserId();
+  }
+
+  private handleIncomingMessage(message: ChatMessage | null): void {
+    if (!message) return;
+    const userId = this.currentUserId();
+    if (message.senderId !== userId && message.receiverId !== userId) return;
+
+    this.messages.update((messages) => {
+      if (message.id && messages.some((item) => item.id === message.id)) return messages;
+      return [...messages, message];
+    });
+
+    if (message.senderId === userId) {
+      this.isSending.set(false);
+      this.clearSendTimeout();
+    }
+  }
+
+  private clearSendTimeout(): void {
+    if (this.sendTimeoutId !== undefined) {
+      clearTimeout(this.sendTimeoutId);
+      this.sendTimeoutId = undefined;
+    }
   }
 }

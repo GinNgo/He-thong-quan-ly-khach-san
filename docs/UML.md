@@ -603,6 +603,51 @@ sequenceDiagram
 
 Sidebar, quick search và breadcrumb lấy route canonical từ cùng inventory. Backend tiếp tục là authorization boundary; frontend guard chỉ cải thiện điều hướng và thông báo từ chối.
 
+## Central Customer Support Chat (2026-07-28)
+
+Chat hỗ trợ là hàng đợi trung tâm của nền tảng, thuộc `SYSTEM.AI_CHAT`; không gắn với property hoặc reservation trong mô hình hiện tại.
+
+```mermaid
+sequenceDiagram
+    actor Customer as Khách hàng
+    participant Widget as Angular Chat Widget
+    participant WS as /ws-chat + STOMP Auth
+    participant Chat as ChatService
+    participant Queue as /topic/support/messages
+    participant Support as Support Dashboard
+
+    Customer->>Widget: Mở chat sau đăng nhập
+    Widget->>WS: CONNECT Authorization: Bearer JWT
+    WS->>WS: Xác minh JWT, gắn principal
+    Widget->>WS: SEND /app/chat.support.send {content}
+    WS->>Chat: principal + content
+    Chat->>Chat: Lưu sender=principal.userId, receiver=0
+    Chat-->>Queue: Customer message
+    Queue-->>Support: Chỉ subscriber có AI_CHAT:VIEW
+```
+
+```mermaid
+sequenceDiagram
+    actor Agent as Nhân viên CSKH
+    participant Dashboard as Angular Support Dashboard
+    participant API as Chat REST API
+    participant WS as /ws-chat + STOMP Auth
+    participant Chat as ChatService
+    participant CustomerQueue as /user/queue/messages
+
+    Agent->>API: GET /api/chat/support/conversations
+    API->>API: Kiểm tra AI_CHAT:VIEW
+    API-->>Dashboard: Danh sách customer trong hàng đợi
+    Agent->>WS: SEND /app/chat.support.reply {customerId, content}
+    WS->>WS: Kiểm tra AI_CHAT:CREATE
+    WS->>Chat: principal hỗ trợ + customerId
+    Chat->>Chat: Xác minh conversation tồn tại, lưu sender từ principal
+    Chat-->>CustomerQueue: convertAndSendToUser(customer.username)
+    CustomerQueue-->>Agent: Không phát chéo account
+```
+
+HTTP handshake chỉ mở để SockJS khởi tạo; chat không hoạt động nếu STOMP `CONNECT` thiếu JWT. Customer chỉ đọc `GET /api/chat/me/history`; support history cần `AI_CHAT:VIEW`. Payload không chứa `senderId` hoặc support recipient ID.
+
 ## Deferred Customer Domains (2026-07-28)
 
 Các domain sau không thuộc mô hình triển khai hiện tại và phải có feature specification riêng trước khi thêm entity/API/UI:

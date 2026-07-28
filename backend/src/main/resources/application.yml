@@ -65,6 +65,8 @@ jwt:
   refresh-expiration: 604800000 # 7 days
 
 app:
+  websocket:
+    allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:4200}
   location-import:
     enabled: true
     file-path: ../docs/34_tinh_huyen_xa.json

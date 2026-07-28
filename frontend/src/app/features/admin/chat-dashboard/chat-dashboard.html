@@ -1,89 +1,128 @@
-<div class="h-[calc(100vh-6rem)] bg-white rounded-2xl shadow-sm border border-gray-100 flex overflow-hidden">
-  
-  <!-- Left Panel: Users List -->
-  <div class="w-1/3 border-r border-gray-100 flex flex-col bg-gray-50/50">
-    <div class="p-4 border-b border-gray-100 bg-white">
-      <h3 class="font-bold text-gray-800 text-lg">Danh sách Chat</h3>
-    </div>
-    
-    <div class="flex-1 overflow-y-auto">
-      <div *ngIf="activeUserIds.length === 0" class="p-6 text-center text-gray-400 text-sm">
-        Chưa có cuộc hội thoại nào.
+<section class="chat-dashboard" aria-labelledby="support-dashboard-title">
+  <aside class="conversation-panel" aria-label="Danh sách hội thoại hỗ trợ">
+    <header class="conversation-header">
+      <div>
+        <p class="eyebrow">SYSTEM · AI_CHAT</p>
+        <h1 id="support-dashboard-title">LuxeStay Care</h1>
+        <p>Hàng đợi hỗ trợ trung tâm</p>
       </div>
-      
-      <div *ngFor="let userId of activeUserIds" 
-           (click)="selectUser(userId)"
-           [ngClass]="{'bg-blue-50 border-r-4 border-blue-600': selectedUserId === userId, 'hover:bg-gray-100': selectedUserId !== userId}"
-           class="p-4 cursor-pointer flex items-center gap-3 transition-colors border-b border-gray-100">
-        <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex flex-shrink-0 items-center justify-center font-bold text-lg">
-          {{ getUserName(userId).charAt(0) | uppercase }}
-        </div>
-        <div class="flex-1 overflow-hidden">
-          <h4 class="font-semibold text-gray-800 truncate">{{ getUserName(userId) }}</h4>
-          <p class="text-xs text-gray-500 truncate">Nhấn để xem tin nhắn</p>
-        </div>
-      </div>
-    </div>
-  </div>
+      <span class="connection-pill" [class.is-connected]="connectionState() === 'connected'">
+        <span aria-hidden="true"></span>{{ connectionLabel() }}
+      </span>
+    </header>
 
-  <!-- Right Panel: Chat Area -->
-  <div class="flex-1 flex flex-col bg-white relative">
-    
-    <ng-container *ngIf="selectedUserId; else noSelection">
-      <!-- Chat Header -->
-      <div class="p-4 border-b border-gray-100 flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-          {{ getUserName(selectedUserId).charAt(0) | uppercase }}
+    <div *ngIf="connectionError()" class="dashboard-alert" role="status">
+      <span>{{ connectionError() }}</span>
+      <button type="button" class="text-action" (click)="retryConnection()">Thử lại</button>
+    </div>
+
+    <div *ngIf="conversationState() === 'loading'" class="dashboard-state" aria-label="Đang tải hội thoại">
+      <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+      <span>Đang tải hàng đợi…</span>
+    </div>
+
+    <div *ngIf="conversationState() === 'error'" class="dashboard-state dashboard-error" role="alert">
+      <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+      <span>{{ conversationError() }}</span>
+      <button type="button" class="text-action" (click)="loadConversations()">Thử lại</button>
+    </div>
+
+    <div *ngIf="conversationState() === 'ready' && conversations().length === 0" class="dashboard-state dashboard-empty">
+      <i class="pi pi-inbox" aria-hidden="true"></i>
+      <p>Chưa có cuộc hội thoại mới.</p>
+      <small>Khách hàng sẽ xuất hiện ở đây sau khi gửi yêu cầu.</small>
+    </div>
+
+    <nav *ngIf="conversationState() === 'ready'" class="conversation-list" aria-label="Các cuộc hội thoại">
+      <button
+        *ngFor="let conversation of conversations()"
+        type="button"
+        class="conversation-item"
+        [class.is-selected]="selectedCustomerId() === conversation.customerId"
+        [attr.aria-current]="selectedCustomerId() === conversation.customerId ? 'true' : null"
+        (click)="selectConversation(conversation)">
+        <span class="conversation-avatar" aria-hidden="true">{{ conversationInitials(conversation) }}</span>
+        <span class="conversation-copy">
+          <strong>{{ conversation.customerName }}</strong>
+          <span>{{ conversation.lastMessage || 'Cuộc hội thoại mới' }}</span>
+        </span>
+        <time *ngIf="conversation.lastMessageAt" [attr.datetime]="conversation.lastMessageAt">
+          {{ conversation.lastMessageAt | date:'HH:mm' }}
+        </time>
+      </button>
+    </nav>
+  </aside>
+
+  <main class="message-panel" aria-live="polite">
+    <ng-container *ngIf="selectedCustomerId() as selectedId; else noSelection">
+      <header class="message-header">
+        <div class="selected-avatar" aria-hidden="true">
+          {{ (getConversation(selectedId)?.customerName || '?').charAt(0) | uppercase }}
         </div>
         <div>
-          <h3 class="font-bold text-gray-800">{{ getUserName(selectedUserId) }}</h3>
-          <span class="text-xs text-green-500 flex items-center gap-1">
-            <span class="w-2 h-2 rounded-full bg-green-500"></span> Đang hoạt động
-          </span>
+          <p class="eyebrow">CUSTOMER CONVERSATION</p>
+          <h2>{{ getConversation(selectedId)?.customerName || ('Khách hàng #' + selectedId) }}</h2>
+          <p>Hội thoại trong hàng đợi CSKH trung tâm</p>
         </div>
-      </div>
+      </header>
 
-      <!-- Chat Messages -->
-      <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-4 bg-gray-50/30" #scrollMe>
-        <div *ngIf="messages.length === 0" class="text-center text-gray-400 my-auto">
-          Chưa có tin nhắn nào. Bắt đầu trò chuyện với khách hàng.
+      <div class="message-stream" #scrollMe role="log" aria-relevant="additions">
+        <div *ngIf="messagesState() === 'loading'" class="dashboard-state">
+          <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+          <span>Đang tải lịch sử…</span>
         </div>
-        
-        <div *ngFor="let msg of messages" class="flex w-full" [ngClass]="{'justify-end': msg.senderId === adminId, 'justify-start': msg.senderId !== adminId}">
-          <div [ngClass]="msg.senderId === adminId ? 'bg-primary text-white rounded-l-2xl rounded-tr-2xl' : 'bg-white text-gray-800 rounded-r-2xl rounded-tl-2xl border border-gray-100 shadow-sm'" 
-               class="max-w-[70%] px-5 py-3 text-sm">
-            <p>{{ msg.content }}</p>
-            <span class="text-[10px] block mt-1" [ngClass]="msg.senderId === adminId ? 'text-white/70 text-right' : 'text-gray-400'">
-              {{ msg.timestamp | date:'dd/MM/yyyy HH:mm' }}
-            </span>
+        <div *ngIf="messagesState() === 'error'" class="dashboard-state dashboard-error" role="alert">
+          <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+          <span>{{ messagesError() }}</span>
+          <button type="button" class="text-action" (click)="loadConversations()">Thử lại</button>
+        </div>
+        <div *ngIf="messagesState() === 'ready' && messages().length === 0" class="dashboard-state">
+          <i class="pi pi-comments" aria-hidden="true"></i>
+          <span>Chưa có tin nhắn trong cuộc hội thoại này.</span>
+        </div>
+
+        <article *ngFor="let message of messages()" class="message-row" [class.is-own]="isOwnMessage(message)">
+          <div class="message-bubble" [class.is-own]="isOwnMessage(message)">
+            <p>{{ message.content }}</p>
+            <time *ngIf="message.timestamp" [attr.datetime]="message.timestamp">
+              {{ message.timestamp | date:'dd/MM/yyyy HH:mm' }}
+            </time>
           </div>
-        </div>
+        </article>
       </div>
 
-      <!-- Chat Input -->
-      <div class="p-4 border-t border-gray-100 bg-white flex items-center gap-3">
-        <button class="w-10 h-10 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 flex items-center justify-center transition-colors">
-          <i class="pi pi-paperclip"></i>
+      <form class="message-composer" (ngSubmit)="sendMessage()">
+        <label class="visually-hidden" for="support-dashboard-message">Phản hồi khách hàng</label>
+        <input
+          id="support-dashboard-message"
+          name="supportDashboardMessage"
+          type="text"
+          maxlength="2000"
+          autocomplete="off"
+          [(ngModel)]="newMessage"
+          [disabled]="isSending()"
+          aria-describedby="dashboard-send-status"
+          placeholder="Viết phản hồi cho khách hàng…">
+        <button
+          type="submit"
+          class="send-button"
+          aria-label="Gửi phản hồi"
+          [disabled]="!newMessage.trim() || isSending() || connectionState() !== 'connected'">
+          <i *ngIf="!isSending()" class="pi pi-send" aria-hidden="true"></i>
+          <i *ngIf="isSending()" class="pi pi-spin pi-spinner" aria-hidden="true"></i>
         </button>
-        <input type="text" [(ngModel)]="newMessage" (keyup.enter)="sendMessage()" placeholder="Nhập tin nhắn hỗ trợ..." 
-               class="flex-1 bg-gray-100 border-transparent focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary rounded-full px-5 py-3 outline-none transition-all">
-        <button (click)="sendMessage()" [disabled]="!newMessage.trim()" 
-                class="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors shadow-sm">
-          <i class="pi pi-send"></i>
-        </button>
-      </div>
+        <p id="dashboard-send-status" class="composer-status" [class.has-error]="sendError()" aria-live="polite">
+          {{ sendError() || (isSending() ? 'Đang chờ máy chủ xác nhận…' : '') }}
+        </p>
+      </form>
     </ng-container>
 
-    <!-- Empty State -->
     <ng-template #noSelection>
-      <div class="flex-1 flex flex-col items-center justify-center text-gray-400">
-        <div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-          <i class="pi pi-comments text-4xl text-gray-300"></i>
-        </div>
-        <p class="text-lg font-medium text-gray-500">Chọn một khách hàng để bắt đầu chat</p>
+      <div class="dashboard-state dashboard-welcome">
+        <span class="welcome-icon" aria-hidden="true"><i class="pi pi-comments"></i></span>
+        <h2>Chọn một cuộc hội thoại</h2>
+        <p>Hãy chọn khách hàng trong hàng đợi để xem lịch sử và phản hồi.</p>
       </div>
     </ng-template>
-
-  </div>
-
-</div>
+  </main>
+</section>
