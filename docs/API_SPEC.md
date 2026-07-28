@@ -422,3 +422,10 @@ Response 401/403/404/409/422/500 phải tạo state có thể phục hồi. UI g
 - `POST /api/ai/chat` yêu cầu quyền `AI_CHAT:CREATE`, nhưng hiện lưu system notification trước khi trả lời; lỗi hoặc treo ở notification persistence vì vậy có thể chặn toàn bộ phản hồi AI. Frontend áp dụng timeout và retry để không giữ trạng thái typing vô hạn.
 - Hiện tại `/api/notifications/**` được `permitAll`, `NotificationController` không có authorization annotation, WebSocket `/ws` cho phép mọi origin và client subscribe topic chung `/topic/notifications`. Trạng thái này không đủ để coi notification là admin-only hoặc tenant-safe.
 - Không siết quyền ngầm trong đợt UI audit. Feature bảo mật riêng phải chốt admin-only hay per-user scope, WebSocket authentication/subscription rules, quyền mark-read và test chống đọc/sửa notification của actor khác trước khi thay contract.
+
+## Customer support chat contract decision (2026-07-28)
+
+- Trạng thái hiện tại chưa phải contract an toàn: WebSocket `/ws` public/all-origin, `ChatController` nhận `senderId`/`receiverId` từ payload, history/active-users nhận ID trên path và frontend hardcode `adminId = 1`.
+- Trước khi hoàn thiện UI send, product phải chốt một trong hai mô hình: hàng đợi CSKH trung tâm hoặc nhân viên hỗ trợ theo property/tenant. Không suy diễn người nhận bằng account ID cố định.
+- Backend phải lấy sender từ JWT principal, tự xác định recipient hợp lệ, chỉ trả history thuộc participant/support scope và authorization cho STOMP connect/send/subscribe. Client không được gửi identity làm nguồn sự thật.
+- Regression bắt buộc gồm sender spoofing, arbitrary history IDs, cross-account subscribe, sai recipient, reconnect/offline/send failure và accessible open/close/dialog controls. T056 theo dõi implementation sau khi contract được phê duyệt.
