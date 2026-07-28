@@ -41,16 +41,16 @@ test.describe('Real environment smoke', () => {
 
   test('public routes expose real recovery states without mocks', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { name: 'LuxeStay' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'LuxeStay', exact: true })).toBeVisible();
     await expectStablePage(page);
 
     await page.goto('/search', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('main')).toBeVisible();
+    await expect(page.locator('app-property-search-page main.search-page')).toBeVisible();
     await expectStablePage(page);
 
     await page.goto('/hotel/999999', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByText('Không thể mở chỗ nghỉ')).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole('button', { name: 'Thử lại' })).toBeVisible();
+    await expect(page.getByText('Không thể mở chỗ nghỉ', { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: 'Tìm chỗ nghỉ khác' })).toBeVisible();
 
     await page.goto('/route-khong-ton-tai', { waitUntil: 'domcontentloaded' });
     await expect(page).toHaveURL(/\/$/);

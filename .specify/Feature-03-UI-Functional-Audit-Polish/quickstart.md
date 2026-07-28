@@ -85,6 +85,8 @@ npx playwright test e2e/real-environment-smoke.spec.ts
 
 Nhánh actor thiếu biến môi trường sẽ được đánh dấu `skipped` với prerequisite cụ thể thay vì dùng tài khoản giả.
 
+Khi không có biến actor, lần xác minh 2026-07-28 cho kết quả mong đợi `1 passed, 3 skipped` trong khoảng 10 giây: public recovery chạy thật, còn customer/admin/owner dừng đúng tại prerequisite. Nếu public test fail vì locator mơ hồ thì đó là lỗi regression suite, không phải lý do để dùng mock thay thế.
+
 Không dùng mocked Playwright result làm bằng chứng duy nhất cho runtime integration.
 
 ## 6. Backend verification

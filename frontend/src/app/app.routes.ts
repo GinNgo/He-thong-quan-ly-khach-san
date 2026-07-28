@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth-guard';
 import { permissionGuard } from './core/guards/permission.guard';
+import { roleGuard } from './core/guards/role-guard';
 import { FunctionCode, ActionCode } from './core/services/permission.service';
 import { clientAuthGuard } from './core/guards/client-auth.guard';
 
@@ -74,7 +75,8 @@ export const routes: Routes = [
   {
     path: 'management',
     loadComponent: () => import('./layout/management-layout/management-layout').then(m => m.ManagementLayout),
-    canActivate: [authGuard],
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['PROPERTY_OWNER', 'HOTEL_ADMIN', 'HOTEL_MANAGER', 'SUPER_ADMIN', 'ADMIN'] },
     children: [
       { path: 'dashboard', loadComponent: () => import('./features/management/dashboard/management-dashboard.component').then(m => m.ManagementDashboardComponent) },
       { path: 'properties', loadComponent: () => import('./features/management/dashboard/management-dashboard.component').then(m => m.ManagementDashboardComponent) },

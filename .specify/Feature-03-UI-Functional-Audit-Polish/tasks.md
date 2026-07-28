@@ -130,7 +130,9 @@ description: "Dependency-ordered tasks for exhaustive UI audit and premium polis
 - [X] T038 [US5] Run `npm test -- --watch=false` and `npm run build` in `frontend/`; record command outcomes in `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
 - [X] T039 [US5] Run `.\mvnw.cmd test` in `backend/`; record command outcomes in `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
 - [ ] T040 [US5] Time and re-run the P1 browser regression plus permission/responsive samples after all changes; calculate the P1 completion rate (target at least 90%) and verify the smoke run completes within 45 minutes in `.specify/Feature-03-UI-Functional-Audit-Polish/audit-matrix.md`
-- [ ] T041 [US5] Validate `.specify/Feature-03-UI-Functional-Audit-Polish/quickstart.md` from a clean terminal and document prerequisites that remain external
+  - Progress 2026-07-28: the real-environment smoke now completes in about 10 seconds with 1 public pass and 3 explicit actor skips. Final P1 completion rate remains blocked until customer/admin/owner credential variables and assigned-property data are available.
+- [X] T041 [US5] Validate `.specify/Feature-03-UI-Functional-Audit-Polish/quickstart.md` from a clean terminal and document prerequisites that remain external
+  - Verified 2026-07-28: frontend tests/build, targeted auth/tenant backend regression and the real public smoke command run successfully; customer/admin/owner credentials and assigned-property data remain external prerequisites documented in `quickstart.md`.
 
 ---
 
@@ -141,7 +143,7 @@ description: "Dependency-ordered tasks for exhaustive UI audit and premium polis
 - [X] T042 Run Spec Kit analyze read-only across `.specify/Feature-03-UI-Functional-Audit-Polish/spec.md`, `plan.md`, and `tasks.md`; request user approval before any remediation edits required by analyze findings
 - [X] T043 Run Spec Kit converge and append only genuinely unbuilt work to the Convergence phase in `.specify/Feature-03-UI-Functional-Audit-Polish/tasks.md`
 - [X] T044 Run `git diff --check`, inspect `git status --short`, and verify no secret, generated build artifact or unrelated user change is staged
-- [ ] T045 Prepare final handoff with completed routes, unresolved gaps, test/build/browser evidence and branch status; commit/push only when explicitly requested by the user
+- [X] T045 Prepare final handoff with completed routes, unresolved gaps, test/build/browser evidence and branch status; commit/push only when explicitly requested by the user
 
 ---
 
@@ -190,10 +192,12 @@ description: "Dependency-ordered tasks for exhaustive UI audit and premium polis
   - Progress 2026-07-28: invalid detail/checkout/payment states fixed and browser-verified; customer-owned history/payment context, duplicate-submit tests, payment idempotency tests and tenant ownership tests pass. Remaining primary booking data and demo callback authorization are explicitly blocked in `GAP-005`, `GAP-006` and `GAP-022`; do not change payment/authorization policy without user approval.
 - [X] T050 [US3] Normalize audit evidence IDs and gap state taxonomy (`REVALIDATE`, `FIXED`, `CONFIRMED_PARTIAL`, `CONFIRMED_BROKEN`) across `audit-matrix.md`, `gap-register.md` and the contract per FR-002/FR-020
 - [X] T051 [US5] Reduce the production initial bundle below its configured budget and resolve or document the `@stomp/stompjs`, `sockjs-client` and inline-font warnings per SC-010/GAP-017
-- [ ] T052 [US1] Re-run denied-actor, expired-session, forged-property-context and management property-switch scenarios per FR-008/FR-013/GAP-013 (missing)
+- [ ] T052 [US1] Re-run denied-actor, expired-session, forged-property-context and management property-switch scenarios per FR-008/FR-013/GAP-013 (partial)
+  - Progress 2026-07-28: customer-like actor management entry is fixed and browser-verified at `/403`; 5 auth-exception and 10 tenant-isolation tests pass. Expired-session UI plus assigned-property switch/forged-query browser fixtures remain unavailable.
 - [ ] T053 [US3] Update the feature status and final completion metrics only after the remaining evidence-backed tasks converge per SC-003/SC-004/FR-020 (partial)
 
 ## Phase 10: Convergence
 
 - [X] T054 [US4] Replace empty exception handlers in `frontend/src/app/features/ai-assistant/ai-assistant.ts`, `frontend/src/app/features/client/chat-widget/chat-widget.ts` and `frontend/src/app/features/admin/chat-dashboard/chat-dashboard.ts` with null-safe guards or explicit non-user-facing logging, preserving reduced-motion/scroll behavior (contradicts Constitution 5)
 - [ ] T055 [US1] Browser-test the actual admin notification panel and AI assistant widget controls mounted by `AdminLayout`, including open/close, loading/empty/error/retry, send failure and realtime/mark-read branches; update AUD-057/AUD-058 and add evidence IDs without introducing standalone routes (partial, GAP-020)
+  - Progress 2026-07-28: notification open/error/retry/close and AI open/close/send/loading are browser-observed; AI accessibility, timeout, retry, mobile sizing and Escape focus recovery are fixed with seven tests. Notification empty/data/mark-read/realtime and real AI completion remain blocked by GAP-023 and the hanging notification runtime.

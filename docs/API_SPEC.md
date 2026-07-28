@@ -415,3 +415,10 @@ Không bổ sung endpoint mới trong đợt UI audit. Frontend xác minh và ti
 - `GET /api/admin/{partner-endpoint}`: generic partner page phải kết thúc loading ở success/error và không suy diễn schema/action không được API trả về.
 
 Response 401/403/404/409/422/500 phải tạo state có thể phục hồi. UI guard hoặc menu visibility không thay thế backend authorization.
+
+## Notification and AI shell contract (2026-07-28)
+
+- Notification panel và AI Concierge là control của `AdminLayout`, không phải route `/admin/notifications` hoặc `/admin/ai-assistant`.
+- `POST /api/ai/chat` yêu cầu quyền `AI_CHAT:CREATE`, nhưng hiện lưu system notification trước khi trả lời; lỗi hoặc treo ở notification persistence vì vậy có thể chặn toàn bộ phản hồi AI. Frontend áp dụng timeout và retry để không giữ trạng thái typing vô hạn.
+- Hiện tại `/api/notifications/**` được `permitAll`, `NotificationController` không có authorization annotation, WebSocket `/ws` cho phép mọi origin và client subscribe topic chung `/topic/notifications`. Trạng thái này không đủ để coi notification là admin-only hoặc tenant-safe.
+- Không siết quyền ngầm trong đợt UI audit. Feature bảo mật riêng phải chốt admin-only hay per-user scope, WebSocket authentication/subscription rules, quyền mark-read và test chống đọc/sửa notification của actor khác trước khi thay contract.

@@ -1,42 +1,55 @@
 <div class="ai-widget-container">
-  <!-- Chat Window -->
-  <div class="ai-chat-window shadow-lg" *ngIf="isOpen">
+  <section
+    *ngIf="isOpen"
+    id="ai-assistant-dialog"
+    class="ai-chat-window"
+    role="dialog"
+    aria-modal="false"
+    aria-labelledby="ai-assistant-title"
+  >
     <div class="ai-header d-flex justify-content-between align-items-center p-3">
       <div class="d-flex align-items-center">
-        <i class="pi pi-sparkles fs-4 me-2" style="color: var(--hotel-gold);"></i>
+        <i class="pi pi-sparkles fs-4 me-2 ai-header-icon" aria-hidden="true"></i>
         <div>
-          <h6 class="mb-0 fw-bold text-white">AI Concierge</h6>
-          <small class="text-white-50">Sẵn sàng hỗ trợ 24/7</small>
+          <h2 id="ai-assistant-title" class="ai-title">AI Concierge</h2>
+          <p class="ai-subtitle">Sẵn sàng hỗ trợ 24/7</p>
         </div>
       </div>
-      <button class="btn btn-link text-white p-0" (click)="toggleChat()">
-        <i class="pi pi-times fs-5"></i>
+      <button type="button" class="ai-icon-button" aria-label="Đóng trợ lý AI" (click)="toggleChat()">
+        <i class="pi pi-times fs-5" aria-hidden="true"></i>
       </button>
     </div>
 
-    <div class="ai-body p-3" #scrollMe>
+    <div class="ai-body p-3" #scrollMe role="log" aria-live="polite" aria-relevant="additions">
       <div *ngFor="let msg of messages" class="mb-3 d-flex" [ngClass]="msg.sender === 'user' ? 'justify-content-end' : 'justify-content-start'">
-        <!-- AI Avatar -->
         <div class="ai-avatar me-2" *ngIf="msg.sender === 'ai'">
-          <i class="pi pi-sparkles"></i>
+          <i class="pi pi-sparkles" aria-hidden="true"></i>
         </div>
-        
-        <!-- Message Bubble -->
+
         <div class="msg-bubble p-3 shadow-sm" [ngClass]="msg.sender === 'user' ? 'msg-user' : 'msg-ai'">
-          <!-- Pre-formatted text for AI reply to handle Markdown-like bullet points -->
-          <span style="white-space: pre-wrap; font-size: 0.9rem;">{{ msg.text }}</span>
-          <div class="msg-time mt-1 text-end" style="font-size: 0.7rem; opacity: 0.7;">
+          <span class="msg-text">{{ msg.text }}</span>
+          <button
+            *ngIf="msg.retryText"
+            type="button"
+            class="ai-retry-button"
+            [disabled]="isTyping"
+            (click)="retryMessage(msg.retryText)"
+          >
+            <i class="pi pi-refresh" aria-hidden="true"></i>
+            Thử gửi lại
+          </button>
+          <div class="msg-time mt-1 text-end">
             {{ msg.time | date:'HH:mm' }}
           </div>
         </div>
       </div>
-      
-      <!-- Typing indicator -->
-      <div class="mb-3 d-flex justify-content-start" *ngIf="isTyping">
+
+      <div class="mb-3 d-flex justify-content-start" *ngIf="isTyping" role="status">
         <div class="ai-avatar me-2">
-          <i class="pi pi-sparkles"></i>
+          <i class="pi pi-sparkles" aria-hidden="true"></i>
         </div>
         <div class="msg-bubble msg-ai p-3 shadow-sm d-flex align-items-center">
+          <span class="visually-hidden">Đang nhận phản hồi...</span>
           <div class="typing-dot"></div>
           <div class="typing-dot"></div>
           <div class="typing-dot"></div>
@@ -44,18 +57,42 @@
       </div>
     </div>
 
-    <div class="ai-footer p-3 border-top bg-white">
+    <div class="ai-footer p-3 border-top">
       <div class="input-group">
-        <input type="text" class="form-control" placeholder="Hỏi tôi bất cứ điều gì..." [(ngModel)]="newMessage" (keyup.enter)="sendMessage()">
-        <button class="btn" style="background-color: var(--hotel-primary); color: white;" (click)="sendMessage()" [disabled]="!newMessage.trim() || isTyping">
-          <i class="pi pi-send"></i>
+        <label class="visually-hidden" for="ai-message-input">Tin nhắn cho trợ lý AI</label>
+        <input
+          id="ai-message-input"
+          type="text"
+          class="form-control"
+          placeholder="Hỏi tôi bất cứ điều gì..."
+          autocomplete="off"
+          maxlength="500"
+          [(ngModel)]="newMessage"
+          (keyup.enter)="sendMessage()"
+        >
+        <button
+          type="button"
+          class="btn ai-send-button"
+          aria-label="Gửi tin nhắn"
+          (click)="sendMessage()"
+          [disabled]="!newMessage.trim() || isTyping"
+        >
+          <i class="pi pi-send" aria-hidden="true"></i>
         </button>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Floating Button -->
-  <button class="ai-fab shadow-lg" (click)="toggleChat()" [ngClass]="{'open': isOpen}">
-    <i class="pi" [ngClass]="isOpen ? 'pi-times' : 'pi-sparkles'"></i>
+  <button
+    #triggerButton
+    type="button"
+    class="ai-fab"
+    aria-controls="ai-assistant-dialog"
+    [attr.aria-expanded]="isOpen"
+    [attr.aria-label]="isOpen ? 'Đóng trợ lý AI' : 'Mở trợ lý AI'"
+    (click)="toggleChat()"
+    [ngClass]="{'open': isOpen}"
+  >
+    <i class="pi" [ngClass]="isOpen ? 'pi-times' : 'pi-sparkles'" aria-hidden="true"></i>
   </button>
 </div>

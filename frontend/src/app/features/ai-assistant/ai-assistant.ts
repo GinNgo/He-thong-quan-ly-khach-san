@@ -1,24 +1,29 @@
-import { Component, ElementRef, ViewChild, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { AfterViewChecked, Component, ElementRef, HostListener, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { timeout } from 'rxjs';
+
 import { AiService } from '../../core/services/ai';
-import { ButtonModule } from 'primeng/button';
 
 interface ChatMessage {
   text: string;
   sender: 'user' | 'ai';
   time: Date;
+  retryText?: string;
 }
+
+const AI_REQUEST_TIMEOUT_MS = 15_000;
 
 @Component({
   selector: 'app-ai-assistant',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './ai-assistant.html',
   styleUrl: './ai-assistant.css'
 })
 export class AiAssistant implements AfterViewChecked {
   @ViewChild('scrollMe') private myScrollContainer?: ElementRef<HTMLElement>;
+  @ViewChild('triggerButton') private triggerButton?: ElementRef<HTMLButtonElement>;
 
   isOpen = false;
   messages: ChatMessage[] = [];
@@ -27,7 +32,7 @@ export class AiAssistant implements AfterViewChecked {
 
   constructor(private aiService: AiService) {}
 
-  ngAfterViewChecked() {
+  ngAfterViewChecked(): void {
     this.scrollToBottom();
   }
 
@@ -38,34 +43,80 @@ export class AiAssistant implements AfterViewChecked {
     container.scrollTop = container.scrollHeight;
   }
 
-  toggleChat() {
+  toggleChat(): void {
+    if (this.isOpen) {
+      this.isOpen = false;
+      this.triggerButton?.nativeElement.focus();
+      return;
+    }
+
     this.isOpen = !this.isOpen;
     if (this.isOpen && this.messages.length === 0) {
       this.messages.push({
-        text: 'Xin chào 👋! Tôi là Trợ lý AI của Hotel. Tôi có thể giúp gì cho bạn hôm nay?',
+        text: 'Xin chào 👋! Tôi là Trợ lý AI của LuxeStay. Tôi có thể giúp gì cho bạn hôm nay?',
         sender: 'ai',
         time: new Date()
       });
     }
   }
 
-  sendMessage() {
-    if (!this.newMessage.trim()) return;
+  @HostListener('document:keydown.escape')
+  closeChat(): void {
+    if (!this.isOpen) return;
 
-    const userText = this.newMessage;
-    this.messages.push({ text: userText, sender: 'user', time: new Date() });
+    this.isOpen = false;
+    this.triggerButton?.nativeElement.focus();
+  }
+
+  sendMessage(): void {
+    const userText = this.newMessage.trim();
+    if (!userText || this.isTyping) return;
+
     this.newMessage = '';
+    this.send(userText, true);
+  }
+
+  retryMessage(userText: string): void {
+    if (!userText.trim() || this.isTyping) return;
+
+    const failedMessage = [...this.messages]
+      .reverse()
+      .find((message) => message.retryText === userText);
+    if (failedMessage) failedMessage.retryText = undefined;
+
+    this.send(userText, false);
+  }
+
+  private send(userText: string, appendUserMessage: boolean): void {
+    if (appendUserMessage) {
+      this.messages.push({ text: userText, sender: 'user', time: new Date() });
+    }
     this.isTyping = true;
 
-    this.aiService.chat(userText).subscribe({
+    this.aiService.chat(userText).pipe(timeout(AI_REQUEST_TIMEOUT_MS)).subscribe({
       next: (res) => {
         this.isTyping = false;
-        this.messages.push({ text: res.reply, sender: 'ai', time: new Date() });
+        const reply = res.reply?.trim();
+        if (!reply) {
+          this.addFailureMessage(userText);
+          return;
+        }
+
+        this.messages.push({ text: reply, sender: 'ai', time: new Date() });
       },
       error: () => {
         this.isTyping = false;
-        this.messages.push({ text: 'Xin lỗi, tôi đang gặp sự cố kết nối. Vui lòng thử lại sau!', sender: 'ai', time: new Date() });
+        this.addFailureMessage(userText);
       }
+    });
+  }
+
+  private addFailureMessage(userText: string): void {
+    this.messages.push({
+      text: 'Xin lỗi, tôi chưa thể kết nối lúc này. Bạn có thể thử gửi lại tin nhắn.',
+      sender: 'ai',
+      time: new Date(),
+      retryText: userText,
     });
   }
 }
