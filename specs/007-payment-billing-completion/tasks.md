@@ -120,7 +120,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 
 **Independent Test**: Reconcile a complete folio to one VND, block underpayment, then inject failures at every checkout boundary and prove rollback.
 
-- [ ] T070 [P] [US3] Implement reservation charge-line entities/repositories with service identity, price, tax, actor and usage snapshots in `backend/src/main/java/com/hotel/propertycommerce/folio/` (FR-017, FR-018)
+- [x] T070 [P] [US3] Implement reservation charge-line entities/repositories with service identity, price, tax, actor and usage snapshots in `backend/src/main/java/com/hotel/propertycommerce/folio/` (FR-017, FR-018)
 - [ ] T071 [US3] Implement server-priced service/minibar charge creation and append-only corrections in `backend/src/main/java/com/hotel/propertycommerce/folio/ReservationChargeService.java` (FR-017)
 - [ ] T072 [US3] Implement typed surcharge/adjustment creation with separate negative-adjustment permission in `backend/src/main/java/com/hotel/propertycommerce/folio/SurchargeService.java` (FR-018, FR-026)
 - [ ] T073 [US3] Implement authoritative folio calculation for room/service/surcharge/tax/fee/discount/payment/refund/balance in `backend/src/main/java/com/hotel/propertycommerce/checkout/FolioCalculationService.java` (FR-019, SC-005)

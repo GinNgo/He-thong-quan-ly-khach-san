@@ -36,7 +36,8 @@ class TenantFilterArchitectureTest {
                 "propertyPaymentMethodTenantFilter",
                 "propertyPaymentAttemptTenantFilter",
                 "propertyFinancialTransactionTenantFilter",
-                "bookingFinancialSummaryTenantFilter");
+                "bookingFinancialSummaryTenantFilter",
+                "reservationChargeLineTenantFilter");
         filters.forEach(filter -> assertTrue(source.contains("\"" + filter + "\""), () -> "Filter is not activated: " + filter));
     }
 
@@ -59,6 +60,12 @@ class TenantFilterArchitectureTest {
                 throw new AssertionError(exception);
             }
         });
+
+        String chargeLine = Files.readString(
+                Path.of("src/main/java/com/hotel/propertycommerce/folio/ReservationChargeLine.java"),
+                StandardCharsets.UTF_8);
+        assertTrue(chargeLine.contains("reservationChargeLineTenantFilter"));
+        assertTrue(chargeLine.contains("hotel_id"));
     }
 
     @Test
