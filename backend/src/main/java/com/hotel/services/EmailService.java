@@ -1,9 +1,12 @@
 package com.hotel.services;
 
+import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -35,6 +38,25 @@ public class EmailService {
             mailSender.send(message);
         } catch (Exception e) {
             System.err.println("Failed to send email to " + toEmail + ": " + e.getMessage());
+        }
+    }
+
+    public boolean sendInvoiceEmail(String toEmail, String invoiceNumber, byte[] pdf) {
+        if (toEmail == null || toEmail.isBlank() || pdf == null || pdf.length == 0) {
+            return false;
+        }
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(toEmail.trim());
+            helper.setSubject("Invoice " + invoiceNumber);
+            helper.setText("Your finalized invoice " + invoiceNumber + " is attached.", false);
+            helper.addAttachment(invoiceNumber + ".pdf", new ByteArrayResource(pdf), "application/pdf");
+            mailSender.send(message);
+            return true;
+        } catch (Exception exception) {
+            return false;
         }
     }
 }

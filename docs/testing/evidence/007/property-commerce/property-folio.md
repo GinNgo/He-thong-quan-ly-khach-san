@@ -514,3 +514,22 @@ Result: pending final context run for V33 entity/repository discovery; no produc
 - V33 is additive, repeat-safe and fails closed on duplicate non-null effect keys; it contains no delete/drop operation and remains subject to production migration approval.
 - Existing housekeeping rows receive null effect keys and remain untouched. If a fixture has duplicate pre-existing keys, resolve the source evidence in an approved maintenance window and rerun V33; do not delete tasks as a shortcut.
 - Application recovery disables checkout mutations while preserving reservation, invoice, assignment, room and housekeeping evidence. A failed transaction rolls back all changes together.
+
+# T081 Property Commerce API Surface
+
+## Scope
+
+- Added management endpoints for server-priced service charges, typed surcharges/negative adjustments, authoritative checkout preview, debt override authorization and locked checkout under `/api/management/reservations/{reservationId}`.
+- Added customer/property-safe invoice detail and immutable snapshot PDF endpoints under `/api/invoices/{invoiceId}`. PDF output is deterministic and contains only finalized invoice evidence.
+- Added verified-recipient invoice email delivery and management credit-note issuance under `/api/management/invoices/{invoiceId}`. Credit notes remain append-only and are returned with their line evidence.
+- Checkout rejects client-authoritative payment amount, method and transaction references; only a server-issued debt override can affect settlement.
+
+## Validation
+
+```powershell
+.\mvnw.cmd -DskipTests compile
+$env:JWT_SECRET='test_secret_for_context_validation_only_32_chars'
+.\mvnw.cmd '-Dtest=BackendApplicationTests' -DforkCount=0 test
+```
+
+Results: compilation succeeded; Spring context test passed (`1/1`) with `57` JPA repositories and all T081 controllers/services loaded. No production payment, production database migration or real email provider was used.
