@@ -2,6 +2,7 @@ package com.hotel.paymentprovider.config;
 
 import com.hotel.paymentprovider.error.FinancialErrorCode;
 import com.hotel.paymentprovider.error.FinancialException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
@@ -22,6 +23,7 @@ public class PaymentEnvironmentGuard {
     private final boolean productionApproved;
     private final boolean productionProfile;
 
+    @Autowired
     public PaymentEnvironmentGuard(
             Environment environment,
             @Value("${payment.demo.enabled:false}") boolean simulatorEnabled,
