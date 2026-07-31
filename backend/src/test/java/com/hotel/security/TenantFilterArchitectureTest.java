@@ -33,7 +33,9 @@ class TenantFilterArchitectureTest {
                 "roomTypeTenantFilter",
                 "reservationTenantFilter",
                 "propertyPaymentConfigurationTenantFilter",
-                "propertyPaymentMethodTenantFilter");
+                "propertyPaymentMethodTenantFilter",
+                "propertyPaymentAttemptTenantFilter",
+                "propertyFinancialTransactionTenantFilter");
         filters.forEach(filter -> assertTrue(source.contains("\"" + filter + "\""), () -> "Filter is not activated: " + filter));
     }
 
