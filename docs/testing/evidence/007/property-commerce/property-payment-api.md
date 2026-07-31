@@ -101,11 +101,32 @@ Result:
 - Angular/Vitest build: SUCCESS
 - Existing unrelated `NG8107` optional-chain warning remains in `client-layout.html`.
 
+## T066 Accessible Payment Panel
+
+The booking-success view now renders a responsive payment panel from the server-owned attempt response. It displays the exact VND amount, environment, status, expiry, masked receiver details, bilingual instructions, required transfer content and QR/provider state without accepting client-authored financial values.
+
+Active attempts poll the read-only status endpoint. Poll failures expose an explicit status retry, while terminal `FAILED`, `EXPIRED` and `CANCELLED` attempts can request a new attempt with a fresh idempotency key against the existing reservation. This retry path does not call booking creation again and cannot duplicate inventory mutation.
+
+Focused command from `frontend/`:
+
+```powershell
+.\node_modules\.bin\ng.cmd test --watch=false --include "src/app/features/client/booking-checkout/booking-checkout.component.spec.ts" --include "src/app/core/services/property-payment.service.spec.ts"
+```
+
+Result:
+
+- Test files: 2 passed
+- Tests: 11 passed
+- Failures: 0
+- Angular/Vitest build: SUCCESS
+- Existing unrelated `NG8107` optional-chain warning remains in `client-layout.html`.
+
 ## Remaining Work
 
 - T059-T064 are complete for legacy compatibility, provider contracts, callback concurrency, manual confirmation integration and the Angular payment client.
 - T065 is complete for server-owned checkout attempt creation and safe retry identity.
-- T066-T069 remain open for the accessible payment panel and browser journeys.
+- T066 is complete for accessible instructions, expiry, environment labeling, polling and safe terminal retry.
+- T067-T069 remain open for dedicated panel unit coverage and browser journeys.
 
 ## Recovery
 

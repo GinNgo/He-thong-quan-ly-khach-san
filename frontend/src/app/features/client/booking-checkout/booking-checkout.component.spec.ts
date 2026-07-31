@@ -11,13 +11,19 @@ describe('BookingCheckoutComponent', () => {
   let reservation$: Subject<any>;
   let queryParams$: Subject<Record<string, string>>;
   let clientApi: { bookRoom: ReturnType<typeof vi.fn> };
-  let paymentApi: { createAttempt: ReturnType<typeof vi.fn> };
+  let paymentApi: {
+    createAttempt: ReturnType<typeof vi.fn>;
+    getAttempt: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     reservation$ = new Subject<any>();
     queryParams$ = new Subject<Record<string, string>>();
     clientApi = { bookRoom: vi.fn(() => reservation$) };
-    paymentApi = { createAttempt: vi.fn() };
+    paymentApi = {
+      createAttempt: vi.fn(),
+      getAttempt: vi.fn((attemptId: string) => of({ ...attemptResponse(), attemptId })),
+    };
 
     await TestBed.configureTestingModule({
       imports: [BookingCheckoutComponent],
@@ -136,6 +142,25 @@ describe('BookingCheckoutComponent', () => {
     expect(component.bookingSuccess).toBe(true);
   });
 
+  it('creates a fresh terminal retry without creating a second reservation', () => {
+    paymentApi.createAttempt
+      .mockReturnValueOnce(of({ ...attemptResponse(), status: 'FAILED' }))
+      .mockReturnValueOnce(of({ ...attemptResponse(), attemptId: 'attempt-2' }));
+    setValidBooking('MOMO');
+
+    component.submitBooking();
+    reservation$.next({ id: 91 });
+
+    const firstKey = paymentApi.createAttempt.mock.calls[0][2].idempotencyKey;
+    component.retryPaymentAttempt();
+
+    expect(clientApi.bookRoom).toHaveBeenCalledTimes(1);
+    expect(paymentApi.createAttempt).toHaveBeenCalledTimes(2);
+    expect(paymentApi.createAttempt.mock.calls[1][0]).toBe(91);
+    expect(paymentApi.createAttempt.mock.calls[1][2].idempotencyKey).not.toBe(firstKey);
+    expect(component.paymentAttempt?.attemptId).toBe('attempt-2');
+  });
+
   function setValidBooking(paymentMethod: string): void {
     component.roomTypeId = 1;
     component.hotelId = 10;
@@ -170,7 +195,16 @@ describe('BookingCheckoutComponent', () => {
       expiresAt: '2026-08-10T12:15:00',
       method: 'MOMO',
       provider: 'SIMULATOR',
-      receiver: null,
+      receiver: {
+        bankName: null,
+        bankCode: null,
+        accountName: null,
+        accountNumberMasked: null,
+        qrProvider: null,
+        merchantReferenceMasked: null,
+        instructionsVi: null,
+        instructionsEn: null,
+      },
       uniqueTransferContent: null,
       qrData: null,
       redirectUrl: null,

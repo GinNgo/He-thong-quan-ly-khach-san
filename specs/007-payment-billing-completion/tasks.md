@@ -107,7 +107,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 - [x] T063 [US2] Add manual confirmation permission, audit and cross-property tests in `backend/src/test/java/com/hotel/propertycommerce/payment/ManualTransferConfirmationIntegrationTest.java` (FR-013, FR-026, SC-011)
 - [x] T064 [P] [US2] Add typed booking financial/attempt API methods in `frontend/src/app/core/services/property-payment.service.ts` (FR-012-FR-016)
 - [x] T065 [US2] Replace caller-authoritative checkout payment data with server-owned attempt creation in `frontend/src/app/features/client/booking-checkout/booking-checkout.component.ts` (FR-007, FR-014)
-- [ ] T066 [US2] Build accessible QR/manual instructions, expiry, environment label, polling and safe retry states in `frontend/src/app/features/client/booking-checkout/property-payment-panel.component.ts` (FR-010, FR-012-FR-014)
+- [x] T066 [US2] Build accessible QR/manual instructions, expiry, environment label, polling and safe retry states in `frontend/src/app/features/client/booking-checkout/property-payment-panel.component.ts` (FR-010, FR-012-FR-014)
 - [ ] T067 [P] [US2] Add Angular payment-panel unit tests for pending/success/failure/expired/retry and bilingual display in `frontend/src/app/features/client/booking-checkout/property-payment-panel.component.spec.ts` (FR-004, FR-046)
 - [ ] T068 [US2] Add Playwright booking/deposit success, replay and concurrency journey in `frontend/e2e/property-booking-payment.spec.ts` (SC-003-SC-005)
 - [ ] T069 [US2] Add Playwright invalid date/capacity/price-tamper/expiry/signature/IDOR cases in `frontend/e2e/property-booking-payment-negative.spec.ts` (SC-011)

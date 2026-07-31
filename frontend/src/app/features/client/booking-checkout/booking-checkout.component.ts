@@ -8,11 +8,12 @@ import {
   PropertyPaymentAttempt,
   PropertyPaymentService,
 } from '../../../core/services/property-payment.service';
+import { PropertyPaymentPanelComponent } from './property-payment-panel.component';
 
 @Component({
   selector: 'app-booking-checkout',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, PropertyPaymentPanelComponent],
   templateUrl: './booking-checkout.component.html',
   styleUrls: ['./booking-checkout.component.css']
 })
@@ -155,6 +156,21 @@ export class BookingCheckoutComponent implements OnInit {
 
   goToSearch(): void {
     this.router.navigate(['/search']);
+  }
+
+  onPaymentAttemptChange(attempt: PropertyPaymentAttempt): void {
+    this.paymentAttempt = attempt;
+  }
+
+  retryPaymentAttempt(): void {
+    const reservationId = Number(this.reservationDetails?.id);
+    if (this.isSubmitting || !Number.isInteger(reservationId) || reservationId <= 0) return;
+
+    this.errorMessage = '';
+    this.isSubmitting = true;
+    this.paymentRequestIdentity = '';
+    this.paymentIdempotencyKey = '';
+    this.createPaymentAttempt(reservationId);
   }
 
   get bookingContextValid(): boolean {

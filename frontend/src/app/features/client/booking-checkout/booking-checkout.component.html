@@ -9,7 +9,16 @@
       <h2 class="text-2xl font-bold text-gray-900 mb-2">Đặt phòng thành công!</h2>
       <p class="text-gray-600 mb-6">Mã đặt phòng của bạn là: <span class="font-bold text-gray-900">#{{ reservationDetails?.id }}</span></p>
       <p *ngIf="!paymentAttempt" class="text-gray-600 mb-8">Vui lòng thanh toán tại quầy lễ tân khi nhận phòng.</p>
-      <p *ngIf="paymentAttempt" class="text-gray-600 mb-8">Yêu cầu thanh toán đã được máy chủ tạo và đang chờ xác nhận.</p>
+      <app-property-payment-panel
+        *ngIf="paymentAttempt"
+        class="block mb-8"
+        [attempt]="paymentAttempt"
+        (attemptChange)="onPaymentAttemptChange($event)"
+        (retryRequested)="retryPaymentAttempt()">
+      </app-property-payment-panel>
+      <p *ngIf="errorMessage" class="bg-red-50 border border-red-200 text-red-700 rounded p-3 mb-6 text-sm font-medium" role="alert" aria-live="assertive">
+        {{ errorMessage }}
+      </p>
       <div class="flex flex-col sm:flex-row justify-center gap-3">
         <button class="bg-[#0071c2] hover:bg-[#005999] text-white font-bold py-3 px-8 rounded transition-colors" (click)="goToProfileBookings()">
           Xem chuyến đi
