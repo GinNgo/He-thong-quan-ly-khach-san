@@ -215,3 +215,55 @@ Coverage includes settled, outstanding and overpaid previews; invalid reservatio
 - T074 is read-only and creates no invoice, checkout mutation, provider request, migration, production credential or real-money effect.
 - Debt and overpayment exceptions remain blocked until the explicit policy and evidence workflow in T075.
 - Recovery disables the preview consumer while retaining all append-only charge and ledger evidence; no financial row requires rollback or deletion.
+
+# T075 Debt Override and Overpayment Policy
+
+## Scope
+
+- Added an append-only, tenant-filtered `CheckoutOverride` model and repository mapped to the additive `checkout_overrides` table delivered by T015.
+- Normal checkout still requires an exact zero server-owned balance. Outstanding debt remains blocked unless an authenticated actor supplies a non-blank reason and has `RESERVATION_DEBT_OVERRIDE/APPROVE`.
+- Debt approval locks the reservation, re-runs the authoritative preview under the lock, and stores the recalculated positive VND balance; no caller-supplied amount is accepted.
+- Accepted debt overrides snapshot property, reservation, amount, reason, actor and approver, then append a redacted Property Commerce audit event with the folio source version and correlation ID.
+- Overpayment remains fail-closed with `OVERPAYMENT_REQUIRES_RESOLUTION`; no automatic refund, credit, cash payout or other unapproved commercial policy was invented.
+
+## Concurrency, Permission, and Tenant Rules
+
+- A payment arriving between initial preview and reservation lock removes the need for an override and creates no override/audit row.
+- Cross-property or non-`CHECKED_IN` reservations are rejected after locking and before evidence persistence.
+- `CREATE` alone is insufficient for debt override; the separate `APPROVE` action is required unless the actor is a system administrator.
+- The `checkoutOverrideTenantFilter` is activated and cleared with the existing authenticated request tenant filters.
+
+## Automated Validation
+
+Combined regression command from `backend/`:
+
+```powershell
+.\mvnw.cmd '-Dtest=CheckoutOverrideServiceTest,CheckoutPreviewServiceTest,FolioCalculationServiceTest,TenantFilterArchitectureTest,FinancialAuditServiceTest' -DforkCount=0 test
+```
+
+Result:
+
+- Checkout override tests: 7 passed
+- Checkout preview regression: 5 passed
+- Folio calculation regression: 5 passed
+- Tenant-filter architecture: 3 passed
+- Financial audit regression: 1 passed
+- Total: 21 passed
+- Failures: 0
+- Errors: 0
+- Skipped: 0
+
+Fresh Spring context command with a process-only test secret:
+
+```powershell
+$env:JWT_SECRET='test_secret_for_context_validation_only_32_chars'
+.\mvnw.cmd '-Dtest=BackendApplicationTests' -DforkCount=0 test
+```
+
+Result: 1 context test passed with no failures, errors or skips; the new entity, tenant filter, repository and service were discovered successfully.
+
+## Safety and Recovery
+
+- No production secret, provider request, real-money operation, production mode or production database mutation was used.
+- T075 reuses the additive T015 schema and requires no new migration or destructive cleanup.
+- Recovery stops new debt approvals while preserving existing append-only override and audit evidence; overpayment stays blocked until a separately approved policy is implemented.

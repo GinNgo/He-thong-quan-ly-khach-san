@@ -37,7 +37,8 @@ class TenantFilterArchitectureTest {
                 "propertyPaymentAttemptTenantFilter",
                 "propertyFinancialTransactionTenantFilter",
                 "bookingFinancialSummaryTenantFilter",
-                "reservationChargeLineTenantFilter");
+                "reservationChargeLineTenantFilter",
+                "checkoutOverrideTenantFilter");
         filters.forEach(filter -> assertTrue(source.contains("\"" + filter + "\""), () -> "Filter is not activated: " + filter));
     }
 
@@ -66,6 +67,12 @@ class TenantFilterArchitectureTest {
                 StandardCharsets.UTF_8);
         assertTrue(chargeLine.contains("reservationChargeLineTenantFilter"));
         assertTrue(chargeLine.contains("hotel_id"));
+
+        String checkoutOverride = Files.readString(
+                Path.of("src/main/java/com/hotel/propertycommerce/checkout/CheckoutOverride.java"),
+                StandardCharsets.UTF_8);
+        assertTrue(checkoutOverride.contains("checkoutOverrideTenantFilter"));
+        assertTrue(checkoutOverride.contains("hotel_id"));
     }
 
     @Test

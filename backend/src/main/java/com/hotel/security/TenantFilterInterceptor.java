@@ -35,7 +35,8 @@ public class TenantFilterInterceptor implements HandlerInterceptor {
             "propertyPaymentAttemptTenantFilter",
             "propertyFinancialTransactionTenantFilter",
             "bookingFinancialSummaryTenantFilter",
-            "reservationChargeLineTenantFilter");
+            "reservationChargeLineTenantFilter",
+            "checkoutOverrideTenantFilter");
 
     @PersistenceContext
     private EntityManager entityManager;
