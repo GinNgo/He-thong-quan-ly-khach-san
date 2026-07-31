@@ -96,7 +96,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 - [x] T052 [P] [US2] Implement property payment-attempt and ledger entities/repositories in `backend/src/main/java/com/hotel/propertycommerce/payment/` (FR-002, FR-004, FR-016, FR-039)
 - [x] T053 [US2] Implement booking financial summary calculation from charges, successful transactions and refunds in `backend/src/main/java/com/hotel/propertycommerce/booking/BookingFinancialSummaryService.java` (FR-005, FR-016)
 - [x] T054 [US2] Implement idempotent attempt creation with exact amount, expiry, receiver snapshot and unique transfer content in `backend/src/main/java/com/hotel/propertycommerce/payment/PropertyPaymentAttemptService.java` (FR-012-FR-015)
-- [ ] T055 [P] [US2] Adapt VNPay/MoMo/ZaloPay/simulator providers to the shared verification SPI in `backend/src/main/java/com/hotel/paymentprovider/adapters/` (FR-010, FR-041)
+- [x] T055 [P] [US2] Adapt VNPay/MoMo/ZaloPay/simulator providers to the shared verification SPI in `backend/src/main/java/com/hotel/paymentprovider/adapters/` (FR-010, FR-041)
 - [ ] T056 [US2] Implement property callback orchestration with locking and exactly-once ledger effects in `backend/src/main/java/com/hotel/propertycommerce/payment/PropertyPaymentCallbackService.java` (FR-006, FR-014, FR-041)
 - [ ] T057 [US2] Implement permissioned manual-transfer confirmation that cannot self-confirm from public UI in `backend/src/main/java/com/hotel/propertycommerce/payment/ManualTransferConfirmationService.java` (FR-013, FR-026)
 - [ ] T058 [US2] Expose financial summary, attempt, cancel, manual-confirm and property callback endpoints in `backend/src/main/java/com/hotel/propertycommerce/payment/PropertyPaymentController.java` (FR-011-FR-014, FR-041)
