@@ -129,7 +129,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 - [x] T076 [P] [US3] Implement immutable invoice/line/allocation entities and repositories in `backend/src/main/java/com/hotel/propertycommerce/invoice/` (FR-022)
 - [x] T077 [US3] Implement invoice finalization from the locked folio and allocated successful transactions in `backend/src/main/java/com/hotel/propertycommerce/invoice/InvoiceFinalizationService.java` (FR-021, FR-022)
 - [x] T078 [US3] Implement credit-note/adjustment workflow without rewriting finalized invoices in `backend/src/main/java/com/hotel/propertycommerce/invoice/CreditNoteService.java` (FR-022, FR-026)
-- [ ] T079 [US3] Refactor checkout into one locked transaction covering reservation, invoice, assignments, rooms and housekeeping in `backend/src/main/java/com/hotel/services/ReservationService.java` (FR-020, FR-021)
+- [x] T079 [US3] Refactor checkout into one locked transaction covering reservation, invoice, assignments, rooms and housekeeping in `backend/src/main/java/com/hotel/services/ReservationService.java` (FR-020, FR-021)
 - [ ] T080 [US3] Add exactly-once dirty-room and housekeeping-task behavior to checkout in `backend/src/main/java/com/hotel/propertycommerce/checkout/CheckoutOperationsService.java` (FR-021)
 - [ ] T081 [US3] Expose charge, surcharge, preview, checkout, invoice, PDF/email and credit-note endpoints in `backend/src/main/java/com/hotel/propertycommerce/checkout/PropertyCheckoutController.java` and `backend/src/main/java/com/hotel/propertycommerce/invoice/PropertyInvoiceController.java` (FR-017-FR-023)
 - [ ] T082 [P] [US3] Add folio/service/surcharge unit tests in `backend/src/test/java/com/hotel/propertycommerce/folio/FolioCalculationServiceTest.java` (SC-005)

@@ -7,6 +7,8 @@ import com.hotel.paymentprovider.error.FinancialException;
 import com.hotel.propertycommerce.booking.DepositPolicySnapshot;
 import com.hotel.propertycommerce.config.PropertyPaymentConfiguration;
 import com.hotel.propertycommerce.config.PropertyPaymentConfigurationRepository;
+import com.hotel.propertycommerce.invoice.InvoiceFinalizationService;
+import com.hotel.propertycommerce.invoice.PropertyInvoice;
 import com.hotel.repositories.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,11 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.LocalDate;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,6 +44,7 @@ public class ReservationService {
     private final HousekeepingTaskRepository housekeepingTaskRepository;
     private final PropertyAccessService propertyAccessService;
     private final PropertyPaymentConfigurationRepository propertyPaymentConfigurationRepository;
+    private final InvoiceFinalizationService invoiceFinalizationService;
 
     @Transactional
     public ReservationDTO createReservation(String username, ReservationRequest request) {
@@ -204,7 +207,7 @@ public class ReservationService {
         List<ReservationRoom> assignments = reservationRoomRepository.findByReservationDetailReservationId(id);
 
         if ("CHECKED_OUT".equals(normalizedStatus)) {
-            completeCheckout(reservation, null);
+            completeCheckoutLocked(reservation, null);
             return mapToDTO(reservation);
         } else if ("CANCELLED".equals(normalizedStatus)) {
             cancelLockedReservation(reservation, assignments);
@@ -348,51 +351,49 @@ public class ReservationService {
 
     @Transactional
     public CheckoutResultDTO checkout(Long reservationId, CheckoutRequest request) {
-        Reservation reservation = findReservation(reservationId);
+        Long checkoutOverrideId = validateCheckoutRequest(request);
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy booking."));
         requireOperationalAccess(reservation);
-        return completeCheckout(reservation, request);
+        return completeCheckoutLocked(reservation, checkoutOverrideId);
     }
 
-    private CheckoutResultDTO completeCheckout(Reservation reservation, CheckoutRequest request) {
+    private CheckoutResultDTO completeCheckoutLocked(Reservation reservation, Long checkoutOverrideId) {
         if (!"CHECKED_IN".equals(reservation.getStatus())) {
             throw new IllegalStateException("Chỉ có thể trả phòng cho booking đang CHECKED_IN.");
         }
-        Invoice invoice = invoiceRepository.findByReservationId(reservation.getId()).orElseGet(Invoice::new);
-        if (invoice.getId() == null) {
-            invoice.setInvoiceCode("INV-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
-            invoice.setReservation(reservation);
-        }
-        invoice.setIssueDate(LocalDate.now());
-        invoice.setTotalAmount(reservation.getTotalAmount());
+        InvoiceFinalizationService.FinalizedInvoice finalized = invoiceFinalizationService.finalizeInvoice(
+                new InvoiceFinalizationService.FinalizeInvoiceCommand(reservation.getId(), checkoutOverrideId));
+        PropertyInvoice invoice = finalized.invoice();
 
-        BigDecimal paidAmount = request == null ? null : request.getPaymentAmount();
-        if (paidAmount != null && paidAmount.signum() > 0) {
-            Payment payment = new Payment();
-            payment.setReservation(reservation);
-            payment.setAmount(paidAmount);
-            payment.setPaymentMethod(request.getPaymentMethod() == null ? "CASH" : request.getPaymentMethod());
-            payment.setStatus("SUCCESS");
-            payment.setTransactionId(request.getTransactionId());
-            payment.setPaymentDate(LocalDateTime.now());
-            paymentRepository.save(payment);
+        List<ReservationRoom> assignments =
+                reservationRoomRepository.findAssignedByReservationIdForUpdate(reservation.getId());
+        if (assignments.isEmpty()) {
+            throw new IllegalStateException("Checkout requires at least one active room assignment.");
         }
-        BigDecimal totalPaid = paymentRepository.findByReservationId(reservation.getId()).stream()
-                .filter(payment -> "SUCCESS".equals(payment.getStatus()))
-                .map(Payment::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-        invoice.setStatus(totalPaid.compareTo(reservation.getTotalAmount()) >= 0 ? "PAID" : "PENDING");
-        invoice = invoiceRepository.save(invoice);
+        List<Long> roomIds = assignments.stream()
+                .map(ReservationRoom::getRoom)
+                .map(Room::getId)
+                .distinct()
+                .sorted()
+                .toList();
+        Map<Long, Room> lockedRooms = new LinkedHashMap<>();
+        roomRepository.findAllByIdForUpdate(roomIds).forEach(room -> lockedRooms.put(room.getId(), room));
+        if (lockedRooms.size() != roomIds.size()) {
+            throw new FinancialException(
+                    FinancialErrorCode.CONCURRENT_MODIFICATION,
+                    "An assigned room changed during checkout; retry safely.");
+        }
 
-        List<Long> dirtyRoomIds = new java.util.ArrayList<>();
-        List<ReservationRoom> assignments = reservationRoomRepository.findByReservationDetailReservationId(reservation.getId());
+        LocalDateTime checkedOutAt = LocalDateTime.now();
+        List<Long> dirtyRoomIds = new java.util.ArrayList<>(roomIds.size());
         for (ReservationRoom assignment : assignments) {
-            if (!"ASSIGNED".equals(assignment.getStatus())) continue;
+            Room room = lockedRooms.get(assignment.getRoom().getId());
+            validateCheckoutRoomOwnership(reservation, room);
             assignment.setStatus("RELEASED");
-            assignment.setReleasedAt(LocalDateTime.now());
-            reservationRoomRepository.save(assignment);
-            Room room = assignment.getRoom();
+            assignment.setReleasedAt(checkedOutAt);
             room.setStatus("DIRTY");
             room.setHousekeepingStatus("DIRTY");
-            roomRepository.save(room);
             dirtyRoomIds.add(room.getId());
             if (housekeepingTaskRepository.findByRoomIdAndStatus(room.getId(), "PENDING").isEmpty()) {
                 HousekeepingTask task = new HousekeepingTask();
@@ -404,10 +405,45 @@ public class ReservationService {
                 housekeepingTaskRepository.save(task);
             }
         }
+        reservationRoomRepository.saveAll(assignments);
+        roomRepository.saveAll(List.copyOf(lockedRooms.values()));
         reservation.setStatus("CHECKED_OUT");
-        reservationRepository.save(reservation);
-        return new CheckoutResultDTO(reservation.getId(), reservation.getStatus(), invoice.getId(), invoice.getInvoiceCode(),
-                invoice.getStatus(), invoice.getTotalAmount(), dirtyRoomIds);
+        reservationRepository.saveAndFlush(reservation);
+        return new CheckoutResultDTO(
+                reservation.getId(),
+                reservation.getStatus(),
+                invoice.getId(),
+                invoice.getInvoiceNumber(),
+                invoice.getStatus().name(),
+                invoice.getTotalAmount(),
+                List.copyOf(dirtyRoomIds));
+    }
+
+    private Long validateCheckoutRequest(CheckoutRequest request) {
+        if (request == null) {
+            return null;
+        }
+        if (request.getPaymentAmount() != null
+                || hasText(request.getPaymentMethod())
+                || hasText(request.getTransactionId())) {
+            throw new FinancialException(
+                    FinancialErrorCode.INVALID_AMOUNT,
+                    "Checkout no longer accepts caller-provided payment amounts, methods or transaction references.");
+        }
+        return request.getCheckoutOverrideId();
+    }
+
+    private void validateCheckoutRoomOwnership(Reservation reservation, Room room) {
+        if (room == null || room.getHotel() == null || reservation.getHotel() == null
+                || !reservation.getHotel().getId().equals(room.getHotel().getId())) {
+            throw new FinancialException(
+                    FinancialErrorCode.CONCURRENT_MODIFICATION,
+                    "An assigned room no longer belongs to the checkout property.");
+        }
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private void validateAssignableRoom(Reservation reservation, ReservationDetail detail, Room room) {

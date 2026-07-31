@@ -421,3 +421,50 @@ Result: 1 context test passed with no failures, errors or skips. Spring discover
 - V32 was added to source and architecture-tested only; production migration remains a separate approval gate.
 - If an upgrade fixture exposes null or conflicting ownership, V32 stops before the non-null constraint. Forward recovery is to correct the documented source ownership in an approved backup-protected maintenance window and rerun V32; do not delete credit-note evidence or rewrite applied migrations.
 - Application recovery disables new credit-note issuance while retaining every finalized invoice and accepted note/line/audit row as immutable evidence.
+
+# T079 Locked Aggregate Checkout Transaction
+
+## Scope
+
+- Replaced the legacy checkout path that accepted client payment amount/method/reference and wrote the mutable legacy invoice with the authoritative `InvoiceFinalizationService` result from T077.
+- `ReservationService.checkout` now rejects caller-authoritative payment fields, accepts only an optional persisted debt-override identifier, locks the reservation and revalidates property access before checkout work begins.
+- Checkout finalizes or reuses the authoritative immutable invoice before operational mutation. Outstanding balance, overpayment, stale override or missing ledger allocation therefore stops room/assignment/housekeeping changes.
+- Added pessimistic assignment and room queries. Active assignments are locked in stable order, assigned rooms are locked by sorted ID, property ownership is revalidated and missing/concurrently changed rooms fail with `CONCURRENT_MODIFICATION`.
+- Within the same Spring transaction, active assignments are released, locked rooms become `DIRTY`, pending housekeeping work is created where absent, the reservation becomes `CHECKED_OUT`, and the response uses the immutable Property Commerce invoice ID/number/status/total.
+- The status-transition checkout path reuses the same locked aggregate method instead of maintaining a second financial/operational implementation.
+
+## Automated Validation
+
+Focused command from `backend/`:
+
+```powershell
+.\mvnw.cmd '-Dtest=ReservationCheckoutTransactionTest,ReservationServiceTest,InvoiceFinalizationServiceTest' -DforkCount=0 test
+```
+
+Result:
+
+- Locked checkout orchestration tests: 4 passed
+- Reservation lifecycle/deposit/refund regression: 13 passed
+- Authoritative invoice finalization regression: 6 passed
+- Total: 23 passed
+- Failures: 0
+- Errors: 0
+- Skipped: 0
+
+Coverage includes the successful reservation/invoice/assignment/room/housekeeping sequence, debt-override forwarding, rejection of client payment totals, invoice failure before operational mutation and missing-room concurrent modification.
+
+Fresh Spring context command with a process-only test secret:
+
+```powershell
+$env:JWT_SECRET='test_secret_for_context_validation_only_32_chars'
+.\mvnw.cmd '-Dtest=BackendApplicationTests' -DforkCount=0 test
+```
+
+Result: 1 context test passed with no failures, errors or skips. Spring discovered 57 JPA repositories and parsed the new pessimistic assignment/room lock queries successfully.
+
+## Safety and Recovery
+
+- No production database, provider, credential, real-money operation or production payment mode was used.
+- T079 adds no migration and does not delete or rewrite legacy invoice/payment rows. It only stops creating new legacy checkout financial evidence.
+- Any unchecked persistence failure after invoice creation propagates through the same transaction so the invoice, assignment, room, housekeeping and reservation changes roll back together; exhaustive injected-boundary proof remains assigned to T084.
+- T080 remains responsible for strengthening dirty-room and housekeeping creation to exactly-once behavior under retries/concurrency. Until then, checkout is serialized by the reservation/assignment/room locks and retains the existing pending-task existence guard.

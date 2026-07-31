@@ -87,4 +87,8 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
             @Param("checkIn") java.time.LocalDate checkIn,
             @Param("checkOut") java.time.LocalDate checkOut
     );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select room from Room room where room.id in :roomIds order by room.id")
+    List<Room> findAllByIdForUpdate(@Param("roomIds") List<Long> roomIds);
 }

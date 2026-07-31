@@ -1,7 +1,9 @@
 package com.hotel.repositories;
 
 import com.hotel.entities.ReservationRoom;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -11,6 +13,18 @@ import java.util.List;
 public interface ReservationRoomRepository extends JpaRepository<ReservationRoom, Long> {
     List<ReservationRoom> findByReservationDetailReservationId(Long reservationId);
     List<ReservationRoom> findByReservationDetailIdAndStatus(Long reservationDetailId, String status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select assignment
+            from ReservationRoom assignment
+            join fetch assignment.room room
+            join assignment.reservationDetail detail
+            where detail.reservation.id = :reservationId
+              and assignment.status = 'ASSIGNED'
+            order by assignment.id
+            """)
+    List<ReservationRoom> findAssignedByReservationIdForUpdate(@Param("reservationId") Long reservationId);
 
     @Query("""
             select case when count(assignment) > 0 then true else false end
