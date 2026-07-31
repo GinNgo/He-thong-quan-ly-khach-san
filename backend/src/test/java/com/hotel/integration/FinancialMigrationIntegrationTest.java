@@ -23,7 +23,8 @@ class FinancialMigrationIntegrationTest {
             "V27__financial_integrity_indexes.sql",
             "V28__financial_permissions.sql",
             "V29__financial_idempotency.sql",
-            "V30__booking_deposit_policy_snapshot.sql");
+            "V30__booking_deposit_policy_snapshot.sql",
+            "V31__property_attempt_transfer_content_uniqueness.sql");
 
     @Test
     void feature007MigrationsExistAndDeclareTenantIntegrity() throws IOException {
@@ -73,5 +74,19 @@ class FinancialMigrationIntegrationTest {
         assertTrue(sql.contains("deposit_currency = 'VND'"));
         assertTrue(sql.contains("deposit_required <= deposit_booking_total"));
         assertFalse(sql.contains("DROP COLUMN"));
+    }
+
+    @Test
+    void propertyAttemptTransferContentMigrationFailsClosedBeforeAddingUniqueIndex() throws IOException {
+        String sql = Files.readString(
+                Path.of("src/main/resources/db/migration/V31__property_attempt_transfer_content_uniqueness.sql"),
+                StandardCharsets.UTF_8);
+        assertTrue(sql.contains("HAVING COUNT_BIG(*) > 1"));
+        assertTrue(sql.contains("THROW 51031"));
+        assertTrue(sql.contains("CREATE UNIQUE INDEX UX_property_attempt_transfer_content"));
+        assertTrue(sql.contains("hotel_id, unique_transfer_content"));
+        assertTrue(sql.contains("WHERE unique_transfer_content IS NOT NULL"));
+        assertFalse(sql.contains("DELETE FROM"));
+        assertFalse(sql.contains("DROP TABLE"));
     }
 }

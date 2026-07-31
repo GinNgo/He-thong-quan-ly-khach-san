@@ -15,6 +15,13 @@ public interface PropertyPaymentAttemptRepository extends JpaRepository<Property
 
     Optional<PropertyPaymentAttempt> findByHotelIdAndIdempotencyKey(Long hotelId, String idempotencyKey);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select attempt from PropertyPaymentAttempt attempt "
+            + "where attempt.hotel.id = :hotelId and attempt.idempotencyKey = :idempotencyKey")
+    Optional<PropertyPaymentAttempt> findByHotelIdAndIdempotencyKeyForUpdate(
+            @Param("hotelId") Long hotelId,
+            @Param("idempotencyKey") String idempotencyKey);
+
     Optional<PropertyPaymentAttempt> findByProviderAndEnvironmentAndProviderEventId(
             String provider,
             com.hotel.paymentprovider.config.PaymentEnvironmentGuard.PaymentEnvironment environment,
