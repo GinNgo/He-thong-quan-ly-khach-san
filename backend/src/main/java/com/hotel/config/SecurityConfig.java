@@ -49,6 +49,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/partner/register", "/api/v1/partner/register").permitAll()
                 .requestMatchers("/api/payments/vnpay-callback").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST,
+                        "/api/payment-providers/property/*/callback").permitAll()
                 .requestMatchers("/api/rooms/search").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()

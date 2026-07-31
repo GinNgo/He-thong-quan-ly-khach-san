@@ -271,6 +271,88 @@ class PropertyPaymentAttemptServiceTest {
         verify(summaryService, never()).calculate(any());
     }
 
+    @Test
+    void authorizedOwnerCanReadFinancialSummaryAndAttempt() throws Exception {
+        Reservation reservation = reservation();
+        PropertyPaymentAttempt attempt = attempt(
+                reservation,
+                PaymentState.PENDING_VERIFICATION,
+                LocalDateTime.ofInstant(NOW.plusSeconds(900), ZoneOffset.UTC));
+        BookingFinancialSummaryService.Summary summary = summary(0, 1_200_000);
+        when(propertyAccessService.currentUser()).thenReturn(reservation.getUser());
+        when(reservationRepository.findById(42L)).thenReturn(Optional.of(reservation));
+        when(summaryService.calculate(42L)).thenReturn(summary);
+        when(attemptRepository.findByPublicIdForUpdate("attempt-owned")).thenReturn(Optional.of(attempt));
+
+        assertEquals(summary, service.financialSummary(42L));
+        PropertyPaymentAttemptService.AttemptResponse response = service.getOwned("attempt-owned");
+
+        assertEquals("attempt-owned", response.publicId());
+        assertEquals(PaymentState.PENDING_VERIFICATION, response.status());
+        verify(attemptRepository, never()).saveAndFlush(attempt);
+    }
+
+    @Test
+    void expiredAttemptReadPersistsExpiredState() throws Exception {
+        Reservation reservation = reservation();
+        PropertyPaymentAttempt attempt = attempt(
+                reservation,
+                PaymentState.PENDING,
+                LocalDateTime.ofInstant(NOW.minusSeconds(1), ZoneOffset.UTC));
+        when(propertyAccessService.currentUser()).thenReturn(reservation.getUser());
+        when(attemptRepository.findByPublicIdForUpdate("attempt-owned")).thenReturn(Optional.of(attempt));
+        when(attemptRepository.saveAndFlush(attempt)).thenReturn(attempt);
+
+        PropertyPaymentAttemptService.AttemptResponse response = service.getOwned("attempt-owned");
+
+        assertEquals(PaymentState.EXPIRED, response.status());
+        verify(attemptRepository).saveAndFlush(attempt);
+    }
+
+    @Test
+    void ownerCancelsActiveAttemptThroughPersistedIdempotencyBoundary() throws Exception {
+        Reservation reservation = reservation();
+        PropertyPaymentAttempt attempt = attempt(
+                reservation,
+                PaymentState.PENDING_VERIFICATION,
+                LocalDateTime.ofInstant(NOW.plusSeconds(900), ZoneOffset.UTC));
+        FinancialIdempotencyRecord cancellationRecord = org.mockito.Mockito.mock(FinancialIdempotencyRecord.class);
+        when(cancellationRecord.getId()).thenReturn(91L);
+        when(idempotencyService.begin(any())).thenReturn(
+                new FinancialIdempotencyService.Acquired(cancellationRecord));
+        when(propertyAccessService.currentUser()).thenReturn(reservation.getUser());
+        when(attemptRepository.findByPublicIdForUpdate("attempt-owned")).thenReturn(Optional.of(attempt));
+        when(attemptRepository.saveAndFlush(attempt)).thenReturn(attempt);
+
+        PropertyPaymentAttemptService.AttemptResponse response = service.cancelOwned(
+                new PropertyPaymentAttemptService.CancelCommand(
+                        "attempt-owned", "cancel-key", "cancel-correlation"));
+
+        assertEquals(PaymentState.CANCELLED, response.status());
+        assertFalse(response.replayed());
+        verify(idempotencyService).complete(91L, 200, "attempt-owned");
+    }
+
+    @Test
+    void unauthorizedAttemptReadIsHidden() throws Exception {
+        Reservation reservation = reservation();
+        PropertyPaymentAttempt attempt = attempt(
+                reservation,
+                PaymentState.PENDING,
+                LocalDateTime.ofInstant(NOW.plusSeconds(900), ZoneOffset.UTC));
+        User attacker = new User();
+        attacker.setId(999L);
+        when(propertyAccessService.currentUser()).thenReturn(attacker);
+        when(attemptRepository.findByPublicIdForUpdate("attempt-owned")).thenReturn(Optional.of(attempt));
+
+        FinancialException exception = assertThrows(
+                FinancialException.class,
+                () -> service.getOwned("attempt-owned"));
+
+        assertEquals(FinancialErrorCode.RESOURCE_NOT_FOUND, exception.code());
+        verify(attemptRepository, never()).saveAndFlush(any());
+    }
+
     private void acquired(String requestHash) {
         FinancialIdempotencyRecord record = org.mockito.Mockito.mock(FinancialIdempotencyRecord.class);
         when(record.getId()).thenReturn(91L);
@@ -329,6 +411,35 @@ class PropertyPaymentAttemptServiceTest {
         ReflectionTestUtils.setField(method, "hotel", hotel);
         configuration.getMethods().add(method);
         return configuration;
+    }
+
+    private PropertyPaymentAttempt attempt(
+            Reservation reservation,
+            PaymentState status,
+            LocalDateTime expiresAt) throws Exception {
+        PropertyPaymentConfiguration configuration = configuration(reservation.getHotel(), true);
+        PropertyPaymentAttempt attempt = PropertyPaymentAttempt.create(
+                "attempt-owned",
+                reservation.getHotel(),
+                reservation,
+                configuration,
+                reservation.getUser(),
+                PropertyPaymentAttempt.Purpose.DEPOSIT,
+                "MANUAL_TRANSFER",
+                "BANK",
+                PaymentEnvironmentGuard.PaymentEnvironment.SIMULATOR,
+                VndMoney.of(360_000),
+                "BOOKING LS42-OWNED",
+                objectMapper.writeValueAsString(new PropertyPaymentAttemptService.ReceiverSnapshot(
+                        "Test Bank", "TEST", "LUXESTAY", "****6789", "VIETQR", null,
+                        "Huong dan thanh toan", "Payment instructions")),
+                "attempt-key",
+                "attempt-hash",
+                expiresAt);
+        attempt.transitionTo(status, LocalDateTime.ofInstant(NOW.minusSeconds(60), ZoneOffset.UTC), null,
+                status == PaymentState.FAILED ? "FAILED" : null);
+        ReflectionTestUtils.setField(attempt, "id", 71L);
+        return attempt;
     }
 
     private void assertAmount(long expected, BigDecimal actual) {

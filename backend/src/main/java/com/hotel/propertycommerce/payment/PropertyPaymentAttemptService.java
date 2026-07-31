@@ -174,6 +174,87 @@ public class PropertyPaymentAttemptService {
         return response(attempt, false);
     }
 
+    @Transactional
+    public AttemptResponse getOwned(String attemptPublicId) {
+        PropertyPaymentAttempt attempt = attemptRepository.findByPublicIdForUpdate(
+                        requireRequestText(attemptPublicId, "attemptId"))
+                .orElseThrow(() -> new FinancialException(FinancialErrorCode.RESOURCE_NOT_FOUND));
+        authorize(attempt.getReservation(), propertyAccessService.currentUser());
+        expireIfDue(attempt);
+        return response(attempt, false);
+    }
+
+    @Transactional
+    public AttemptResponse cancelOwned(CancelCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("Cancellation command is required.");
+        }
+        String attemptPublicId = requireRequestText(command.attemptPublicId(), "attemptId");
+        String idempotencyKey = normalizeIdempotencyKey(command.idempotencyKey());
+        PropertyPaymentAttempt attempt = attemptRepository.findByPublicIdForUpdate(attemptPublicId)
+                .orElseThrow(() -> new FinancialException(FinancialErrorCode.RESOURCE_NOT_FOUND));
+        User actor = propertyAccessService.currentUser();
+        authorize(attempt.getReservation(), actor);
+        if (isExpired(attempt)) {
+            throw new FinancialException(
+                    FinancialErrorCode.ATTEMPT_EXPIRED,
+                    FinancialErrorCode.ATTEMPT_EXPIRED.defaultMessage(),
+                    null,
+                    PaymentState.EXPIRED.name(),
+                    null);
+        }
+        if (!isCancellable(attempt.getStatus())) {
+            throw new FinancialException(
+                    FinancialErrorCode.INVALID_STATE_TRANSITION,
+                    FinancialErrorCode.INVALID_STATE_TRANSITION.defaultMessage(),
+                    null,
+                    attempt.getStatus().name(),
+                    null);
+        }
+
+        CancelRequestIdentity payload = new CancelRequestIdentity(attempt.getPublicId());
+        FinancialIdempotencyService.BeginResult begin = idempotencyService.begin(
+                new FinancialIdempotencyService.BeginCommand(
+                        "PROPERTY_COMMERCE",
+                        "CANCEL_PAYMENT_ATTEMPT",
+                        "HOTEL:" + attempt.getHotel().getId(),
+                        idempotencyKey,
+                        payload,
+                        attempt.getHotel().getId(),
+                        actor.getId(),
+                        command.correlationId()));
+        if (begin instanceof FinancialIdempotencyService.Replay) {
+            return response(attempt, true);
+        }
+        if (begin instanceof FinancialIdempotencyService.InProgress
+                || begin instanceof FinancialIdempotencyService.RetryableFailure) {
+            throw new FinancialException(FinancialErrorCode.CONCURRENT_MODIFICATION);
+        }
+
+        FinancialIdempotencyService.Acquired acquired = (FinancialIdempotencyService.Acquired) begin;
+        boolean changed = attempt.transitionTo(
+                PaymentState.CANCELLED,
+                LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC),
+                null,
+                null);
+        if (changed) {
+            attemptRepository.saveAndFlush(attempt);
+        }
+        idempotencyService.complete(acquired.recordId(), 200, attempt.getPublicId());
+        return response(attempt, !changed);
+    }
+
+    @Transactional(readOnly = true)
+    public BookingFinancialSummaryService.Summary financialSummary(Long reservationId) {
+        if (reservationId == null) {
+            throw new IllegalArgumentException("reservationId is required.");
+        }
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new FinancialException(FinancialErrorCode.RESOURCE_NOT_FOUND));
+        authorize(reservation, propertyAccessService.currentUser());
+        return summaryService.calculate(reservationId);
+    }
+
     private void authorize(Reservation reservation, User actor) {
         boolean reservationOwner = reservation.getUser() != null
                 && reservation.getUser().getId() != null
@@ -385,6 +466,34 @@ public class PropertyPaymentAttemptService {
         return MANUAL_METHODS.contains(method) ? PaymentState.PENDING_VERIFICATION : PaymentState.PENDING;
     }
 
+    private void expireIfDue(PropertyPaymentAttempt attempt) {
+        if (isExpired(attempt)) {
+            attempt.transitionTo(
+                    PaymentState.EXPIRED,
+                    LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC),
+                    null,
+                    null);
+            attemptRepository.saveAndFlush(attempt);
+        }
+    }
+
+    private boolean isExpired(PropertyPaymentAttempt attempt) {
+        return isActive(attempt.getStatus())
+                && !attempt.getExpiresAt().toInstant(ZoneOffset.UTC).isAfter(clock.instant());
+    }
+
+    private boolean isCancellable(PaymentState state) {
+        return isActive(state)
+                || state == PaymentState.CANCELLED;
+    }
+
+    private boolean isActive(PaymentState state) {
+        return state == PaymentState.CREATED
+                || state == PaymentState.PENDING
+                || state == PaymentState.PENDING_VERIFICATION
+                || state == PaymentState.PROCESSING;
+    }
+
     private void validate(CreateCommand command) {
         if (command == null || command.reservationId() == null || command.purpose() == null) {
             throw new IllegalArgumentException("Reservation and payment purpose are required.");
@@ -424,10 +533,19 @@ public class PropertyPaymentAttemptService {
             String method) {
     }
 
+    private record CancelRequestIdentity(String attemptPublicId) {
+    }
+
     public record CreateCommand(
             Long reservationId,
             PropertyPaymentAttempt.Purpose purpose,
             String method,
+            String idempotencyKey,
+            String correlationId) {
+    }
+
+    public record CancelCommand(
+            String attemptPublicId,
             String idempotencyKey,
             String correlationId) {
     }
