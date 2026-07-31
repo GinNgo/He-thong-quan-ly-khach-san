@@ -133,7 +133,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 - [x] T080 [US3] Add exactly-once dirty-room and housekeeping-task behavior to checkout in `backend/src/main/java/com/hotel/propertycommerce/checkout/CheckoutOperationsService.java` (FR-021)
 - [x] T081 [US3] Expose charge, surcharge, preview, checkout, invoice, PDF/email and credit-note endpoints in `backend/src/main/java/com/hotel/propertycommerce/checkout/PropertyCheckoutController.java` and `backend/src/main/java/com/hotel/propertycommerce/invoice/PropertyInvoiceController.java` (FR-017-FR-023)
 - [x] T082 [P] [US3] Add folio/service/surcharge unit tests in `backend/src/test/java/com/hotel/propertycommerce/folio/FolioCalculationServiceTest.java` (SC-005)
-- [ ] T083 [US3] Add underpayment/overpayment/debt-override integration tests in `backend/src/test/java/com/hotel/propertycommerce/checkout/CheckoutBalanceIntegrationTest.java` (FR-020)
+- [x] T083 [US3] Add underpayment/overpayment/debt-override integration tests in `backend/src/test/java/com/hotel/propertycommerce/checkout/CheckoutBalanceIntegrationTest.java` (FR-020)
 - [ ] T084 [US3] Add failure injection at each checkout persistence boundary in `backend/src/test/java/com/hotel/propertycommerce/checkout/CheckoutRollbackIntegrationTest.java` (SC-006)
 - [ ] T085 [US3] Add invoice immutability, allocation and credit-note tests in `backend/src/test/java/com/hotel/propertycommerce/invoice/InvoiceImmutabilityIntegrationTest.java` (FR-022)
 - [ ] T086 [US3] Add customer/staff invoice IDOR, PDF and email-recipient tests in `backend/src/test/java/com/hotel/propertycommerce/invoice/InvoiceAccessIntegrationTest.java` (FR-023, SC-011)

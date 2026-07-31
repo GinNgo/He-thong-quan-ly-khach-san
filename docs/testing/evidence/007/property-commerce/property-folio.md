@@ -543,3 +543,13 @@ Focused command:
 ```
 
 Result: `15/15` tests passed with zero failures, errors or skips. Coverage includes authoritative folio reconciliation, duplicate reversal/cross-property rejection, server-priced service snapshots, append-only corrections, typed surcharges and separate approval for negative adjustments.
+
+# T083 Checkout Balance Evidence
+
+Focused command:
+
+```powershell
+.\mvnw.cmd '-Dtest=CheckoutBalanceIntegrationTest' -DforkCount=0 test
+```
+
+Result: `3/3` tests passed. The boundary blocks underpayment with `OUTSTANDING_BALANCE`, blocks overpayment with `OVERPAYMENT_REQUIRES_RESOLUTION`, and requires a separate approved debt override before checkout can proceed.
