@@ -134,3 +134,50 @@ Result:
 
 - No tax policy, provider call, production secret, real-money action or production database mutation was introduced.
 - Recovery stops new mutations while preserving charge and audit evidence; existing surcharge/discount rows are append-only and must not be rewritten or deleted.
+
+# T073 Authoritative Folio Calculation
+
+## Scope
+
+- Added one server-side folio calculator for room, service/minibar, surcharge, tax, fee, discount, successful payment, refund/credit, net settlement and remaining balance.
+- Room charges prefer immutable booking details/snapshots and fail closed when the detail total disagrees with the booking snapshot.
+- New append-only charge lines are authoritative; full reversal adjustments negate the original component snapshot and duplicate reversals are rejected.
+- Active legacy service rows remain read-compatible until migration, while authoritative Property Commerce ledger rows take precedence over legacy payment rows to prevent double counting.
+- Deposit transactions are ordinary successful ledger evidence and are included exactly once rather than added again as a separate checkout payment.
+
+## Reconciliation Rules
+
+- Normal charge totals must equal `unit price x quantity + tax - discount` to one VND.
+- Standalone tax and discount lines carry one unambiguous effect magnitude.
+- Gross equals `room + service + surcharge + tax + fee - discount` after append-only corrections.
+- Net settled equals successful debits minus refunds and other credits; credits cannot exceed successful payments.
+- Balance equals gross minus net settled and may be negative only to represent overpayment for T074/T075 policy handling.
+- Pending, failed, cancelled and expired legacy payments are excluded; ambiguous positive `REFUNDED` legacy rows require reconciliation instead of silent inclusion.
+
+## Automated Validation
+
+Combined regression command from `backend/`:
+
+```powershell
+.\mvnw.cmd '-Dtest=FolioCalculationServiceTest,SurchargeServiceTest,ReservationChargeServiceTest,BookingFinancialSummaryServiceTest' -DforkCount=0 test
+```
+
+Result before the final legacy-status hardening:
+
+- Total: 20 passed
+- Failures: 0
+- Errors: 0
+- Skipped: 0
+
+Final focused command after the legacy-status and reversal-reference guards:
+
+```powershell
+.\mvnw.cmd '-Dtest=FolioCalculationServiceTest' -DforkCount=0 test
+```
+
+Final result: 5 passed with no failures, errors or skips. Coverage includes exact VND reconciliation, service correction, surcharge/fee/tax/discount components, overpayment balance, deposit de-duplication, authoritative-ledger precedence, legacy service/payment fallback, cancelled-payment exclusion, ambiguous refund blocking, cross-property evidence and corrupt snapshot equations.
+
+## Safety and Recovery
+
+- The calculator is read-only and creates no financial mutation, migration, provider request or production effect.
+- Recovery is application-only: stop preview/checkout consumers and retain all immutable source evidence for diagnosis; no charge or ledger row is rewritten.
