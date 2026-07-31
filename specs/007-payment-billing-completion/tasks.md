@@ -136,7 +136,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 - [x] T083 [US3] Add underpayment/overpayment/debt-override integration tests in `backend/src/test/java/com/hotel/propertycommerce/checkout/CheckoutBalanceIntegrationTest.java` (FR-020)
 - [x] T084 [US3] Add failure injection at each checkout persistence boundary in `backend/src/test/java/com/hotel/propertycommerce/checkout/CheckoutRollbackIntegrationTest.java` (SC-006)
 - [x] T085 [US3] Add invoice immutability, allocation and credit-note tests in `backend/src/test/java/com/hotel/propertycommerce/invoice/InvoiceImmutabilityIntegrationTest.java` (FR-022)
-- [ ] T086 [US3] Add customer/staff invoice IDOR, PDF and email-recipient tests in `backend/src/test/java/com/hotel/propertycommerce/invoice/InvoiceAccessIntegrationTest.java` (FR-023, SC-011)
+- [x] T086 [US3] Add customer/staff invoice IDOR, PDF and email-recipient tests in `backend/src/test/java/com/hotel/propertycommerce/invoice/InvoiceAccessIntegrationTest.java` (FR-023, SC-011)
 - [ ] T087 [P] [US3] Add management folio/checkout API clients in `frontend/src/app/core/services/property-checkout.service.ts` (FR-017-FR-023)
 - [ ] T088 [US3] Build responsive service/surcharge and checkout-preview UI in `frontend/src/app/features/admin/reservation-management/reservation-checkout.component.ts` (FR-017-FR-020)
 - [ ] T089 [US3] Build invoice detail, PDF download and email states in `frontend/src/app/features/client/my-invoices/my-invoices.component.ts` (FR-023)

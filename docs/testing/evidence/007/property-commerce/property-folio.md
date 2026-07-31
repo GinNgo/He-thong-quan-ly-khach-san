@@ -573,3 +573,15 @@ Focused command:
 ```
 
 Result: `3/3` tests passed. Finalized invoices, invoice lines, payment allocations, credit notes and credit-note lines reject update/delete operations; payment allocation and post-finalization credit evidence remain separate append-only records.
+
+# T086 Invoice Access and Delivery Evidence
+
+Focused command:
+
+```powershell
+.\mvnw.cmd '-Dtest=InvoiceAccessIntegrationTest' -DforkCount=0 test
+```
+
+Result: `5/5` tests passed with zero failures, errors or skips. Coverage proves that the reservation customer and authorized property staff can read the finalized invoice, a different customer receives a non-enumerable `404`, PDF delivery uses the immutable invoice number, and email delivery is restricted to the verified invoice recipient.
+
+No production email provider, production credential, production database migration or real-money operation was used.
