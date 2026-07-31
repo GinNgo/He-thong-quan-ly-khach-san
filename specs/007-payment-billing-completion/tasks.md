@@ -104,7 +104,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 - [x] T060 [P] [US2] Add attempt/instruction/deposit unit tests in `backend/src/test/java/com/hotel/propertycommerce/payment/PropertyPaymentAttemptServiceTest.java` (SC-004)
 - [x] T061 [P] [US2] Add callback signature/merchant/amount/currency/reference/expiry contract tests in `backend/src/test/java/com/hotel/paymentprovider/PropertyProviderContractTest.java` (FR-041)
 - [x] T062 [US2] Add replay and concurrent callback integration tests in `backend/src/test/java/com/hotel/propertycommerce/payment/PropertyPaymentCallbackConcurrencyIntegrationTest.java` (SC-003)
-- [ ] T063 [US2] Add manual confirmation permission, audit and cross-property tests in `backend/src/test/java/com/hotel/propertycommerce/payment/ManualTransferConfirmationIntegrationTest.java` (FR-013, FR-026, SC-011)
+- [x] T063 [US2] Add manual confirmation permission, audit and cross-property tests in `backend/src/test/java/com/hotel/propertycommerce/payment/ManualTransferConfirmationIntegrationTest.java` (FR-013, FR-026, SC-011)
 - [ ] T064 [P] [US2] Add typed booking financial/attempt API methods in `frontend/src/app/core/services/property-payment.service.ts` (FR-012-FR-016)
 - [ ] T065 [US2] Replace caller-authoritative checkout payment data with server-owned attempt creation in `frontend/src/app/features/client/booking-checkout/booking-checkout.component.ts` (FR-007, FR-014)
 - [ ] T066 [US2] Build accessible QR/manual instructions, expiry, environment label, polling and safe retry states in `frontend/src/app/features/client/booking-checkout/property-payment-panel.component.ts` (FR-010, FR-012-FR-014)

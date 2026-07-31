@@ -35,12 +35,36 @@ Final result:
 - Skipped: 0
 - Build: SUCCESS
 
+## T063 Integration Validation
+
+Added `ManualTransferConfirmationIntegrationTest` with a real Spring Data JPA/H2 context covering:
+
+- an assigned staff actor with `PROPERTY_PAYMENT_CONFIRM_MANUAL/APPROVE` creates one successful attempt transition, one property ledger debit, one completed idempotency record and one append-only audit event;
+- a staff actor without `APPROVE` is denied before any financial mutation;
+- the reservation owner cannot self-confirm even when an approval mask is present;
+- a staff actor assigned only to another property receives resource-not-found semantics and creates no ledger, audit or idempotency row;
+- an equivalent idempotency replay returns the original transaction without a second ledger or audit effect.
+
+Regression command from `backend/`:
+
+```powershell
+.\mvnw.cmd '-Dtest=ManualTransferConfirmationIntegrationTest,ManualTransferConfirmationServiceTest,FinancialIdempotencyServiceTest,FinancialAuditServiceTest' '-Dspring.jpa.show-sql=false' -DforkCount=0 test
+```
+
+Final result:
+
+- Tests run: 14
+- Failures: 0
+- Errors: 0
+- Skipped: 0
+- Build: SUCCESS
+
 ## Safety and Remaining Work
 
 - No public/customer self-confirm endpoint was added.
 - No provider call, production credential, production merchant or real-money transaction was used.
-- T058 remains open for the permission-annotated management endpoint.
-- T063 remains open for HTTP/database integration coverage of permission, audit and cross-property cases.
+- T058 exposes the permission-annotated management endpoint.
+- T063 now verifies database effects, permission denial, self-confirm denial, cross-property concealment and replay behavior.
 
 ## Recovery
 
