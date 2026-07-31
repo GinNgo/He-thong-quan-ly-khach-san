@@ -102,7 +102,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 - [x] T058 [US2] Expose financial summary, attempt, cancel, manual-confirm and property callback endpoints in `backend/src/main/java/com/hotel/propertycommerce/payment/PropertyPaymentController.java` (FR-011-FR-014, FR-041)
 - [x] T059 [US2] Add a read-only compatibility adapter from legacy `PaymentSession`/`Payment` records during migration in `backend/src/main/java/com/hotel/propertycommerce/payment/LegacyPropertyPaymentAdapter.java` (FR-042)
 - [x] T060 [P] [US2] Add attempt/instruction/deposit unit tests in `backend/src/test/java/com/hotel/propertycommerce/payment/PropertyPaymentAttemptServiceTest.java` (SC-004)
-- [ ] T061 [P] [US2] Add callback signature/merchant/amount/currency/reference/expiry contract tests in `backend/src/test/java/com/hotel/paymentprovider/PropertyProviderContractTest.java` (FR-041)
+- [x] T061 [P] [US2] Add callback signature/merchant/amount/currency/reference/expiry contract tests in `backend/src/test/java/com/hotel/paymentprovider/PropertyProviderContractTest.java` (FR-041)
 - [ ] T062 [US2] Add replay and concurrent callback integration tests in `backend/src/test/java/com/hotel/propertycommerce/payment/PropertyPaymentCallbackConcurrencyIntegrationTest.java` (SC-003)
 - [ ] T063 [US2] Add manual confirmation permission, audit and cross-property tests in `backend/src/test/java/com/hotel/propertycommerce/payment/ManualTransferConfirmationIntegrationTest.java` (FR-013, FR-026, SC-011)
 - [ ] T064 [P] [US2] Add typed booking financial/attempt API methods in `frontend/src/app/core/services/property-payment.service.ts` (FR-012-FR-016)
