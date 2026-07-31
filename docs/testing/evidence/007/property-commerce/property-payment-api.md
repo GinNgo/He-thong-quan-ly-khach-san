@@ -121,12 +121,33 @@ Result:
 - Angular/Vitest build: SUCCESS
 - Existing unrelated `NG8107` optional-chain warning remains in `client-layout.html`.
 
+## T067 Payment Panel Unit Coverage
+
+Dedicated Angular tests cover pending manual/QR instructions, server-owned amount and receiver display, successful polling, failed and expired terminal states, status-only retry after polling failure, terminal payment retry output and Vietnamese/English copy.
+
+The tests also verify that status polling and both retry controls perform no payment mutation inside the panel. A zoneless Angular regression found during this task was fixed by marking the component for change detection after clock, polling and clipboard callbacks, so visible status/countdown/error state stays synchronized with the attempt model.
+
+Focused command from `frontend/`:
+
+```powershell
+.\node_modules\.bin\ng.cmd test --watch=false --include "src/app/features/client/booking-checkout/property-payment-panel.component.spec.ts" --include "src/app/features/client/booking-checkout/booking-checkout.component.spec.ts" --include "src/app/core/services/property-payment.service.spec.ts"
+```
+
+Result:
+
+- Test files: 3 passed
+- Tests: 18 passed
+- Failures: 0
+- Angular/Vitest build: SUCCESS
+- Existing unrelated `NG8107` optional-chain warning remains in `client-layout.html`.
+
 ## Remaining Work
 
 - T059-T064 are complete for legacy compatibility, provider contracts, callback concurrency, manual confirmation integration and the Angular payment client.
 - T065 is complete for server-owned checkout attempt creation and safe retry identity.
 - T066 is complete for accessible instructions, expiry, environment labeling, polling and safe terminal retry.
-- T067-T069 remain open for dedicated panel unit coverage and browser journeys.
+- T067 is complete for panel state, retry, localization and no-mutation unit coverage.
+- T068-T069 remain open for browser success/concurrency and negative journeys.
 
 ## Recovery
 

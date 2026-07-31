@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import {
+  ChangeDetectorRef,
   Component,
   EventEmitter,
   Input,
@@ -265,6 +266,7 @@ const COPY: Record<SupportedLocale, PaymentPanelCopy> = {
 export class PropertyPaymentPanelComponent implements OnInit, OnChanges, OnDestroy {
   private readonly payments = inject(PropertyPaymentService);
   private readonly localeService = inject(LocaleService);
+  private readonly changeDetector = inject(ChangeDetectorRef);
   private pollSubscription?: Subscription;
   private clockSubscription?: Subscription;
 
@@ -278,7 +280,10 @@ export class PropertyPaymentPanelComponent implements OnInit, OnChanges, OnDestr
   copied = false;
 
   ngOnInit(): void {
-    this.clockSubscription = timer(0, 1000).subscribe(() => this.now = Date.now());
+    this.clockSubscription = timer(0, 1000).subscribe(() => {
+      this.now = Date.now();
+      this.changeDetector.markForCheck();
+    });
     this.startPolling();
   }
 
@@ -357,9 +362,14 @@ export class PropertyPaymentPanelComponent implements OnInit, OnChanges, OnDestr
     try {
       await globalThis.navigator.clipboard.writeText(this.attempt.uniqueTransferContent);
       this.copied = true;
-      globalThis.setTimeout(() => this.copied = false, 1800);
+      this.changeDetector.markForCheck();
+      globalThis.setTimeout(() => {
+        this.copied = false;
+        this.changeDetector.markForCheck();
+      }, 1800);
     } catch {
       this.copied = false;
+      this.changeDetector.markForCheck();
     }
   }
 
@@ -393,10 +403,12 @@ export class PropertyPaymentPanelComponent implements OnInit, OnChanges, OnDestr
           this.polling = false;
           this.pollSubscription?.unsubscribe();
         }
+        this.changeDetector.markForCheck();
       },
       error: () => {
         this.polling = false;
         this.pollError = true;
+        this.changeDetector.markForCheck();
       },
     });
   }
