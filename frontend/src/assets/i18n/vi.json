@@ -97,5 +97,144 @@
     "TOTAL_DUE": "Tổng số tiền cần thanh toán",
     "PAYMENT_VERIFICATION": "Xác Minh Thanh Toán",
     "DOWNLOAD_PDF": "Tải xuống PDF"
+  },
+  "PROPERTY_PAYMENT_CONFIG": {
+    "EYEBROW": "Property Commerce",
+    "TITLE": "Cấu hình thanh toán cơ sở lưu trú",
+    "DESCRIPTION": "Thiết lập phương thức nhận tiền, chính sách đặt cọc và hướng dẫn song ngữ cho đúng cơ sở đang quản lý.",
+    "VERSION": "Phiên bản",
+    "SECTIONS": {
+      "ACTIVATION": "Kích hoạt và môi trường",
+      "ACTIVATION_HELP": "Chọn môi trường rõ ràng trước khi kiểm tra hoặc bật nhận thanh toán.",
+      "METHODS": "Phương thức thanh toán",
+      "METHODS_HELP": "Chỉ bật các phương thức mà cơ sở có thể đối soát và hỗ trợ khách hàng.",
+      "BANK": "Thông tin tài khoản nhận tiền",
+      "BANK_HELP": "Số tài khoản được mã hóa ở máy chủ và chỉ trả về giá trị đã che.",
+      "DEPOSIT": "Đặt cọc và thời hạn",
+      "DEPOSIT_HELP": "Số tiền thanh toán do máy chủ tính theo chính sách đã lưu.",
+      "INSTRUCTIONS": "Nội dung chuyển khoản và hướng dẫn",
+      "INSTRUCTIONS_HELP": "Cung cấp nội dung tiếng Việt và tiếng Anh để khách luôn nhận đúng thông tin."
+    },
+    "STATES": {
+      "SELECT_PROPERTY_TITLE": "Hãy chọn một cơ sở lưu trú",
+      "SELECT_PROPERTY_BODY": "Dùng bộ chọn cơ sở trên thanh đầu trang để tải cấu hình thanh toán tương ứng.",
+      "LOADING_TITLE": "Đang tải cấu hình",
+      "LOADING_BODY": "Hệ thống đang kiểm tra quyền truy cập và trạng thái sẵn sàng.",
+      "LOAD_ERROR_TITLE": "Không thể tải cấu hình thanh toán"
+    },
+    "READ_ONLY": {
+      "TITLE": "Chế độ chỉ xem",
+      "BODY": "Tài khoản có thể xem trạng thái nhưng không có quyền thay đổi cấu hình thanh toán."
+    },
+    "MESSAGES": {
+      "ERROR_TITLE": "Chưa thể hoàn tất yêu cầu",
+      "REQUEST_FAILED": "Không thể xử lý cấu hình thanh toán. Vui lòng thử lại.",
+      "SAVED": "Cấu hình thanh toán đã được lưu an toàn.",
+      "VALIDATION_READY": "Kiểm tra hoàn tất: cấu hình sẵn sàng trong môi trường đã chọn.",
+      "VALIDATION_BLOCKED": "Kiểm tra hoàn tất: cấu hình vẫn còn điều kiện cần xử lý."
+    },
+    "ACTIONS": {
+      "RETRY": "Thử lại",
+      "VALIDATE": "Kiểm tra sẵn sàng",
+      "VALIDATING": "Đang kiểm tra...",
+      "SAVE": "Lưu cấu hình",
+      "SAVING": "Đang lưu...",
+      "SAFETY_NOTE": "Kiểm tra không gửi tiền. Production vẫn bị khóa cho đến khi có phê duyệt và cấu hình bí mật hợp lệ."
+    },
+    "ENVIRONMENTS": {
+      "SIMULATOR": "Mô phỏng",
+      "SANDBOX": "Sandbox",
+      "PRODUCTION": "Production"
+    },
+    "ENVIRONMENT_HELP": {
+      "SIMULATOR": "Luồng thử nghiệm nội bộ, không phát sinh tiền thật.",
+      "SANDBOX": "Kết nối môi trường thử chính thức của nhà cung cấp.",
+      "PRODUCTION": "Môi trường thật, yêu cầu phê duyệt riêng và đầy đủ bí mật."
+    },
+    "PRODUCTION_GATE": "Production đang fail-closed. Chọn môi trường này không đồng nghĩa đã được phép nhận tiền thật.",
+    "METHODS": {
+      "MANUAL_TRANSFER": "Chuyển khoản thủ công",
+      "QR_TRANSFER": "QR chuyển khoản",
+      "VNPAY": "VNPay",
+      "MOMO": "MoMo",
+      "ZALOPAY": "ZaloPay",
+      "CASH": "Tiền mặt",
+      "CARD_TERMINAL": "Máy POS tại quầy",
+      "OTHER": "Phương thức khác"
+    },
+    "STATUS": {
+      "DISABLED": "Đang tắt",
+      "READY": "Sẵn sàng",
+      "NEEDS_ATTENTION": "Cần bổ sung"
+    },
+    "FORM": {
+      "ENABLED": "Cho phép dùng cấu hình này",
+      "ENABLED_HELP": "Chỉ bật khi phần kiểm tra sẵn sàng không còn điều kiện chặn.",
+      "ENVIRONMENT": "Môi trường thanh toán",
+      "PROVIDER": "Nhà cung cấp / bộ xử lý",
+      "MERCHANT_REFERENCE": "Mã định danh merchant",
+      "CURRENT_MASKED": "Đang lưu",
+      "SECRET_PLACEHOLDER": "Để trống để giữ giá trị hiện tại",
+      "BANK_NAME": "Tên ngân hàng",
+      "BANK_CODE": "Mã ngân hàng",
+      "ACCOUNT_NAME": "Tên chủ tài khoản",
+      "ACCOUNT_NUMBER": "Số tài khoản",
+      "QR_PROVIDER": "Chuẩn / nhà cung cấp QR",
+      "DEPOSIT_POLICY": "Chính sách đặt cọc",
+      "DEPOSIT_VALUE": "Mức đặt cọc",
+      "EXPIRY": "Thời hạn thanh toán",
+      "TRANSFER_TEMPLATE": "Mẫu nội dung chuyển khoản",
+      "TRANSFER_TEMPLATE_HELP": "Bắt buộc giữ biến {paymentCode} để mỗi giao dịch có nội dung duy nhất.",
+      "INSTRUCTIONS_VI": "Hướng dẫn tiếng Việt",
+      "INSTRUCTIONS_EN": "Hướng dẫn tiếng Anh",
+      "VND": "VND",
+      "PERCENT": "%",
+      "MINUTES": "phút"
+    },
+    "DEPOSIT": {
+      "NONE": "Không yêu cầu đặt cọc",
+      "FIXED": "Số tiền cố định",
+      "PERCENTAGE": "Phần trăm giá trị đặt phòng"
+    },
+    "VALIDATION": {
+      "TITLE": "Cần xử lý trước khi tiếp tục"
+    },
+    "READINESS": {
+      "EYEBROW": "Payment readiness",
+      "READY_TITLE": "Sẵn sàng thử nghiệm",
+      "READY_BODY": "Cấu hình đáp ứng các điều kiện của môi trường hiện tại.",
+      "BLOCKED_TITLE": "Chưa sẵn sàng",
+      "BLOCKED_BODY": "Không có giao dịch nào được gửi khi vẫn còn điều kiện chặn.",
+      "CHECKLIST": "Kết quả kiểm tra",
+      "METHODS_OK": "Có ít nhất một phương thức hợp lệ",
+      "INSTRUCTIONS_OK": "Đã có hướng dẫn song ngữ",
+      "RECEIVER_OK": "Thông tin nhận tiền đã được kiểm tra"
+    },
+    "PRIVACY": {
+      "TITLE": "Dữ liệu nhạy cảm được bảo vệ",
+      "BODY": "Giao diện không hiển thị số tài khoản hoặc mã merchant đầy đủ sau khi lưu."
+    },
+    "BLOCKERS": {
+      "CONFIGURATION_NOT_SAVED": "Cấu hình chưa được lưu.",
+      "ENABLED_METHOD_REQUIRED": "Cần bật ít nhất một phương thức thanh toán.",
+      "BILINGUAL_INSTRUCTIONS_REQUIRED": "Cần nhập đủ hướng dẫn tiếng Việt và tiếng Anh.",
+      "PAYMENT_CODE_PLACEHOLDER_REQUIRED": "Mẫu chuyển khoản phải chứa {paymentCode}.",
+      "PAYMENT_EXPIRY_INVALID": "Thời hạn phải là số nguyên từ 1 đến 10.080 phút.",
+      "FIXED_DEPOSIT_INVALID": "Tiền cọc cố định phải là số nguyên VND lớn hơn 0.",
+      "PERCENTAGE_DEPOSIT_INVALID": "Tỷ lệ đặt cọc phải là số nguyên từ 1 đến 100.",
+      "BANK_RECEIVER_INCOMPLETE": "Thông tin ngân hàng nhận tiền chưa đầy đủ.",
+      "MERCHANT_REFERENCE_REQUIRED": "Cần mã định danh merchant cho phương thức này.",
+      "PAYMENT_ENVIRONMENT_DISABLED": "Môi trường thanh toán đang bị vô hiệu hóa.",
+      "PRODUCTION_NOT_APPROVED": "Production chưa được phê duyệt.",
+      "SIMULATOR_DISABLED": "Môi trường mô phỏng đang bị tắt.",
+      "SANDBOX_DISABLED": "Môi trường sandbox đang bị tắt.",
+      "SANDBOX_CREDENTIALS_INCOMPLETE": "Thông tin xác thực sandbox chưa đầy đủ.",
+      "PRODUCTION_DISABLED": "Production đang bị tắt.",
+      "PRODUCTION_CREDENTIALS_INCOMPLETE": "Thông tin xác thực production chưa đầy đủ.",
+      "MERCHANT_IDENTITY_MISSING": "Thiếu định danh merchant.",
+      "PRODUCTION_ENDPOINT_IS_SANDBOX": "Endpoint production không được trỏ về sandbox.",
+      "PRODUCTION_PROFILE_REQUIRES_PRODUCTION_MODE": "Profile production chỉ chấp nhận chế độ production.",
+      "UNKNOWN": "Cấu hình còn một điều kiện chưa được đáp ứng."
+    }
   }
 }

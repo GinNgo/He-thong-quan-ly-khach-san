@@ -14,6 +14,8 @@ import jakarta.persistence.*;
 @Setter
 @Entity
 @Table(name = "property_images")
+@org.hibernate.annotations.FilterDef(name = "propertyImageTenantFilter", parameters = @org.hibernate.annotations.ParamDef(name = "hotelId", type = Long.class))
+@org.hibernate.annotations.Filter(name = "propertyImageTenantFilter", condition = "hotel_id = :hotelId")
 public class PropertyImage extends AuditableEntity {
 
     @Id

@@ -12,6 +12,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Entity
 @Table(name = "housekeeping_tasks")
+@org.hibernate.annotations.FilterDef(name = "housekeepingTaskTenantFilter", parameters = @org.hibernate.annotations.ParamDef(name = "hotelId", type = Long.class))
+@org.hibernate.annotations.Filter(name = "housekeepingTaskTenantFilter", condition = "hotel_id = :hotelId")
 public class HousekeepingTask extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

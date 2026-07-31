@@ -15,6 +15,8 @@ import java.util.List;
 @Setter
 @Entity
 @Table(name = "room_types", uniqueConstraints = @UniqueConstraint(name = "UK_room_types_hotel_code", columnNames = {"hotel_id", "code"}))
+@org.hibernate.annotations.FilterDef(name = "roomTypeTenantFilter", parameters = @org.hibernate.annotations.ParamDef(name = "hotelId", type = Long.class))
+@org.hibernate.annotations.Filter(name = "roomTypeTenantFilter", condition = "hotel_id = :hotelId")
 public class RoomType extends AuditableEntity {
 
     @Id

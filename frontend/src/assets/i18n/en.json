@@ -97,5 +97,144 @@
     "TOTAL_DUE": "Total Amount Due",
     "PAYMENT_VERIFICATION": "Payment Verification",
     "DOWNLOAD_PDF": "Download PDF"
+  },
+  "PROPERTY_PAYMENT_CONFIG": {
+    "EYEBROW": "Property Commerce",
+    "TITLE": "Property payment configuration",
+    "DESCRIPTION": "Set receiving methods, deposit policy, and bilingual instructions for the currently managed property.",
+    "VERSION": "Version",
+    "SECTIONS": {
+      "ACTIVATION": "Activation and environment",
+      "ACTIVATION_HELP": "Choose an explicit environment before validating or enabling payments.",
+      "METHODS": "Payment methods",
+      "METHODS_HELP": "Enable only methods the property can reconcile and support.",
+      "BANK": "Receiving bank account",
+      "BANK_HELP": "The account number is encrypted by the server and only a masked value is returned.",
+      "DEPOSIT": "Deposit and expiry",
+      "DEPOSIT_HELP": "The server calculates payable amounts from the saved policy.",
+      "INSTRUCTIONS": "Transfer content and instructions",
+      "INSTRUCTIONS_HELP": "Provide Vietnamese and English copy so guests always receive the right instructions."
+    },
+    "STATES": {
+      "SELECT_PROPERTY_TITLE": "Select a property",
+      "SELECT_PROPERTY_BODY": "Use the property selector in the page header to load its payment configuration.",
+      "LOADING_TITLE": "Loading configuration",
+      "LOADING_BODY": "Checking property access and payment readiness.",
+      "LOAD_ERROR_TITLE": "Payment configuration could not be loaded"
+    },
+    "READ_ONLY": {
+      "TITLE": "Read-only access",
+      "BODY": "This account can view readiness but cannot change payment configuration."
+    },
+    "MESSAGES": {
+      "ERROR_TITLE": "The request could not be completed",
+      "REQUEST_FAILED": "Payment configuration could not be processed. Please try again.",
+      "SAVED": "Payment configuration was saved securely.",
+      "VALIDATION_READY": "Validation complete: the configuration is ready in the selected environment.",
+      "VALIDATION_BLOCKED": "Validation complete: the configuration still has blockers to resolve."
+    },
+    "ACTIONS": {
+      "RETRY": "Try again",
+      "VALIDATE": "Validate readiness",
+      "VALIDATING": "Validating...",
+      "SAVE": "Save configuration",
+      "SAVING": "Saving...",
+      "SAFETY_NOTE": "Validation does not send money. Production remains locked until separate approval and valid secrets are present."
+    },
+    "ENVIRONMENTS": {
+      "SIMULATOR": "Simulator",
+      "SANDBOX": "Sandbox",
+      "PRODUCTION": "Production"
+    },
+    "ENVIRONMENT_HELP": {
+      "SIMULATOR": "Internal test flow with no real-money transaction.",
+      "SANDBOX": "Official provider test environment.",
+      "PRODUCTION": "Live environment requiring separate approval and complete secrets."
+    },
+    "PRODUCTION_GATE": "Production is fail-closed. Selecting it does not authorize real-money collection.",
+    "METHODS": {
+      "MANUAL_TRANSFER": "Manual bank transfer",
+      "QR_TRANSFER": "QR bank transfer",
+      "VNPAY": "VNPay",
+      "MOMO": "MoMo",
+      "ZALOPAY": "ZaloPay",
+      "CASH": "Cash",
+      "CARD_TERMINAL": "Card terminal",
+      "OTHER": "Other method"
+    },
+    "STATUS": {
+      "DISABLED": "Disabled",
+      "READY": "Ready",
+      "NEEDS_ATTENTION": "Needs attention"
+    },
+    "FORM": {
+      "ENABLED": "Enable this configuration",
+      "ENABLED_HELP": "Enable only after readiness validation has no blockers.",
+      "ENVIRONMENT": "Payment environment",
+      "PROVIDER": "Provider / processor",
+      "MERCHANT_REFERENCE": "Merchant reference",
+      "CURRENT_MASKED": "Stored",
+      "SECRET_PLACEHOLDER": "Leave blank to keep the current value",
+      "BANK_NAME": "Bank name",
+      "BANK_CODE": "Bank code",
+      "ACCOUNT_NAME": "Account holder name",
+      "ACCOUNT_NUMBER": "Account number",
+      "QR_PROVIDER": "QR standard / provider",
+      "DEPOSIT_POLICY": "Deposit policy",
+      "DEPOSIT_VALUE": "Deposit value",
+      "EXPIRY": "Payment expiry",
+      "TRANSFER_TEMPLATE": "Transfer content template",
+      "TRANSFER_TEMPLATE_HELP": "Keep {paymentCode} so every payment receives unique transfer content.",
+      "INSTRUCTIONS_VI": "Vietnamese instructions",
+      "INSTRUCTIONS_EN": "English instructions",
+      "VND": "VND",
+      "PERCENT": "%",
+      "MINUTES": "minutes"
+    },
+    "DEPOSIT": {
+      "NONE": "No deposit",
+      "FIXED": "Fixed amount",
+      "PERCENTAGE": "Percentage of booking value"
+    },
+    "VALIDATION": {
+      "TITLE": "Resolve these items before continuing"
+    },
+    "READINESS": {
+      "EYEBROW": "Payment readiness",
+      "READY_TITLE": "Ready for testing",
+      "READY_BODY": "The configuration meets the current environment requirements.",
+      "BLOCKED_TITLE": "Not ready yet",
+      "BLOCKED_BODY": "No payment is sent while a readiness blocker remains.",
+      "CHECKLIST": "Validation results",
+      "METHODS_OK": "At least one valid method is enabled",
+      "INSTRUCTIONS_OK": "Bilingual instructions are present",
+      "RECEIVER_OK": "Receiving details have been checked"
+    },
+    "PRIVACY": {
+      "TITLE": "Sensitive data is protected",
+      "BODY": "The UI never returns full account numbers or merchant references after saving."
+    },
+    "BLOCKERS": {
+      "CONFIGURATION_NOT_SAVED": "The configuration has not been saved.",
+      "ENABLED_METHOD_REQUIRED": "Enable at least one payment method.",
+      "BILINGUAL_INSTRUCTIONS_REQUIRED": "Both Vietnamese and English instructions are required.",
+      "PAYMENT_CODE_PLACEHOLDER_REQUIRED": "The transfer template must contain {paymentCode}.",
+      "PAYMENT_EXPIRY_INVALID": "Expiry must be an integer from 1 to 10,080 minutes.",
+      "FIXED_DEPOSIT_INVALID": "A fixed deposit must be a positive integer VND amount.",
+      "PERCENTAGE_DEPOSIT_INVALID": "Deposit percentage must be an integer from 1 to 100.",
+      "BANK_RECEIVER_INCOMPLETE": "Receiving bank details are incomplete.",
+      "MERCHANT_REFERENCE_REQUIRED": "A merchant reference is required for this method.",
+      "PAYMENT_ENVIRONMENT_DISABLED": "The payment environment is disabled.",
+      "PRODUCTION_NOT_APPROVED": "Production has not been approved.",
+      "SIMULATOR_DISABLED": "The simulator is disabled.",
+      "SANDBOX_DISABLED": "The sandbox environment is disabled.",
+      "SANDBOX_CREDENTIALS_INCOMPLETE": "Sandbox credentials are incomplete.",
+      "PRODUCTION_DISABLED": "Production is disabled.",
+      "PRODUCTION_CREDENTIALS_INCOMPLETE": "Production credentials are incomplete.",
+      "MERCHANT_IDENTITY_MISSING": "Merchant identity is missing.",
+      "PRODUCTION_ENDPOINT_IS_SANDBOX": "A production endpoint cannot point to sandbox.",
+      "PRODUCTION_PROFILE_REQUIRES_PRODUCTION_MODE": "The production profile requires production mode.",
+      "UNKNOWN": "One configuration requirement is still unmet."
+    }
   }
 }

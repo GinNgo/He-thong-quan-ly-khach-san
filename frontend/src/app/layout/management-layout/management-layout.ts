@@ -7,11 +7,14 @@ import {
   ManagedProperty,
   ManagementApiService,
 } from '../../core/services/management-api.service';
+import { ActionCode, FunctionCode, PermissionService } from '../../core/services/permission.service';
 
 interface ManagementLink {
   label: string;
   url: string;
   icon: string;
+  functionCode?: FunctionCode;
+  actionCode?: ActionCode;
 }
 
 @Component({
@@ -27,6 +30,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
+  private permissionService = inject(PermissionService);
 
   readonly navigationGroups: ReadonlyArray<{
     label: string;
@@ -45,6 +49,13 @@ export class ManagementLayout implements OnInit, OnDestroy {
       label: 'Tài khoản',
       links: [
         {
+          label: 'Cấu hình thanh toán',
+          url: '/management/payment-configuration',
+          icon: 'account_balance_wallet',
+          functionCode: FunctionCode.PROPERTY_PAYMENT_CONFIG,
+          actionCode: ActionCode.VIEW,
+        },
+        {
           label: 'Gói dịch vụ',
           url: '/management/billing',
           icon: 'workspace_premium',
@@ -56,6 +67,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
   username = 'Đối tác';
   pageTitle = 'Tổng quan';
   isSidebarCollapsed = false;
+  isMobileViewport = false;
   isMobileSidebarOpen = false;
   isUserMenuOpen = false;
   contextLoading = true;
@@ -66,6 +78,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
   private subscriptions = new Subscription();
 
   ngOnInit(): void {
+    this.updateViewportState();
     this.subscriptions.add(
       this.authService.currentUser$.subscribe((user) => {
         this.username = user.fullName || user.username || 'Đối tác';
@@ -135,7 +148,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
   }
 
   toggleSidebar(): void {
-    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 991px)').matches) {
+    if (this.isMobileViewport) {
       this.isMobileSidebarOpen = !this.isMobileSidebarOpen;
       return;
     }
@@ -154,6 +167,25 @@ export class ManagementLayout implements OnInit, OnDestroy {
   closeOverlays(): void {
     this.isMobileSidebarOpen = false;
     this.isUserMenuOpen = false;
+  }
+
+  @HostListener('window:resize')
+  updateViewportState(): void {
+    this.isMobileViewport = typeof window !== 'undefined'
+      && typeof window.matchMedia === 'function'
+      && window.matchMedia('(max-width: 991px)').matches;
+    if (!this.isMobileViewport) this.isMobileSidebarOpen = false;
+  }
+
+  get sidebarExpanded(): boolean {
+    return this.isMobileViewport ? this.isMobileSidebarOpen : !this.isSidebarCollapsed;
+  }
+
+  canViewLink(link: ManagementLink): boolean {
+    return !link.functionCode || this.permissionService.hasPermission(
+      link.functionCode,
+      link.actionCode ?? ActionCode.VIEW,
+    );
   }
 
   private updatePageTitle(url: string): void {

@@ -13,6 +13,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 public class PermissionInterceptor implements HandlerInterceptor {
@@ -100,6 +101,9 @@ public class PermissionInterceptor implements HandlerInterceptor {
         body.put("status", status);
         body.put("code", code);
         body.put("message", message);
+        String correlationId = request.getHeader("X-Correlation-ID");
+        body.put("correlationId", correlationId == null || correlationId.isBlank() ? UUID.randomUUID().toString() : correlationId);
+        body.put("retryable", false);
         body.put("path", request.getRequestURI());
         objectMapper.writeValue(response.getOutputStream(), body);
     }

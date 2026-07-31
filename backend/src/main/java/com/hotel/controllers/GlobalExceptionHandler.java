@@ -1,5 +1,9 @@
 package com.hotel.controllers;
 
+import com.hotel.paymentprovider.error.FinancialErrorResponse;
+import com.hotel.paymentprovider.error.FinancialException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -10,9 +14,24 @@ import com.hotel.exceptions.ResourceNotFoundException;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
+import java.util.UUID;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(FinancialException.class)
+    public ResponseEntity<FinancialErrorResponse> handleFinancial(FinancialException ex, HttpServletRequest request) {
+        String correlationId = correlationId(request);
+        // Log only identifiers; provider payloads, credentials and exception messages stay out of logs.
+        log.warn("Financial request rejected code={} path={} correlationId={}",
+                ex.code().name(), request.getRequestURI(), correlationId);
+        FinancialErrorResponse body = new FinancialErrorResponse(
+                ex.code().name(), ex.getMessage(), correlationId, ex.fieldErrors(),
+                ex.code().retryable(), ex.currentState());
+        return ResponseEntity.status(ex.code().status()).body(body);
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException ex) {
@@ -43,5 +62,13 @@ public class GlobalExceptionHandler {
                 "code", "NOT_FOUND",
                 "message", ex.getMessage(),
                 "path", request.getRequestURI()));
+    }
+
+    private String correlationId(HttpServletRequest request) {
+        String supplied = request.getHeader("X-Correlation-ID");
+        if (supplied == null || supplied.isBlank()) {
+            return UUID.randomUUID().toString();
+        }
+        return supplied.replaceAll("[^A-Za-z0-9._:-]", "-").substring(0, Math.min(100, supplied.length()));
     }
 }

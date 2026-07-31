@@ -14,6 +14,8 @@ import java.math.BigDecimal;
 @Setter
 @Entity
 @Table(name = "services")
+@org.hibernate.annotations.FilterDef(name = "hotelServiceTenantFilter", parameters = @org.hibernate.annotations.ParamDef(name = "hotelId", type = Long.class))
+@org.hibernate.annotations.Filter(name = "hotelServiceTenantFilter", condition = "hotel_id = :hotelId OR hotel_id IS NULL")
 public class HotelService extends AuditableEntity {
 
     @Id

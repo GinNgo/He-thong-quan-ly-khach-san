@@ -166,7 +166,8 @@
 }
 
 .page-context {
-  min-width: 0;
+  min-width: 7.5rem;
+  min-height: 2.75rem;
 }
 
 .page-context h1 {
@@ -199,6 +200,9 @@
 
 .property-context {
   display: grid;
+  width: min(18rem, 28vw);
+  min-width: 12rem;
+  min-height: 3.7rem;
   gap: 0.15rem;
 }
 
@@ -209,7 +213,7 @@
 }
 
 .property-context select {
-  width: min(18rem, 28vw);
+  width: 100%;
   min-height: 2.5rem;
   padding: 0 var(--hotel-space-3, 0.75rem);
   color: var(--hotel-text-primary, #172033);
@@ -244,6 +248,9 @@
 
 .user-menu-anchor {
   position: relative;
+  display: flex;
+  min-width: min(20rem, 38vw);
+  justify-content: flex-end;
 }
 
 .management-profile-button {
@@ -384,6 +391,26 @@
   }
 }
 
+@media (min-width: 992px) and (max-width: 1180px) {
+  .management-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .header-leading,
+  .header-actions {
+    width: 100%;
+  }
+
+  .header-actions {
+    justify-content: space-between;
+  }
+
+  .property-context {
+    width: min(100%, 20rem);
+  }
+}
+
 @media (max-width: 700px) {
   .management-header {
     align-items: flex-start;
@@ -393,14 +420,16 @@
   .header-actions,
   .property-context {
     width: 100%;
+    min-width: 0;
+  }
+
+  .page-context,
+  .user-menu-anchor {
+    min-width: 0;
   }
 
   .header-actions {
     justify-content: space-between;
-  }
-
-  .property-context select {
-    width: min(100%, 20rem);
   }
 
   .management-breadcrumbs,

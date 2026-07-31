@@ -13,6 +13,8 @@ import jakarta.persistence.*;
 @Setter
 @Entity
 @Table(name = "rooms", uniqueConstraints = @UniqueConstraint(name = "UX_rooms_hotel_room_number", columnNames = {"hotel_id", "room_number"}))
+@org.hibernate.annotations.FilterDef(name = "roomTenantFilter", parameters = @org.hibernate.annotations.ParamDef(name = "hotelId", type = Long.class))
+@org.hibernate.annotations.Filter(name = "roomTenantFilter", condition = "hotel_id = :hotelId")
 public class Room extends AuditableEntity {
 
     @Id

@@ -12,6 +12,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Entity
 @Table(name = "reservations")
+@org.hibernate.annotations.FilterDef(name = "reservationTenantFilter", parameters = @org.hibernate.annotations.ParamDef(name = "hotelId", type = Long.class))
+@org.hibernate.annotations.Filter(name = "reservationTenantFilter", condition = "hotel_id = :hotelId")
 public class Reservation extends AuditableEntity {
 
     @Id
@@ -42,7 +44,7 @@ public class Reservation extends AuditableEntity {
     private BigDecimal totalAmount;
 
     @Column(nullable = false)
-    private String status; // PENDING_PAYMENT, CONFIRMED, CANCELLED, CHECKED_IN, COMPLETED
+    private String status; // Canonical values are defined by ReservationStatus.
 
     @Column(name = "payment_method")
     private String paymentMethod; // CREDIT_CARD, PAYPAL, APPLE_PAY

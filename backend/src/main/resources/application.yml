@@ -48,13 +48,49 @@ spring:
 
 # Payment Gateway Configurations
 payment:
+  property:
+    encryption-key: ${PROPERTY_PAYMENT_ENCRYPTION_KEY:${JWT_SECRET}}
+  demo:
+    enabled: ${PAYMENT_DEMO_ENABLED:false}
+    signing-secret: ${PAYMENT_DEMO_SIGNING_SECRET:${JWT_SECRET}}
+    base-url: ${PAYMENT_DEMO_BASE_URL:http://localhost:4200/payment-simulator}
+  sandbox:
+    enabled: ${PAYMENT_SANDBOX_ENABLED:true}
+  production:
+    enabled: ${PAYMENT_PRODUCTION_ENABLED:false}
+    approved: ${PAYMENT_PRODUCTION_APPROVED:false}
   vnpay:
     tmn-code: ${VNPAY_TMN_CODE}
     hash-secret: ${VNPAY_HASH_SECRET}
     url: ${VNPAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
-    return-url: http://localhost:4200/payment-result
+    return-url: ${VNPAY_RETURN_URL:http://localhost:4200/payment-result}
     version: 2.1.0
     command: pay
+  momo:
+    partner-code: ${MOMO_PARTNER_CODE:}
+    access-key: ${MOMO_ACCESS_KEY:}
+    secret-key: ${MOMO_SECRET_KEY:}
+    create-url: ${MOMO_CREATE_URL:https://test-payment.momo.vn/v2/gateway/api/create}
+    query-url: ${MOMO_QUERY_URL:https://test-payment.momo.vn/v2/gateway/api/query}
+    refund-url: ${MOMO_REFUND_URL:https://test-payment.momo.vn/v2/gateway/api/refund}
+    refund-query-url: ${MOMO_REFUND_QUERY_URL:https://test-payment.momo.vn/v2/gateway/api/refund/query}
+    redirect-url: ${MOMO_REDIRECT_URL:http://localhost:4200/payment-result}
+    ipn-url: ${MOMO_IPN_URL:http://localhost:8080/api/payments/momo-ipn}
+    request-type: captureWallet
+  zalopay:
+    app-id: ${ZALOPAY_APP_ID:}
+    key1: ${ZALOPAY_KEY1:}
+    key2: ${ZALOPAY_KEY2:}
+    create-url: ${ZALOPAY_CREATE_URL:https://sb-openapi.zalopay.vn/v2/create}
+    query-url: ${ZALOPAY_QUERY_URL:https://sb-openapi.zalopay.vn/v2/query}
+    refund-url: ${ZALOPAY_REFUND_URL:https://sb-openapi.zalopay.vn/v2/refund}
+    refund-query-url: ${ZALOPAY_REFUND_QUERY_URL:https://sb-openapi.zalopay.vn/v2/query_refund}
+    redirect-url: ${ZALOPAY_REDIRECT_URL:http://localhost:4200/payment-result}
+    callback-url: ${ZALOPAY_CALLBACK_URL:http://localhost:8080/api/payments/zalopay-callback}
+  provider-recovery:
+    enabled: ${PAYMENT_PROVIDER_RECOVERY_ENABLED:true}
+    scan-ms: ${PAYMENT_PROVIDER_RECOVERY_SCAN_MS:60000}
+    minimum-age-ms: ${PAYMENT_PROVIDER_RECOVERY_MINIMUM_AGE_MS:60000}
 
 server:
   port: 8080
