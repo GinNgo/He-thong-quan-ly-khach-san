@@ -45,3 +45,52 @@ The command wrapper timed out while Maven was still running, but the same Maven 
 
 - The V22 schema is additive and was already delivered by T015.
 - Application recovery is to stop creating new charge lines while preserving existing append-only evidence; persisted financial rows must not be deleted or rewritten.
+
+# T071 Server-Priced Service and Minibar Charges
+
+## Scope
+
+- Added a transactional `ReservationChargeService` that locks the reservation before creating or correcting folio charges.
+- Accepts only the catalog service identity, SERVICE/MINIBAR classification, quantity and usage time; unit price and total are always calculated from the active server catalog.
+- Snapshots bilingual catalog identity/description, catalog version, actor, quantity, usage time and exact VND amounts.
+- Treats the existing catalog price as tax-inclusive because the current service catalog has no separate tax rule; the persisted tax snapshot is therefore server-owned zero rather than caller supplied.
+- Requires an authenticated property actor with `RESERVATION_SERVICE/CREATE`, active property access and a `CHECKED_IN` reservation.
+
+## Append-Only Corrections
+
+- A correction locks the original line and appends an `ADJUSTMENT` reversal linked through `reverses_line_id`.
+- The original charge remains unchanged and a line cannot be corrected twice.
+- An optional replacement is created from the current server catalog price in the same transaction.
+- Cross-property catalog items, inactive services, non-service lines, future usage times and invalid VND/quantity values are rejected before persistence.
+
+## Automated Validation
+
+Focused command from `backend/`:
+
+```powershell
+.\mvnw.cmd '-Dtest=ReservationChargeServiceTest,ReservationChargeLineTest,TenantFilterArchitectureTest' -DforkCount=0 test
+```
+
+Result:
+
+- Service tests: 5 passed
+- Entity tests: 4 passed
+- Tenant-filter architecture tests: 3 passed
+- Total: 12 passed
+- Failures: 0
+- Errors: 0
+- Skipped: 0
+
+Fresh application-context validation, with a test-only secret supplied to the command process:
+
+```powershell
+$env:JWT_SECRET='test_secret_for_context_validation_only_32_chars'
+.\mvnw.cmd '-Dtest=BackendApplicationTests' -DforkCount=0 test
+```
+
+Result: 1 context test passed; all 51 JPA repositories, including the charge-line repository, were scanned and the Spring Boot application context started successfully.
+
+## Safety and Recovery
+
+- No endpoint, provider request, production credential, real-money action or production database mutation is part of T071.
+- Recovery disables new charge creation while retaining all existing charge/reversal evidence; corrections are never rolled back by deleting or rewriting persisted lines.

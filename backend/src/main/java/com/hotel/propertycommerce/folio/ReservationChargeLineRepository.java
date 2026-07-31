@@ -22,6 +22,8 @@ public interface ReservationChargeLineRepository extends JpaRepository<Reservati
             Long hotelId,
             Long reservationId);
 
+    boolean existsByReversesLineId(Long lineId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select line from ReservationChargeLine line "
             + "where line.id = :id and line.hotel.id = :hotelId and line.reservation.id = :reservationId")
