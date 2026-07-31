@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 import { of, Subject } from 'rxjs';
 import { ClientApiService } from '../../../core/services/client-api.service';
-import { PaymentService } from '../../../core/services/payment.service';
+import { PropertyPaymentService } from '../../../core/services/property-payment.service';
 import { BookingCheckoutComponent } from './booking-checkout.component';
 
 describe('BookingCheckoutComponent', () => {
@@ -11,17 +11,19 @@ describe('BookingCheckoutComponent', () => {
   let reservation$: Subject<any>;
   let queryParams$: Subject<Record<string, string>>;
   let clientApi: { bookRoom: ReturnType<typeof vi.fn> };
+  let paymentApi: { createAttempt: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     reservation$ = new Subject<any>();
     queryParams$ = new Subject<Record<string, string>>();
     clientApi = { bookRoom: vi.fn(() => reservation$) };
+    paymentApi = { createAttempt: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [BookingCheckoutComponent],
       providers: [
         { provide: ClientApiService, useValue: clientApi },
-        { provide: PaymentService, useValue: { createPaymentUrl: vi.fn() } },
+        { provide: PropertyPaymentService, useValue: paymentApi },
         { provide: Router, useValue: { navigate: vi.fn() } },
         {
           provide: ActivatedRoute,
@@ -93,4 +95,86 @@ describe('BookingCheckoutComponent', () => {
     reservation$.complete();
     expect(component.bookingSuccess).toBe(true);
   });
+
+  it('creates a server-owned deposit attempt after the reservation succeeds', () => {
+    const paymentAttempt$ = new Subject<any>();
+    paymentApi.createAttempt.mockReturnValue(paymentAttempt$);
+    setValidBooking('MOMO');
+
+    component.submitBooking();
+    reservation$.next({ id: 77 });
+
+    expect(paymentApi.createAttempt).toHaveBeenCalledWith(
+      77,
+      { purpose: 'DEPOSIT', method: 'MOMO' },
+      { idempotencyKey: expect.any(String) },
+    );
+    expect(paymentApi.createAttempt.mock.calls[0][1].amount).toBeUndefined();
+    paymentAttempt$.next(attemptResponse());
+    paymentAttempt$.complete();
+    expect(component.paymentAttempt?.expectedAmount).toBe(300000);
+    expect(component.bookingSuccess).toBe(true);
+  });
+
+  it('retries the same attempt request without creating a second reservation', () => {
+    const firstAttempt$ = new Subject<any>();
+    paymentApi.createAttempt
+      .mockReturnValueOnce(firstAttempt$)
+      .mockReturnValueOnce(of(attemptResponse()));
+    setValidBooking('VNPAY');
+
+    component.submitBooking();
+    reservation$.next({ id: 88 });
+    firstAttempt$.error({ status: 503 });
+
+    const firstKey = paymentApi.createAttempt.mock.calls[0][2].idempotencyKey;
+    component.submitBooking();
+
+    expect(clientApi.bookRoom).toHaveBeenCalledTimes(1);
+    expect(paymentApi.createAttempt).toHaveBeenCalledTimes(2);
+    expect(paymentApi.createAttempt.mock.calls[1][2].idempotencyKey).toBe(firstKey);
+    expect(component.bookingSuccess).toBe(true);
+  });
+
+  function setValidBooking(paymentMethod: string): void {
+    component.roomTypeId = 1;
+    component.hotelId = 10;
+    component.roomTypeName = 'Deluxe';
+    component.nightlyPrice = 500000;
+    component.contextError = '';
+    component.bookingData = {
+      roomTypeId: 1,
+      checkInDate: '2026-08-10',
+      checkOutDate: '2026-08-12',
+      guests: 2,
+      adults: 2,
+      children: 0,
+      quantity: 1,
+      firstName: 'An',
+      lastName: 'Nguyen',
+      phone: '0900000000',
+      paymentMethod,
+      specialRequests: '',
+    };
+  }
+
+  function attemptResponse() {
+    return {
+      attemptId: 'attempt-1',
+      reservationId: 77,
+      purpose: 'DEPOSIT',
+      status: 'PENDING',
+      environment: 'SIMULATOR',
+      expectedAmount: 300000,
+      currency: 'VND',
+      expiresAt: '2026-08-10T12:15:00',
+      method: 'MOMO',
+      provider: 'SIMULATOR',
+      receiver: null,
+      uniqueTransferContent: null,
+      qrData: null,
+      redirectUrl: null,
+      replayed: false,
+    };
+  }
 });

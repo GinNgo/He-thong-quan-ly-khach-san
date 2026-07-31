@@ -3,7 +3,11 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ClientApiService, ReservationRequest } from '../../../core/services/client-api.service';
-import { PaymentService } from '../../../core/services/payment.service';
+import { PropertyPaymentMethodCode } from '../../../core/services/property-payment-configuration.service';
+import {
+  PropertyPaymentAttempt,
+  PropertyPaymentService,
+} from '../../../core/services/property-payment.service';
 
 @Component({
   selector: 'app-booking-checkout',
@@ -16,7 +20,7 @@ export class BookingCheckoutComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private clientApi = inject(ClientApiService);
-  private paymentService = inject(PaymentService);
+  private propertyPaymentService = inject(PropertyPaymentService);
 
   roomTypeId: number = 0;
   roomTypeName = '';
@@ -44,6 +48,10 @@ export class BookingCheckoutComponent implements OnInit {
   errorMessage = '';
   contextError = '';
   reservationDetails: any = null;
+  paymentAttempt: PropertyPaymentAttempt | null = null;
+  private paymentIdempotencyKey = '';
+  private paymentRequestIdentity = '';
+  private reservedPaymentMethod = '';
 
   ngOnInit(): void {
     this.route.paramMap.subscribe(params => {
@@ -76,6 +84,11 @@ export class BookingCheckoutComponent implements OnInit {
   submitBooking(): void {
     if (this.isSubmitting || !this.bookingContextValid) return;
     this.errorMessage = '';
+    if (this.reservationDetails?.id && !this.paymentAttempt) {
+      this.isSubmitting = true;
+      this.createPaymentAttempt(this.reservationDetails.id);
+      return;
+    }
     if (this.bookingData.checkOutDate <= this.bookingData.checkInDate) {
       this.errorMessage = 'Ngày trả phòng phải sau ngày nhận phòng.';
       return;
@@ -93,19 +106,10 @@ export class BookingCheckoutComponent implements OnInit {
     this.clientApi.bookRoom(this.bookingData).subscribe({
       next: (res) => {
         this.reservationDetails = res;
+        this.reservedPaymentMethod = this.bookingData.paymentMethod;
         
         if (this.bookingData.paymentMethod !== 'PAY_AT_HOTEL') {
-          // Redirect to Mock Payment Simulator
-          this.paymentService.createPaymentUrl(res.id, this.bookingData.paymentMethod).subscribe({
-            next: (paymentResponse) => {
-              window.location.href = paymentResponse.url;
-            },
-            error: (err) => {
-              console.error('Lỗi khi tạo URL thanh toán', err);
-              this.isSubmitting = false;
-              this.errorMessage = 'Không thể kết nối đến cổng thanh toán.';
-            }
-          });
+          this.createPaymentAttempt(res.id);
         } else {
           // Pay at hotel: finish immediately
           this.isSubmitting = false;
@@ -183,5 +187,41 @@ export class BookingCheckoutComponent implements OnInit {
     } catch {
       return;
     }
+  }
+
+  private createPaymentAttempt(reservationId: number): void {
+    const method = (this.reservedPaymentMethod || this.bookingData.paymentMethod) as PropertyPaymentMethodCode;
+    const requestIdentity = `${reservationId}:DEPOSIT:${method}`;
+    if (this.paymentRequestIdentity !== requestIdentity) {
+      this.paymentRequestIdentity = requestIdentity;
+      this.paymentIdempotencyKey = this.newRequestId();
+    }
+
+    this.propertyPaymentService.createAttempt(
+      reservationId,
+      { purpose: 'DEPOSIT', method },
+      { idempotencyKey: this.paymentIdempotencyKey },
+    ).subscribe({
+      next: (attempt) => {
+        this.paymentAttempt = attempt;
+        this.isSubmitting = false;
+        this.bookingSuccess = true;
+        if (attempt.redirectUrl) {
+          window.location.href = attempt.redirectUrl;
+        }
+      },
+      error: (err) => {
+        console.error('Unable to create property payment attempt', err);
+        this.isSubmitting = false;
+        this.errorMessage = err?.error?.message
+          || 'Không thể kết nối đến cổng thanh toán.';
+      },
+    });
+  }
+
+  private newRequestId(): string {
+    const cryptoApi = globalThis.crypto as Crypto | undefined;
+    if (cryptoApi?.randomUUID) return cryptoApi.randomUUID();
+    return `payment-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 }

@@ -81,10 +81,31 @@ Result:
 - Angular/Vitest build: SUCCESS
 - Existing unrelated `NG8107` optional-chain warning remains in `client-layout.html`.
 
+## T065 Checkout Attempt Integration
+
+The public booking checkout now creates a Property Commerce payment attempt only after the reservation succeeds. The client sends the persisted reservation ID, `DEPOSIT` purpose and selected configured method; it does not send amount, property scope, receiver details, environment or merchant data.
+
+Retry behavior preserves one payment idempotency key for the same reservation/purpose/method and reuses the existing reservation instead of booking a second room after a transient attempt failure. Pay-at-property bookings still complete without creating an online attempt.
+
+Focused command from `frontend/`:
+
+```powershell
+.\node_modules\.bin\ng.cmd test --watch=false --include "src/app/features/client/booking-checkout/booking-checkout.component.spec.ts" --include "src/app/core/services/property-payment.service.spec.ts"
+```
+
+Result:
+
+- Test files: 2 passed
+- Tests: 10 passed
+- Failures: 0
+- Angular/Vitest build: SUCCESS
+- Existing unrelated `NG8107` optional-chain warning remains in `client-layout.html`.
+
 ## Remaining Work
 
 - T059-T064 are complete for legacy compatibility, provider contracts, callback concurrency, manual confirmation integration and the Angular payment client.
-- T065-T069 remain open for checkout integration, the accessible payment panel and browser journeys.
+- T065 is complete for server-owned checkout attempt creation and safe retry identity.
+- T066-T069 remain open for the accessible payment panel and browser journeys.
 
 ## Recovery
 
