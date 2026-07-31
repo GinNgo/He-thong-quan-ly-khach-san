@@ -22,7 +22,8 @@ class FinancialMigrationIntegrationTest {
             "V26__financial_context_backfill.sql",
             "V27__financial_integrity_indexes.sql",
             "V28__financial_permissions.sql",
-            "V29__financial_idempotency.sql");
+            "V29__financial_idempotency.sql",
+            "V30__booking_deposit_policy_snapshot.sql");
 
     @Test
     void feature007MigrationsExistAndDeclareTenantIntegrity() throws IOException {
@@ -58,5 +59,19 @@ class FinancialMigrationIntegrationTest {
         assertTrue(validation.contains("Repeat execution passed"));
         assertTrue(validation.contains("Negative orphan preflight failed as expected"));
         assertTrue(validation.contains("V{0}__*.sql"));
+    }
+
+    @Test
+    void bookingDepositSnapshotMigrationIsAdditiveAndConstrained() throws IOException {
+        String sql = Files.readString(
+                Path.of("src/main/resources/db/migration/V30__booking_deposit_policy_snapshot.sql"),
+                StandardCharsets.UTF_8);
+        assertTrue(sql.contains("COL_LENGTH('dbo.reservations', 'deposit_policy_type') IS NULL"));
+        assertTrue(sql.contains("deposit_configuration_version"));
+        assertTrue(sql.contains("deposit_booking_total"));
+        assertTrue(sql.contains("deposit_required"));
+        assertTrue(sql.contains("deposit_currency = 'VND'"));
+        assertTrue(sql.contains("deposit_required <= deposit_booking_total"));
+        assertFalse(sql.contains("DROP COLUMN"));
     }
 }

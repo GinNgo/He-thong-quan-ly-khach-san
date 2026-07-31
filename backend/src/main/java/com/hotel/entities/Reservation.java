@@ -1,5 +1,6 @@
 package com.hotel.entities;
 
+import com.hotel.propertycommerce.booking.DepositPolicySnapshot;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
@@ -51,6 +52,27 @@ public class Reservation extends AuditableEntity {
 
     @Column(name = "special_requests", columnDefinition = "nvarchar(max)")
     private String specialRequests;
+
+    @Column(name = "deposit_configuration_id")
+    private Long depositConfigurationId;
+
+    @Column(name = "deposit_configuration_version")
+    private Long depositConfigurationVersion;
+
+    @Column(name = "deposit_policy_type", length = 20)
+    private String depositPolicyType;
+
+    @Column(name = "deposit_policy_value", precision = 19, scale = 0)
+    private BigDecimal depositPolicyValue;
+
+    @Column(name = "deposit_booking_total", precision = 19, scale = 0)
+    private BigDecimal depositBookingTotal;
+
+    @Column(name = "deposit_required", precision = 19, scale = 0)
+    private BigDecimal depositRequired;
+
+    @Column(name = "deposit_currency", length = 3)
+    private String depositCurrency;
 
 
 
@@ -143,4 +165,45 @@ public class Reservation extends AuditableEntity {
     public void setSpecialRequests(String specialRequests) {
         this.specialRequests = specialRequests;
     }
+
+    public void captureDepositPolicy(DepositPolicySnapshot snapshot) {
+        if (snapshot == null) {
+            throw new IllegalArgumentException("Deposit policy snapshot is required.");
+        }
+        if (hotel == null || hotel.getId() == null || !hotel.getId().equals(snapshot.propertyId())) {
+            throw new IllegalArgumentException("Deposit policy must belong to the reservation property.");
+        }
+        if (depositPolicyType != null) {
+            throw new IllegalStateException("Deposit policy snapshot is immutable once captured.");
+        }
+        depositConfigurationId = snapshot.configurationId();
+        depositConfigurationVersion = snapshot.configurationVersion();
+        depositPolicyType = snapshot.policyType().name();
+        depositPolicyValue = snapshot.policyValue();
+        depositBookingTotal = snapshot.bookingTotal().amount();
+        depositRequired = snapshot.requiredDeposit().amount();
+        depositCurrency = snapshot.currency();
+    }
+
+    public DepositPolicySnapshot getDepositPolicySnapshot() {
+        if (depositPolicyType == null) {
+            return null;
+        }
+        return new DepositPolicySnapshot(
+                hotel.getId(),
+                depositConfigurationId,
+                depositConfigurationVersion,
+                DepositPolicySnapshot.PolicyType.from(depositPolicyType),
+                depositPolicyValue,
+                com.hotel.paymentprovider.domain.VndMoney.of(depositBookingTotal),
+                com.hotel.paymentprovider.domain.VndMoney.of(depositRequired));
+    }
+
+    public Long getDepositConfigurationId() { return depositConfigurationId; }
+    public Long getDepositConfigurationVersion() { return depositConfigurationVersion; }
+    public String getDepositPolicyType() { return depositPolicyType; }
+    public BigDecimal getDepositPolicyValue() { return depositPolicyValue; }
+    public BigDecimal getDepositBookingTotal() { return depositBookingTotal; }
+    public BigDecimal getDepositRequired() { return depositRequired; }
+    public String getDepositCurrency() { return depositCurrency; }
 }

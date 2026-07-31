@@ -1,9 +1,15 @@
 package com.hotel.services;
 
 import com.hotel.dtos.ReservationDTO;
+import com.hotel.dtos.ReservationRequest;
 import com.hotel.entities.Reservation;
+import com.hotel.entities.RoomType;
 import com.hotel.entities.User;
 import com.hotel.entities.Hotel;
+import com.hotel.paymentprovider.error.FinancialErrorCode;
+import com.hotel.paymentprovider.error.FinancialException;
+import com.hotel.propertycommerce.config.PropertyPaymentConfiguration;
+import com.hotel.propertycommerce.config.PropertyPaymentConfigurationRepository;
 import com.hotel.repositories.ReservationRepository;
 import com.hotel.repositories.UserRepository;
 import com.hotel.repositories.HotelRepository;
@@ -11,10 +17,13 @@ import com.hotel.repositories.RoomRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -67,6 +76,9 @@ public class ReservationServiceTest {
     @Mock
     private PaymentService paymentService;
 
+    @Mock
+    private PropertyPaymentConfigurationRepository propertyPaymentConfigurationRepository;
+
     @InjectMocks
     private ReservationService reservationService;
 
@@ -83,6 +95,9 @@ public class ReservationServiceTest {
         mockHotel = new Hotel();
         mockHotel.setId(1L);
         mockHotel.setName("Test Hotel");
+        mockHotel.setStatus("ACTIVE");
+        mockHotel.setOperationStatus("ACTIVE");
+        mockHotel.setApprovalStatus("APPROVED");
 
         mockReservation = new Reservation();
         mockReservation.setId(1L);
@@ -132,6 +147,81 @@ public class ReservationServiceTest {
         verify(reservationRepository, never()).findByHotelIdIn(any());
     }
 
+
+    @Test
+    void createReservationCalculatesAndPersistsServerOwnedPercentageDeposit() {
+        ReservationRequest request = bookingRequest();
+        RoomType roomType = roomType();
+        PropertyPaymentConfiguration configuration = paymentConfiguration(true, "PERCENTAGE", BigDecimal.valueOf(30));
+        when(userRepository.findByUsername("testcustomer")).thenReturn(Optional.of(mockUser));
+        when(roomTypeRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(roomType));
+        when(roomAvailabilityService.countAvailableRooms(5L, request.getCheckInDate(), request.getCheckOutDate()))
+                .thenReturn(1L);
+        when(roomAvailabilityService.getNights(request.getCheckInDate(), request.getCheckOutDate())).thenReturn(2L);
+        when(roomAvailabilityService.calculateTotal(BigDecimal.valueOf(600_000), 2L, 1))
+                .thenReturn(BigDecimal.valueOf(1_200_000));
+        when(propertyPaymentConfigurationRepository.findByHotelId(1L)).thenReturn(Optional.of(configuration));
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> {
+            Reservation reservation = invocation.getArgument(0);
+            reservation.setId(99L);
+            return reservation;
+        });
+        when(reservationDetailRepository.findByReservationId(99L)).thenReturn(java.util.List.of());
+
+        reservationService.createReservation("testcustomer", request);
+
+        ArgumentCaptor<Reservation> captor = ArgumentCaptor.forClass(Reservation.class);
+        verify(reservationRepository).save(captor.capture());
+        Reservation saved = captor.getValue();
+        assertEquals(0, BigDecimal.valueOf(1_200_000).compareTo(saved.getDepositBookingTotal()));
+        assertEquals(0, BigDecimal.valueOf(360_000).compareTo(saved.getDepositRequired()));
+        assertEquals("PERCENTAGE", saved.getDepositPolicyType());
+        assertEquals(0, BigDecimal.valueOf(30).compareTo(saved.getDepositPolicyValue()));
+        assertEquals("VND", saved.getDepositCurrency());
+        assertEquals(11L, saved.getDepositConfigurationId());
+        assertEquals(4L, saved.getDepositConfigurationVersion());
+    }
+
+    @Test
+    void createReservationRejectsMissingPropertyDepositPolicyWithoutPersistingBooking() {
+        ReservationRequest request = bookingRequest();
+        RoomType roomType = roomType();
+        when(userRepository.findByUsername("testcustomer")).thenReturn(Optional.of(mockUser));
+        when(roomTypeRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(roomType));
+        when(roomAvailabilityService.countAvailableRooms(5L, request.getCheckInDate(), request.getCheckOutDate()))
+                .thenReturn(1L);
+        when(roomAvailabilityService.getNights(request.getCheckInDate(), request.getCheckOutDate())).thenReturn(2L);
+        when(roomAvailabilityService.calculateTotal(BigDecimal.valueOf(600_000), 2L, 1))
+                .thenReturn(BigDecimal.valueOf(1_200_000));
+        when(propertyPaymentConfigurationRepository.findByHotelId(1L)).thenReturn(Optional.empty());
+
+        FinancialException exception = assertThrows(FinancialException.class,
+                () -> reservationService.createReservation("testcustomer", request));
+
+        assertEquals(FinancialErrorCode.POLICY_NOT_CONFIGURED, exception.code());
+        verify(reservationRepository, never()).save(any());
+    }
+
+    @Test
+    void createReservationRejectsDisabledPropertyPayments() {
+        ReservationRequest request = bookingRequest();
+        RoomType roomType = roomType();
+        when(userRepository.findByUsername("testcustomer")).thenReturn(Optional.of(mockUser));
+        when(roomTypeRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(roomType));
+        when(roomAvailabilityService.countAvailableRooms(5L, request.getCheckInDate(), request.getCheckOutDate()))
+                .thenReturn(1L);
+        when(roomAvailabilityService.getNights(request.getCheckInDate(), request.getCheckOutDate())).thenReturn(2L);
+        when(roomAvailabilityService.calculateTotal(BigDecimal.valueOf(600_000), 2L, 1))
+                .thenReturn(BigDecimal.valueOf(1_200_000));
+        when(propertyPaymentConfigurationRepository.findByHotelId(1L))
+                .thenReturn(Optional.of(paymentConfiguration(false, "NONE", null)));
+
+        FinancialException exception = assertThrows(FinancialException.class,
+                () -> reservationService.createReservation("testcustomer", request));
+
+        assertEquals(FinancialErrorCode.PAYMENT_ENVIRONMENT_DISABLED, exception.code());
+        verify(reservationRepository, never()).save(any());
+    }
     @Test
     void testCheckIn_Success() {
         when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
@@ -212,5 +302,44 @@ public class ReservationServiceTest {
         assertEquals("CANCELLED", result.getStatus());
         verify(paymentService, never()).refundSuccessfulPayments(any());
         verify(reservationRepository, never()).save(any());
+    }
+    private ReservationRequest bookingRequest() {
+        ReservationRequest request = new ReservationRequest();
+        request.setRoomTypeId(5L);
+        request.setCheckInDate(LocalDate.of(2026, 8, 10));
+        request.setCheckOutDate(LocalDate.of(2026, 8, 12));
+        request.setQuantity(1);
+        request.setAdults(2);
+        request.setChildren(0);
+        request.setGuests(2);
+        request.setPaymentMethod("MANUAL_TRANSFER");
+        return request;
+    }
+
+    private RoomType roomType() {
+        RoomType roomType = new RoomType();
+        roomType.setId(5L);
+        roomType.setHotel(mockHotel);
+        roomType.setNameVi("Deluxe room");
+        roomType.setNameEn("Deluxe room");
+        roomType.setBasePrice(BigDecimal.valueOf(600_000));
+        roomType.setStatus("ACTIVE");
+        roomType.setMaxGuests(2);
+        roomType.setMaxAdults(2);
+        roomType.setMaxChildren(1);
+        return roomType;
+    }
+
+    private PropertyPaymentConfiguration paymentConfiguration(
+            boolean enabled,
+            String policyType,
+            BigDecimal policyValue) {
+        PropertyPaymentConfiguration configuration = new PropertyPaymentConfiguration(mockHotel);
+        ReflectionTestUtils.setField(configuration, "id", 11L);
+        ReflectionTestUtils.setField(configuration, "version", 4L);
+        ReflectionTestUtils.setField(configuration, "enabled", enabled);
+        ReflectionTestUtils.setField(configuration, "depositPolicyType", policyType);
+        ReflectionTestUtils.setField(configuration, "depositValue", policyValue);
+        return configuration;
     }
 }

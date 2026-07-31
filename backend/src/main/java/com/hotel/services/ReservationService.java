@@ -2,6 +2,11 @@ package com.hotel.services;
 
 import com.hotel.dtos.*;
 import com.hotel.entities.*;
+import com.hotel.paymentprovider.error.FinancialErrorCode;
+import com.hotel.paymentprovider.error.FinancialException;
+import com.hotel.propertycommerce.booking.DepositPolicySnapshot;
+import com.hotel.propertycommerce.config.PropertyPaymentConfiguration;
+import com.hotel.propertycommerce.config.PropertyPaymentConfigurationRepository;
 import com.hotel.repositories.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,6 +41,7 @@ public class ReservationService {
     private final PaymentService paymentService;
     private final HousekeepingTaskRepository housekeepingTaskRepository;
     private final PropertyAccessService propertyAccessService;
+    private final PropertyPaymentConfigurationRepository propertyPaymentConfigurationRepository;
 
     @Transactional
     public ReservationDTO createReservation(String username, ReservationRequest request) {
@@ -65,6 +71,16 @@ public class ReservationService {
 
         long nights = roomAvailabilityService.getNights(request.getCheckInDate(), request.getCheckOutDate());
         BigDecimal totalAmount = roomAvailabilityService.calculateTotal(roomType.getBasePrice(), nights, quantity);
+        PropertyPaymentConfiguration paymentConfiguration = propertyPaymentConfigurationRepository.findByHotelId(hotel.getId())
+                .orElseThrow(() -> new FinancialException(
+                        FinancialErrorCode.POLICY_NOT_CONFIGURED,
+                        "Payment and deposit policy is not configured for this property."));
+        if (!paymentConfiguration.isEnabled()) {
+            throw new FinancialException(
+                    FinancialErrorCode.PAYMENT_ENVIRONMENT_DISABLED,
+                    "Property payment is currently disabled.");
+        }
+        DepositPolicySnapshot depositPolicySnapshot = DepositPolicySnapshot.capture(paymentConfiguration, totalAmount);
 
         Reservation reservation = new Reservation();
         reservation.setUser(user);
@@ -77,6 +93,7 @@ public class ReservationService {
         reservation.setPaymentMethod(request.getPaymentMethod());
         reservation.setSpecialRequests(request.getSpecialRequests());
         reservation.setTotalAmount(totalAmount);
+        reservation.captureDepositPolicy(depositPolicySnapshot);
         Reservation savedReservation = reservationRepository.save(reservation);
 
         ReservationDetail detail = new ReservationDetail();

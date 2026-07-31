@@ -1,6 +1,8 @@
 package com.hotel.propertycommerce.booking;
 
 import com.hotel.entities.Hotel;
+import com.hotel.entities.Reservation;
+import com.hotel.paymentprovider.domain.VndMoney;
 import com.hotel.paymentprovider.error.FinancialErrorCode;
 import com.hotel.paymentprovider.error.FinancialException;
 import com.hotel.propertycommerce.config.PropertyPaymentConfiguration;
@@ -99,6 +101,34 @@ class DepositPolicySnapshotTest {
 
         assertNotEquals(configuration.getDepositPolicyType(), snapshot.policyType().name());
         assertEquals(0, BigDecimal.valueOf(200_000).compareTo(snapshot.requiredDeposit().amount()));
+    }
+
+    @Test
+    void reservationRejectsReplacingAnAlreadyCapturedSnapshot() {
+        Reservation reservation = new Reservation();
+        Hotel hotel = new Hotel();
+        hotel.setId(7L);
+        reservation.setHotel(hotel);
+        DepositPolicySnapshot snapshot = new DepositPolicySnapshot(
+                7L, 11L, 4L, DepositPolicySnapshot.PolicyType.NONE, BigDecimal.ZERO,
+                VndMoney.of(800_000), VndMoney.zero());
+
+        reservation.captureDepositPolicy(snapshot);
+
+        assertThrows(IllegalStateException.class, () -> reservation.captureDepositPolicy(snapshot));
+    }
+
+    @Test
+    void reservationRejectsSnapshotFromAnotherProperty() {
+        Reservation reservation = new Reservation();
+        Hotel hotel = new Hotel();
+        hotel.setId(8L);
+        reservation.setHotel(hotel);
+        DepositPolicySnapshot snapshot = new DepositPolicySnapshot(
+                7L, 11L, 4L, DepositPolicySnapshot.PolicyType.NONE, BigDecimal.ZERO,
+                VndMoney.of(800_000), VndMoney.zero());
+
+        assertThrows(IllegalArgumentException.class, () -> reservation.captureDepositPolicy(snapshot));
     }
 
     private PropertyPaymentConfiguration configuration(String policyType, BigDecimal policyValue) {
