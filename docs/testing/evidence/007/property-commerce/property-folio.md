@@ -94,3 +94,43 @@ Result: 1 context test passed; all 51 JPA repositories, including the charge-lin
 
 - No endpoint, provider request, production credential, real-money action or production database mutation is part of T071.
 - Recovery disables new charge creation while retaining all existing charge/reversal evidence; corrections are never rolled back by deleting or rewriting persisted lines.
+
+# T072 Typed Surcharges and Negative Adjustments
+
+## Scope
+
+- Added typed positive surcharges for early check-in, late checkout, extra guests, damage, cleaning, lost keys and explicit other reasons.
+- Added typed negative adjustments for service recovery, goodwill, price correction, manual discount and explicit other reasons.
+- Positive surcharges persist as `SURCHARGE` lines; negative adjustments persist as `DISCOUNT` lines with a positive effect magnitude so folio calculation can subtract them without storing negative VND.
+- Every command requires a description, exact positive integer VND, an authenticated actor, active property access and a locked `CHECKED_IN` reservation.
+
+## Permission and Audit Rules
+
+- Positive surcharge creation requires `RESERVATION_SURCHARGE/CREATE`.
+- Negative adjustment requires both `RESERVATION_SURCHARGE/CREATE` and the separate `INVOICE_ADJUST/APPROVE` permission.
+- Each accepted mutation appends a redacted Property Commerce audit event containing reservation, charge type, typed reason, amount, actor, correlation and creation state evidence.
+- Permission, ownership, state and amount failures occur before charge/audit persistence.
+
+## Automated Validation
+
+Command from `backend/`:
+
+```powershell
+.\mvnw.cmd '-Dtest=SurchargeServiceTest,ReservationChargeServiceTest,ReservationChargeLineTest,FinancialAuditServiceTest' -DforkCount=0 test
+```
+
+Result:
+
+- Surcharge/adjustment tests: 5 passed
+- Service charge regression: 5 passed
+- Charge-line entity regression: 4 passed
+- Financial audit regression: 1 passed
+- Total: 15 passed
+- Failures: 0
+- Errors: 0
+- Skipped: 0
+
+## Safety and Recovery
+
+- No tax policy, provider call, production secret, real-money action or production database mutation was introduced.
+- Recovery stops new mutations while preserving charge and audit evidence; existing surcharge/discount rows are append-only and must not be rewritten or deleted.
