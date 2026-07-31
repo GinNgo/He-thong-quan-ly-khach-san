@@ -585,3 +585,15 @@ Focused command:
 Result: `5/5` tests passed with zero failures, errors or skips. Coverage proves that the reservation customer and authorized property staff can read the finalized invoice, a different customer receives a non-enumerable `404`, PDF delivery uses the immutable invoice number, and email delivery is restricted to the verified invoice recipient.
 
 No production email provider, production credential, production database migration or real-money operation was used.
+
+# T087 Management Folio and Checkout Client Evidence
+
+Implemented typed Angular clients for server-priced service/minibar charges, positive surcharges, separately authorized negative adjustments, authoritative checkout preview, debt override authorization, checkout and append-only credit notes. Checkout request types expose only the server-issued override identifier and do not expose caller-authoritative totals, payment methods or transaction references.
+
+Focused unit command:
+
+```powershell
+npm test -- --watch=false --include src/app/core/services/property-checkout.service.spec.ts
+```
+
+Result: `5/5` tests passed. Production build command `npm run build` also completed successfully. Existing warnings remain for the property payment configuration component CSS budget and CommonJS WebSocket dependencies; neither warning originates from T087.
