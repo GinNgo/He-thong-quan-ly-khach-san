@@ -267,3 +267,52 @@ Result: 1 context test passed with no failures, errors or skips; the new entity,
 - No production secret, provider request, real-money operation, production mode or production database mutation was used.
 - T075 reuses the additive T015 schema and requires no new migration or destructive cleanup.
 - Recovery stops new debt approvals while preserving existing append-only override and audit evidence; overpayment stays blocked until a separately approved policy is implemented.
+
+# T076 Immutable Invoice Snapshot Model
+
+## Scope
+
+- Added tenant-filtered `PropertyInvoice`, `PropertyInvoiceLine` and `PropertyInvoicePaymentAllocation` entities mapped to the additive T015/V22 schema.
+- Final invoices are created directly as immutable snapshots with customer/property JSON, subtotal, tax, fee, discount, total, paid, refunded, balance, finalizer and finalization time.
+- Invoice construction validates exact integer VND equations: `subtotal + tax + fee - discount = total` and `paid - refunded = total - balance`.
+- Invoice lines preserve type, source charge identity, code/name/description, quantity, unit price, tax, discount, total and usage dates. Discount lines store one positive magnitude while ordinary lines must reconcile their full price equation.
+- Payment allocations bind one finalized invoice to one successful Property Commerce debit, reject refunds/credits, cross-property or cross-reservation evidence, and cannot exceed the source transaction amount.
+- Added repositories for invoice lookup/locking, ordered line reads and unique transaction allocations. The new Property Commerce model remains separate from the legacy `invoices` compatibility entity/table.
+
+## Immutability and Tenant Rules
+
+- All three financial snapshot entities use Hibernate immutability plus lifecycle guards that reject update and delete operations.
+- Property ownership is non-null on invoice, line and allocation rows and is protected by three request-activated Hibernate tenant filters.
+- A finalized invoice cannot be recalculated from mutable hotel, room, service or customer records; T077 will populate these snapshots only from the locked authoritative folio.
+
+## Automated Validation
+
+Focused command from `backend/`:
+
+```powershell
+.\mvnw.cmd '-Dtest=PropertyInvoiceModelTest,TenantFilterArchitectureTest' -DforkCount=0 test
+```
+
+Result:
+
+- Invoice model/equation/immutability/allocation tests: 7 passed
+- Tenant-filter architecture tests: 3 passed
+- Total: 10 passed
+- Failures: 0
+- Errors: 0
+- Skipped: 0
+
+Fresh Spring context command with a process-only test secret:
+
+```powershell
+$env:JWT_SECRET='test_secret_for_context_validation_only_32_chars'
+.\mvnw.cmd '-Dtest=BackendApplicationTests' -DforkCount=0 test
+```
+
+Result: 1 context test passed with no failures, errors or skips. Spring Data discovered 55 repositories and validated the new entity mappings and derived queries.
+
+## Safety and Recovery
+
+- T076 performs no invoice finalization, checkout mutation, provider call, production credential use, real-money operation or production database change.
+- The schema remains the additive V22 migration from T015; no legacy invoice data is deleted or rewritten.
+- Recovery disables new Property Commerce invoice creation while retaining all finalized snapshots and allocations as immutable financial evidence.

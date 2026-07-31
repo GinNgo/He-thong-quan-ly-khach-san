@@ -38,7 +38,10 @@ class TenantFilterArchitectureTest {
                 "propertyFinancialTransactionTenantFilter",
                 "bookingFinancialSummaryTenantFilter",
                 "reservationChargeLineTenantFilter",
-                "checkoutOverrideTenantFilter");
+                "checkoutOverrideTenantFilter",
+                "propertyInvoiceTenantFilter",
+                "propertyInvoiceLineTenantFilter",
+                "propertyInvoiceAllocationTenantFilter");
         filters.forEach(filter -> assertTrue(source.contains("\"" + filter + "\""), () -> "Filter is not activated: " + filter));
     }
 
@@ -73,6 +76,21 @@ class TenantFilterArchitectureTest {
                 StandardCharsets.UTF_8);
         assertTrue(checkoutOverride.contains("checkoutOverrideTenantFilter"));
         assertTrue(checkoutOverride.contains("hotel_id"));
+
+        Map<String, String> invoiceFilters = Map.of(
+                "PropertyInvoice.java", "propertyInvoiceTenantFilter",
+                "PropertyInvoiceLine.java", "propertyInvoiceLineTenantFilter",
+                "PropertyInvoicePaymentAllocation.java", "propertyInvoiceAllocationTenantFilter");
+        Path invoiceRoot = Path.of("src/main/java/com/hotel/propertycommerce/invoice");
+        invoiceFilters.forEach((file, filter) -> {
+            try {
+                String source = Files.readString(invoiceRoot.resolve(file), StandardCharsets.UTF_8);
+                assertTrue(source.contains(filter), () -> file + " is missing " + filter);
+                assertTrue(source.contains("hotel_id"), () -> file + " is missing hotel ownership");
+            } catch (Exception exception) {
+                throw new AssertionError(exception);
+            }
+        });
     }
 
     @Test

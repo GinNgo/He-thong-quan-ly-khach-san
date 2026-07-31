@@ -126,7 +126,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 - [x] T073 [US3] Implement authoritative folio calculation for room/service/surcharge/tax/fee/discount/payment/refund/balance in `backend/src/main/java/com/hotel/propertycommerce/checkout/FolioCalculationService.java` (FR-019, SC-005)
 - [x] T074 [US3] Implement checkout preview and server-owned settlement validation in `backend/src/main/java/com/hotel/propertycommerce/checkout/CheckoutPreviewService.java` (FR-019, FR-020)
 - [x] T075 [US3] Implement debt/overpayment policy and reasoned override evidence in `backend/src/main/java/com/hotel/propertycommerce/checkout/CheckoutOverrideService.java` (FR-020, FR-026)
-- [ ] T076 [P] [US3] Implement immutable invoice/line/allocation entities and repositories in `backend/src/main/java/com/hotel/propertycommerce/invoice/` (FR-022)
+- [x] T076 [P] [US3] Implement immutable invoice/line/allocation entities and repositories in `backend/src/main/java/com/hotel/propertycommerce/invoice/` (FR-022)
 - [ ] T077 [US3] Implement invoice finalization from the locked folio and allocated successful transactions in `backend/src/main/java/com/hotel/propertycommerce/invoice/InvoiceFinalizationService.java` (FR-021, FR-022)
 - [ ] T078 [US3] Implement credit-note/adjustment workflow without rewriting finalized invoices in `backend/src/main/java/com/hotel/propertycommerce/invoice/CreditNoteService.java` (FR-022, FR-026)
 - [ ] T079 [US3] Refactor checkout into one locked transaction covering reservation, invoice, assignments, rooms and housekeeping in `backend/src/main/java/com/hotel/services/ReservationService.java` (FR-020, FR-021)
