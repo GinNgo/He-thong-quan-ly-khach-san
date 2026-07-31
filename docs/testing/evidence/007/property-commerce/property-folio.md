@@ -368,3 +368,56 @@ Result: 1 context test passed with no failures, errors or skips. Spring discover
 - No room, housekeeping or reservation-status mutation is included yet; those atomic checkout boundaries remain assigned to T079/T080.
 - No production credential, provider request, real-money operation, production mode or production database mutation was used.
 - Finalized invoices, lines and allocations are immutable. Recovery disables new finalization while preserving existing evidence; transaction rollback removes a partially attempted invoice aggregate if any persistence boundary fails.
+
+# T078 Append-Only Credit Notes and Adjustments
+
+## Scope
+
+- Added immutable, tenant-filtered `PropertyCreditNote` and `PropertyCreditNoteLine` entities plus repositories for post-finalization corrections.
+- Added `CreditNoteService`, which requires `INVOICE_ADJUST/APPROVE`, resolves the authenticated actor, locks the finalized invoice and revalidates property access before any correction is persisted.
+- The request supplies a reason and one or more exact positive integer-VND correction lines. The service derives the credit-note total from those lines instead of trusting a caller-supplied header total.
+- Referenced invoice lines must belong to the same finalized invoice/property and must represent a positive charge. General unallocated credit lines remain allowed for approved goodwill or service-recovery corrections.
+- Existing and requested credit-note amounts are checked under the invoice lock. Cumulative credit cannot exceed the finalized invoice total or the positive value of any referenced invoice line.
+- The original invoice, invoice lines and payment allocations are never updated. Each accepted correction appends a note, immutable line snapshots and a redacted financial audit event containing safe invoice/note identifiers, total and line counts.
+
+## Tenant Ownership Migration
+
+- Added additive migration `V32__credit_note_line_tenant_ownership.sql` because the original V22 credit-note-line table lacked the constitution-required `hotel_id` column.
+- V32 backfills ownership from the parent credit note, fails closed on null/conflicting note or invoice-line ownership, makes `hotel_id` non-null, adds the hotel foreign key and creates a tenant-leading index.
+- The migration is repeat-safe and contains no delete, drop or production execution. `FinancialMigrationIntegrationTest` now tracks V21 through V32 and asserts the V32 backfill/fail-closed/recovery structure.
+
+## Automated Validation
+
+Focused command from `backend/`:
+
+```powershell
+.\mvnw.cmd '-Dtest=CreditNoteServiceTest,PropertyCreditNoteModelTest,PropertyInvoiceModelTest,TenantFilterArchitectureTest,FinancialMigrationIntegrationTest' -DforkCount=0 test
+```
+
+Result:
+
+- Credit-note service permission/tenant/cumulative-cap tests: 6 passed
+- Credit-note model ownership/immutability tests: 3 passed
+- Invoice model regression: 7 passed
+- Tenant-filter architecture: 3 passed
+- Financial migration architecture: 6 passed
+- Total: 25 passed
+- Failures: 0
+- Errors: 0
+- Skipped: 0
+
+Fresh Spring context command with a process-only test secret:
+
+```powershell
+$env:JWT_SECRET='test_secret_for_context_validation_only_32_chars'
+.\mvnw.cmd '-Dtest=BackendApplicationTests' -DforkCount=0 test
+```
+
+Result: 1 context test passed with no failures, errors or skips. Spring discovered 57 JPA repositories and validated both credit-note entities, repositories, locking query and tenant filters.
+
+## Safety and Forward Recovery
+
+- No production database, credential, provider, real-money operation or production payment mode was used.
+- V32 was added to source and architecture-tested only; production migration remains a separate approval gate.
+- If an upgrade fixture exposes null or conflicting ownership, V32 stops before the non-null constraint. Forward recovery is to correct the documented source ownership in an approved backup-protected maintenance window and rerun V32; do not delete credit-note evidence or rewrite applied migrations.
+- Application recovery disables new credit-note issuance while retaining every finalized invoice and accepted note/line/audit row as immutable evidence.

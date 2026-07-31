@@ -24,7 +24,8 @@ class FinancialMigrationIntegrationTest {
             "V28__financial_permissions.sql",
             "V29__financial_idempotency.sql",
             "V30__booking_deposit_policy_snapshot.sql",
-            "V31__property_attempt_transfer_content_uniqueness.sql");
+            "V31__property_attempt_transfer_content_uniqueness.sql",
+            "V32__credit_note_line_tenant_ownership.sql");
 
     @Test
     void feature007MigrationsExistAndDeclareTenantIntegrity() throws IOException {
@@ -86,6 +87,23 @@ class FinancialMigrationIntegrationTest {
         assertTrue(sql.contains("CREATE UNIQUE INDEX UX_property_attempt_transfer_content"));
         assertTrue(sql.contains("hotel_id, unique_transfer_content"));
         assertTrue(sql.contains("WHERE unique_transfer_content IS NOT NULL"));
+        assertFalse(sql.contains("DELETE FROM"));
+        assertFalse(sql.contains("DROP TABLE"));
+    }
+
+    @Test
+    void creditNoteLineOwnershipMigrationBackfillsAndFailsClosed() throws IOException {
+        String sql = Files.readString(
+                Path.of("src/main/resources/db/migration/V32__credit_note_line_tenant_ownership.sql"),
+                StandardCharsets.UTF_8);
+        assertTrue(sql.contains("ADD hotel_id BIGINT NULL"));
+        assertTrue(sql.contains("SET hotel_id = note.hotel_id"));
+        assertTrue(sql.contains("THROW 51032"));
+        assertTrue(sql.contains("THROW 51033"));
+        assertTrue(sql.contains("THROW 51034"));
+        assertTrue(sql.contains("ALTER COLUMN hotel_id BIGINT NOT NULL"));
+        assertTrue(sql.contains("FK_property_credit_note_line_hotel"));
+        assertTrue(sql.contains("hotel_id, credit_note_id, invoice_line_id"));
         assertFalse(sql.contains("DELETE FROM"));
         assertFalse(sql.contains("DROP TABLE"));
     }

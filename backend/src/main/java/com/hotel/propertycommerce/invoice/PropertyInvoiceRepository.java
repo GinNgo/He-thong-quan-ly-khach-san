@@ -21,6 +21,10 @@ public interface PropertyInvoiceRepository extends JpaRepository<PropertyInvoice
     boolean existsByReservationIdAndStatus(Long reservationId, PropertyInvoice.Status status);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select invoice from PropertyInvoice invoice where invoice.id = :id")
+    Optional<PropertyInvoice> findByIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select invoice from PropertyInvoice invoice "
             + "where invoice.id = :id and invoice.hotel.id = :hotelId")
     Optional<PropertyInvoice> findByIdForUpdate(

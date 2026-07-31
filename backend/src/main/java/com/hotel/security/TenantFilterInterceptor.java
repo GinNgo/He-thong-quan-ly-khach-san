@@ -39,7 +39,9 @@ public class TenantFilterInterceptor implements HandlerInterceptor {
             "checkoutOverrideTenantFilter",
             "propertyInvoiceTenantFilter",
             "propertyInvoiceLineTenantFilter",
-            "propertyInvoiceAllocationTenantFilter");
+            "propertyInvoiceAllocationTenantFilter",
+            "propertyCreditNoteTenantFilter",
+            "propertyCreditNoteLineTenantFilter");
 
     @PersistenceContext
     private EntityManager entityManager;

@@ -41,7 +41,9 @@ class TenantFilterArchitectureTest {
                 "checkoutOverrideTenantFilter",
                 "propertyInvoiceTenantFilter",
                 "propertyInvoiceLineTenantFilter",
-                "propertyInvoiceAllocationTenantFilter");
+                "propertyInvoiceAllocationTenantFilter",
+                "propertyCreditNoteTenantFilter",
+                "propertyCreditNoteLineTenantFilter");
         filters.forEach(filter -> assertTrue(source.contains("\"" + filter + "\""), () -> "Filter is not activated: " + filter));
     }
 
@@ -80,7 +82,9 @@ class TenantFilterArchitectureTest {
         Map<String, String> invoiceFilters = Map.of(
                 "PropertyInvoice.java", "propertyInvoiceTenantFilter",
                 "PropertyInvoiceLine.java", "propertyInvoiceLineTenantFilter",
-                "PropertyInvoicePaymentAllocation.java", "propertyInvoiceAllocationTenantFilter");
+                "PropertyInvoicePaymentAllocation.java", "propertyInvoiceAllocationTenantFilter",
+                "PropertyCreditNote.java", "propertyCreditNoteTenantFilter",
+                "PropertyCreditNoteLine.java", "propertyCreditNoteLineTenantFilter");
         Path invoiceRoot = Path.of("src/main/java/com/hotel/propertycommerce/invoice");
         invoiceFilters.forEach((file, filter) -> {
             try {
