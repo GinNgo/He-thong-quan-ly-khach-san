@@ -181,3 +181,37 @@ Final result: 5 passed with no failures, errors or skips. Coverage includes exac
 
 - The calculator is read-only and creates no financial mutation, migration, provider request or production effect.
 - Recovery is application-only: stop preview/checkout consumers and retain all immutable source evidence for diagnosis; no charge or ledger row is rewritten.
+
+# T074 Authoritative Checkout Preview
+
+## Scope
+
+- Added a read-only checkout preview that loads the reservation and recomputes the complete server-owned folio; the API accepts no caller-supplied amount or total.
+- Preview is limited to `CHECKED_IN` reservations and authorized property users with `CHECKOUT/VIEW`; cross-property reservations fail as not found.
+- Exact zero balance returns `SETTLED` and permits checkout. Positive balance returns `OUTSTANDING` with `OUTSTANDING_BALANCE`; negative balance returns `OVERPAID` with `OVERPAYMENT_REQUIRES_RESOLUTION`.
+- `requireSettled` applies the same authoritative calculation and stable financial errors for later atomic checkout orchestration.
+
+## Automated Validation
+
+Focused command from `backend/`:
+
+```powershell
+.\mvnw.cmd '-Dtest=CheckoutPreviewServiceTest,FolioCalculationServiceTest' -DforkCount=0 test
+```
+
+Result:
+
+- Checkout preview tests: 5 passed
+- Folio calculation regression: 5 passed
+- Total: 10 passed
+- Failures: 0
+- Errors: 0
+- Skipped: 0
+
+Coverage includes settled, outstanding and overpaid previews; invalid reservation state; missing permission; cross-property access; exact VND validation; authoritative charge/payment/refund calculation; and no caller-authoritative financial input.
+
+## Safety and Recovery
+
+- T074 is read-only and creates no invoice, checkout mutation, provider request, migration, production credential or real-money effect.
+- Debt and overpayment exceptions remain blocked until the explicit policy and evidence workflow in T075.
+- Recovery disables the preview consumer while retaining all append-only charge and ledger evidence; no financial row requires rollback or deletion.
