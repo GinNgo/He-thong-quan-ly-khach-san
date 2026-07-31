@@ -25,7 +25,8 @@ class FinancialMigrationIntegrationTest {
             "V29__financial_idempotency.sql",
             "V30__booking_deposit_policy_snapshot.sql",
             "V31__property_attempt_transfer_content_uniqueness.sql",
-            "V32__credit_note_line_tenant_ownership.sql");
+            "V32__credit_note_line_tenant_ownership.sql",
+            "V33__housekeeping_checkout_idempotency.sql");
 
     @Test
     void feature007MigrationsExistAndDeclareTenantIntegrity() throws IOException {
@@ -104,6 +105,21 @@ class FinancialMigrationIntegrationTest {
         assertTrue(sql.contains("ALTER COLUMN hotel_id BIGINT NOT NULL"));
         assertTrue(sql.contains("FK_property_credit_note_line_hotel"));
         assertTrue(sql.contains("hotel_id, credit_note_id, invoice_line_id"));
+        assertFalse(sql.contains("DELETE FROM"));
+        assertFalse(sql.contains("DROP TABLE"));
+    }
+
+    @Test
+    void housekeepingCheckoutMigrationAddsAUniqueTenantEffectKey() throws IOException {
+        String sql = Files.readString(
+                Path.of("src/main/resources/db/migration/V33__housekeeping_checkout_idempotency.sql"),
+                StandardCharsets.UTF_8);
+        assertTrue(sql.contains("ADD checkout_effect_key VARCHAR(120) NULL"));
+        assertTrue(sql.contains("HAVING COUNT_BIG(*) > 1"));
+        assertTrue(sql.contains("THROW 51035"));
+        assertTrue(sql.contains("CREATE UNIQUE INDEX UX_housekeeping_checkout_effect"));
+        assertTrue(sql.contains("hotel_id, checkout_effect_key"));
+        assertTrue(sql.contains("WHERE checkout_effect_key IS NOT NULL"));
         assertFalse(sql.contains("DELETE FROM"));
         assertFalse(sql.contains("DROP TABLE"));
     }

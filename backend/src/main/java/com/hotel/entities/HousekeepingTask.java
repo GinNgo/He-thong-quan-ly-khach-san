@@ -46,4 +46,7 @@ public class HousekeepingTask extends AuditableEntity {
 
     @Column(columnDefinition = "nvarchar(1000)")
     private String note;
+
+    @Column(name = "checkout_effect_key", length = 120)
+    private String checkoutEffectKey;
 }

@@ -13,6 +13,7 @@ import com.hotel.paymentprovider.domain.VndMoney;
 import com.hotel.paymentprovider.error.FinancialErrorCode;
 import com.hotel.paymentprovider.error.FinancialException;
 import com.hotel.propertycommerce.config.PropertyPaymentConfigurationRepository;
+import com.hotel.propertycommerce.checkout.CheckoutOperationsService;
 import com.hotel.propertycommerce.invoice.InvoiceFinalizationService;
 import com.hotel.propertycommerce.invoice.PropertyInvoice;
 import com.hotel.repositories.HotelServiceRepository;
@@ -71,6 +72,7 @@ class ReservationCheckoutTransactionTest {
     @Mock private ReservationHoldService reservationHoldService;
     @Mock private PropertyPaymentConfigurationRepository propertyPaymentConfigurationRepository;
     @Mock private InvoiceFinalizationService invoiceFinalizationService;
+    @Mock private CheckoutOperationsService checkoutOperationsService;
 
     @InjectMocks private ReservationService reservationService;
 
@@ -133,10 +135,8 @@ class ReservationCheckoutTransactionTest {
         when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
         when(invoiceFinalizationService.finalizeInvoice(any())).thenReturn(
                 new InvoiceFinalizationService.FinalizedInvoice(invoice, List.of(), List.of()));
-        when(reservationRoomRepository.findAssignedByReservationIdForUpdate(42L))
-                .thenReturn(List.of(assignment));
-        when(roomRepository.findAllByIdForUpdate(List.of(12L))).thenReturn(List.of(room));
-        when(housekeepingTaskRepository.findByRoomIdAndStatus(12L, "PENDING")).thenReturn(List.of());
+        when(checkoutOperationsService.apply(reservation)).thenReturn(
+                new CheckoutOperationsService.CheckoutOperationsResult(List.of(12L), 1, 1));
 
         CheckoutRequest request = new CheckoutRequest();
         request.setCheckoutOverrideId(77L);
@@ -147,18 +147,12 @@ class ReservationCheckoutTransactionTest {
         verify(invoiceFinalizationService).finalizeInvoice(commandCaptor.capture());
         assertThat(commandCaptor.getValue().reservationId()).isEqualTo(42L);
         assertThat(commandCaptor.getValue().checkoutOverrideId()).isEqualTo(77L);
-        assertThat(assignment.getStatus()).isEqualTo("RELEASED");
-        assertThat(assignment.getReleasedAt()).isNotNull();
-        assertThat(room.getStatus()).isEqualTo("DIRTY");
-        assertThat(room.getHousekeepingStatus()).isEqualTo("DIRTY");
         assertThat(reservation.getStatus()).isEqualTo("CHECKED_OUT");
         assertThat(result.getInvoiceId()).isEqualTo(88L);
         assertThat(result.getInvoiceCode()).isEqualTo("INV-3-42");
         assertThat(result.getInvoiceStatus()).isEqualTo("FINALIZED");
         assertThat(result.getDirtyRoomIds()).containsExactly(12L);
-        verify(reservationRoomRepository).saveAll(List.of(assignment));
-        verify(roomRepository).saveAll(List.of(room));
-        verify(housekeepingTaskRepository).save(any(HousekeepingTask.class));
+        verify(checkoutOperationsService).apply(reservation);
         verify(reservationRepository).saveAndFlush(reservation);
         verify(paymentRepository, never()).save(any());
     }
@@ -190,30 +184,42 @@ class ReservationCheckoutTransactionTest {
                         exception -> assertThat(exception.code()).isEqualTo(FinancialErrorCode.OUTSTANDING_BALANCE));
 
         verify(reservationRoomRepository, never()).findAssignedByReservationIdForUpdate(any());
-        verify(roomRepository, never()).saveAll(any());
-        verify(housekeepingTaskRepository, never()).save(any());
+        verify(checkoutOperationsService, never()).apply(any());
         verify(reservationRepository, never()).saveAndFlush(any());
         assertThat(reservation.getStatus()).isEqualTo("CHECKED_IN");
     }
 
     @Test
-    void missingLockedRoomFailsClosedBeforeReleaseOrHousekeeping() {
+    void operationalFailureLeavesReservationCheckedInForTransactionRollback() {
         when(reservationRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(reservation));
         when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
         when(invoiceFinalizationService.finalizeInvoice(any())).thenReturn(
                 new InvoiceFinalizationService.FinalizedInvoice(invoice, List.of(), List.of()));
-        when(reservationRoomRepository.findAssignedByReservationIdForUpdate(42L))
-                .thenReturn(List.of(assignment));
-        when(roomRepository.findAllByIdForUpdate(List.of(12L))).thenReturn(List.of());
+        when(checkoutOperationsService.apply(reservation))
+                .thenThrow(new FinancialException(FinancialErrorCode.CONCURRENT_MODIFICATION));
 
         assertThatThrownBy(() -> reservationService.checkout(42L, null))
                 .isInstanceOfSatisfying(FinancialException.class,
                         exception -> assertThat(exception.code()).isEqualTo(FinancialErrorCode.CONCURRENT_MODIFICATION));
 
-        assertThat(assignment.getStatus()).isEqualTo("ASSIGNED");
-        assertThat(room.getStatus()).isEqualTo("OCCUPIED");
-        verify(reservationRoomRepository, never()).saveAll(any());
-        verify(housekeepingTaskRepository, never()).save(any());
+        assertThat(reservation.getStatus()).isEqualTo("CHECKED_IN");
+        verify(reservationRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void completedCheckoutRetryReturnsExistingEvidenceWithoutSavingReservationAgain() {
+        reservation.setStatus("CHECKED_OUT");
+        when(reservationRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(reservation));
+        when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
+        when(invoiceFinalizationService.finalizeInvoice(any())).thenReturn(
+                new InvoiceFinalizationService.FinalizedInvoice(invoice, List.of(), List.of()));
+        when(checkoutOperationsService.apply(reservation)).thenReturn(
+                new CheckoutOperationsService.CheckoutOperationsResult(List.of(12L), 0, 0));
+
+        CheckoutResultDTO result = reservationService.checkout(42L, null);
+
+        assertThat(result.getReservationStatus()).isEqualTo("CHECKED_OUT");
+        assertThat(result.getDirtyRoomIds()).containsExactly(12L);
         verify(reservationRepository, never()).saveAndFlush(any());
     }
 }

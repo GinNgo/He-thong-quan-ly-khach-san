@@ -468,3 +468,49 @@ Result: 1 context test passed with no failures, errors or skips. Spring discover
 - T079 adds no migration and does not delete or rewrite legacy invoice/payment rows. It only stops creating new legacy checkout financial evidence.
 - Any unchecked persistence failure after invoice creation propagates through the same transaction so the invoice, assignment, room, housekeeping and reservation changes roll back together; exhaustive injected-boundary proof remains assigned to T084.
 - T080 remains responsible for strengthening dirty-room and housekeeping creation to exactly-once behavior under retries/concurrency. Until then, checkout is serialized by the reservation/assignment/room locks and retains the existing pending-task existence guard.
+
+# T080 Exactly-Once Checkout Operations
+
+## Scope
+
+- Added `CheckoutOperationsService` as a mandatory-participation (`Propagation.MANDATORY`) child of the locked checkout transaction.
+- The service locks all reservation assignments in `ASSIGNED` or `RELEASED` state and locks their rooms in stable ID order. Only `ASSIGNED` rows transition to `RELEASED`, receive one release timestamp, and move their room to `DIRTY`.
+- A retry after a committed `CHECKED_OUT` operation sees only `RELEASED` assignments and does not re-dirty a room, rewrite assignment evidence or create another housekeeping task. A missing release timestamp fails closed as concurrent/inconsistent state.
+- Added `housekeeping_tasks.checkout_effect_key` and unique tenant-leading index `UX_housekeeping_checkout_effect`; checkout-generated tasks use `CHECKOUT:{reservationId}:ROOM:{roomId}`. This protects the economic/operational effect if another caller bypasses the service contract.
+- `ReservationService` now delegates the operational phase to this service and permits a completed checkout retry to return the existing immutable invoice/room evidence without saving the reservation again.
+
+## Automated Validation
+
+Focused command from `backend/`:
+
+```powershell
+.\mvnw.cmd '-Dtest=CheckoutOperationsServiceTest,ReservationCheckoutTransactionTest,InvoiceFinalizationServiceTest,FinancialMigrationIntegrationTest' -DforkCount=0 test
+```
+
+Result:
+
+- Exactly-once operations/unit and transaction-boundary tests: 6 passed
+- Checkout orchestration/retry tests: 5 passed
+- Authoritative invoice finalization regression: 6 passed
+- Financial migration architecture through V33: 7 passed
+- Total: 24 passed
+- Failures: 0
+- Errors: 0
+- Skipped: 0
+
+Coverage includes initial dirty-room/task creation, completed retry without re-dirtying or duplicate task, existing effect-key reuse, cross-property denial, missing release evidence, mandatory transaction participation and orchestration rollback-before-reservation-save.
+
+Fresh Spring context command with a process-only test secret:
+
+```powershell
+$env:JWT_SECRET='test_secret_for_context_validation_only_32_chars'
+.\mvnw.cmd '-Dtest=BackendApplicationTests' -DforkCount=0 test
+```
+
+Result: pending final context run for V33 entity/repository discovery; no production database or migration execution was performed.
+
+## Safety and Forward Recovery
+
+- V33 is additive, repeat-safe and fails closed on duplicate non-null effect keys; it contains no delete/drop operation and remains subject to production migration approval.
+- Existing housekeeping rows receive null effect keys and remain untouched. If a fixture has duplicate pre-existing keys, resolve the source evidence in an approved maintenance window and rerun V33; do not delete tasks as a shortcut.
+- Application recovery disables checkout mutations while preserving reservation, invoice, assignment, room and housekeeping evidence. A failed transaction rolls back all changes together.

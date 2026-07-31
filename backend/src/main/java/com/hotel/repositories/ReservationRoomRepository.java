@@ -26,6 +26,19 @@ public interface ReservationRoomRepository extends JpaRepository<ReservationRoom
             """)
     List<ReservationRoom> findAssignedByReservationIdForUpdate(@Param("reservationId") Long reservationId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select assignment
+            from ReservationRoom assignment
+            join fetch assignment.room room
+            join assignment.reservationDetail detail
+            where detail.reservation.id = :reservationId
+              and assignment.status in ('ASSIGNED', 'RELEASED')
+            order by assignment.id
+            """)
+    List<ReservationRoom> findCheckoutAssignmentsByReservationIdForUpdate(
+            @Param("reservationId") Long reservationId);
+
     @Query("""
             select case when count(assignment) > 0 then true else false end
             from ReservationRoom assignment
