@@ -174,6 +174,26 @@ Result:
 - Angular/Vitest build: SUCCESS
 - Existing unrelated `NG8107` optional-chain warning remains in `client-layout.html`.
 
+## T069 Negative Browser Journeys
+
+Three Playwright scenarios verify that invalid dates render no booking form or mutation, a server capacity conflict creates no payment attempt, and client query/body price data never controls the deposit amount. An expired server attempt displays the authoritative amount and creates a fresh attempt/idempotency key without booking a second room.
+
+The browser contract also verifies stable denial for a forged simulator callback and resource-not-found semantics for a foreign attempt. Neither response exposes amount/receiver data or records a simulated financial effect. Real signature verification and cross-tenant ownership enforcement remain covered by T061-T063 backend contract/integration suites.
+
+Combined Playwright command from `frontend/`:
+
+```powershell
+.\node_modules\.bin\playwright.cmd test e2e/property-booking-payment.spec.ts e2e/property-booking-payment-negative.spec.ts --project=chromium --reporter=list
+```
+
+Result:
+
+- Test files: 2 passed
+- Tests: 4 passed
+- Failures: 0
+- Browser: Chromium
+- No real money, production credentials or production provider mode used.
+
 ## Remaining Work
 
 - T059-T064 are complete for legacy compatibility, provider contracts, callback concurrency, manual confirmation integration and the Angular payment client.
@@ -181,7 +201,8 @@ Result:
 - T066 is complete for accessible instructions, expiry, environment labeling, polling and safe terminal retry.
 - T067 is complete for panel state, retry, localization and no-mutation unit coverage.
 - T068 is complete for the browser booking/deposit, replay and concurrency contract.
-- T069 remains open for invalid date/capacity/price-tamper/expiry/signature/IDOR browser cases.
+- T069 is complete for invalid date/capacity/price-tamper/expiry/signature/IDOR browser cases.
+- User Story 2 tasks T050-T069 are complete; T070 begins Property Commerce folio and checkout work.
 
 ## Recovery
 
