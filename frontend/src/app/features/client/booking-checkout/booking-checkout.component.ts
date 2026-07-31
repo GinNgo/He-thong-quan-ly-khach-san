@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -22,6 +22,7 @@ export class BookingCheckoutComponent implements OnInit {
   private router = inject(Router);
   private clientApi = inject(ClientApiService);
   private propertyPaymentService = inject(PropertyPaymentService);
+  private changeDetector = inject(ChangeDetectorRef);
 
   roomTypeId: number = 0;
   roomTypeName = '';
@@ -115,11 +116,13 @@ export class BookingCheckoutComponent implements OnInit {
           // Pay at hotel: finish immediately
           this.isSubmitting = false;
           this.bookingSuccess = true;
+          this.changeDetector.markForCheck();
         }
       },
       error: (err) => {
         console.error('Error submitting booking', err);
         this.isSubmitting = false;
+        this.changeDetector.markForCheck();
         if (err?.status === 409) {
           this.errorMessage = 'Số phòng bạn chọn vừa hết. Vui lòng quay lại chọn phòng.';
           return;
@@ -222,6 +225,7 @@ export class BookingCheckoutComponent implements OnInit {
         this.paymentAttempt = attempt;
         this.isSubmitting = false;
         this.bookingSuccess = true;
+        this.changeDetector.markForCheck();
         if (attempt.redirectUrl) {
           window.location.href = attempt.redirectUrl;
         }
@@ -229,6 +233,7 @@ export class BookingCheckoutComponent implements OnInit {
       error: (err) => {
         console.error('Unable to create property payment attempt', err);
         this.isSubmitting = false;
+        this.changeDetector.markForCheck();
         this.errorMessage = err?.error?.message
           || 'Không thể kết nối đến cổng thanh toán.';
       },

@@ -120,6 +120,8 @@ describe('BookingCheckoutComponent', () => {
     paymentAttempt$.complete();
     expect(component.paymentAttempt?.expectedAmount).toBe(300000);
     expect(component.bookingSuccess).toBe(true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-property-payment-panel')).not.toBeNull();
   });
 
   it('retries the same attempt request without creating a second reservation', () => {

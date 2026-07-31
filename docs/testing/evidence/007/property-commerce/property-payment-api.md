@@ -141,13 +141,47 @@ Result:
 - Angular/Vitest build: SUCCESS
 - Existing unrelated `NG8107` optional-chain warning remains in `client-layout.html`.
 
+## T068 Browser Booking, Replay, and Concurrency Journey
+
+The Playwright journey opens checkout with a complete room-selection context, submits one booking, creates one server-priced deposit attempt and verifies the visible simulator environment, authoritative amount and pending-to-success polling transition. The submit button remains disabled during the booking mutation, and the harness asserts one reservation request and one attempt request with no client-authored total.
+
+The deterministic browser harness sends two equivalent simulator confirmations concurrently and one later replay. It records exactly one simulated effect and truthful replay responses. The actual database locking, callback idempotency and one-ledger-effect behavior remain covered by the real backend concurrency suite from T062; this browser task verifies the UI/network contract without real money or production credentials.
+
+Playwright command from `frontend/`:
+
+```powershell
+.\node_modules\.bin\playwright.cmd test e2e/property-booking-payment.spec.ts --project=chromium --reporter=line
+```
+
+Result:
+
+- Tests: 1 passed
+- Failures: 0
+- Browser: Chromium
+- Duration: 33.6 seconds
+
+Checkout regression command from `frontend/`:
+
+```powershell
+.\node_modules\.bin\ng.cmd test --watch=false --include "src/app/features/client/booking-checkout/booking-checkout.component.spec.ts"
+```
+
+Result:
+
+- Test files: 1 passed
+- Tests: 6 passed
+- Failures: 0
+- Angular/Vitest build: SUCCESS
+- Existing unrelated `NG8107` optional-chain warning remains in `client-layout.html`.
+
 ## Remaining Work
 
 - T059-T064 are complete for legacy compatibility, provider contracts, callback concurrency, manual confirmation integration and the Angular payment client.
 - T065 is complete for server-owned checkout attempt creation and safe retry identity.
 - T066 is complete for accessible instructions, expiry, environment labeling, polling and safe terminal retry.
 - T067 is complete for panel state, retry, localization and no-mutation unit coverage.
-- T068-T069 remain open for browser success/concurrency and negative journeys.
+- T068 is complete for the browser booking/deposit, replay and concurrency contract.
+- T069 remains open for invalid date/capacity/price-tamper/expiry/signature/IDOR browser cases.
 
 ## Recovery
 
