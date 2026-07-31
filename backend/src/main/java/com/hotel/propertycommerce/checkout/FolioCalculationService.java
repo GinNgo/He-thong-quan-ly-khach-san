@@ -27,6 +27,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -163,23 +164,32 @@ public class FolioCalculationService {
             BigDecimal room = money(fallback, "reservation room total");
             totals.room = totals.room.add(room);
             lines.add(new FolioLine("RESERVATION", reservation.getId(), "ROOM", "ROOM-STAY",
-                    "Room stay", room, room));
+                    "Room stay", null, BigDecimal.ONE, room, BigDecimal.ZERO, BigDecimal.ZERO,
+                    room, room, usageStart(reservation), usageEnd(reservation)));
             return;
         }
 
         BigDecimal detailTotal = BigDecimal.ZERO;
         for (ReservationDetail detail : details) {
             validateReservationOwner(reservation, detail == null ? null : detail.getReservation(), "Room detail");
-            BigDecimal subtotal = detail.getSubtotal();
-            if (subtotal == null) {
-                BigDecimal unitPrice = detail.getUnitPrice() != null ? detail.getUnitPrice() : detail.getPrice();
-                int quantity = detail.getQuantity() == null ? 1 : detail.getQuantity();
-                if (quantity <= 0) {
-                    throw new IllegalStateException("Room detail quantity must be positive.");
-                }
-                subtotal = money(unitPrice, "room detail unit price").multiply(BigDecimal.valueOf(quantity));
+            BigDecimal unitPrice = money(
+                    detail.getUnitPrice() != null ? detail.getUnitPrice() : detail.getPrice(),
+                    "room detail unit price");
+            int roomQuantity = detail.getQuantity() == null ? 1 : detail.getQuantity();
+            long nights = reservation.getCheckInDate() == null || reservation.getCheckOutDate() == null
+                    ? 1
+                    : ChronoUnit.DAYS.between(reservation.getCheckInDate(), reservation.getCheckOutDate());
+            if (roomQuantity <= 0 || nights <= 0) {
+                throw new IllegalStateException("Room detail quantity and stay duration must be positive.");
             }
-            subtotal = money(subtotal, "room detail subtotal");
+            BigDecimal invoiceQuantity = BigDecimal.valueOf(roomQuantity).multiply(BigDecimal.valueOf(nights));
+            BigDecimal calculatedSubtotal = unitPrice.multiply(invoiceQuantity);
+            BigDecimal subtotal = detail.getSubtotal() == null
+                    ? calculatedSubtotal
+                    : money(detail.getSubtotal(), "room detail subtotal");
+            if (calculatedSubtotal.compareTo(subtotal) != 0) {
+                throw new IllegalStateException("Room detail subtotal does not match room-night pricing.");
+            }
             detailTotal = detailTotal.add(subtotal);
             lines.add(new FolioLine(
                     "RESERVATION_DETAIL",
@@ -189,8 +199,15 @@ public class FolioCalculationService {
                             ? "ROOM-STAY" : "ROOM-TYPE:" + detail.getRoomType().getId(),
                     detail.getRoomType() == null || detail.getRoomType().getNameVi() == null
                             ? "Room stay" : detail.getRoomType().getNameVi(),
+                    null,
+                    invoiceQuantity,
+                    unitPrice,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
                     subtotal,
-                    subtotal));
+                    subtotal,
+                    usageStart(reservation),
+                    usageEnd(reservation)));
         }
         if (reservation.getDepositBookingTotal() != null
                 && money(reservation.getDepositBookingTotal(), "booking room snapshot").compareTo(detailTotal) != 0) {
@@ -225,8 +242,15 @@ public class FolioCalculationService {
                     "SERVICE",
                     item.getHotelService() == null ? "LEGACY-SERVICE" : item.getHotelService().getCode(),
                     item.getHotelService() == null ? "Legacy service" : item.getHotelService().getNameVi(),
+                    null,
+                    BigDecimal.valueOf(quantity),
+                    price,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
                     total,
-                    total));
+                    total,
+                    item.getUsedAt(),
+                    item.getUsedAt()));
         }
     }
 
@@ -428,8 +452,23 @@ public class FolioCalculationService {
                 line.getChargeType().name(),
                 line.getCode(),
                 line.getName(),
+                line.getDescription(),
+                line.getQuantity(),
+                line.getUnitPrice(),
+                line.getTaxAmount(),
+                line.getDiscountAmount(),
                 line.getTotalAmount(),
-                signedEffect);
+                signedEffect,
+                line.getServiceUsedAt(),
+                line.getServiceUsedAt());
+    }
+
+    private LocalDateTime usageStart(Reservation reservation) {
+        return reservation.getCheckInDate() == null ? null : reservation.getCheckInDate().atStartOfDay();
+    }
+
+    private LocalDateTime usageEnd(Reservation reservation) {
+        return reservation.getCheckOutDate() == null ? null : reservation.getCheckOutDate().atStartOfDay();
     }
 
     private BigDecimal quantity(BigDecimal value) {
@@ -554,8 +593,15 @@ public class FolioCalculationService {
             String category,
             String code,
             String name,
+            String description,
+            BigDecimal quantity,
+            BigDecimal unitPrice,
+            BigDecimal taxAmount,
+            BigDecimal discountAmount,
             BigDecimal snapshotAmount,
-            BigDecimal signedEffect) {
+            BigDecimal signedEffect,
+            LocalDateTime usageStartedAt,
+            LocalDateTime usageEndedAt) {
     }
 
     public record Folio(

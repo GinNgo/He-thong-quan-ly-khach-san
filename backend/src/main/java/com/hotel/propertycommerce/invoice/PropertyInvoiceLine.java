@@ -137,6 +137,16 @@ public class PropertyInvoiceLine {
         return line;
     }
 
+    public BigDecimal economicEffect() {
+        if (lineType == LineType.DISCOUNT) {
+            return totalAmount.negate();
+        }
+        if (lineType == LineType.ADJUSTMENT) {
+            return unitPrice.multiply(quantity).add(taxAmount).subtract(discountAmount).negate();
+        }
+        return totalAmount;
+    }
+
     @PrePersist
     void created() {
         validate();
@@ -180,6 +190,12 @@ public class PropertyInvoiceLine {
             return;
         }
         expected = unitPrice.multiply(quantity).add(taxAmount).subtract(discountAmount);
+        if (lineType == LineType.ADJUSTMENT) {
+            if (expected.signum() == 0 || expected.abs().compareTo(totalAmount) != 0) {
+                throw new IllegalArgumentException("Adjustment invoice lines must reverse one exact charge snapshot.");
+            }
+            return;
+        }
         if (expected.signum() < 0 || expected.compareTo(totalAmount) != 0) {
             throw new IllegalArgumentException("Invoice line total does not match its immutable price snapshot.");
         }

@@ -316,3 +316,55 @@ Result: 1 context test passed with no failures, errors or skips. Spring Data dis
 - T076 performs no invoice finalization, checkout mutation, provider call, production credential use, real-money operation or production database change.
 - The schema remains the additive V22 migration from T015; no legacy invoice data is deleted or rewritten.
 - Recovery disables new Property Commerce invoice creation while retaining all finalized snapshots and allocations as immutable financial evidence.
+
+# T077 Locked Invoice Finalization and Payment Allocation
+
+## Scope
+
+- Added transactional invoice finalization that requires `INVOICE/CREATE`, locks the reservation, validates tenant access and accepts only reservation/override identifiers rather than caller-authoritative money.
+- Finalization returns an existing finalized invoice on retry; otherwise the reservation must remain `CHECKED_IN` and its folio is recalculated after the lock.
+- A zero balance finalizes normally. Positive debt requires a persisted tenant/reservation-bound `DEBT` override whose amount still equals the locked folio balance. Negative balance remains blocked with `OVERPAYMENT_REQUIRES_RESOLUTION`.
+- Invoice numbering is deterministic per property/reservation, and customer/property identity is serialized into secret-safe immutable JSON snapshots at finalization time.
+
+## Line and Allocation Evidence
+
+- Enriched authoritative folio lines with description, quantity, unit price, tax, discount and usage dates so invoice creation never reloads mutable room/service catalog pricing.
+- Room snapshots use exact room-night quantity; legacy service snapshots preserve server-stored price/quantity/usage; append-only charge and reversal lines preserve their complete monetary evidence.
+- Invoice finalization verifies every persisted line's economic effect against the signed folio effect and verifies the sum of all lines equals gross charges to one VND.
+- Every successful Property Commerce debit is allocated exactly once at its immutable transaction amount, including deposits. Refunds/credits are excluded from allocation and retained in the invoice refund/credit header snapshot.
+- A legacy successful payment without authoritative ledger rows fails closed instead of producing an invoice with untraceable payment allocation.
+- Finalization appends a redacted audit event with total, paid, refund/credit, balance, line/allocation counts, source version and debt-override identity where applicable.
+
+## Automated Validation
+
+Combined command from `backend/`:
+
+```powershell
+.\mvnw.cmd '-Dtest=InvoiceFinalizationServiceTest,PropertyInvoiceModelTest,FolioCalculationServiceTest,CheckoutOverrideServiceTest' -DforkCount=0 test
+```
+
+Result:
+
+- Invoice finalization tests: 6 passed
+- Invoice model regression: 7 passed
+- Folio calculation regression: 5 passed
+- Checkout override regression: 7 passed
+- Total: 25 passed
+- Failures: 0
+- Errors: 0
+- Skipped: 0
+
+Fresh Spring context command with a process-only test secret:
+
+```powershell
+$env:JWT_SECRET='test_secret_for_context_validation_only_32_chars'
+.\mvnw.cmd '-Dtest=BackendApplicationTests' -DforkCount=0 test
+```
+
+Result: 1 context test passed with no failures, errors or skips. Spring discovered 55 repositories and validated the finalization service plus the tenant-safe override lookup query.
+
+## Safety and Recovery
+
+- No room, housekeeping or reservation-status mutation is included yet; those atomic checkout boundaries remain assigned to T079/T080.
+- No production credential, provider request, real-money operation, production mode or production database mutation was used.
+- Finalized invoices, lines and allocations are immutable. Recovery disables new finalization while preserving existing evidence; transaction rollback removes a partially attempted invoice aggregate if any persistence boundary fails.
