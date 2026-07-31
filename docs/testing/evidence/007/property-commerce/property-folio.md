@@ -533,3 +533,13 @@ $env:JWT_SECRET='test_secret_for_context_validation_only_32_chars'
 ```
 
 Results: compilation succeeded; Spring context test passed (`1/1`) with `57` JPA repositories and all T081 controllers/services loaded. No production payment, production database migration or real email provider was used.
+
+# T082 Folio and Charge Unit Evidence
+
+Focused command:
+
+```powershell
+.\mvnw.cmd '-Dtest=FolioCalculationServiceTest,ReservationChargeServiceTest,SurchargeServiceTest' -DforkCount=0 test
+```
+
+Result: `15/15` tests passed with zero failures, errors or skips. Coverage includes authoritative folio reconciliation, duplicate reversal/cross-property rejection, server-priced service snapshots, append-only corrections, typed surcharges and separate approval for negative adjustments.
