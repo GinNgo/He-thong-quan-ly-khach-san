@@ -563,3 +563,13 @@ Focused command:
 ```
 
 Result: `3/3` tests passed. Injected housekeeping, assignment and room persistence failures propagate without advancing later writes; the mandatory outer transaction remains responsible for rolling back earlier evidence.
+
+# T085 Invoice Immutability Evidence
+
+Focused command:
+
+```powershell
+.\mvnw.cmd '-Dtest=InvoiceImmutabilityIntegrationTest' -DforkCount=0 test
+```
+
+Result: `3/3` tests passed. Finalized invoices, invoice lines, payment allocations, credit notes and credit-note lines reject update/delete operations; payment allocation and post-finalization credit evidence remain separate append-only records.
