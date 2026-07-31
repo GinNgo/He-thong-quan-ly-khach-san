@@ -27,6 +27,23 @@ public interface PropertyPaymentAttemptRepository extends JpaRepository<Property
             com.hotel.paymentprovider.config.PaymentEnvironmentGuard.PaymentEnvironment environment,
             String providerEventId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select attempt from PropertyPaymentAttempt attempt "
+            + "where attempt.provider = :provider "
+            + "and (attempt.publicId = :reference or attempt.providerOrderReference = :reference)")
+    Optional<PropertyPaymentAttempt> findByProviderAndReferenceForUpdate(
+            @Param("provider") String provider,
+            @Param("reference") String reference);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select attempt from PropertyPaymentAttempt attempt "
+            + "where attempt.provider = :provider and attempt.environment = :environment "
+            + "and attempt.providerEventId = :providerEventId")
+    Optional<PropertyPaymentAttempt> findByProviderEventForUpdate(
+            @Param("provider") String provider,
+            @Param("environment") com.hotel.paymentprovider.config.PaymentEnvironmentGuard.PaymentEnvironment environment,
+            @Param("providerEventId") String providerEventId);
+
     List<PropertyPaymentAttempt> findByReservationIdOrderByCreatedAtAsc(Long reservationId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

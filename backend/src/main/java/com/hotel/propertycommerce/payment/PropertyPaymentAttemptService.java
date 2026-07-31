@@ -141,9 +141,13 @@ public class PropertyPaymentAttemptService {
         String transferContent = transferContent(configuration, method, reservation.getId(), publicId);
         ReceiverSnapshot receiver = receiverSnapshot(configuration, selectedMethod);
         String receiverJson = writeReceiver(receiver);
-        String provider = selectedMethod.getProvider() == null || selectedMethod.getProvider().isBlank()
+        PaymentEnvironment environment = PaymentEnvironment.valueOf(configuration.getEnvironment());
+        String configuredProvider = selectedMethod.getProvider() == null || selectedMethod.getProvider().isBlank()
                 ? method
                 : normalizeCode(selectedMethod.getProvider(), "provider");
+        String provider = environment == PaymentEnvironment.SIMULATOR && !MANUAL_METHODS.contains(method)
+                ? "SIMULATOR"
+                : configuredProvider;
 
         PropertyPaymentAttempt attempt = PropertyPaymentAttempt.create(
                 publicId,
@@ -154,13 +158,16 @@ public class PropertyPaymentAttemptService {
                 command.purpose(),
                 method,
                 provider,
-                PaymentEnvironment.valueOf(configuration.getEnvironment()),
+                environment,
                 expectedAmount,
                 transferContent,
                 receiverJson,
                 idempotencyKey,
                 acquired.record().getRequestHash(),
                 expiresAt);
+        if (!MANUAL_METHODS.contains(method)) {
+            attempt.bindProviderOrderReference(publicId);
+        }
         attempt.transitionTo(initialState(method), now, null, null);
         attempt = attemptRepository.saveAndFlush(attempt);
         idempotencyService.complete(acquired.recordId(), 201, attempt.getPublicId());

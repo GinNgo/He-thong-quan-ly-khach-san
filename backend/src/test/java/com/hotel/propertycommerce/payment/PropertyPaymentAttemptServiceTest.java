@@ -130,6 +130,39 @@ class PropertyPaymentAttemptServiceTest {
     }
 
     @Test
+    void onlineMethodInSimulatorModeUsesSignedSimulatorProviderAndServerReference() {
+        Reservation reservation = reservation();
+        PropertyPaymentConfiguration configuration = configuration(reservation.getHotel(), true);
+        PropertyPaymentConfigurationMethod onlineMethod = new PropertyPaymentConfigurationMethod(
+                "MOMO", true, "MOMO", null);
+        ReflectionTestUtils.setField(onlineMethod, "configuration", configuration);
+        ReflectionTestUtils.setField(onlineMethod, "hotel", reservation.getHotel());
+        configuration.getMethods().add(onlineMethod);
+        acquired("simulator-online-hash");
+        when(propertyAccessService.currentUser()).thenReturn(reservation.getUser());
+        when(reservationRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(reservation));
+        when(configurationRepository.findByHotelId(3L)).thenReturn(Optional.of(configuration));
+        when(summaryService.calculate(42L)).thenReturn(summary(0, 1_200_000));
+        when(attemptRepository.saveAndFlush(any(PropertyPaymentAttempt.class))).thenAnswer(invocation -> {
+            PropertyPaymentAttempt attempt = invocation.getArgument(0);
+            ReflectionTestUtils.setField(attempt, "id", 72L);
+            return attempt;
+        });
+
+        PropertyPaymentAttemptService.AttemptResponse response = service.create(
+                new PropertyPaymentAttemptService.CreateCommand(
+                        42L, PropertyPaymentAttempt.Purpose.DEPOSIT, "MOMO",
+                        "idem-simulator-online", "correlation-online"));
+
+        assertEquals(PaymentState.PENDING, response.status());
+        org.mockito.ArgumentCaptor<PropertyPaymentAttempt> captor =
+                org.mockito.ArgumentCaptor.forClass(PropertyPaymentAttempt.class);
+        verify(attemptRepository).saveAndFlush(captor.capture());
+        assertEquals("SIMULATOR", captor.getValue().getProvider());
+        assertEquals(response.publicId(), captor.getValue().getProviderOrderReference());
+    }
+
+    @Test
     void completedIdempotencyReplayReturnsTheOriginalAttemptWithoutRecalculation() throws Exception {
         Reservation reservation = reservation();
         PropertyPaymentConfiguration configuration = configuration(reservation.getHotel(), true);
