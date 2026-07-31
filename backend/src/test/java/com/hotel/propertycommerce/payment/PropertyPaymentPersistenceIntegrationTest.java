@@ -6,6 +6,8 @@ import com.hotel.entities.User;
 import com.hotel.paymentprovider.config.PaymentEnvironmentGuard.PaymentEnvironment;
 import com.hotel.paymentprovider.domain.FinancialStates.PaymentState;
 import com.hotel.paymentprovider.domain.VndMoney;
+import com.hotel.propertycommerce.booking.BookingFinancialSummaryRepository;
+import com.hotel.propertycommerce.booking.BookingFinancialSummaryService;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.ReservationRepository;
 import com.hotel.repositories.UserRepository;
@@ -17,6 +19,7 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 
@@ -30,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DataJpaTest
 @ContextConfiguration(classes = PropertyPaymentPersistenceIntegrationTest.TestApplication.class)
+@Import(BookingFinancialSummaryService.class)
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:h2:mem:property-payment-persistence;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
         "spring.jpa.hibernate.ddl-auto=create-drop",
@@ -49,6 +53,12 @@ class PropertyPaymentPersistenceIntegrationTest {
 
     @org.springframework.beans.factory.annotation.Autowired
     private PropertyFinancialTransactionRepository transactionRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private BookingFinancialSummaryRepository summaryRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private BookingFinancialSummaryService summaryService;
 
     @org.springframework.beans.factory.annotation.Autowired
     private UserRepository userRepository;
@@ -80,11 +90,14 @@ class PropertyPaymentPersistenceIntegrationTest {
                 first, firstReservation, firstAttempt));
         transactionRepository.saveAndFlush(transaction("transaction-second", "effect-second",
                 second, secondReservation, null));
+        summaryService.refresh(firstReservation.getId());
+        summaryService.refresh(secondReservation.getId());
         entityManager.clear();
 
         Session session = entityManager.unwrap(Session.class);
         session.enableFilter("propertyPaymentAttemptTenantFilter").setParameter("hotelId", first.getId());
         session.enableFilter("propertyFinancialTransactionTenantFilter").setParameter("hotelId", first.getId());
+        session.enableFilter("bookingFinancialSummaryTenantFilter").setParameter("hotelId", first.getId());
 
         assertEquals(1, attemptRepository.findAll().size());
         assertEquals("attempt-first", attemptRepository.findAll().getFirst().getPublicId());
@@ -92,6 +105,8 @@ class PropertyPaymentPersistenceIntegrationTest {
         assertEquals(1, transactionRepository.findAll().size());
         assertEquals("transaction-first", transactionRepository.findAll().getFirst().getPublicId());
         assertTrue(transactionRepository.findByIdempotencyIdentity("effect-second").isEmpty());
+        assertEquals(1, summaryRepository.findAll().size());
+        assertTrue(summaryRepository.findByReservationId(secondReservation.getId()).isEmpty());
     }
 
     private PropertyPaymentAttempt attempt(

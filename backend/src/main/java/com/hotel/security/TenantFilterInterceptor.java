@@ -33,7 +33,8 @@ public class TenantFilterInterceptor implements HandlerInterceptor {
             "propertyPaymentConfigurationTenantFilter",
             "propertyPaymentMethodTenantFilter",
             "propertyPaymentAttemptTenantFilter",
-            "propertyFinancialTransactionTenantFilter");
+            "propertyFinancialTransactionTenantFilter",
+            "bookingFinancialSummaryTenantFilter");
 
     @PersistenceContext
     private EntityManager entityManager;

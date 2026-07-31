@@ -225,8 +225,16 @@ public class PropertyFinancialTransaction {
         if (transactionType == TransactionType.REFUND && originalTransaction == null) {
             throw new IllegalArgumentException("Refund transactions require an original transaction.");
         }
+        if (transactionType == TransactionType.REFUND && direction != Direction.CREDIT) {
+            throw new IllegalArgumentException("Refund transactions must credit the property ledger.");
+        }
         if (transactionType != TransactionType.REFUND && originalTransaction != null) {
             throw new IllegalArgumentException("Only refund transactions may reference an original transaction.");
+        }
+        if (transactionType != TransactionType.REFUND
+                && transactionType != TransactionType.MANUAL_ADJUSTMENT
+                && direction != Direction.DEBIT) {
+            throw new IllegalArgumentException("Successful property payments must debit the property ledger.");
         }
     }
 
