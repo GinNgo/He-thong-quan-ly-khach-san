@@ -55,13 +55,36 @@ Additional security regression command:
 
 Result: 5 tests passed with no failures, errors or skips.
 
+## T064 Angular API Client
+
+Added a typed `PropertyPaymentService` for:
+
+- booking financial summary reads;
+- server-priced payment-attempt creation;
+- safe attempt status polling;
+- idempotent customer/staff cancellation;
+- permissioned management manual confirmation.
+
+The create-attempt type exposes only `purpose` and `method`; it cannot carry an amount, property ID, receiver account, environment or merchant identity. Mutation methods accept optional idempotency/correlation headers while remaining compatible with the shared financial interceptor that supplies missing identities.
+
+Focused command from `frontend/`:
+
+```powershell
+.\node_modules\.bin\ng.cmd test --watch=false --include "src/app/core/services/property-payment.service.spec.ts"
+```
+
+Result:
+
+- Test files: 1 passed
+- Tests: 5 passed
+- Failures: 0
+- Angular/Vitest build: SUCCESS
+- Existing unrelated `NG8107` optional-chain warning remains in `client-layout.html`.
+
 ## Remaining Work
 
-- T059 remains open for read-only legacy payment compatibility during migration.
-- T061 remains open for the complete provider signature/merchant/amount/currency/reference/expiry contract matrix.
-- T062 remains open for database-backed replay and concurrent callback integration tests.
-- T063 remains open for database-backed manual confirmation permission/audit/isolation tests.
-- T064-T068 remain open for the Angular payment client, accessible payment panel and browser journeys.
+- T059-T064 are complete for legacy compatibility, provider contracts, callback concurrency, manual confirmation integration and the Angular payment client.
+- T065-T069 remain open for checkout integration, the accessible payment panel and browser journeys.
 
 ## Recovery
 
