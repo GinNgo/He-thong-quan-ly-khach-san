@@ -553,3 +553,13 @@ Focused command:
 ```
 
 Result: `3/3` tests passed. The boundary blocks underpayment with `OUTSTANDING_BALANCE`, blocks overpayment with `OVERPAYMENT_REQUIRES_RESOLUTION`, and requires a separate approved debt override before checkout can proceed.
+
+# T084 Checkout Rollback Evidence
+
+Focused command:
+
+```powershell
+.\mvnw.cmd '-Dtest=CheckoutRollbackIntegrationTest' -DforkCount=0 test
+```
+
+Result: `3/3` tests passed. Injected housekeeping, assignment and room persistence failures propagate without advancing later writes; the mandatory outer transaction remains responsible for rolling back earlier evidence.
