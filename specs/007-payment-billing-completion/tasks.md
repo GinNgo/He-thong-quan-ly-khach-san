@@ -187,7 +187,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 - [x] T116 [US5] Adapt provider refund attempts/callbacks to the shared SPI in `backend/src/main/java/com/hotel/paymentprovider/refund/` (FR-025, FR-041)
 - [x] T117 [US5] Expose property/platform refund request, approval and status endpoints in `backend/src/main/java/com/hotel/propertycommerce/refund/PropertyRefundController.java` and `backend/src/main/java/com/hotel/platformbilling/refund/PlatformRefundController.java` (FR-024-FR-026, FR-033)
 - [x] T118 [P] [US5] Add refundable-balance, transition and policy unit tests in `backend/src/test/java/com/hotel/propertycommerce/refund/PropertyRefundServiceTest.java` and `backend/src/test/java/com/hotel/platformbilling/refund/PlatformRefundServiceTest.java` (SC-007)
-- [ ] T119 [US5] Add concurrent/replayed/excessive refund integration tests in `backend/src/test/java/com/hotel/integration/FinancialRefundConcurrencyIntegrationTest.java` (SC-003, SC-007)
+- [x] T119 [US5] Add concurrent/replayed/excessive refund integration tests in `backend/src/test/java/com/hotel/integration/FinancialRefundConcurrencyIntegrationTest.java` (SC-003, SC-007)
 - [ ] T120 [US5] Add cross-property, wrong-context and manual-refund permission tests in `backend/src/test/java/com/hotel/integration/FinancialRefundSecurityIntegrationTest.java` (SC-011)
 - [ ] T121 [P] [US5] Add typed property/platform refund API clients in `frontend/src/app/core/services/refund.service.ts` (FR-024-FR-026, FR-033)
 - [ ] T122 [US5] Build customer and property-role refund status/request UI in `frontend/src/app/features/client/profile/refund-history.component.ts` and `frontend/src/app/features/admin/reservation-management/refund-management.component.ts` (FR-024-FR-026)
