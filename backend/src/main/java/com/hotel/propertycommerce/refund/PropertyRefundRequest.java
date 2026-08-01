@@ -150,14 +150,14 @@ public class PropertyRefundRequest {
     }
 
     public void markSucceeded(VndMoney amount, LocalDateTime completedAt) {
-        requireStatus(RefundState.PENDING_PROVIDER, RefundState.REQUESTED, RefundState.PENDING_APPROVAL);
+        requireStatus(RefundState.PENDING_PROVIDER);
         succeededAmount = positive(amount);
         status = RefundState.SUCCEEDED;
         this.completedAt = Objects.requireNonNull(completedAt, "completedAt must not be null");
     }
 
     public void markFailed(LocalDateTime completedAt) {
-        requireStatus(RefundState.PENDING_PROVIDER, RefundState.REQUESTED, RefundState.PENDING_APPROVAL);
+        requireStatus(RefundState.PENDING_PROVIDER);
         status = RefundState.FAILED;
         this.completedAt = Objects.requireNonNull(completedAt, "completedAt must not be null");
     }
