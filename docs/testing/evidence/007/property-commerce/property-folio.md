@@ -628,3 +628,15 @@ npm run build
 ```
 
 Results: the invoice API client suite passed `4/4`, invoice access/list/PDF/email backend tests passed `6/6`, and the production build completed successfully. Existing CSS budget and CommonJS WebSocket warnings remain unrelated to T089.
+
+# T090 Checkout Component State Evidence
+
+Added dedicated Angular component coverage for the management checkout workspace. The suite verifies that only a settled authoritative folio enables checkout, outstanding debt requires a server-issued override, overpayment remains blocked, the override identifier is the only exception value sent into checkout, and a successful atomic checkout emits the finalized invoice result.
+
+Focused command from `frontend/`:
+
+```powershell
+.\node_modules\.bin\ng.cmd test --watch=false --include "src/app/features/admin/reservation-management/reservation-checkout.component.spec.ts"
+```
+
+Result: `5/5` tests passed with zero failures. The existing unrelated `NG8107` optional-chain warning in `client-layout.html` remains. No production credential, provider request, real-money operation, migration or production database mutation was used.
