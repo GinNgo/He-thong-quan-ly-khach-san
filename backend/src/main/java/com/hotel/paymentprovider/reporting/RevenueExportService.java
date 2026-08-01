@@ -75,11 +75,15 @@ public class RevenueExportService {
         lines.add(row("context", report.context(), "basis", report.basis(), "checksum", checksum));
         lines.add(row("from", report.filters().fromInclusive(), "to", report.filters().toExclusive(),
                 "zone", report.filters().zoneId()));
+        lines.add(row("propertyId", report.filters().propertyId(), "provider", report.filters().provider(),
+                "method", report.filters().method(), "transactionType", report.filters().transactionType(),
+                "roomType", report.filters().roomType(), "planCode", report.filters().planCode()));
         lines.add(row("grossRevenue", report.totals().grossRevenue(), "refunds", report.totals().refunds(),
                 "credits", report.totals().credits(), "netRevenue", report.totals().netRevenue(),
                 "cashCollected", report.totals().cashCollected(),
                 "invoicedRevenue", report.totals().invoicedRevenue(),
-                "unpaidBalance", report.totals().unpaidBalance()));
+                "unpaidBalance", report.totals().unpaidBalance(),
+                "heldDeposits", report.totals().heldDeposits()));
         lines.add(row("successfulTransactionCount", report.totals().successfulTransactionCount(),
                 "failedTransactionCount", report.totals().failedTransactionCount(),
                 "unreconciledTransactionCount", report.totals().unreconciledTransactionCount()));
@@ -153,10 +157,26 @@ public class RevenueExportService {
         text.add("Context: " + report.context());
         text.add("Basis: " + report.basis());
         text.add("Checksum: " + checksum);
+        text.add("From: " + report.filters().fromInclusive());
+        text.add("To: " + report.filters().toExclusive());
+        text.add("Zone: " + report.filters().zoneId());
+        text.add("Property: " + report.filters().propertyId());
+        text.add("Provider: " + report.filters().provider());
+        text.add("Method: " + report.filters().method());
+        text.add("Transaction type: " + report.filters().transactionType());
+        text.add("Room type: " + report.filters().roomType());
+        text.add("Plan: " + report.filters().planCode());
         text.add("Gross VND: " + report.totals().grossRevenue());
         text.add("Refunds VND: " + report.totals().refunds());
         text.add("Credits VND: " + report.totals().credits());
         text.add("Net VND: " + report.totals().netRevenue());
+        text.add("Cash collected VND: " + report.totals().cashCollected());
+        text.add("Invoiced VND: " + report.totals().invoicedRevenue());
+        text.add("Unpaid VND: " + report.totals().unpaidBalance());
+        text.add("Held deposits VND: " + report.totals().heldDeposits());
+        text.add("Successful transactions: " + report.totals().successfulTransactionCount());
+        text.add("Failed transactions: " + report.totals().failedTransactionCount());
+        text.add("Unreconciled transactions: " + report.totals().unreconciledTransactionCount());
         text.add("Rows: " + report.totalRowCount());
         report.rows().forEach(row -> text.add(row.publicId() + " | " + row.transactionType() + " | " + row.netAmount()));
         return simplePdf(text);
