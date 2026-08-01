@@ -209,6 +209,14 @@ public class PlatformPaymentAttempt {
         status = Status.EXPIRED;
     }
 
+    public void cancel(LocalDateTime completedAt) {
+        if (status != Status.CREATED && status != Status.PENDING) {
+            throw new IllegalStateException("Only created or pending attempts can be cancelled.");
+        }
+        this.completedAt = Objects.requireNonNull(completedAt, "completedAt must not be null");
+        status = Status.CANCELLED;
+    }
+
     public boolean terminal() {
         return status == Status.SUCCESS || status == Status.FAILED || status == Status.CANCELLED
                 || status == Status.REFUNDED || status == Status.EXPIRED;
