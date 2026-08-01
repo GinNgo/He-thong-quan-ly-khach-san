@@ -13,5 +13,7 @@ public interface PlatformPaymentConfigurationRepository
             String provider,
             PaymentEnvironment environment);
 
+    List<PlatformPaymentConfiguration> findByProviderAndEnabledTrueOrderByEnvironmentAsc(String provider);
+
     List<PlatformPaymentConfiguration> findByEnabledTrueOrderByProviderAscEnvironmentAsc();
 }
