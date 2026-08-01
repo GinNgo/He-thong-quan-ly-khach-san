@@ -21,6 +21,7 @@ import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.ParamDef;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Getter
 @Entity
@@ -93,5 +94,34 @@ public class PropertyRefundAttempt {
         attempt.status = RefundState.REQUESTED;
         attempt.requestedAt = requestedAt;
         return attempt;
+    }
+
+    public void markPending(String providerReference) {
+        if (status != RefundState.REQUESTED) throw new IllegalStateException("Refund attempt is not new.");
+        this.providerReference = requireText(providerReference, "providerReference");
+        status = RefundState.PENDING_PROVIDER;
+    }
+
+    public void markSucceeded(String providerEventId, LocalDateTime completedAt) {
+        if (status == RefundState.SUCCEEDED) return;
+        if (status != RefundState.PENDING_PROVIDER) throw new IllegalStateException("Refund attempt is not pending provider.");
+        this.providerEventId = requireText(providerEventId, "providerEventId");
+        status = RefundState.SUCCEEDED;
+        this.completedAt = Objects.requireNonNull(completedAt, "completedAt must not be null");
+    }
+
+    public void markFailed(String failureCode, boolean retryable, LocalDateTime completedAt) {
+        if (status != RefundState.PENDING_PROVIDER && status != RefundState.REQUESTED) {
+            throw new IllegalStateException("Refund attempt cannot fail from " + status + ".");
+        }
+        this.failureCode = failureCode == null || failureCode.isBlank() ? null : failureCode.trim();
+        this.retryable = retryable;
+        status = RefundState.FAILED;
+        this.completedAt = Objects.requireNonNull(completedAt, "completedAt must not be null");
+    }
+
+    private static String requireText(String value, String field) {
+        if (value == null || value.isBlank()) throw new IllegalArgumentException(field + " must not be blank.");
+        return value.trim();
     }
 }

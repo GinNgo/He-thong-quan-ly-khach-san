@@ -162,6 +162,18 @@ public class PlatformRefundService {
         return result(refund, refundableBalance(original), false, true);
     }
 
+    @Transactional
+    public RefundResult fail(String refundPublicId, String correlationId) {
+        PlatformRefundRequest refund = lockedRequest(refundPublicId);
+        requirePolicy(refund.getPolicyVersion());
+        String previous = refund.getStatus().name();
+        refund.markFailed(now());
+        requestRepository.saveAndFlush(refund);
+        audit(refund, null, previous, refund.getStatus().name(), "Platform refund failed",
+                correlationId, Map.of("amount", refund.getRequestedAmount(), "policyVersion", refund.getPolicyVersion()));
+        return result(refund, refundableBalance(refund.getOriginalTransaction()), false, true);
+    }
+
     @Transactional(readOnly = true)
     public RefundResult get(String refundPublicId) {
         PlatformRefundRequest refund = requestRepository.findByPublicId(requireText(refundPublicId, "refundId"))

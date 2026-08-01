@@ -18,4 +18,10 @@ public interface PropertyRefundAttemptRepository extends JpaRepository<PropertyR
     Optional<PropertyRefundAttempt> findForUpdate(
             @Param("requestId") Long requestId,
             @Param("attemptNumber") Integer attemptNumber);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from PropertyRefundAttempt a where upper(a.provider) = upper(:provider) and a.providerReference = :reference")
+    Optional<PropertyRefundAttempt> findByProviderAndReferenceForUpdate(
+            @Param("provider") String provider,
+            @Param("reference") String reference);
 }

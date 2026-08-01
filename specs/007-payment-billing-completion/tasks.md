@@ -184,7 +184,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 - [x] T113 [P] [US5] Implement platform refund aggregate/repositories isolated from Property Commerce in `backend/src/main/java/com/hotel/platformbilling/refund/` (FR-025, FR-033)
 - [x] T114 [US5] Implement locked refundable-balance validation and exactly-once property refund effects in `backend/src/main/java/com/hotel/propertycommerce/refund/PropertyRefundService.java` (FR-024-FR-026)
 - [x] T115 [US5] Implement platform refund processing with approved entitlement-policy gate in `backend/src/main/java/com/hotel/platformbilling/refund/PlatformRefundService.java` (FR-032, FR-033)
-- [ ] T116 [US5] Adapt provider refund attempts/callbacks to the shared SPI in `backend/src/main/java/com/hotel/paymentprovider/refund/` (FR-025, FR-041)
+- [x] T116 [US5] Adapt provider refund attempts/callbacks to the shared SPI in `backend/src/main/java/com/hotel/paymentprovider/refund/` (FR-025, FR-041)
 - [ ] T117 [US5] Expose property/platform refund request, approval and status endpoints in `backend/src/main/java/com/hotel/propertycommerce/refund/PropertyRefundController.java` and `backend/src/main/java/com/hotel/platformbilling/refund/PlatformRefundController.java` (FR-024-FR-026, FR-033)
 - [ ] T118 [P] [US5] Add refundable-balance, transition and policy unit tests in `backend/src/test/java/com/hotel/propertycommerce/refund/PropertyRefundServiceTest.java` and `backend/src/test/java/com/hotel/platformbilling/refund/PlatformRefundServiceTest.java` (SC-007)
 - [ ] T119 [US5] Add concurrent/replayed/excessive refund integration tests in `backend/src/test/java/com/hotel/integration/FinancialRefundConcurrencyIntegrationTest.java` (SC-003, SC-007)

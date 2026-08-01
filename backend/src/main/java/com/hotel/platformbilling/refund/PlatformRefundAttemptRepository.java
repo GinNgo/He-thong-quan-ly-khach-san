@@ -18,4 +18,10 @@ public interface PlatformRefundAttemptRepository extends JpaRepository<PlatformR
     Optional<PlatformRefundAttempt> findForUpdate(
             @Param("requestId") Long requestId,
             @Param("attemptNumber") Integer attemptNumber);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from PlatformRefundAttempt a where upper(a.provider) = upper(:provider) and a.providerReference = :reference")
+    Optional<PlatformRefundAttempt> findByProviderAndReferenceForUpdate(
+            @Param("provider") String provider,
+            @Param("reference") String reference);
 }
