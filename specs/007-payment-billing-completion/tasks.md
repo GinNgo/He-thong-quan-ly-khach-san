@@ -234,7 +234,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 - [X] T145 [P] [US7] Audit booking changes/cancellation/no-show, check-in, assignment, stay charges, checkout, housekeeping, review, favorite and voucher behavior in `docs/audit/system/inventory/stay-lifecycle.md` (FR-043, FR-044)
 - [X] T146 [P] [US7] Audit notifications, email, chat/support, dashboards, exports, audit log, loading/error/empty states, responsive layout and accessibility in `docs/audit/system/inventory/cross-cutting.md` (FR-043-FR-046)
 - [X] T147 [US7] Consolidate all discovered routes/APIs/modules into `docs/audit/system/MASTER_FUNCTION_INVENTORY.md` with evidence-based status and no source-only `COMPLETE_VERIFIED` classification (SC-013)
-- [ ] T148 [US7] Build route-to-UI-to-service-to-API-to-database-to-permission-to-test mapping in `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md` (FR-043)
+- [X] T148 [US7] Build route-to-UI-to-service-to-API-to-database-to-permission-to-test mapping in `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md` (FR-043)
 - [ ] T149 [US7] Append a concrete dependency-ordered remediation task for every `PARTIAL`, `PLACEHOLDER`, `BROKEN` or `MISSING` inventory row to `specs/007-payment-billing-completion/tasks.md`; document `BLOCKED_EXTERNAL` adapter/simulator/contract/config work (FR-044, SC-013)
 - [ ] T150 [US7] Run SpecKit converge after inventory implementation and capture newly appended task IDs in `docs/audit/system/CONVERGENCE_REPORT.md` (FR-044)
 - [ ] T151 [US7] Execute all appended remediation tasks and update their inventory evidence/status in `docs/audit/system/MASTER_FUNCTION_INVENTORY.md` (FR-044)
