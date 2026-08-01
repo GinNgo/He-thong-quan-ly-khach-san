@@ -90,6 +90,50 @@ class FinancialReportingSecurityIntegrationTest {
     }
 
     @Test
+    void propertyAndPlatformExportsRequireIndependentExportPermissions() throws Exception {
+        PropertyRevenueController propertyController = new PropertyRevenueController(
+                mock(PropertyRevenueService.class), mock(PropertyAccessService.class));
+        PlatformRevenueController platformController = new PlatformRevenueController(
+                mock(PlatformRevenueService.class));
+        Method propertyMethod = PropertyRevenueController.class.getMethod(
+                "export", LocalDate.class, LocalDate.class, String.class, Long.class,
+                String.class, String.class, String.class, String.class, String.class, String.class);
+        Method platformMethod = PlatformRevenueController.class.getMethod(
+                "export", LocalDate.class, LocalDate.class, String.class,
+                String.class, String.class, String.class, String.class, String.class, String.class);
+        Permission propertyPermission = propertyMethod.getAnnotation(Permission.class);
+        Permission platformPermission = platformMethod.getAnnotation(Permission.class);
+        assertEquals(FunctionCode.REPORT, propertyPermission.function());
+        assertEquals(ActionCode.EXPORT, propertyPermission.action());
+        assertEquals(FunctionCode.PLATFORM_REVENUE, platformPermission.function());
+        assertEquals(ActionCode.EXPORT, platformPermission.action());
+
+        PermissionInterceptor interceptor = new PermissionInterceptor(new ObjectMapper());
+        HandlerMethod propertyHandler = new HandlerMethod(propertyController, propertyMethod);
+        HandlerMethod platformHandler = new HandlerMethod(platformController, platformMethod);
+
+        authenticate(Map.of(FunctionCode.REPORT, ActionCode.EXPORT));
+        assertTrue(interceptor.preHandle(
+                new MockHttpServletRequest("GET", "/api/management/reports/property-revenue/export"),
+                new MockHttpServletResponse(), propertyHandler));
+        MockHttpServletResponse platformDenied = new MockHttpServletResponse();
+        assertFalse(interceptor.preHandle(
+                new MockHttpServletRequest("GET", "/api/admin/reports/platform-revenue/export"),
+                platformDenied, platformHandler));
+        assertEquals(403, platformDenied.getStatus());
+
+        authenticate(Map.of(FunctionCode.PLATFORM_REVENUE, ActionCode.EXPORT));
+        assertTrue(interceptor.preHandle(
+                new MockHttpServletRequest("GET", "/api/admin/reports/platform-revenue/export"),
+                new MockHttpServletResponse(), platformHandler));
+        MockHttpServletResponse propertyDenied = new MockHttpServletResponse();
+        assertFalse(interceptor.preHandle(
+                new MockHttpServletRequest("GET", "/api/management/reports/property-revenue/export"),
+                propertyDenied, propertyHandler));
+        assertEquals(403, propertyDenied.getStatus());
+    }
+
+    @Test
     void reportServicesRejectTheOtherBoundedContextBeforeQuerying() {
         PropertyRevenueRepository propertyRepository = mock(PropertyRevenueRepository.class);
         PlatformRevenueRepository platformRepository = mock(PlatformRevenueRepository.class);

@@ -20,7 +20,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -119,6 +121,28 @@ class PropertyRevenueControllerTest {
                 LocalDate.of(2026, 8, 1),
                 LocalDate.of(2026, 8, 1),
                 "NET", 42L, null, null, null, null, "Mars/Phobos"));
+    }
+
+    @Test
+    void exportsTheSamePropertyReportWithDeterministicHeaders() {
+        when(propertyAccessService.currentUser()).thenReturn(currentUser);
+        when(currentUser.getHotel()).thenReturn(currentHotel);
+        when(currentHotel.getId()).thenReturn(42L);
+        when(revenueService.generate(org.mockito.ArgumentMatchers.any(NormalizedFilters.class)))
+                .thenReturn(emptyReport());
+        PropertyRevenueController controller = new PropertyRevenueController(
+                revenueService, propertyAccessService);
+
+        var response = controller.export(
+                LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 1),
+                "NET", null, null, null, null, null, "excel", "UTC");
+
+        assertEquals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                response.getHeaders().getContentType().toString());
+        assertEquals("0", response.getHeaders().getFirst("X-Report-Row-Count"));
+        assertNotNull(response.getHeaders().getFirst("X-Report-Checksum"));
+        assertTrue(response.getHeaders().getFirst("Content-Disposition").contains("property_commerce"));
+        assertTrue(response.getBody().length > 0);
     }
 
     private RevenueReportResult emptyReport() {

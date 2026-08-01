@@ -17,7 +17,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -62,6 +64,22 @@ class PlatformRevenueControllerTest {
         assertThrows(IllegalArgumentException.class, () -> controller.report(
                 LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 1),
                 "NET", null, null, null, null, "Mars/Phobos"));
+    }
+
+    @Test
+    void exportsTheSamePlatformReportWithDeterministicHeaders() {
+        when(revenueService.generate(any(NormalizedFilters.class))).thenReturn(emptyReport());
+        PlatformRevenueController controller = new PlatformRevenueController(revenueService);
+
+        var response = controller.export(
+                LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 1),
+                "NET", null, null, null, null, "csv", "UTC");
+
+        assertEquals("text/csv;charset=UTF-8", response.getHeaders().getContentType().toString());
+        assertEquals("0", response.getHeaders().getFirst("X-Report-Row-Count"));
+        assertNotNull(response.getHeaders().getFirst("X-Report-Checksum"));
+        assertTrue(response.getHeaders().getFirst("Content-Disposition").contains("platform_billing"));
+        assertTrue(response.getBody().length > 0);
     }
 
     private RevenueReportResult emptyReport() {

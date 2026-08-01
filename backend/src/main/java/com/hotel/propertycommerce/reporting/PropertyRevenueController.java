@@ -5,11 +5,18 @@ import com.hotel.paymentprovider.reporting.RevenueReportModels.FinancialContext;
 import com.hotel.paymentprovider.reporting.RevenueReportModels.NormalizedFilters;
 import com.hotel.paymentprovider.reporting.RevenueReportModels.RecognitionBasis;
 import com.hotel.paymentprovider.reporting.RevenueReportModels.RevenueReportResult;
+import com.hotel.paymentprovider.reporting.RevenueExportService;
+import com.hotel.paymentprovider.reporting.RevenueExportService.ExportArtifact;
+import com.hotel.paymentprovider.reporting.RevenueExportService.Format;
 import com.hotel.security.ActionCode;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.Permission;
 import com.hotel.services.PropertyAccessService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,12 +33,22 @@ public class PropertyRevenueController {
 
     private final PropertyRevenueService revenueService;
     private final PropertyAccessService propertyAccessService;
+    private final RevenueExportService exportService;
 
     public PropertyRevenueController(
             PropertyRevenueService revenueService,
             PropertyAccessService propertyAccessService) {
+        this(revenueService, propertyAccessService, new RevenueExportService());
+    }
+
+    @Autowired
+    public PropertyRevenueController(
+            PropertyRevenueService revenueService,
+            PropertyAccessService propertyAccessService,
+            RevenueExportService exportService) {
         this.revenueService = revenueService;
         this.propertyAccessService = propertyAccessService;
+        this.exportService = exportService;
     }
 
     @GetMapping("/api/management/reports/property-revenue")
@@ -64,6 +81,42 @@ public class PropertyRevenueController {
                 transactionType,
                 roomType,
                 null));
+    }
+
+    @GetMapping("/api/management/reports/property-revenue/export")
+    @Permission(function = FunctionCode.REPORT, action = ActionCode.EXPORT)
+    public ResponseEntity<byte[]> export(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "NET") String basis,
+            @RequestParam(required = false) Long propertyId,
+            @RequestParam(required = false) String provider,
+            @RequestParam(required = false) String method,
+            @RequestParam(required = false) String transactionType,
+            @RequestParam(required = false) String roomType,
+            @RequestParam(defaultValue = "CSV") String format,
+            @RequestParam(defaultValue = DEFAULT_ZONE) String zoneId) {
+        RevenueReportResult result = report(
+                from, to, basis, propertyId, provider, method, transactionType, roomType, zoneId);
+        return exportResponse(exportService.export(result, parseFormat(format)));
+    }
+
+    private ResponseEntity<byte[]> exportResponse(ExportArtifact artifact) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(artifact.contentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + artifact.fileName() + "\"")
+                .header("X-Report-Checksum", artifact.checksum())
+                .header("X-Report-Row-Count", Long.toString(artifact.rowCount()))
+                .body(artifact.content());
+    }
+
+    private Format parseFormat(String value) {
+        try {
+            return Format.valueOf(value == null ? "CSV" : value.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Unsupported revenue export format.", exception);
+        }
     }
 
     private Long resolvePropertyId(Long requestedPropertyId) {
