@@ -1,12 +1,14 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute } from '@angular/router';
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
+import { PlatformCatalogPlan } from '../../../core/services/platform-billing.service';
 import { SubscriptionBillingComponent } from './subscription-billing.component';
 
 describe('SubscriptionBillingComponent', () => {
   let http: HttpTestingController;
+  let fixture: ComponentFixture<SubscriptionBillingComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -14,35 +16,87 @@ describe('SubscriptionBillingComponent', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: { get: () => null } } } },
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: { get: () => '42' } } } },
       ],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(SubscriptionBillingComponent);
+    fixture.detectChanges();
   });
 
   afterEach(() => http.verify());
 
-  it('shows backend catalog plans and truthful policy blockers', async () => {
-    const fixture = TestBed.createComponent(SubscriptionBillingComponent);
+  it('creates a backend-owned purchase order and renders truthful policy blockers', async () => {
+    const plan = standardPlan();
+    flushInitial([plan], []);
+    await fixture.whenStable();
+    fixture.componentInstance.createOrder(plan);
+
+    const request = http.expectOne(`${environment.apiUrl}/platform/subscription-orders`);
+    expect(request.request.body).toEqual({ targetHotelId: 42, planId: 1 });
+    expect(request.request.body.price).toBeUndefined();
+    expect(request.request.headers.has('Idempotency-Key')).toBe(true);
+    request.flush(orderResponse('PURCHASE', plan));
+    await fixture.whenStable();
     fixture.detectChanges();
 
-    http.expectOne(`${environment.apiUrl}/platform/subscription-plans`).flush([
-      {
-        id: 1,
-        code: 'STANDARD',
-        nameVi: 'Standard',
-        nameEn: 'Standard',
-        billingType: 'MONTHLY',
-        price: 100000,
-        currency: 'VND',
-        isLifetime: false,
-        status: 'ACTIVE',
-        features: [{ code: 'MAX_PROPERTIES', nameVi: 'Properties', nameEn: 'Properties', valueType: 'NUMERIC', limit: 3 }],
-      },
-    ]);
-    http.expectOne(`${environment.apiUrl}/subscriptions/me`).flush([]);
+    const element: HTMLElement = fixture.nativeElement;
+    expect(element.textContent).toContain('Downgrade is blocked');
+    expect(element.textContent).toContain('Order SUB-1');
+    expect(element.textContent).toContain('01/08/2026 18:30');
+  });
+
+  it('creates a renewal order for the current plan', async () => {
+    const plan = standardPlan();
+    flushInitial([plan], [subscription(plan)]);
+    await fixture.whenStable();
+    fixture.componentInstance.createOrder(plan);
+
+    const request = http.expectOne(`${environment.apiUrl}/platform/subscriptions/42/renewal-orders`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toBeNull();
+    expect(request.request.headers.has('Idempotency-Key')).toBe(true);
+    request.flush(orderResponse('RENEW', plan));
+  });
+
+  it('creates an upgrade order without client price or credit fields', async () => {
+    const current = standardPlan();
+    const target = { ...standardPlan(), id: 2, code: 'PRO', nameVi: 'Professional', nameEn: 'Professional', price: 2400000 };
+    flushInitial([current, target], [subscription(current)]);
+    await fixture.whenStable();
+    fixture.componentInstance.createOrder(target);
+
+    const request = http.expectOne(`${environment.apiUrl}/platform/subscriptions/42/upgrade-orders`);
+    expect(request.request.body).toEqual({ targetPlanId: 2 });
+    expect(request.request.body.price).toBeUndefined();
+    expect(request.request.body.credit).toBeUndefined();
+    request.flush(orderResponse('UPGRADE', target));
+  });
+
+  it('renders a catalog failure without offering stale plan actions', async () => {
+    http.expectOne(`${environment.apiUrl}/platform/subscription-plans`).flush(
+      { message: 'Catalog unavailable' }, { status: 503, statusText: 'Unavailable' },
+    );
+    flushSubscriptionAndPolicy([]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const element: HTMLElement = fixture.nativeElement;
+    expect(element.textContent).toContain('Catalog unavailable');
+    expect(element.textContent).not.toContain('Create purchase order');
+  });
+
+  function flushInitial(plans: PlatformCatalogPlan[], subscriptions: unknown[]): void {
+    http.expectOne(`${environment.apiUrl}/platform/subscription-plans`).flush(plans);
+    flushSubscriptionAndPolicy(subscriptions);
+  }
+
+  function flushSubscriptionAndPolicy(subscriptions: unknown[]): void {
+    http.expectOne(`${environment.apiUrl}/subscriptions/me`).flush(subscriptions);
     http.expectOne(`${environment.apiUrl}/subscriptions/me/usage`).flush({
-      planCode: 'NO_PLAN', subscriptionStatus: 'NONE', lifetime: false, limits: {}, usage: {}, features: [],
+      planCode: subscriptions.length ? 'STANDARD' : 'NO_PLAN',
+      subscriptionStatus: subscriptions.length ? 'ACTIVE' : 'NONE',
+      lifetime: false, limits: {}, usage: {}, features: [],
     });
     http.expectOne(`${environment.apiUrl}/platform/subscription-policies`).flush({
       downgradeConfigured: false,
@@ -51,11 +105,27 @@ describe('SubscriptionBillingComponent', () => {
       downgradeMessage: 'Downgrade is blocked',
       prorationMessage: 'Proration is blocked',
     });
-    await fixture.whenStable();
+  }
 
-    const element: HTMLElement = fixture.nativeElement;
-    expect(element.textContent).toContain('Standard');
-    expect(element.textContent).toContain('Create secure order');
-    expect(element.textContent).toContain('Downgrade is blocked');
-  });
+  function standardPlan(): PlatformCatalogPlan {
+    return {
+      id: 1, code: 'STANDARD', nameVi: 'Standard', nameEn: 'Standard', billingType: 'MONTHLY',
+      price: 100000, currency: 'VND', isLifetime: false, status: 'ACTIVE',
+      features: [{ code: 'MAX_PROPERTIES', nameVi: 'Properties', nameEn: 'Properties', valueType: 'NUMERIC', limit: 3 }],
+    };
+  }
+
+  function subscription(plan: PlatformCatalogPlan) {
+    return { id: 10, plan, startAt: '2026-07-01T00:00:00', endAt: '2026-08-01T00:00:00', isLifetime: false, status: 'ACTIVE' };
+  }
+
+  function orderResponse(operation: 'PURCHASE' | 'RENEW' | 'UPGRADE', plan: PlatformCatalogPlan) {
+    return {
+      publicId: `order-${operation.toLowerCase()}`, orderCode: 'SUB-1', ownerUserId: 10,
+      targetHotelId: 42, operation, planId: plan.id, planVersion: `PLAN-${plan.id}-V1`,
+      planCode: plan.code, planName: plan.nameVi, price: plan.price, currency: 'VND',
+      billingPeriod: plan.billingType, durationValue: 1, durationUnit: 'MONTH',
+      featureSnapshotJson: '{}', status: 'CREATED', expiresAt: '2026-08-01T18:30:00', replayed: false,
+    };
+  }
 });

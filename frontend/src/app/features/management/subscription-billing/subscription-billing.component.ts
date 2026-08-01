@@ -135,11 +135,14 @@ export class SubscriptionBillingComponent implements OnInit {
     }
     this.orderError = '';
     this.creatingOrderFor = plan.id;
-    this.platformBilling.createPurchaseOrder(
-      this.activePropertyId,
-      plan.id,
-      this.newIdempotencyKey('platform-order'),
-    ).subscribe({
+    const idempotencyKey = this.newIdempotencyKey('platform-order');
+    const currentPlanId = this.mySubscription?.plan?.id;
+    const request = currentPlanId === plan.id
+      ? this.platformBilling.createRenewalOrder(this.activePropertyId, idempotencyKey)
+      : currentPlanId
+        ? this.platformBilling.createUpgradeOrder(this.activePropertyId, plan.id, idempotencyKey)
+        : this.platformBilling.createPurchaseOrder(this.activePropertyId, plan.id, idempotencyKey);
+    request.subscribe({
       next: (order) => {
         this.latestOrder = order;
         this.creatingOrderFor = undefined;
@@ -159,6 +162,12 @@ export class SubscriptionBillingComponent implements OnInit {
 
   featureLimit(limit: number): string {
     return limit === -1 ? 'Unlimited' : String(limit);
+  }
+
+  orderActionLabel(plan: PlatformCatalogPlan): string {
+    if (this.creatingOrderFor === plan.id) return 'Creating secure order...';
+    if (this.mySubscription?.plan?.id === plan.id) return 'Create renewal order';
+    return this.mySubscription ? 'Create upgrade order' : 'Create purchase order';
   }
 
   updateLatestOrder(order: PlatformOrder): void {

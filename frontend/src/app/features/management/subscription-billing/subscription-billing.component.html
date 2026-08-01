@@ -65,9 +65,9 @@
         </ul>
       </div>
       <div class="card-footer">
-        <span class="current-plan" *ngIf="mySubscription?.plan?.id === plan.id">Current plan</span>
-        <button class="btn btn-primary w-full" type="button" *ngIf="mySubscription?.plan?.id !== plan.id" [disabled]="creatingOrderFor === plan.id" (click)="createOrder(plan)">
-          {{ creatingOrderFor === plan.id ? 'Creating secure order...' : 'Create secure order' }}
+        <span class="current-plan-label" *ngIf="mySubscription?.plan?.id === plan.id">Current plan</span>
+        <button class="btn btn-primary w-full" type="button" [disabled]="creatingOrderFor === plan.id" (click)="createOrder(plan)">
+          {{ orderActionLabel(plan) }}
         </button>
       </div>
     </div>
