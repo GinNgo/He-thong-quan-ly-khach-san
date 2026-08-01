@@ -1,32 +1,183 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { environment } from '../../../../environments/environment';
-
-interface CustomerInvoice { id: number; invoiceCode: string; reservationId: number; issueDate: string; totalAmount: number; status: string; }
+import {
+  CustomerInvoiceSummary,
+  InvoiceService,
+  PropertyInvoiceDetail,
+} from '../../../core/services/invoice.service';
+import { PublicI18nService } from '../../../core/i18n/public-i18n.service';
 
 @Component({
-  selector: 'app-my-invoices', standalone: true, imports: [CommonModule, RouterModule],
-  template: `
-    <main class="invoice-page"><header><div><h1>Hóa đơn của tôi</h1><p>Các hóa đơn phát sinh từ đặt phòng của tài khoản này.</p></div><a routerLink="/profile" [queryParams]="{tab:'bookings'}">Xem chuyến đi</a></header>
-      <div *ngIf="loading" class="state"><i class="pi pi-spin pi-spinner"></i><span>Đang tải hóa đơn</span></div>
-      <div *ngIf="error" class="state error"><i class="pi pi-exclamation-circle"></i><span>{{ error }}</span><button (click)="load()">Thử lại</button></div>
-      <div *ngIf="!loading && !error && !invoices.length" class="state"><i class="pi pi-file"></i><strong>Chưa có hóa đơn</strong><span>Hóa đơn sẽ xuất hiện sau khi giao dịch đủ điều kiện.</span></div>
-      <section *ngIf="!loading && !error && invoices.length" class="invoice-list">
-        <article *ngFor="let invoice of invoices; trackBy: trackInvoice"><div><small>Mã hóa đơn</small><strong>{{ invoice.invoiceCode }}</strong></div><div><small>Ngày phát hành</small><span>{{ invoice.issueDate | date:'dd/MM/yyyy' }}</span></div><div><small>Tổng tiền</small><strong>{{ invoice.totalAmount | currency:'VND':'symbol':'1.0-0' }}</strong></div><span class="status">{{ statusLabel(invoice.status) }}</span></article>
-      </section>
-    </main>`,
-  styles: [`
-    .invoice-page{max-width:1100px;margin:auto;padding:36px 20px 70px}.invoice-page>header{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:24px}h1{margin:0;color:#0f172a;font-size:30px}p{margin:7px 0 0;color:#64748b}header a,button{border:0;background:#1d4ed8;color:#fff;padding:12px 16px;text-decoration:none;font-weight:700;cursor:pointer}.invoice-list{display:grid;gap:12px}.invoice-list article{display:grid;grid-template-columns:1.3fr 1fr 1fr auto;align-items:center;gap:20px;background:#fff;border:1px solid #e2e8f0;padding:20px}.invoice-list article div{display:flex;flex-direction:column;gap:5px}.invoice-list small{color:#64748b}.status{background:#ecfdf5;color:#047857;padding:7px 10px;font-weight:700;font-size:12px}.state{min-height:260px;background:#fff;border:1px solid #e2e8f0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#64748b}.state i{font-size:30px}.state.error{color:#b91c1c}@media(max-width:700px){.invoice-page>header{align-items:flex-start;flex-direction:column}.invoice-list article{grid-template-columns:1fr 1fr}.status{justify-self:start}}
-  `]
+  selector: 'app-my-invoices',
+  standalone: true,
+  imports: [CommonModule, RouterModule],
+  templateUrl: './my-invoices.component.html',
+  styleUrl: './my-invoices.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MyInvoicesComponent implements OnInit {
-  private readonly http = inject(HttpClient);
-  private readonly changeDetector = inject(ChangeDetectorRef);
-  invoices: CustomerInvoice[] = []; loading = true; error = '';
-  ngOnInit(): void { this.load(); }
-  load(): void { this.loading = true; this.error = ''; this.http.get<CustomerInvoice[]>(`${environment.apiUrl}/invoices/my`).subscribe({ next: data => { this.invoices = data; this.loading = false; this.changeDetector.detectChanges(); }, error: () => { this.error = 'Không thể tải hóa đơn.'; this.loading = false; this.changeDetector.detectChanges(); } }); }
-  trackInvoice(_: number, invoice: CustomerInvoice): number { return invoice.id; }
-  statusLabel(status: string): string { return ({PAID:'Đã thanh toán',PENDING:'Chờ thanh toán',CANCELLED:'Đã hủy'} as Record<string,string>)[status] || status; }
+  private readonly invoiceService = inject(InvoiceService);
+  readonly i18n = inject(PublicI18nService);
+
+  readonly invoices = signal<CustomerInvoiceSummary[]>([]);
+  readonly loading = signal(true);
+  readonly error = signal('');
+  readonly selectedInvoice = signal<PropertyInvoiceDetail | null>(null);
+  readonly detailLoading = signal(false);
+  readonly detailError = signal('');
+  readonly downloadingInvoiceId = signal<number | null>(null);
+  readonly emailingInvoiceId = signal<number | null>(null);
+  readonly actionMessage = signal('');
+  readonly actionError = signal('');
+
+  ngOnInit(): void {
+    this.load();
+  }
+
+  load(): void {
+    this.loading.set(true);
+    this.error.set('');
+    this.invoiceService.getMyInvoices().subscribe({
+      next: (data) => {
+        this.invoices.set(data);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.error.set(this.i18n.text('PUBLIC.ACCOUNT.INVOICES_LOAD_ERROR'));
+        this.loading.set(false);
+      },
+    });
+  }
+
+  viewInvoice(invoice: CustomerInvoiceSummary): void {
+    this.detailLoading.set(true);
+    this.detailError.set('');
+    this.actionMessage.set('');
+    this.actionError.set('');
+    this.invoiceService.getInvoice(invoice.id).subscribe({
+      next: (detail) => {
+        this.selectedInvoice.set(detail);
+        this.detailLoading.set(false);
+      },
+      error: () => {
+        this.selectedInvoice.set(null);
+        this.detailError.set(this.copy('Không thể tải chi tiết hóa đơn.', 'Invoice details could not be loaded.'));
+        this.detailLoading.set(false);
+      },
+    });
+  }
+
+  closeDetail(): void {
+    if (this.downloadingInvoiceId() || this.emailingInvoiceId()) return;
+    this.selectedInvoice.set(null);
+    this.detailError.set('');
+    this.actionMessage.set('');
+    this.actionError.set('');
+  }
+
+  downloadPdf(invoiceId: number, invoiceNumber?: string): void {
+    if (this.downloadingInvoiceId()) return;
+    this.downloadingInvoiceId.set(invoiceId);
+    this.actionMessage.set('');
+    this.actionError.set('');
+    this.invoiceService.downloadPdf(invoiceId).subscribe({
+      next: (response) => {
+        const blob = response.body;
+        if (!blob) {
+          this.actionError.set(this.copy('Tệp PDF rỗng.', 'The PDF file is empty.'));
+          this.downloadingInvoiceId.set(null);
+          return;
+        }
+        const filename = this.pdfFilename(response.headers.get('Content-Disposition'), invoiceNumber);
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        anchor.click();
+        URL.revokeObjectURL(url);
+        this.actionMessage.set(this.copy('Đã tải hóa đơn PDF.', 'Invoice PDF downloaded.'));
+        this.downloadingInvoiceId.set(null);
+      },
+      error: () => {
+        this.actionError.set(this.copy('Không thể tải PDF. Vui lòng thử lại.', 'PDF download failed. Please retry.'));
+        this.downloadingInvoiceId.set(null);
+      },
+    });
+  }
+
+  emailInvoice(invoiceId: number): void {
+    if (this.emailingInvoiceId()) return;
+    this.emailingInvoiceId.set(invoiceId);
+    this.actionMessage.set('');
+    this.actionError.set('');
+    this.invoiceService.emailInvoice(invoiceId).subscribe({
+      next: (result) => {
+        this.actionMessage.set(
+          result.sent
+            ? this.copy(`Đã gửi hóa đơn đến ${result.recipient}.`, `Invoice sent to ${result.recipient}.`)
+            : this.copy('Email chưa được gửi. Vui lòng thử lại.', 'Email was not sent. Please retry.'),
+        );
+        this.emailingInvoiceId.set(null);
+      },
+      error: () => {
+        this.actionError.set(
+          this.copy(
+            'Không thể gửi email. Hệ thống chỉ gửi đến địa chỉ đã xác minh.',
+            'Email failed. Invoices can only be sent to a verified address.',
+          ),
+        );
+        this.emailingInvoiceId.set(null);
+      },
+    });
+  }
+
+  displayNumber(invoice: CustomerInvoiceSummary): string {
+    return invoice.invoiceNumber || invoice.invoiceCode || `INV-${invoice.id}`;
+  }
+
+  displayDate(invoice: CustomerInvoiceSummary): string | undefined {
+    return invoice.finalizedAt || invoice.issueDate;
+  }
+
+  statusLabel(status: string): string {
+    const key = (
+      {
+        FINALIZED: 'INVOICE_PAID',
+        PAID: 'INVOICE_PAID',
+        PENDING: 'INVOICE_PENDING',
+        CANCELLED: 'INVOICE_CANCELLED',
+      } as Record<string, string>
+    )[status];
+    return key ? this.i18n.text(`PUBLIC.ACCOUNT.${key}`) : status;
+  }
+
+  formatVnd(value: number | string): string {
+    const amount = typeof value === 'number' ? value : Number(value);
+    return new Intl.NumberFormat(this.i18n.dateLocale(), {
+      style: 'currency',
+      currency: 'VND',
+      maximumFractionDigits: 0,
+    }).format(Number.isFinite(amount) ? amount : 0);
+  }
+
+  copy(vi: string, en: string): string {
+    return this.i18n.dateLocale() === 'en-US' ? en : vi;
+  }
+
+  trackInvoice(_: number, invoice: CustomerInvoiceSummary): number {
+    return invoice.id;
+  }
+
+  trackLine(_: number, line: { id: number }): number {
+    return line.id;
+  }
+
+  private pdfFilename(contentDisposition: string | null, invoiceNumber?: string): string {
+    const encoded = contentDisposition?.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+    const plain = contentDisposition?.match(/filename="?([^";]+)"?/i)?.[1];
+    const headerName = encoded ? decodeURIComponent(encoded) : plain;
+    const fallback = `${invoiceNumber || 'invoice'}.pdf`;
+    return (headerName || fallback).replace(/[^A-Za-z0-9._-]/g, '_');
+  }
 }

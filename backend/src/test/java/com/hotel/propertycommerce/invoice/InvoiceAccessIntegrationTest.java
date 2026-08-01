@@ -137,6 +137,19 @@ class InvoiceAccessIntegrationTest {
     }
 
     @Test
+    void customerCanListOnlyTheirFinalizedInvoiceSummaries() throws Exception {
+        when(invoiceRepository.findByReservationUserIdAndStatusOrderByFinalizedAtDesc(
+                customer.getId(), PropertyInvoice.Status.FINALIZED)).thenReturn(List.of(invoice));
+
+        mockMvc.perform(get("/api/invoices/finalized/my").with(user(customerDetails(customer))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(88))
+                .andExpect(jsonPath("$[0].reservationId").value(42))
+                .andExpect(jsonPath("$[0].invoiceNumber").value("INV-3-42"))
+                .andExpect(jsonPath("$[0].status").value("FINALIZED"));
+    }
+
+    @Test
     void crossTenantCustomerCannotEnumerateInvoice() throws Exception {
         User other = accountUser(77L, "other@example.com");
         when(propertyAccessService.currentUser()).thenReturn(other);

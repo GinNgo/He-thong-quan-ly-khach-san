@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface PropertyInvoiceRepository extends JpaRepository<PropertyInvoice, Long> {
@@ -16,6 +17,10 @@ public interface PropertyInvoiceRepository extends JpaRepository<PropertyInvoice
 
     Optional<PropertyInvoice> findByReservationIdAndStatus(
             Long reservationId,
+            PropertyInvoice.Status status);
+
+    List<PropertyInvoice> findByReservationUserIdAndStatusOrderByFinalizedAtDesc(
+            Long userId,
             PropertyInvoice.Status status);
 
     boolean existsByReservationIdAndStatus(Long reservationId, PropertyInvoice.Status status);

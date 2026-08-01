@@ -612,3 +612,19 @@ npm test -- --watch=false --include src/app/features/admin/reservation-managemen
 Results: production build passed and the existing reservation-management integration suite passed `3/3`. The UI uses visible labels, inline validation/error recovery, 44px-or-larger controls, a single primary checkout action, responsive one-column fallback and global reduced-motion handling.
 
 Browser route verification reached `http://localhost:4200/admin/reservations`, but the available browser session was redirected to the administrator login portal and had no authenticated test account. Interactive desktop/375px screenshot evidence is therefore deferred to T090/T091 with authenticated fixtures; no credentials were guessed or submitted.
+
+# T089 Customer Invoice Detail and Delivery Evidence
+
+Rebuilt the customer invoice page as a responsive master/detail experience with finalized totals, line evidence, credit notes, bilingual labels, empty/loading/error states, guarded PDF download and verified-recipient email delivery. The client does not expose a recipient field, so the backend remains authoritative over the allowed email address.
+
+Added an authenticated finalized-invoice summary endpoint backed by Property Commerce invoice ownership. This avoids feeding legacy invoice identifiers into the finalized snapshot/PDF/email routes.
+
+Validation commands:
+
+```powershell
+npm test -- --watch=false --include src/app/core/services/invoice.service.spec.ts
+npm run build
+.\mvnw.cmd '-Dtest=InvoiceAccessIntegrationTest' -DforkCount=0 test
+```
+
+Results: the invoice API client suite passed `4/4`, invoice access/list/PDF/email backend tests passed `6/6`, and the production build completed successfully. Existing CSS budget and CommonJS WebSocket warnings remain unrelated to T089.

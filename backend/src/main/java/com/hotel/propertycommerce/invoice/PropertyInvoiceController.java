@@ -70,6 +70,17 @@ public class PropertyInvoiceController {
                         invoice.getHotel().getId(), invoiceId));
     }
 
+    @GetMapping("/api/invoices/finalized/my")
+    public List<InvoiceSummaryResponse> myFinalizedInvoices() {
+        User current = propertyAccessService.currentUser();
+        return invoiceRepository
+                .findByReservationUserIdAndStatusOrderByFinalizedAtDesc(
+                        current.getId(), PropertyInvoice.Status.FINALIZED)
+                .stream()
+                .map(InvoiceSummaryResponse::from)
+                .toList();
+    }
+
     @GetMapping(value = "/api/invoices/{invoiceId}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<ByteArrayResource> pdf(@PathVariable Long invoiceId) {
         PropertyInvoice invoice = findAuthorized(invoiceId);
@@ -174,6 +185,27 @@ public class PropertyInvoiceController {
     }
 
     public record InvoiceEmailRequest(String recipient) {
+    }
+
+    public record InvoiceSummaryResponse(
+            Long id,
+            Long reservationId,
+            String invoiceNumber,
+            String status,
+            String currency,
+            BigDecimal totalAmount,
+            LocalDateTime finalizedAt) {
+
+        static InvoiceSummaryResponse from(PropertyInvoice invoice) {
+            return new InvoiceSummaryResponse(
+                    invoice.getId(),
+                    invoice.getReservation().getId(),
+                    invoice.getInvoiceNumber(),
+                    invoice.getStatus().name(),
+                    invoice.getCurrency(),
+                    invoice.getTotalAmount(),
+                    invoice.getFinalizedAt());
+        }
     }
 
     public record InvoiceEmailResponse(
