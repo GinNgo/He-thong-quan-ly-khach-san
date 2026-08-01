@@ -640,3 +640,20 @@ Focused command from `frontend/`:
 ```
 
 Result: `5/5` tests passed with zero failures. The existing unrelated `NG8107` optional-chain warning in `client-layout.html` remains. No production credential, provider request, real-money operation, migration or production database mutation was used.
+
+# T091 Stay Checkout, Invoice, and Housekeeping Browser Evidence
+
+Added a deterministic Playwright journey that checks in a confirmed reservation, records a server-priced service, settles the stay with a deposit plus two separately confirmed balance payments, completes atomic checkout, verifies the finalized customer invoice, and confirms that the released room is visible as `DIRTY` for housekeeping. The browser contract asserts that service and balance requests contain no caller-authoritative price or amount.
+
+The journey exposed and fixed two real UI blockers: PrimeNG action buttons were bound to a non-firing `onClick` output instead of the native `click` event, and Angular's Vietnamese locale data was not registered globally, leaving folio currency values blank at runtime.
+
+Focused Playwright command from `frontend/` against a clean local development server:
+
+```powershell
+$env:LUXESTAY_E2E_WEB_URL='http://127.0.0.1:4217'
+.\node_modules\.bin\playwright.cmd test e2e/stay-checkout-invoice.spec.ts --project=chromium --reporter=line
+```
+
+Result: `1/1` end-to-end journey passed in Chromium. Regression unit command covering checkout and reservation management passed `8/8`, and `npm run build` completed successfully. Existing CSS budget and CommonJS WebSocket warnings remain unrelated.
+
+The fixture uses only `SIMULATOR`/manual-transfer responses and deterministic browser routing. No production credential, production provider, real-money operation, migration or production database mutation was used.

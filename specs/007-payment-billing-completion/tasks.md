@@ -141,7 +141,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 - [x] T088 [US3] Build responsive service/surcharge and checkout-preview UI in `frontend/src/app/features/admin/reservation-management/reservation-checkout.component.ts` (FR-017-FR-020)
 - [x] T089 [US3] Build invoice detail, PDF download and email states in `frontend/src/app/features/client/my-invoices/my-invoices.component.ts` (FR-023)
 - [x] T090 [P] [US3] Add Angular folio/override/invoice state tests in `frontend/src/app/features/admin/reservation-management/reservation-checkout.component.spec.ts` (FR-020, FR-023)
-- [ ] T091 [US3] Add the complete check-in/services/multi-payment/checkout/invoice/housekeeping Playwright journey in `frontend/e2e/stay-checkout-invoice.spec.ts` (SC-005, SC-006)
+- [x] T091 [US3] Add the complete check-in/services/multi-payment/checkout/invoice/housekeeping Playwright journey in `frontend/e2e/stay-checkout-invoice.spec.ts` (SC-005, SC-006)
 
 ---
 
