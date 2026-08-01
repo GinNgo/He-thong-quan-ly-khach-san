@@ -21,4 +21,8 @@ public interface PlatformRefundRequestRepository extends JpaRepository<PlatformR
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from PlatformRefundRequest r where r.id = :id")
     Optional<PlatformRefundRequest> findByIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from PlatformRefundRequest r where r.publicId = :publicId")
+    Optional<PlatformRefundRequest> findByPublicIdForUpdate(@Param("publicId") String publicId);
 }

@@ -130,6 +130,18 @@ public class PlatformRefundRequest {
         status = RefundState.POLICY_BLOCKED;
     }
 
+    public void approveForProvider(User approver, String approvedPolicyVersion) {
+        if (status != RefundState.REQUESTED && status != RefundState.PENDING_APPROVAL) {
+            throw new IllegalStateException("Platform refund is not awaiting approval.");
+        }
+        String approvedVersion = requireText(approvedPolicyVersion, "approvedPolicyVersion");
+        if (!approvedVersion.equals(policyVersion)) {
+            throw new IllegalStateException("Platform refund policy version does not match the request snapshot.");
+        }
+        approvedBy = Objects.requireNonNull(approver, "approver must not be null");
+        status = RefundState.PENDING_PROVIDER;
+    }
+
     public void markPendingProvider() {
         if (status != RefundState.REQUESTED && status != RefundState.PENDING_APPROVAL) {
             throw new IllegalStateException("Refund transition is not valid from " + status + ".");
@@ -141,6 +153,12 @@ public class PlatformRefundRequest {
         if (status != RefundState.PENDING_PROVIDER) throw new IllegalStateException("Refund is not pending provider.");
         succeededAmount = positive(amount);
         status = RefundState.SUCCEEDED;
+        this.completedAt = Objects.requireNonNull(completedAt, "completedAt must not be null");
+    }
+
+    public void markFailed(LocalDateTime completedAt) {
+        if (status != RefundState.PENDING_PROVIDER) throw new IllegalStateException("Refund is not pending provider.");
+        status = RefundState.FAILED;
         this.completedAt = Objects.requireNonNull(completedAt, "completedAt must not be null");
     }
 

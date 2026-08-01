@@ -135,6 +135,15 @@ public class PropertyRefundRequest {
         approvedAmount = requestedAmount;
     }
 
+    public void approve(User approver) {
+        if (status != RefundState.REQUESTED && status != RefundState.PENDING_APPROVAL) {
+            throw new IllegalStateException("Refund is not awaiting approval.");
+        }
+        approvedBy = Objects.requireNonNull(approver, "approver must not be null");
+        approvedAmount = requestedAmount;
+        status = RefundState.PENDING_PROVIDER;
+    }
+
     public void markPendingProvider() {
         requireStatus(RefundState.REQUESTED, RefundState.PENDING_APPROVAL);
         status = RefundState.PENDING_PROVIDER;

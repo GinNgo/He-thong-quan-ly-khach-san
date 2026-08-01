@@ -20,4 +20,8 @@ public interface PropertyRefundRequestRepository extends JpaRepository<PropertyR
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from PropertyRefundRequest r where r.id = :id")
     Optional<PropertyRefundRequest> findByIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from PropertyRefundRequest r where r.publicId = :publicId")
+    Optional<PropertyRefundRequest> findByPublicIdForUpdate(@Param("publicId") String publicId);
 }
