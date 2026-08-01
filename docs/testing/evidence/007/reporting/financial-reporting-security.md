@@ -4,6 +4,7 @@ The integration test verifies independent HTTP permissions and context boundarie
 
 - `/api/management/reports/property-revenue` is annotated with `REPORT` + `VIEW`;
 - `/api/admin/reports/platform-revenue` is annotated with `PLATFORM_REVENUE` + `VIEW`;
+- property and platform export endpoints require their corresponding `EXPORT` action;
 - a caller with only one permission receives `403` for the other endpoint through `PermissionInterceptor`;
 - property and platform report services reject the other context before invoking their repositories.
 
@@ -17,6 +18,6 @@ Command from `backend/`:
 .\mvnw.cmd '-Dtest=FinancialReportingSecurityIntegrationTest' -DforkCount=0 test
 ```
 
-Result on 2026-08-02: 2 tests passed, 0 failed, 0 skipped.
+Result on 2026-08-02: 3 tests passed, 0 failed, 0 skipped.
 
 No production credentials, external provider, migration or real-money operation was used.
