@@ -51,7 +51,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/payments/vnpay-callback").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST,
                         "/api/payment-providers/property/*/callback",
-                        "/api/payment-providers/platform/*/callback").permitAll()
+                        "/api/payment-providers/platform/*/callback",
+                        "/api/payment-providers/property/*/refund-callback",
+                        "/api/payment-providers/platform/*/refund-callback").permitAll()
                 .requestMatchers("/api/rooms/search").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
