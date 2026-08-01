@@ -180,8 +180,8 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 
 **Independent Test**: Submit sequential, repeated and concurrent full/partial refund requests, including unauthorized and wrong-context cases.
 
-- [ ] T112 [P] [US5] Implement property refund aggregate/repositories against original property ledger transactions in `backend/src/main/java/com/hotel/propertycommerce/refund/` (FR-024, FR-025)
-- [ ] T113 [P] [US5] Implement platform refund aggregate/repositories isolated from Property Commerce in `backend/src/main/java/com/hotel/platformbilling/refund/` (FR-025, FR-033)
+- [x] T112 [P] [US5] Implement property refund aggregate/repositories against original property ledger transactions in `backend/src/main/java/com/hotel/propertycommerce/refund/` (FR-024, FR-025)
+- [x] T113 [P] [US5] Implement platform refund aggregate/repositories isolated from Property Commerce in `backend/src/main/java/com/hotel/platformbilling/refund/` (FR-025, FR-033)
 - [ ] T114 [US5] Implement locked refundable-balance validation and exactly-once property refund effects in `backend/src/main/java/com/hotel/propertycommerce/refund/PropertyRefundService.java` (FR-024-FR-026)
 - [ ] T115 [US5] Implement platform refund processing with approved entitlement-policy gate in `backend/src/main/java/com/hotel/platformbilling/refund/PlatformRefundService.java` (FR-032, FR-033)
 - [ ] T116 [US5] Adapt provider refund attempts/callbacks to the shared SPI in `backend/src/main/java/com/hotel/paymentprovider/refund/` (FR-025, FR-041)

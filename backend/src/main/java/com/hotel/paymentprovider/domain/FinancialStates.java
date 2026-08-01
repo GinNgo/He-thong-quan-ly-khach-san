@@ -30,6 +30,7 @@ public final class FinancialStates {
 
     public enum RefundState {
         REQUESTED,
+        POLICY_BLOCKED,
         PENDING_APPROVAL,
         PENDING_PROVIDER,
         SUCCEEDED,
