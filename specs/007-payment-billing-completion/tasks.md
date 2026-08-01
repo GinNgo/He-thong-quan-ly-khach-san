@@ -170,7 +170,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 - [x] T108 [P] [US4] Add Angular purchase/renew/upgrade/failure/policy and platform-readiness masking tests in `frontend/src/app/features/management/subscription-billing/subscription-billing.component.spec.ts` and `frontend/src/app/features/admin/platform-payment-configuration/platform-payment-configuration.component.spec.ts` (SC-008, SC-012)
 - [x] T109 [US4] Add owner registration/property approval/plan purchase/activation Playwright journey in `frontend/e2e/platform-subscription-purchase.spec.ts` (SC-008)
 - [x] T110 [US4] Add tampered price, wrong merchant, replay, expiry, cancellation and unsupported downgrade Playwright cases in `frontend/e2e/platform-subscription-negative.spec.ts` (SC-008, SC-011)
-- [ ] T111 [US4] Record platform lifecycle evidence, policy blockers and integration variables in `docs/audit/financial/PLATFORM_BILLING_AUDIT.md` (FR-043, FR-044)
+- [x] T111 [US4] Record platform lifecycle evidence, policy blockers and integration variables in `docs/audit/financial/PLATFORM_BILLING_AUDIT.md` (FR-043, FR-044)
 
 ---
 
