@@ -62,6 +62,18 @@ export class ManagementLayout implements OnInit, OnDestroy {
         },
       ],
     },
+    {
+      label: 'Báo cáo',
+      links: [
+        {
+          label: 'Doanh thu cơ sở',
+          url: '/management/property-revenue',
+          icon: 'monitoring',
+          functionCode: FunctionCode.REPORT,
+          actionCode: ActionCode.VIEW,
+        },
+      ],
+    },
   ];
 
   username = 'Đối tác';

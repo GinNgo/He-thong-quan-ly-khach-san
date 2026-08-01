@@ -87,6 +87,7 @@ export const routes: Routes = [
       { path: 'room-types', loadComponent: () => import('./features/management/inventory/management-inventory.component').then(m => m.ManagementInventoryComponent), data: { mode: 'room-types' } },
       { path: 'rooms', loadComponent: () => import('./features/management/inventory/management-inventory.component').then(m => m.ManagementInventoryComponent), data: { mode: 'rooms' } },
       { path: 'payment-configuration', loadComponent: () => import('./features/management/property-payment-configuration/property-payment-configuration.component').then(m => m.PropertyPaymentConfigurationComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PROPERTY_PAYMENT_CONFIG, actionCode: ActionCode.VIEW } },
+      { path: 'property-revenue', loadComponent: () => import('./features/management/property-revenue/property-revenue.component').then(m => m.PropertyRevenueComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.REPORT, actionCode: ActionCode.VIEW } },
       { path: 'billing', loadComponent: () => import('./features/management/subscription-billing/subscription-billing.component').then(m => m.SubscriptionBillingComponent) },
       { path: 'subscription', redirectTo: 'billing', pathMatch: 'full' },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
