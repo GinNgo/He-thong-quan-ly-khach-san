@@ -29,6 +29,13 @@ public interface PlatformPaymentAttemptRepository extends JpaRepository<Platform
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select attempt from PlatformPaymentAttempt attempt "
+            + "where attempt.provider = :provider and attempt.providerOrderReference = :reference")
+    Optional<PlatformPaymentAttempt> findByProviderAndReferenceForUpdate(
+            @Param("provider") String provider,
+            @Param("reference") String reference);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select attempt from PlatformPaymentAttempt attempt "
             + "where attempt.provider = :provider and attempt.environment = :environment "
             + "and attempt.providerEventId = :providerEventId")
     Optional<PlatformPaymentAttempt> findByProviderEventForUpdate(

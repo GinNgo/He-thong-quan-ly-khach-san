@@ -28,14 +28,22 @@ public class PlatformMerchantCredentialResolver {
             return new ResolvedMerchantCredentials(null, Map.of(), null);
         }
         String merchantId = property(prefix, "MERCHANT_ID");
-        String secret = property(prefix, "SECRET");
         String endpointValue = property(prefix, "ENDPOINT");
         Map<String, String> secrets = new LinkedHashMap<>();
-        if (secret != null && !secret.isBlank()) {
-            secrets.put("secret", secret);
-        }
+        putIfPresent(secrets, "secret", property(prefix, "SECRET"));
+        putIfPresent(secrets, "signingSecret", property(prefix, "SIGNING_SECRET"));
+        putIfPresent(secrets, "accessKey", property(prefix, "ACCESS_KEY"));
+        putIfPresent(secrets, "secretKey", property(prefix, "SECRET_KEY"));
+        putIfPresent(secrets, "hashSecret", property(prefix, "HASH_SECRET"));
+        putIfPresent(secrets, "key2", property(prefix, "KEY2"));
         URI endpoint = endpointValue == null || endpointValue.isBlank() ? null : safeUri(endpointValue);
         return new ResolvedMerchantCredentials(merchantId, Map.copyOf(secrets), endpoint);
+    }
+
+    private void putIfPresent(Map<String, String> target, String key, String value) {
+        if (value != null && !value.isBlank()) {
+            target.put(key, value);
+        }
     }
 
     private String property(String prefix, String suffix) {

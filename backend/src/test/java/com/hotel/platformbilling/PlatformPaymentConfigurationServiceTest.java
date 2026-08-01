@@ -57,12 +57,12 @@ class PlatformPaymentConfigurationServiceTest {
         when(credentialResolver.resolveReference("env:PLATFORM_MOMO"))
                 .thenReturn(new PlatformMerchantCredentialResolver.ResolvedMerchantCredentials(
                         "platform-merchant-7890",
-                        Map.of("secret", "sandbox-secret-value"),
+                        Map.of("accessKey", "sandbox-access-value", "secretKey", "sandbox-secret-value"),
                         URI.create("https://sandbox.momo.example/pay")));
         when(credentialResolver.resolve(any(PlatformPaymentConfiguration.class)))
                 .thenReturn(new PlatformMerchantCredentialResolver.ResolvedMerchantCredentials(
                         "platform-merchant-7890",
-                        Map.of("secret", "sandbox-secret-value"),
+                        Map.of("accessKey", "sandbox-access-value", "secretKey", "sandbox-secret-value"),
                         URI.create("https://sandbox.momo.example/pay")));
         when(repository.saveAndFlush(any(PlatformPaymentConfiguration.class))).thenAnswer(invocation -> {
             PlatformPaymentConfiguration configuration = invocation.getArgument(0);

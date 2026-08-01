@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class PlatformPaymentConfigurationService {
@@ -47,9 +48,7 @@ public class PlatformPaymentConfigurationService {
 
         PlatformPaymentConfiguration configuration = repository.findByProviderAndEnvironment(provider, mode)
                 .orElseGet(() -> PlatformPaymentConfiguration.create(provider, mode));
-        ResolvedMerchantCredentials credentials = mode == PaymentEnvironment.SIMULATOR
-                ? null
-                : credentialResolver.resolveReference(command.secretReference());
+        ResolvedMerchantCredentials credentials = credentialResolver.resolveReference(command.secretReference());
         if (command.enabled()) {
             boolean anotherEnvironmentEnabled = repository
                     .findByProviderAndEnabledTrueOrderByEnvironmentAsc(provider).stream()
@@ -142,9 +141,7 @@ public class PlatformPaymentConfigurationService {
     }
 
     private ResolvedMerchantCredentials resolve(PlatformPaymentConfiguration configuration) {
-        return configuration.getEnvironment() == PaymentEnvironment.SIMULATOR
-                ? null
-                : credentialResolver.resolve(configuration);
+        return credentialResolver.resolve(configuration);
     }
 
     private PaymentEnvironmentGuard.Readiness validateReadiness(
@@ -167,6 +164,15 @@ public class PlatformPaymentConfigurationService {
             String provider,
             ResolvedMerchantCredentials credentials) {
         if (mode == PaymentEnvironment.SIMULATOR) {
+            if (credentials == null || credentials.merchantId() == null
+                    || !hasRequiredSecrets(provider, credentials.secrets())) {
+                throw new FinancialException(
+                        FinancialErrorCode.PAYMENT_ENVIRONMENT_DISABLED,
+                        "Platform simulator signing configuration is incomplete.",
+                        Map.of("simulator_credentials_incomplete", "simulator_credentials_incomplete"),
+                        mode.name(),
+                        null);
+            }
             environmentGuard.validate(mode, provider, null);
             return;
         }
@@ -178,7 +184,31 @@ public class PlatformPaymentConfigurationService {
                     mode.name(),
                     null);
         }
+        if (!hasRequiredSecrets(provider, credentials.secrets())) {
+            throw new FinancialException(
+                    FinancialErrorCode.PAYMENT_ENVIRONMENT_DISABLED,
+                    "Platform merchant provider credentials are incomplete.",
+                    Map.of("provider_credentials_incomplete", "provider_credentials_incomplete"),
+                    mode.name(),
+                    null);
+        }
         environmentGuard.validate(mode, provider, credentials.guardCredentials());
+    }
+
+    private boolean hasRequiredSecrets(String provider, Map<String, String> secrets) {
+        Set<String> required = switch (provider) {
+            case "SIMULATOR" -> Set.of("signingSecret");
+            case "MOMO" -> Set.of("accessKey", "secretKey");
+            case "VNPAY" -> Set.of("hashSecret");
+            case "ZALOPAY" -> Set.of("key2");
+            default -> Set.of();
+        };
+        return !required.isEmpty()
+                && secrets != null
+                && required.stream().allMatch(key -> {
+                    String value = secrets.get(key);
+                    return value != null && !value.isBlank();
+                });
     }
 
     private void validateCallback(PaymentEnvironment mode, String callbackUrl) {

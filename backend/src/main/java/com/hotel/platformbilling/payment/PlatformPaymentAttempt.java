@@ -150,7 +150,7 @@ public class PlatformPaymentAttempt {
 
     public void markPending(String providerOrderReference) {
         requireStatus(Status.CREATED);
-        this.providerOrderReference = normalizeOptional(providerOrderReference, 160);
+        this.providerOrderReference = requireText(providerOrderReference, "providerOrderReference", 160);
         status = Status.PENDING;
     }
 
@@ -169,19 +169,34 @@ public class PlatformPaymentAttempt {
         if (status != Status.PENDING && status != Status.PROCESSING && status != Status.CREATED) {
             throw new IllegalStateException("Only active attempts can succeed.");
         }
-        this.providerTransactionReference = requireText(
-                providerTransactionReference, "providerTransactionReference", 200);
-        this.providerEventId = normalizeOptional(providerEventId, 200);
+        this.providerTransactionReference = bindEvidence(
+                this.providerTransactionReference,
+                requireText(providerTransactionReference, "providerTransactionReference", 200),
+                "providerTransactionReference");
+        this.providerEventId = bindEvidence(
+                this.providerEventId,
+                requireText(providerEventId, "providerEventId", 200),
+                "providerEventId");
         this.completedAt = Objects.requireNonNull(completedAt, "completedAt must not be null");
         this.failureCode = null;
         status = Status.SUCCESS;
     }
 
     public void markFailed(String failureCode, LocalDateTime completedAt) {
+        markFailed(failureCode, null, completedAt);
+    }
+
+    public void markFailed(String failureCode, String providerEventId, LocalDateTime completedAt) {
         if (status == Status.SUCCESS || terminal()) {
             throw new IllegalStateException("Terminal payment attempt cannot fail again.");
         }
         this.failureCode = requireText(failureCode, "failureCode", 100);
+        if (providerEventId != null && !providerEventId.isBlank()) {
+            this.providerEventId = bindEvidence(
+                    this.providerEventId,
+                    requireText(providerEventId, "providerEventId", 200),
+                    "providerEventId");
+        }
         this.completedAt = Objects.requireNonNull(completedAt, "completedAt must not be null");
         status = Status.FAILED;
     }
@@ -217,6 +232,13 @@ public class PlatformPaymentAttempt {
         if (status != expected) {
             throw new IllegalStateException("Expected payment attempt status " + expected + " but was " + status + '.');
         }
+    }
+
+    private String bindEvidence(String current, String incoming, String field) {
+        if (current != null && !current.equals(incoming)) {
+            throw new IllegalStateException(field + " is already bound to different provider evidence.");
+        }
+        return incoming;
     }
 
     private void validate() {
