@@ -1,0 +1,33 @@
+<main class="platform-refunds" aria-labelledby="platform-refunds-title">
+  <header class="hero">
+    <div>
+      <span class="eyebrow">PLATFORM BILLING / SYSTEM SCOPE</span>
+      <h1 id="platform-refunds-title">Platform refund control</h1>
+      <p>Hoàn tiền SaaS độc lập với tiền phòng. Entitlement chỉ thay đổi khi policy đã được phê duyệt.</p>
+    </div>
+    <span class="context-pill"><i class="pi pi-cloud"></i> Platform Billing</span>
+  </header>
+
+  <div class="policy-banner">
+    <i class="pi pi-info-circle"></i>
+    <div><strong>Fail-closed policy gate</strong><span>Chưa cấu hình policy sẽ ghi nhận yêu cầu ở trạng thái POLICY_BLOCKED và không gọi provider.</span></div>
+  </div>
+  <div *ngIf="error" class="feedback error" role="alert">{{ error }}</div>
+  <div *ngIf="success" class="feedback success" role="status">{{ success }}</div>
+
+  <form class="refund-form" (ngSubmit)="requestRefund()" novalidate>
+    <label><span>Platform transaction</span><input [(ngModel)]="transactionPublicId" name="transactionPublicId" placeholder="PLATFORM-TX-..." required /></label>
+    <label><span>Amount VND</span><input [(ngModel)]="amount" name="amount" type="number" min="1" step="1" placeholder="500000" /></label>
+    <label><span>Reason / Lý do</span><input [(ngModel)]="reason" name="reason" maxlength="1000" placeholder="Subscription cancellation" /></label>
+    <button type="submit" [disabled]="loading"><i [class]="loading ? 'pi pi-spin pi-spinner' : 'pi pi-plus'"></i> Tạo yêu cầu</button>
+  </form>
+
+  <section class="refund-list" aria-label="Platform refund requests">
+    <div *ngIf="!refunds.length" class="empty-state"><i class="pi pi-inbox"></i><strong>Chưa có platform refund</strong><span>No platform refund requests.</span></div>
+    <article *ngFor="let refund of refunds" class="refund-card" [attr.data-refund-status]="refund.status">
+      <div class="card-top"><div><small>{{ refund.publicId }}</small><h2>{{ refund.requestedAmount | number }} {{ refund.currency }}</h2></div><span class="status-chip" [class]="statusTone(refund.status)">{{ statusLabel(refund.status) }}</span></div>
+      <dl><div><dt>Order</dt><dd>{{ refund.orderPublicId }}</dd></div><div><dt>Remaining</dt><dd>{{ refund.remainingRefundableAmount | number }} VND</dd></div><div><dt>Policy</dt><dd>{{ refund.policyVersion || 'UNCONFIGURED' }}</dd></div></dl>
+      <div class="card-actions"><button type="button" (click)="approve(refund)" [disabled]="loading || !refund.policyAvailable || (refund.status !== 'REQUESTED' && refund.status !== 'PENDING_APPROVAL')"><i class="pi pi-check"></i> Duyệt policy</button><button type="button" class="secondary" (click)="createAttempt(refund)" [disabled]="loading || !refund.policyAvailable || refund.status !== 'PENDING_PROVIDER'"><i class="pi pi-send"></i> Tạo provider attempt</button><button type="button" class="link" (click)="refresh(refund.publicId)" [disabled]="loading"><i class="pi pi-refresh"></i> Refresh</button></div>
+    </article>
+  </section>
+</main>

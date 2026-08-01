@@ -191,7 +191,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 - [x] T120 [US5] Add cross-property, wrong-context and manual-refund permission tests in `backend/src/test/java/com/hotel/integration/FinancialRefundSecurityIntegrationTest.java` (SC-011)
 - [x] T121 [P] [US5] Add typed property/platform refund API clients in `frontend/src/app/core/services/refund.service.ts` (FR-024-FR-026, FR-033)
 - [x] T122 [US5] Build customer and property-role refund status/request UI in `frontend/src/app/features/client/profile/refund-history.component.ts` and `frontend/src/app/features/admin/reservation-management/refund-management.component.ts` (FR-024-FR-026)
-- [ ] T123 [US5] Build system-admin platform refund UI with policy blocker states in `frontend/src/app/features/admin/platform-refunds/platform-refunds.component.ts` (FR-033)
+- [x] T123 [US5] Build system-admin platform refund UI with policy blocker states in `frontend/src/app/features/admin/platform-refunds/platform-refunds.component.ts` (FR-033)
 - [ ] T124 [US5] Add cancellation/refund success, provider failure, fake callback, replay and concurrency Playwright journey in `frontend/e2e/refund-lifecycle.spec.ts` (SC-007, SC-011)
 
 ---
