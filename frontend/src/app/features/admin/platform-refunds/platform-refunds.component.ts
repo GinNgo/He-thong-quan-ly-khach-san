@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -19,6 +19,7 @@ import {
 export class PlatformRefundsComponent implements OnInit {
   private readonly refundService = inject(RefundService);
   private readonly route = inject(ActivatedRoute);
+  private readonly changeDetector = inject(ChangeDetectorRef);
 
   transactionPublicId = '';
   amount: number | null = null;
@@ -54,7 +55,7 @@ export class PlatformRefundsComponent implements OnInit {
         { amount: this.amount, reason: this.reason.trim() },
         { idempotencyKey: this.requestId() },
       )
-      .pipe(finalize(() => (this.loading = false)))
+      .pipe(finalize(() => this.finishLoading()))
       .subscribe({
         next: (refund) => {
           this.upsert(refund);
@@ -63,9 +64,11 @@ export class PlatformRefundsComponent implements OnInit {
             : 'Đã ghi nhận nhưng bị chặn do chưa có policy / Recorded but blocked because policy is not configured.';
           this.amount = null;
           this.reason = '';
+          this.changeDetector.detectChanges();
         },
         error: (error) => {
           this.error = error?.error?.message || 'Không thể tạo platform refund / Platform refund failed.';
+          this.changeDetector.detectChanges();
         },
       });
   }
@@ -76,14 +79,16 @@ export class PlatformRefundsComponent implements OnInit {
     this.error = '';
     this.refundService
       .approvePlatformRefund(refund.publicId)
-      .pipe(finalize(() => (this.loading = false)))
+      .pipe(finalize(() => this.finishLoading()))
       .subscribe({
         next: (updated) => {
           this.upsert(updated);
           this.success = 'Đã duyệt theo policy / Approved under the configured policy.';
+          this.changeDetector.detectChanges();
         },
         error: (error) => {
           this.error = error?.error?.message || 'Không thể duyệt platform refund / Approval failed.';
+          this.changeDetector.detectChanges();
         },
       });
   }
@@ -94,10 +99,16 @@ export class PlatformRefundsComponent implements OnInit {
     this.error = '';
     this.refundService
       .createPlatformRefundAttempt(refund.publicId, { provider: this.provider })
-      .pipe(finalize(() => (this.loading = false)))
+      .pipe(finalize(() => this.finishLoading()))
       .subscribe({
-        next: () => (this.success = 'Đã tạo attempt provider / Provider attempt created.'),
-        error: (error) => (this.error = error?.error?.message || 'Provider chưa sẵn sàng / Provider unavailable.'),
+        next: () => {
+          this.success = 'Đã tạo attempt provider / Provider attempt created.';
+          this.changeDetector.detectChanges();
+        },
+        error: (error) => {
+          this.error = error?.error?.message || 'Provider chưa sẵn sàng / Provider unavailable.';
+          this.changeDetector.detectChanges();
+        },
       });
   }
 
@@ -105,10 +116,16 @@ export class PlatformRefundsComponent implements OnInit {
     this.loading = true;
     this.refundService
       .getPlatformRefund(refundId)
-      .pipe(finalize(() => (this.loading = false)))
+      .pipe(finalize(() => this.finishLoading()))
       .subscribe({
-        next: (refund) => this.upsert(refund),
-        error: (error) => (this.error = error?.error?.message || 'Không thể tải refund / Refund status unavailable.'),
+        next: (refund) => {
+          this.upsert(refund);
+          this.changeDetector.detectChanges();
+        },
+        error: (error) => {
+          this.error = error?.error?.message || 'Không thể tải refund / Refund status unavailable.';
+          this.changeDetector.detectChanges();
+        },
       });
   }
 
@@ -130,6 +147,11 @@ export class PlatformRefundsComponent implements OnInit {
 
   private upsert(refund: PlatformRefundResult): void {
     this.refunds = [refund, ...this.refunds.filter((item) => item.publicId !== refund.publicId)];
+  }
+
+  private finishLoading(): void {
+    this.loading = false;
+    this.changeDetector.detectChanges();
   }
 
   private requestId(): string {

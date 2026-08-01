@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, OnInit, Output, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, OnInit, Output, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -19,6 +19,7 @@ import {
 export class RefundHistoryComponent implements OnInit {
   private readonly refundService = inject(RefundService);
   private readonly route = inject(ActivatedRoute);
+  private readonly changeDetector = inject(ChangeDetectorRef);
 
   @Output() readonly refundRequested = new EventEmitter<PropertyRefundResult>();
 
@@ -61,7 +62,10 @@ export class RefundHistoryComponent implements OnInit {
         { amount: this.amount, reason: this.reason.trim() },
         { idempotencyKey: this.requestId() },
       )
-      .pipe(finalize(() => (this.loading = false)))
+      .pipe(finalize(() => {
+        this.loading = false;
+        this.changeDetector.detectChanges();
+      }))
       .subscribe({
         next: (refund) => {
           this.refunds = [refund, ...this.refunds.filter((item) => item.publicId !== refund.publicId)];
@@ -71,9 +75,11 @@ export class RefundHistoryComponent implements OnInit {
           this.amount = null;
           this.reason = '';
           this.refundRequested.emit(refund);
+          this.changeDetector.detectChanges();
         },
         error: (error) => {
           this.error = error?.error?.message || 'Không thể gửi yêu cầu hoàn tiền / Refund request failed.';
+          this.changeDetector.detectChanges();
         },
       });
   }
@@ -83,14 +89,19 @@ export class RefundHistoryComponent implements OnInit {
     this.error = '';
     this.refundService
       .getPropertyRefund(refundId)
-      .pipe(finalize(() => (this.refreshing = false)))
+      .pipe(finalize(() => {
+        this.refreshing = false;
+        this.changeDetector.detectChanges();
+      }))
       .subscribe({
         next: (refund) => {
           this.transactionPublicId ||= refund.originalTransactionPublicId;
           this.refunds = [refund, ...this.refunds.filter((item) => item.publicId !== refund.publicId)];
+          this.changeDetector.detectChanges();
         },
         error: (error) => {
           this.error = error?.error?.message || 'Không thể tải trạng thái hoàn tiền / Refund status unavailable.';
+          this.changeDetector.detectChanges();
         },
       });
   }

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { finalize } from 'rxjs';
 import { PropertyRefundResult, RefundService, RefundStatus } from '@app/core/services/refund.service';
 
@@ -12,6 +12,7 @@ import { PropertyRefundResult, RefundService, RefundStatus } from '@app/core/ser
 })
 export class RefundManagementComponent {
   private readonly refundService = inject(RefundService);
+  private readonly changeDetector = inject(ChangeDetectorRef);
 
   @Input() refunds: PropertyRefundResult[] = [];
   @Output() readonly refundUpdated = new EventEmitter<PropertyRefundResult>();
@@ -27,15 +28,20 @@ export class RefundManagementComponent {
     this.success = '';
     this.refundService
       .approvePropertyRefund(refund.publicId)
-      .pipe(finalize(() => (this.approvingId = null)))
+      .pipe(finalize(() => {
+        this.approvingId = null;
+        this.changeDetector.detectChanges();
+      }))
       .subscribe({
         next: (updated) => {
           this.refunds = this.refunds.map((item) => item.publicId === updated.publicId ? updated : item);
           this.success = 'Đã chuyển yêu cầu sang xử lý / Refund sent to provider processing.';
           this.refundUpdated.emit(updated);
+          this.changeDetector.detectChanges();
         },
         error: (error) => {
           this.error = error?.error?.message || 'Không thể duyệt yêu cầu / Approval failed.';
+          this.changeDetector.detectChanges();
         },
       });
   }
