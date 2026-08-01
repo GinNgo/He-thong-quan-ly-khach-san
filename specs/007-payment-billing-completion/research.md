@@ -161,3 +161,15 @@ The audit also found blocking gaps:
 **Alternatives considered**:
 
 - Automatically fall back to simulator when production fails: rejected because UI and operators could believe a live payment occurred.
+
+## Decision 15: Upgrades use full price and preserve the remaining term
+
+**Decision**: Apply versioned policy `FULL_PRICE_PRESERVE_REMAINING_TERM_V1`. A verified upgrade activates the target plan immediately, charges the full snapshotted target catalog price without credit or proration, preserves the complete remaining current term, and adds the target plan duration after the later of current expiry or payment time. Target limits cannot reduce any current limit and must support current property usage.
+
+**Rationale**: This owner-approved rule is deterministic, avoids implicit credits and preserves value already purchased while still moving entitlement to the higher plan immediately.
+
+**Alternatives considered**:
+
+- Prorated credit for unused time: rejected because no proration/accounting policy has been approved.
+- Replace the remaining term with only the new plan duration: rejected because it would discard paid entitlement.
+- Allow a plan with lower limits when current usage happens to fit: rejected because an upgrade must be strictly non-decreasing and improve at least one limit.

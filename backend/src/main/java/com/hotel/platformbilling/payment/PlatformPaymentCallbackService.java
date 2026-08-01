@@ -12,6 +12,7 @@ import com.hotel.platformbilling.order.PlatformSubscriptionOrderRepository;
 import com.hotel.platformbilling.order.SubscriptionOrder;
 import com.hotel.platformbilling.subscription.SubscriptionApplicationService;
 import com.hotel.platformbilling.subscription.SubscriptionRenewalService;
+import com.hotel.platformbilling.subscription.SubscriptionUpgradeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,7 @@ public class PlatformPaymentCallbackService {
     private final FinancialAuditService auditService;
     private final SubscriptionApplicationService applicationService;
     private final SubscriptionRenewalService renewalService;
+    private final SubscriptionUpgradeService upgradeService;
     private final Clock clock;
 
     @Autowired
@@ -52,7 +54,8 @@ public class PlatformPaymentCallbackService {
             PaymentProviderAdapterRegistry adapterRegistry,
             FinancialAuditService auditService,
             SubscriptionApplicationService applicationService,
-            SubscriptionRenewalService renewalService) {
+            SubscriptionRenewalService renewalService,
+            SubscriptionUpgradeService upgradeService) {
         this(
                 attemptRepository,
                 transactionRepository,
@@ -62,6 +65,7 @@ public class PlatformPaymentCallbackService {
                 auditService,
                 applicationService,
                 renewalService,
+                upgradeService,
                 Clock.systemUTC());
     }
 
@@ -74,6 +78,7 @@ public class PlatformPaymentCallbackService {
             FinancialAuditService auditService,
             SubscriptionApplicationService applicationService,
             SubscriptionRenewalService renewalService,
+            SubscriptionUpgradeService upgradeService,
             Clock clock) {
         this.attemptRepository = attemptRepository;
         this.transactionRepository = transactionRepository;
@@ -83,6 +88,7 @@ public class PlatformPaymentCallbackService {
         this.auditService = auditService;
         this.applicationService = applicationService;
         this.renewalService = renewalService;
+        this.upgradeService = upgradeService;
         this.clock = clock;
     }
 
@@ -267,7 +273,9 @@ public class PlatformPaymentCallbackService {
                     order.getPublicId(), transaction.getPublicId(), correlationId).contractPublicId();
             case RENEW -> renewalService.applyPaidRenewal(
                     order.getPublicId(), transaction.getPublicId(), correlationId).contractPublicId();
-            case UPGRADE, DOWNGRADE, REFUND -> null;
+            case UPGRADE -> upgradeService.applyPaidUpgrade(
+                    order.getPublicId(), transaction.getPublicId(), correlationId).contractPublicId();
+            case DOWNGRADE, REFUND -> null;
         };
     }
 

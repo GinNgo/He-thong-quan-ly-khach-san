@@ -24,6 +24,7 @@ import com.hotel.platformbilling.subscription.SubscriptionApplicationService;
 import com.hotel.platformbilling.subscription.SubscriptionEntitlement;
 import com.hotel.platformbilling.subscription.SubscriptionHistory;
 import com.hotel.platformbilling.subscription.SubscriptionRenewalService;
+import com.hotel.platformbilling.subscription.SubscriptionUpgradeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -66,6 +67,7 @@ class PlatformPaymentCallbackServiceTest {
     @Mock private FinancialAuditService auditService;
     @Mock private SubscriptionApplicationService applicationService;
     @Mock private SubscriptionRenewalService renewalService;
+    @Mock private SubscriptionUpgradeService upgradeService;
 
     private PlatformPaymentCallbackService service;
 
@@ -80,6 +82,7 @@ class PlatformPaymentCallbackServiceTest {
                 auditService,
                 applicationService,
                 renewalService,
+                upgradeService,
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
@@ -200,6 +203,54 @@ class PlatformPaymentCallbackServiceTest {
         verify(renewalService).applyPaidRenewal(
                 "order-public", transactionCaptor.getValue().getPublicId(), "correlation-platform-callback");
         verify(applicationService, never()).applyPaidOrder(any(), any(), any());
+    }
+
+    @Test
+    void verifiedUpgradeDelegatesThePaidOrderToTheApprovedUpgradeBoundary() {
+        Fixture fixture = fixture(SubscriptionOrder.Operation.UPGRADE);
+        PaymentProviderAdapter.NormalizedCallback callback = callback(true, "event-upgrade", "txn-upgrade");
+        arrange(fixture, callback);
+        when(transactionRepository.findByAttemptIdOrderByOccurredAtAsc(50L)).thenReturn(List.of());
+        when(transactionRepository.findByIdempotencyIdentity(any())).thenReturn(Optional.empty());
+        when(transactionRepository.saveAndFlush(any(PlatformFinancialTransaction.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(upgradeService.applyPaidUpgrade(
+                org.mockito.ArgumentMatchers.eq("order-public"),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq("correlation-platform-callback")))
+                .thenAnswer(invocation -> {
+                    fixture.order().transitionTo(
+                            SubscriptionOrderState.APPLIED,
+                            LocalDateTime.ofInstant(NOW, ZoneOffset.UTC));
+                    return new SubscriptionUpgradeService.UpgradeApplicationResult(
+                            fixture.order().getPublicId(),
+                            fixture.order().getStatus(),
+                            invocation.getArgument(1),
+                            "upgraded-contract",
+                            fixture.order().getTargetHotel().getId(),
+                            LocalDateTime.ofInstant(NOW, ZoneOffset.UTC),
+                            LocalDateTime.ofInstant(NOW, ZoneOffset.UTC).plusYears(1),
+                            false,
+                            SubscriptionHistory.ActionType.UPGRADED,
+                            "FULL_PRICE_PRESERVE_REMAINING_TERM_V1",
+                            false);
+                });
+
+        PlatformPaymentCallbackService.CallbackResult result = service.process(command());
+
+        assertTrue(result.accepted());
+        assertEquals(SubscriptionOrderState.APPLIED, result.orderStatus());
+        assertEquals("upgraded-contract", result.contractPublicId());
+        ArgumentCaptor<PlatformFinancialTransaction> transactionCaptor =
+                ArgumentCaptor.forClass(PlatformFinancialTransaction.class);
+        verify(transactionRepository).saveAndFlush(transactionCaptor.capture());
+        assertEquals(
+                PlatformFinancialTransaction.TransactionType.SUBSCRIPTION_UPGRADE,
+                transactionCaptor.getValue().getTransactionType());
+        verify(upgradeService).applyPaidUpgrade(
+                "order-public", transactionCaptor.getValue().getPublicId(), "correlation-platform-callback");
+        verify(applicationService, never()).applyPaidOrder(any(), any(), any());
+        verify(renewalService, never()).applyPaidRenewal(any(), any(), any());
     }
 
     private void arrange(Fixture fixture, PaymentProviderAdapter.NormalizedCallback callback) {
