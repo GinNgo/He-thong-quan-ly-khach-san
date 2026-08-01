@@ -13,6 +13,10 @@ public interface PlatformSoftwareContractRepository extends JpaRepository<Softwa
 
     Optional<SoftwareContract> findByPublicId(String publicId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select contract from PlatformSoftwareContract contract where contract.publicId = :publicId")
+    Optional<SoftwareContract> findByPublicIdForUpdate(@Param("publicId") String publicId);
+
     Optional<SoftwareContract> findByOrderId(Long orderId);
 
     List<SoftwareContract> findByTargetHotelIdOrderByCreatedAtDesc(Long targetHotelId);

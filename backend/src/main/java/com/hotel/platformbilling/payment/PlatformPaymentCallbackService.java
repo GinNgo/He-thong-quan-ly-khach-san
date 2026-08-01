@@ -11,6 +11,7 @@ import com.hotel.platformbilling.config.PlatformPaymentConfigurationService;
 import com.hotel.platformbilling.order.PlatformSubscriptionOrderRepository;
 import com.hotel.platformbilling.order.SubscriptionOrder;
 import com.hotel.platformbilling.subscription.SubscriptionApplicationService;
+import com.hotel.platformbilling.subscription.SubscriptionRenewalService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,7 @@ public class PlatformPaymentCallbackService {
     private final PaymentProviderAdapterRegistry adapterRegistry;
     private final FinancialAuditService auditService;
     private final SubscriptionApplicationService applicationService;
+    private final SubscriptionRenewalService renewalService;
     private final Clock clock;
 
     @Autowired
@@ -49,7 +51,8 @@ public class PlatformPaymentCallbackService {
             PlatformPaymentConfigurationService configurationService,
             PaymentProviderAdapterRegistry adapterRegistry,
             FinancialAuditService auditService,
-            SubscriptionApplicationService applicationService) {
+            SubscriptionApplicationService applicationService,
+            SubscriptionRenewalService renewalService) {
         this(
                 attemptRepository,
                 transactionRepository,
@@ -58,6 +61,7 @@ public class PlatformPaymentCallbackService {
                 adapterRegistry,
                 auditService,
                 applicationService,
+                renewalService,
                 Clock.systemUTC());
     }
 
@@ -69,6 +73,7 @@ public class PlatformPaymentCallbackService {
             PaymentProviderAdapterRegistry adapterRegistry,
             FinancialAuditService auditService,
             SubscriptionApplicationService applicationService,
+            SubscriptionRenewalService renewalService,
             Clock clock) {
         this.attemptRepository = attemptRepository;
         this.transactionRepository = transactionRepository;
@@ -77,6 +82,7 @@ public class PlatformPaymentCallbackService {
         this.adapterRegistry = adapterRegistry;
         this.auditService = auditService;
         this.applicationService = applicationService;
+        this.renewalService = renewalService;
         this.clock = clock;
     }
 
@@ -156,7 +162,7 @@ public class PlatformPaymentCallbackService {
             if (existing != null && sameProviderEvidence(attempt, callback)) {
                 audit(attempt, order, command, callback, "SUCCESS", "SUCCESS",
                         "Equivalent platform callback replay", true, null);
-                String contractPublicId = applyPurchaseIfEligible(order, existing, command.correlationId());
+                String contractPublicId = applySubscriptionIfEligible(order, existing, command.correlationId());
                 return CallbackResult.accepted(attempt, order, existing, contractPublicId, true);
             }
             return reject(attempt, order, command, callback, FinancialErrorCode.INVALID_STATE_TRANSITION);
@@ -201,7 +207,7 @@ public class PlatformPaymentCallbackService {
             attemptRepository.saveAndFlush(attempt);
             audit(attempt, order, command, callback, previousAttemptState, attempt.getStatus().name(),
                     "Repaired platform attempt from existing ledger effect", true, null);
-            String contractPublicId = applyPurchaseIfEligible(order, existing, command.correlationId());
+            String contractPublicId = applySubscriptionIfEligible(order, existing, command.correlationId());
             return CallbackResult.accepted(attempt, order, existing, contractPublicId, true);
         }
 
@@ -248,19 +254,21 @@ public class PlatformPaymentCallbackService {
         audit(attempt, order, command, callback, previousAttemptState, attempt.getStatus().name(),
                 "Verified platform payment", false, null);
         auditOrder(order, command, callback, previousOrderState, order.getStatus().name(), identity);
-        String contractPublicId = applyPurchaseIfEligible(order, transaction, command.correlationId());
+        String contractPublicId = applySubscriptionIfEligible(order, transaction, command.correlationId());
         return CallbackResult.accepted(attempt, order, transaction, contractPublicId, false);
     }
 
-    private String applyPurchaseIfEligible(
+    private String applySubscriptionIfEligible(
             SubscriptionOrder order,
             PlatformFinancialTransaction transaction,
             String correlationId) {
-        if (order.getOperation() != SubscriptionOrder.Operation.PURCHASE) {
-            return null;
-        }
-        return applicationService.applyPaidOrder(
-                order.getPublicId(), transaction.getPublicId(), correlationId).contractPublicId();
+        return switch (order.getOperation()) {
+            case PURCHASE -> applicationService.applyPaidOrder(
+                    order.getPublicId(), transaction.getPublicId(), correlationId).contractPublicId();
+            case RENEW -> renewalService.applyPaidRenewal(
+                    order.getPublicId(), transaction.getPublicId(), correlationId).contractPublicId();
+            case UPGRADE, DOWNGRADE, REFUND -> null;
+        };
     }
 
     private PlatformFinancialTransaction successfulTransaction(PlatformPaymentAttempt attempt) {

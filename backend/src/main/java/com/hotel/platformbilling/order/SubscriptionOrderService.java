@@ -36,6 +36,10 @@ import java.util.UUID;
 public class SubscriptionOrderService {
 
     private static final DateTimeFormatter ORDER_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final List<SubscriptionOrderState> OPEN_LIFECYCLE_STATES = List.of(
+            SubscriptionOrderState.CREATED,
+            SubscriptionOrderState.PENDING_PAYMENT,
+            SubscriptionOrderState.PAID);
 
     private final PlatformSubscriptionPlanCatalogRepository planRepository;
     private final PlatformSubscriptionOrderRepository orderRepository;
@@ -85,13 +89,35 @@ public class SubscriptionOrderService {
 
     @Transactional
     public OrderResponse createPurchaseOrder(CreatePurchaseOrderCommand command) {
-        validate(command);
-        String idempotencyKey = normalizeIdempotencyKey(command.idempotencyKey());
+        validatePurchase(command);
+        return createOrder(
+                command.targetHotelId(),
+                command.planId(),
+                SubscriptionOrder.Operation.PURCHASE,
+                command.idempotencyKey());
+    }
+
+    @Transactional
+    public OrderResponse createLifecycleOrder(CreateLifecycleOrderCommand command) {
+        validateLifecycle(command);
+        return createOrder(
+                command.targetHotelId(),
+                command.planId(),
+                command.operation(),
+                command.idempotencyKey());
+    }
+
+    private OrderResponse createOrder(
+            Long targetHotelId,
+            Long planId,
+            SubscriptionOrder.Operation operation,
+            String requestedIdempotencyKey) {
+        String idempotencyKey = normalizeIdempotencyKey(requestedIdempotencyKey);
         User authenticated = propertyAccessService.currentUser();
         User owner = userRepository.findByIdForUpdate(authenticated.getId())
                 .orElseThrow(() -> new FinancialException(FinancialErrorCode.RESOURCE_NOT_FOUND));
-        Hotel targetHotel = propertyAccessService.requireManagedHotel(command.targetHotelId());
-        String requestHash = requestHash(command.targetHotelId(), command.planId(), SubscriptionOrder.Operation.PURCHASE);
+        Hotel targetHotel = propertyAccessService.requireManagedHotel(targetHotelId);
+        String requestHash = requestHash(targetHotelId, planId, operation);
 
         var existing = orderRepository.findByOwnerIdAndIdempotencyKeyForUpdate(owner.getId(), idempotencyKey);
         if (existing.isPresent()) {
@@ -99,10 +125,22 @@ public class SubscriptionOrderService {
             return response(existing.get(), true);
         }
 
-        SubscriptionPlan plan = planRepository.findByIdForSnapshot(command.planId())
+        if (operation != SubscriptionOrder.Operation.PURCHASE
+                && orderRepository.findFirstByTargetHotelIdAndOperationAndStatusInOrderByCreatedAtDesc(
+                        targetHotelId, operation, OPEN_LIFECYCLE_STATES).isPresent()) {
+            throw new FinancialException(FinancialErrorCode.INVALID_STATE_TRANSITION,
+                    "An unapplied subscription lifecycle order already exists for this property.");
+        }
+
+        SubscriptionPlan plan = planRepository.findByIdForSnapshot(planId)
                 .orElseThrow(() -> new FinancialException(FinancialErrorCode.RESOURCE_NOT_FOUND));
         CatalogSnapshot snapshot = snapshot(plan);
         OrderTerms terms = terms(plan);
+        if (operation == SubscriptionOrder.Operation.RENEW
+                && terms.durationUnit() == SubscriptionOrder.DurationUnit.LIFETIME) {
+            throw new FinancialException(FinancialErrorCode.POLICY_NOT_CONFIGURED,
+                    "Lifetime subscriptions do not have an approved renewal order policy.");
+        }
         LocalDateTime now = LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
         String publicId = UUID.randomUUID().toString();
         String orderCode = "SUB-" + ORDER_DATE.format(now) + '-'
@@ -113,7 +151,7 @@ public class SubscriptionOrderService {
                 orderCode,
                 owner,
                 targetHotel,
-                SubscriptionOrder.Operation.PURCHASE,
+                operation,
                 plan,
                 version(plan, snapshot),
                 plan.getCode(),
@@ -251,9 +289,20 @@ public class SubscriptionOrderService {
         return requireText(plan.getNameEn(), "plan name", 255);
     }
 
-    private void validate(CreatePurchaseOrderCommand command) {
+    private void validatePurchase(CreatePurchaseOrderCommand command) {
         if (command == null || command.targetHotelId() == null || command.planId() == null) {
             throw new IllegalArgumentException("Target property and subscription plan are required.");
+        }
+    }
+
+    private void validateLifecycle(CreateLifecycleOrderCommand command) {
+        if (command == null || command.targetHotelId() == null || command.planId() == null
+                || command.operation() == null) {
+            throw new IllegalArgumentException("Lifecycle operation, target property and plan are required.");
+        }
+        if (command.operation() != SubscriptionOrder.Operation.RENEW
+                && command.operation() != SubscriptionOrder.Operation.UPGRADE) {
+            throw new IllegalArgumentException("Only renewal and upgrade lifecycle orders are supported.");
         }
     }
 
@@ -286,6 +335,13 @@ public class SubscriptionOrderService {
     }
 
     public record CreatePurchaseOrderCommand(Long targetHotelId, Long planId, String idempotencyKey) {
+    }
+
+    public record CreateLifecycleOrderCommand(
+            Long targetHotelId,
+            Long planId,
+            SubscriptionOrder.Operation operation,
+            String idempotencyKey) {
     }
 
     public record FeatureSnapshot(String code, int limit) {

@@ -126,6 +126,52 @@ class SubscriptionOrderServiceTest {
     }
 
     @Test
+    void renewalOrderUsesTheCurrentMonthlyCatalogDurationInsteadOfOneHardCodedYear() {
+        Fixture fixture = fixture();
+        fixture.plan().setBillingType("MONTHLY");
+        fixture.plan().setPrice(BigDecimal.valueOf(250_000));
+        authorize(fixture);
+        when(orderRepository.findByOwnerIdAndIdempotencyKeyForUpdate(10L, "renew-key"))
+                .thenReturn(Optional.empty());
+        when(planRepository.findByIdForSnapshot(30L)).thenReturn(Optional.of(fixture.plan()));
+        when(orderRepository.saveAndFlush(any(SubscriptionOrder.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        SubscriptionOrderService.OrderResponse response = service.createLifecycleOrder(
+                new SubscriptionOrderService.CreateLifecycleOrderCommand(
+                        20L,
+                        30L,
+                        SubscriptionOrder.Operation.RENEW,
+                        "renew-key"));
+
+        assertEquals(SubscriptionOrder.Operation.RENEW, response.operation());
+        assertEquals(BigDecimal.valueOf(250_000).setScale(0), response.price());
+        assertEquals("MONTHLY", response.billingPeriod());
+        assertEquals(1, response.durationValue());
+        assertEquals(SubscriptionOrder.DurationUnit.MONTH, response.durationUnit());
+    }
+
+    @Test
+    void renewalOrderRejectsCatalogTermsThatWouldConvertToLifetimeAccess() {
+        Fixture fixture = fixture();
+        fixture.plan().setIsLifetime(true);
+        authorize(fixture);
+        when(orderRepository.findByOwnerIdAndIdempotencyKeyForUpdate(10L, "renew-key"))
+                .thenReturn(Optional.empty());
+        when(planRepository.findByIdForSnapshot(30L)).thenReturn(Optional.of(fixture.plan()));
+
+        FinancialException exception = assertThrows(FinancialException.class, () -> service.createLifecycleOrder(
+                new SubscriptionOrderService.CreateLifecycleOrderCommand(
+                        20L,
+                        30L,
+                        SubscriptionOrder.Operation.RENEW,
+                        "renew-key")));
+
+        assertEquals(FinancialErrorCode.POLICY_NOT_CONFIGURED, exception.code());
+        verify(orderRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
     void reusedKeyWithDifferentTargetIsRejectedBeforeCatalogOrPersistence() {
         Fixture fixture = fixture();
         authorize(fixture);

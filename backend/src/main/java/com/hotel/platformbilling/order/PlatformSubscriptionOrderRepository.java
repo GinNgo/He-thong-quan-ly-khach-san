@@ -20,6 +20,12 @@ public interface PlatformSubscriptionOrderRepository extends JpaRepository<Subsc
     List<SubscriptionOrder> findByTargetHotelIdOrderByCreatedAtDesc(Long targetHotelId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<SubscriptionOrder> findFirstByTargetHotelIdAndOperationAndStatusInOrderByCreatedAtDesc(
+            Long targetHotelId,
+            SubscriptionOrder.Operation operation,
+            List<com.hotel.paymentprovider.domain.FinancialStates.SubscriptionOrderState> statuses);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select orders from PlatformSubscriptionOrder orders where orders.publicId = :publicId")
     Optional<SubscriptionOrder> findByPublicIdForUpdate(@Param("publicId") String publicId);
 

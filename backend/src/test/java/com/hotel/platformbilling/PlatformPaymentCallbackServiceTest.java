@@ -23,6 +23,7 @@ import com.hotel.platformbilling.payment.PlatformPaymentCallbackService;
 import com.hotel.platformbilling.subscription.SubscriptionApplicationService;
 import com.hotel.platformbilling.subscription.SubscriptionEntitlement;
 import com.hotel.platformbilling.subscription.SubscriptionHistory;
+import com.hotel.platformbilling.subscription.SubscriptionRenewalService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -64,6 +65,7 @@ class PlatformPaymentCallbackServiceTest {
     @Mock private PaymentProviderAdapter adapter;
     @Mock private FinancialAuditService auditService;
     @Mock private SubscriptionApplicationService applicationService;
+    @Mock private SubscriptionRenewalService renewalService;
 
     private PlatformPaymentCallbackService service;
 
@@ -77,6 +79,7 @@ class PlatformPaymentCallbackServiceTest {
                 adapterRegistry,
                 auditService,
                 applicationService,
+                renewalService,
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
@@ -172,6 +175,33 @@ class PlatformPaymentCallbackServiceTest {
         verify(orderRepository).save(fixture.order());
     }
 
+    @Test
+    void verifiedRenewalDelegatesThePaidOrderToTheRenewalApplicationBoundary() {
+        Fixture fixture = fixture(SubscriptionOrder.Operation.RENEW);
+        PaymentProviderAdapter.NormalizedCallback callback = callback(true, "event-renew", "txn-renew");
+        arrange(fixture, callback);
+        arrangeRenewalApplication(fixture);
+        when(transactionRepository.findByAttemptIdOrderByOccurredAtAsc(50L)).thenReturn(List.of());
+        when(transactionRepository.findByIdempotencyIdentity(any())).thenReturn(Optional.empty());
+        when(transactionRepository.saveAndFlush(any(PlatformFinancialTransaction.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        PlatformPaymentCallbackService.CallbackResult result = service.process(command());
+
+        assertTrue(result.accepted());
+        assertEquals(SubscriptionOrderState.APPLIED, result.orderStatus());
+        assertEquals("renewed-contract", result.contractPublicId());
+        ArgumentCaptor<PlatformFinancialTransaction> transactionCaptor =
+                ArgumentCaptor.forClass(PlatformFinancialTransaction.class);
+        verify(transactionRepository).saveAndFlush(transactionCaptor.capture());
+        assertEquals(
+                PlatformFinancialTransaction.TransactionType.SUBSCRIPTION_RENEWAL,
+                transactionCaptor.getValue().getTransactionType());
+        verify(renewalService).applyPaidRenewal(
+                "order-public", transactionCaptor.getValue().getPublicId(), "correlation-platform-callback");
+        verify(applicationService, never()).applyPaidOrder(any(), any(), any());
+    }
+
     private void arrange(Fixture fixture, PaymentProviderAdapter.NormalizedCallback callback) {
         when(adapterRegistry.require("SIMULATOR")).thenReturn(adapter);
         when(adapter.normalize(any())).thenReturn(callback);
@@ -211,6 +241,28 @@ class PlatformPaymentCallbackServiceTest {
                             false,
                             SubscriptionHistory.ActionType.PURCHASED,
                             replayed);
+                });
+    }
+
+    private void arrangeRenewalApplication(Fixture fixture) {
+        when(renewalService.applyPaidRenewal(
+                org.mockito.ArgumentMatchers.eq("order-public"),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq("correlation-platform-callback")))
+                .thenAnswer(invocation -> {
+                    fixture.order().transitionTo(
+                            SubscriptionOrderState.APPLIED,
+                            LocalDateTime.ofInstant(NOW, ZoneOffset.UTC));
+                    return new SubscriptionRenewalService.RenewalApplicationResult(
+                            fixture.order().getPublicId(),
+                            fixture.order().getStatus(),
+                            invocation.getArgument(1),
+                            "renewed-contract",
+                            fixture.order().getTargetHotel().getId(),
+                            LocalDateTime.ofInstant(NOW, ZoneOffset.UTC).minusMonths(1),
+                            LocalDateTime.ofInstant(NOW, ZoneOffset.UTC).plusMonths(1),
+                            SubscriptionHistory.ActionType.RENEWED,
+                            false);
                 });
     }
 
@@ -257,6 +309,10 @@ class PlatformPaymentCallbackServiceTest {
     }
 
     private Fixture fixture() {
+        return fixture(SubscriptionOrder.Operation.PURCHASE);
+    }
+
+    private Fixture fixture(SubscriptionOrder.Operation operation) {
         User owner = new User();
         owner.setId(10L);
 
@@ -276,7 +332,7 @@ class PlatformPaymentCallbackServiceTest {
                 "SUB-20260801-CALLBACK",
                 owner,
                 hotel,
-                SubscriptionOrder.Operation.PURCHASE,
+                operation,
                 plan,
                 "PLAN-30-V1",
                 "PRO",
