@@ -160,7 +160,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 - [x] T098 [US4] Implement approved upgrade validation/application and catalog usage-limit checks in `backend/src/main/java/com/hotel/platformbilling/subscription/SubscriptionUpgradeService.java` (FR-031, FR-032)
 - [x] T099 [US4] Implement explicit `POLICY_NOT_CONFIGURED` blocking for unapproved downgrade/proration behavior in `backend/src/main/java/com/hotel/platformbilling/subscription/SubscriptionPolicyService.java` (FR-032)
 - [x] T100 [US4] Expose masked platform configuration/readiness, catalog, order, attempt, cancel, renewal, upgrade, downgrade and history endpoints in `backend/src/main/java/com/hotel/platformbilling/PlatformBillingController.java` (FR-009, FR-010, FR-027-FR-032)
-- [ ] T101 [P] [US4] Add order snapshot/expiry/policy unit tests in `backend/src/test/java/com/hotel/platformbilling/SubscriptionOrderServiceTest.java` (SC-008)
+- [x] T101 [P] [US4] Add order snapshot/expiry/policy unit tests in `backend/src/test/java/com/hotel/platformbilling/SubscriptionOrderServiceTest.java` (SC-008)
 - [ ] T102 [P] [US4] Add platform provider signature/merchant/amount/order contract tests in `backend/src/test/java/com/hotel/paymentprovider/PlatformProviderContractTest.java` (FR-041)
 - [ ] T103 [US4] Add replay/concurrent callback and exactly-once entitlement integration tests in `backend/src/test/java/com/hotel/platformbilling/PlatformCallbackConcurrencyIntegrationTest.java` (SC-003, SC-008)
 - [ ] T104 [US4] Add order-owner/property access and property-merchant separation tests in `backend/src/test/java/com/hotel/platformbilling/PlatformBillingSecurityIntegrationTest.java` (SC-011)

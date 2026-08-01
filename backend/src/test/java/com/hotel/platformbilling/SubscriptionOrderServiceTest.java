@@ -200,6 +200,54 @@ class SubscriptionOrderServiceTest {
         verify(orderRepository, never()).saveAndFlush(any());
     }
 
+    @Test
+    void inactiveCatalogPlanCannotCreateAPlatformOrder() {
+        Fixture fixture = fixture();
+        fixture.plan().setStatus("INACTIVE");
+        authorize(fixture);
+        when(orderRepository.findByOwnerIdAndIdempotencyKeyForUpdate(10L, "purchase-key"))
+                .thenReturn(Optional.empty());
+        when(planRepository.findByIdForSnapshot(30L)).thenReturn(Optional.of(fixture.plan()));
+
+        FinancialException exception = assertThrows(FinancialException.class, () ->
+                service.createPurchaseOrder(
+                        new SubscriptionOrderService.CreatePurchaseOrderCommand(20L, 30L, "purchase-key")));
+
+        assertEquals(FinancialErrorCode.INVALID_STATE_TRANSITION, exception.code());
+        verify(orderRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void secondOpenLifecycleOrderIsBlockedBeforeReadingAChangedCatalog() {
+        Fixture fixture = fixture();
+        authorize(fixture);
+        when(orderRepository.findByOwnerIdAndIdempotencyKeyForUpdate(10L, "upgrade-key"))
+                .thenReturn(Optional.empty());
+        when(orderRepository.findFirstByTargetHotelIdAndOperationAndStatusInOrderByCreatedAtDesc(
+                org.mockito.ArgumentMatchers.eq(20L),
+                org.mockito.ArgumentMatchers.eq(SubscriptionOrder.Operation.UPGRADE),
+                org.mockito.ArgumentMatchers.anyList()))
+                .thenReturn(Optional.of(org.mockito.Mockito.mock(SubscriptionOrder.class)));
+
+        FinancialException exception = assertThrows(FinancialException.class, () ->
+                service.createLifecycleOrder(new SubscriptionOrderService.CreateLifecycleOrderCommand(
+                        20L, 30L, SubscriptionOrder.Operation.UPGRADE, "upgrade-key")));
+
+        assertEquals(FinancialErrorCode.INVALID_STATE_TRANSITION, exception.code());
+        verify(planRepository, never()).findByIdForSnapshot(any());
+        verify(orderRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void rejectsUnsafeOrderExpiryConfiguration() {
+        assertThrows(IllegalArgumentException.class, () -> new SubscriptionOrderService(
+                planRepository, orderRepository, userRepository, propertyAccessService,
+                new ObjectMapper(), Clock.fixed(NOW, ZoneOffset.UTC), 0));
+        assertThrows(IllegalArgumentException.class, () -> new SubscriptionOrderService(
+                planRepository, orderRepository, userRepository, propertyAccessService,
+                new ObjectMapper(), Clock.fixed(NOW, ZoneOffset.UTC), 1441));
+    }
+
     private void authorize(Fixture fixture) {
         when(propertyAccessService.currentUser()).thenReturn(fixture.owner());
         when(userRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(fixture.owner()));
