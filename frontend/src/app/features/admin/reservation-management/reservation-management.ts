@@ -15,19 +15,35 @@ import { SelectModule } from 'primeng/select';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { FormsModule } from '@angular/forms';
 import { HotelServiceService, HotelServiceDTO } from '../../../core/services/hotel-service.service';
+import { CheckoutResult } from '../../../core/services/property-checkout.service';
+import { ReservationCheckoutComponent } from './reservation-checkout.component';
 
 @Component({
   selector: 'app-reservation-management',
   standalone: true,
-  imports: [CommonModule, TableModule, ButtonModule, TagModule, CardModule, ToastModule, DialogModule, SelectModule, InputNumberModule, FormsModule],
+  imports: [
+    CommonModule,
+    TableModule,
+    ButtonModule,
+    TagModule,
+    CardModule,
+    ToastModule,
+    DialogModule,
+    SelectModule,
+    InputNumberModule,
+    FormsModule,
+    ReservationCheckoutComponent,
+  ],
   providers: [MessageService],
-  templateUrl: './reservation-management.html'
+  templateUrl: './reservation-management.html',
+  styleUrls: ['./reservation-management.css'],
 })
 export class ReservationManagement implements OnInit {
   reservations: Reservation[] = [];
   services: HotelServiceDTO[] = [];
   
   showAddServiceDialog = false;
+  showCheckoutDialog = false;
   selectedReservationId: number | null = null;
   newServiceItem = { serviceId: 0, quantity: 1 };
 
@@ -86,6 +102,22 @@ export class ReservationManagement implements OnInit {
     this.selectedReservationId = res.id;
     this.newServiceItem = { serviceId: 0, quantity: 1 };
     this.showAddServiceDialog = true;
+  }
+
+  openCheckoutWorkspace(res: Reservation) {
+    if (!res.id) return;
+    this.selectedReservationId = res.id;
+    this.showCheckoutDialog = true;
+  }
+
+  handleCheckoutCompleted(result: CheckoutResult) {
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Đã trả phòng',
+      detail: `Đã chốt hóa đơn ${result.invoiceNumber}`,
+    });
+    this.showCheckoutDialog = false;
+    this.loadReservations();
   }
 
   submitAddService() {

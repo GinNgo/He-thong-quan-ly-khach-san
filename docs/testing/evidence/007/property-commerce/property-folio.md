@@ -597,3 +597,18 @@ npm test -- --watch=false --include src/app/core/services/property-checkout.serv
 ```
 
 Result: `5/5` tests passed. Production build command `npm run build` also completed successfully. Existing warnings remain for the property payment configuration component CSS budget and CommonJS WebSocket dependencies; neither warning originates from T087.
+
+# T088 Responsive Checkout Workspace Evidence
+
+Implemented a responsive management workspace for server-priced services/minibar, typed surcharges, separately authorized negative adjustments, authoritative folio preview, settlement state, debt-override approval and atomic checkout. The parent reservation table now opens this workspace instead of directly changing the reservation status to `CHECKED_OUT`.
+
+Validation commands:
+
+```powershell
+npm run build
+npm test -- --watch=false --include src/app/features/admin/reservation-management/reservation-management.spec.ts
+```
+
+Results: production build passed and the existing reservation-management integration suite passed `3/3`. The UI uses visible labels, inline validation/error recovery, 44px-or-larger controls, a single primary checkout action, responsive one-column fallback and global reduced-motion handling.
+
+Browser route verification reached `http://localhost:4200/admin/reservations`, but the available browser session was redirected to the administrator login portal and had no authenticated test account. Interactive desktop/375px screenshot evidence is therefore deferred to T090/T091 with authenticated fixtures; no credentials were guessed or submitted.

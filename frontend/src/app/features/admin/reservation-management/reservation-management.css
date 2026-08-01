@@ -1,0 +1,18 @@
+:host ::ng-deep .checkout-dialog .p-dialog-content {
+  padding: 0;
+  overflow: auto;
+  border-radius: var(--hotel-radius-lg);
+}
+
+@media (max-width: 768px) {
+  :host ::ng-deep .checkout-dialog {
+    max-height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  :host ::ng-deep .checkout-dialog .p-dialog-content {
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+}
