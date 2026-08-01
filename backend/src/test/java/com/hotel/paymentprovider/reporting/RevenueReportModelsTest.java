@@ -60,6 +60,24 @@ class RevenueReportModelsTest {
     }
 
     @Test
+    void allowsNegativeNetInvoicedRevenueForPriorPeriodCredits() {
+        RevenueReportModels.ReportTotals totals = new RevenueReportModels.ReportTotals(
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                new BigDecimal("150000"),
+                new BigDecimal("-150000"),
+                BigDecimal.ZERO,
+                new BigDecimal("-150000"),
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                0,
+                0,
+                0);
+
+        assertEquals(new BigDecimal("-150000"), totals.invoicedRevenue());
+    }
+
+    @Test
     void resultKeepsRowsAndDimensionsImmutableAndRejectsCrossContextRows() {
         Map<String, String> mutableDimensions = new LinkedHashMap<>();
         mutableDimensions.put("room_type", "Deluxe");

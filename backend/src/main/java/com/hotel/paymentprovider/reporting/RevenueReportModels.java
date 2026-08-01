@@ -102,7 +102,7 @@ public final class RevenueReportModels {
             credits = nonNegativeVnd(credits, "credits");
             netRevenue = signedVnd(netRevenue, "netRevenue");
             cashCollected = nonNegativeVnd(cashCollected, "cashCollected");
-            invoicedRevenue = nonNegativeVnd(invoicedRevenue, "invoicedRevenue");
+            invoicedRevenue = signedVnd(invoicedRevenue, "invoicedRevenue");
             unpaidBalance = nonNegativeVnd(unpaidBalance, "unpaidBalance");
             heldDeposits = nonNegativeVnd(heldDeposits, "heldDeposits");
             requireNonNegative(successfulTransactionCount, "successfulTransactionCount");

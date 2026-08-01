@@ -166,6 +166,9 @@ public class PropertyRevenueRepository {
                 allocation.getId(),
                 allocation.getInvoice().getId(),
                 allocation.getFinancialTransaction().getPublicId(),
+                allocation.getFinancialTransaction().getTransactionType(),
+                allocation.getFinancialTransaction().getAmount(),
+                allocation.getFinancialTransaction().getOccurredAt(),
                 allocation.getAllocatedAmount())).toList();
     }
 
@@ -357,6 +360,9 @@ public class PropertyRevenueRepository {
             Long id,
             Long invoiceId,
             String transactionPublicId,
+            PropertyFinancialTransaction.TransactionType transactionType,
+            BigDecimal transactionAmount,
+            LocalDateTime transactionOccurredAt,
             BigDecimal allocatedAmount) {
     }
 
