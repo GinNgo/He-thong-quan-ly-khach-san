@@ -228,7 +228,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 **Independent Test**: Rebuild from clean migrations, execute all mandatory role journeys and confirm every inventory row has traceability, status, evidence and a remediation task when needed.
 
 - [X] T141 [P] [US7] Audit authentication, registration, login/logout/refresh, password, profile/avatar and social-login/email flows in `docs/audit/system/inventory/auth-account.md` (FR-043, FR-044)
-- [ ] T142 [P] [US7] Audit property onboarding, approval, suspension, subscription plans/limits and owner lifecycle in `docs/audit/system/inventory/property-subscription.md` (FR-043, FR-044)
+- [X] T142 [P] [US7] Audit property onboarding, approval, suspension, subscription plans/limits and owner lifecycle in `docs/audit/system/inventory/property-subscription.md` (FR-043, FR-044)
 - [ ] T143 [P] [US7] Audit staff, roles, permissions, property data, images, amenities, policies, rooms, room states, maintenance and services in `docs/audit/system/inventory/property-operations.md` (FR-043, FR-044)
 - [ ] T144 [P] [US7] Audit public search, autocomplete, filters/sort/pagination, details, availability, capacity, pricing and booking/multi-room behavior in `docs/audit/system/inventory/public-booking.md` (FR-043, FR-044)
 - [ ] T145 [P] [US7] Audit booking changes/cancellation/no-show, check-in, assignment, stay charges, checkout, housekeeping, review, favorite and voucher behavior in `docs/audit/system/inventory/stay-lifecycle.md` (FR-043, FR-044)
