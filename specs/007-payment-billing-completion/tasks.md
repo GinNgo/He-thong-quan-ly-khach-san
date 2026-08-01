@@ -202,7 +202,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 
 **Independent Test**: For fixed filters, compare API totals/rows and exported files with database assertions to one VND.
 
-- [ ] T125 [P] [US6] Define recognition basis, normalized filters and report result models in `backend/src/main/java/com/hotel/paymentprovider/reporting/RevenueReportModels.java` (FR-034-FR-038)
+- [x] T125 [P] [US6] Define recognition basis, normalized filters and report result models in `backend/src/main/java/com/hotel/paymentprovider/reporting/RevenueReportModels.java` (FR-034-FR-038)
 - [ ] T126 [US6] Implement tenant-filtered Property Commerce report queries in `backend/src/main/java/com/hotel/propertycommerce/reporting/PropertyRevenueRepository.java` (FR-034, FR-036)
 - [ ] T127 [US6] Implement property gross/refund/net, cash/invoiced/unpaid and allocation-safe reconciliation in `backend/src/main/java/com/hotel/propertycommerce/reporting/PropertyRevenueService.java` (FR-034, FR-036, FR-038)
 - [ ] T128 [US6] Expose property revenue/report detail endpoints in `backend/src/main/java/com/hotel/propertycommerce/reporting/PropertyRevenueController.java` (FR-034, FR-037)
