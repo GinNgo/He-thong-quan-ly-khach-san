@@ -18,6 +18,7 @@ import com.hotel.platformbilling.reporting.PlatformRevenueRepository.Entitlement
 import com.hotel.platformbilling.reporting.PlatformRevenueRepository.OrderSource;
 import com.hotel.platformbilling.reporting.PlatformRevenueRepository.PlatformRevenueSource;
 import com.hotel.platformbilling.reporting.PlatformRevenueRepository.TransactionSource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +47,7 @@ public class PlatformRevenueService {
     private final PlatformRevenueRepository repository;
     private final Clock clock;
 
+    @Autowired
     public PlatformRevenueService(PlatformRevenueRepository repository) {
         this(repository, Clock.systemUTC());
     }

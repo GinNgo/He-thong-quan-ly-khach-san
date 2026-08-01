@@ -8,6 +8,7 @@ import com.hotel.paymentprovider.reporting.RevenueReportModels.ReconciliationIss
 import com.hotel.paymentprovider.reporting.RevenueReportModels.RevenueReportResult;
 import com.hotel.platformbilling.reporting.PlatformRevenueService;
 import com.hotel.propertycommerce.reporting.PropertyRevenueService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -28,6 +29,7 @@ public class FinancialReconciliationService {
     private final RevenueExportService exportService;
     private final Clock clock;
 
+    @Autowired
     public FinancialReconciliationService(
             PropertyRevenueService propertyRevenueService,
             PlatformRevenueService platformRevenueService,

@@ -19,6 +19,7 @@ import com.hotel.propertycommerce.reporting.PropertyRevenueRepository.InvoiceLin
 import com.hotel.propertycommerce.reporting.PropertyRevenueRepository.InvoiceSource;
 import com.hotel.propertycommerce.reporting.PropertyRevenueRepository.PropertyRevenueSource;
 import com.hotel.propertycommerce.reporting.PropertyRevenueRepository.TransactionSource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +48,7 @@ public class PropertyRevenueService {
     private final PropertyRevenueRepository repository;
     private final Clock clock;
 
+    @Autowired
     public PropertyRevenueService(PropertyRevenueRepository repository) {
         this(repository, Clock.systemUTC());
     }

@@ -209,7 +209,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 - [X] T129 [US6] Implement system-scoped Platform Billing report queries/service/endpoints in `backend/src/main/java/com/hotel/platformbilling/reporting/PlatformRevenueService.java` and `backend/src/main/java/com/hotel/platformbilling/reporting/PlatformRevenueController.java` (FR-035, FR-036)
 - [X] T130 [US6] Implement shared Excel/PDF/CSV export from the same report result model in `backend/src/main/java/com/hotel/paymentprovider/reporting/RevenueExportService.java` (FR-037)
 - [X] T131 [US6] Implement property/platform reconciliation runners with mismatch queues in `backend/src/main/java/com/hotel/paymentprovider/reporting/FinancialReconciliationService.java` (FR-038)
-- [ ] T132 [P] [US6] Add property report database reconciliation tests in `backend/src/test/java/com/hotel/propertycommerce/reporting/PropertyRevenueReconciliationIntegrationTest.java` (SC-009, SC-010)
+- [X] T132 [P] [US6] Add property report database reconciliation tests in `backend/src/test/java/com/hotel/propertycommerce/reporting/PropertyRevenueReconciliationIntegrationTest.java` (SC-009, SC-010)
 - [ ] T133 [P] [US6] Add platform report database reconciliation tests in `backend/src/test/java/com/hotel/platformbilling/reporting/PlatformRevenueReconciliationIntegrationTest.java` (SC-009, SC-010)
 - [ ] T134 [US6] Add export row/filter/total/checksum reconciliation tests in `backend/src/test/java/com/hotel/paymentprovider/reporting/RevenueExportIntegrationTest.java` (SC-010)
 - [ ] T135 [US6] Add report permission and property/platform separation tests in `backend/src/test/java/com/hotel/integration/FinancialReportingSecurityIntegrationTest.java` (SC-011)
