@@ -1,51 +1,105 @@
 <div class="billing-container">
+  <header class="billing-hero">
+    <div>
+      <p class="eyebrow">Platform Billing</p>
+      <h1>Subscription workspace</h1>
+      <p class="hero-copy">Prices, terms and entitlements are read from the backend catalog snapshot.</p>
+    </div>
+    <div class="source-pill"><span class="status-dot"></span> Backend authoritative</div>
+  </header>
+
   <div class="current-plan-card" *ngIf="mySubscription">
     <div class="plan-header">
-      <h3>Gói hiện tại của bạn</h3>
+      <h3>Current subscription</h3>
       <span class="status-badge" [class.active]="mySubscription.status === 'ACTIVE'">{{ mySubscription.status }}</span>
     </div>
     <div class="plan-details">
-      <div class="plan-name">{{ mySubscription.plan.name }}</div>
+      <div class="plan-name">{{ mySubscription.plan?.nameVi || mySubscription.plan?.nameEn || 'No plan' }}</div>
       <div class="plan-meta">
-        <p *ngIf="mySubscription.endAt">Ngày hết hạn: <strong>{{ mySubscription.endAt | date:'dd/MM/yyyy' }}</strong></p>
-        <p *ngIf="!mySubscription.endAt">Gói không thời hạn (Lifetime)</p>
+        <p *ngIf="mySubscription.endAt">Expires: <strong>{{ mySubscription.endAt | date:'dd/MM/yyyy' }}</strong></p>
+        <p *ngIf="!mySubscription.endAt">Lifetime subscription</p>
       </div>
     </div>
   </div>
-  <app-feedback-state *ngIf="subscriptionError && !mySubscription" state="error" title="Không thể tải gói hiện tại" [message]="subscriptionError" actionLabel="Thử lại" (actionTriggered)="loadMySubscription()" />
+  <app-feedback-state *ngIf="subscriptionError && !mySubscription" state="error" title="Current subscription unavailable" [message]="subscriptionError" actionLabel="Retry" (actionTriggered)="loadMySubscription()" />
 
-  <h2 class="section-title">Nâng cấp gói dịch vụ</h2>
-  <app-feedback-state *ngIf="plansError && !isLoading" state="error" title="Không thể tải danh sách gói" [message]="plansError" actionLabel="Thử lại" (actionTriggered)="loadPlans()" />
-  <app-feedback-state *ngIf="!isLoading && !plansError && !plans.length" state="empty" title="Chưa có gói dịch vụ" message="Quản trị viên chưa công bố gói để nâng cấp." />
+  <section class="policy-card" *ngIf="policyAvailability && !loadingPolicy" aria-labelledby="policy-title">
+    <div>
+      <p class="eyebrow">Commercial policy</p>
+      <h2 id="policy-title">Safe lifecycle rules</h2>
+    </div>
+    <div class="policy-grid">
+      <div class="policy-item" [class.blocked]="!policyAvailability.downgradeConfigured">
+        <span class="policy-icon">{{ policyAvailability.downgradeConfigured ? 'OK' : '!' }}</span>
+        <div><strong>Downgrade</strong><small>{{ policyAvailability.downgradeConfigured ? 'Available' : policyAvailability.downgradeMessage }}</small></div>
+      </div>
+      <div class="policy-item" [class.blocked]="!policyAvailability.prorationConfigured">
+        <span class="policy-icon">{{ policyAvailability.prorationConfigured ? 'OK' : '!' }}</span>
+        <div><strong>Proration</strong><small>{{ policyAvailability.prorationConfigured ? 'Available' : policyAvailability.prorationMessage }}</small></div>
+      </div>
+    </div>
+  </section>
+  <app-feedback-state *ngIf="policyError" state="error" title="Policy status unavailable" [message]="policyError" actionLabel="Retry" (actionTriggered)="loadPolicyAvailability()" />
+
+  <h2 class="section-title">Available plans</h2>
+  <app-feedback-state *ngIf="plansError && !isLoading" state="error" title="Catalog unavailable" [message]="plansError" actionLabel="Retry" (actionTriggered)="loadPlans()" />
+  <app-feedback-state *ngIf="!isLoading && !plansError && !plans.length" state="empty" title="No plans published" message="The platform catalog has no active plans." />
   <div class="pricing-grid" *ngIf="!isLoading && !plansError && plans.length">
-    <div class="pricing-card" *ngFor="let plan of plans" [class.highlight]="plan.code === 'PRO'">
+    <div class="pricing-card" *ngFor="let plan of plans">
       <div class="card-header">
-        <h4>{{ plan.name }}</h4>
+        <h4>{{ planName(plan) }}</h4>
         <div class="price">
           <span class="amount">{{ plan.price | number:'1.0-0' }}</span>
           <span class="currency">{{ plan.currency }}</span>
-          <span class="period" *ngIf="plan.durationDays > 0">/ {{ plan.durationDays }} ngày</span>
-          <span class="period" *ngIf="plan.durationDays === 0">/ Vĩnh viễn</span>
+          <span class="period">/ {{ plan.isLifetime ? 'Lifetime' : plan.billingType }}</span>
         </div>
-        <p class="desc">{{ plan.description }}</p>
+        <p class="desc">{{ plan.nameEn }}</p>
       </div>
       <div class="card-body">
         <ul class="features">
-          <li><span class="material-symbols-outlined text-green">check</span> Hỗ trợ tính năng cơ bản</li>
-          <li *ngIf="plan.price > 0"><span class="material-symbols-outlined text-green">check</span> Quản lý không giới hạn phòng</li>
-          <li *ngIf="plan.code === 'PREMIUM'"><span class="material-symbols-outlined text-green">check</span> Hỗ trợ báo cáo doanh thu</li>
+          <li *ngFor="let feature of plan.features">
+            <span class="feature-check">+</span>
+            {{ feature.nameVi || feature.nameEn || feature.code }}: {{ featureLimit(feature.limit) }}
+          </li>
+          <li *ngIf="!plan.features.length">No feature limits published.</li>
         </ul>
       </div>
       <div class="card-footer">
-        <button class="btn btn-primary w-full" type="button" disabled [attr.aria-label]="mySubscription?.plan?.id === plan.id ? 'Gói đang sử dụng' : purchaseUnavailableMessage">
-          {{ mySubscription?.plan?.id === plan.id ? 'Đang sử dụng' : 'Thanh toán online chưa hỗ trợ' }}
+        <span class="current-plan" *ngIf="mySubscription?.plan?.id === plan.id">Current plan</span>
+        <button class="btn btn-primary w-full" type="button" *ngIf="mySubscription?.plan?.id !== plan.id" [disabled]="creatingOrderFor === plan.id" (click)="createOrder(plan)">
+          {{ creatingOrderFor === plan.id ? 'Creating secure order...' : 'Create secure order' }}
         </button>
       </div>
     </div>
   </div>
 
+  <p class="inline-error" *ngIf="orderError" role="alert">{{ orderError }}</p>
+  <section class="order-snapshot" *ngIf="latestOrder" aria-labelledby="order-snapshot-title">
+    <div class="snapshot-heading">
+      <div><p class="eyebrow">Backend snapshot</p><h2 id="order-snapshot-title">Order {{ latestOrder.orderCode }}</h2></div>
+      <span class="status-badge active">{{ latestOrder.status }}</span>
+    </div>
+    <div class="snapshot-grid">
+      <div><span>Plan</span><strong>{{ latestOrder.planName }} ({{ latestOrder.planVersion }})</strong></div>
+      <div><span>Price</span><strong>{{ latestOrder.price | number:'1.0-0' }} {{ latestOrder.currency }}</strong></div>
+      <div><span>Expires</span><strong>{{ latestOrder.expiresAt | date:'dd/MM/yyyy HH:mm' }}</strong></div>
+      <div><span>Order identity</span><strong>{{ latestOrder.publicId }}</strong></div>
+    </div>
+    <p class="snapshot-note">The catalog snapshot is immutable for this order. Provider environment and activation appear after a server-created payment attempt.</p>
+  </section>
+
+  <section class="usage-summary" *ngIf="!isLoading && usage" aria-labelledby="usage-summary-title">
+    <h3 id="usage-summary-title">Current usage</h3>
+    <div class="usage-grid">
+      <div *ngFor="let feature of usage.features">
+        <span>{{ feature.nameVi || feature.nameEn || feature.code }}</span>
+        <strong>{{ feature.usage }} / {{ featureLimit(feature.limit) }}</strong>
+      </div>
+    </div>
+  </section>
+
   <div class="loading-state" *ngIf="isLoading" role="status" aria-live="polite">
     <div class="spinner"></div>
-    <p>Đang tải thông tin gói...</p>
+    <p>Loading backend billing data...</p>
   </div>
 </div>

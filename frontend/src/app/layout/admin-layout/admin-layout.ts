@@ -47,6 +47,7 @@ export class AdminLayout implements OnInit, OnDestroy {
     { label: 'Nhập cơ sở', url: '/admin/property-imports' },
     { label: 'Khiếu nại cơ sở', url: '/admin/property-claims' },
     { label: 'Gói dịch vụ', url: '/admin/plans' },
+    { label: 'Platform merchant', url: '/admin/platform-payment-configuration' },
     { label: 'Vai trò', url: '/admin/roles' },
     { label: 'Dịch vụ', url: '/admin/services' },
   ];
