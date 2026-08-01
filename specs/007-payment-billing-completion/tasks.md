@@ -216,7 +216,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 - [X] T136 [P] [US6] Add typed report/export API clients in `frontend/src/app/core/services/revenue-report.service.ts` (FR-034-FR-037)
 - [X] T137 [US6] Replace mock property analytics with responsive reconciled cards/charts/tables/filters in `frontend/src/app/features/management/property-revenue/property-revenue.component.ts` (FR-034, FR-036)
 - [X] T138 [US6] Build separate SaaS revenue dashboard and export states in `frontend/src/app/features/admin/platform-revenue/platform-revenue.component.ts` (FR-035-FR-037)
-- [ ] T139 [US6] Add Playwright report filter/export/context-isolation journey in `frontend/e2e/financial-reporting.spec.ts` (SC-009-SC-011)
+- [X] T139 [US6] Add Playwright report filter/export/context-isolation journey in `frontend/e2e/financial-reporting.spec.ts` (SC-009-SC-011)
 - [ ] T140 [US6] Document executed equations, fixtures, mismatches and evidence in `docs/audit/financial/PROPERTY_REVENUE_RECONCILIATION.md` and `docs/audit/financial/PLATFORM_REVENUE_RECONCILIATION.md` (FR-038)
 
 ---
