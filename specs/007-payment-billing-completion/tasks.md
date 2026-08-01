@@ -152,7 +152,7 @@ Every task is part of Feature `007-payment-billing-completion` and must preserve
 **Independent Test**: Purchase, renew and upgrade through platform sandbox with replay/concurrency while failed, expired, tampered or unsupported transitions activate nothing.
 
 - [x] T092 [P] [US4] Implement platform configuration, order, attempt, ledger, contract and history entities/repositories in `backend/src/main/java/com/hotel/platformbilling/` (FR-027-FR-033)
-- [ ] T093 [US4] Implement backend catalog snapshot and expiring order creation in `backend/src/main/java/com/hotel/platformbilling/order/SubscriptionOrderService.java` (FR-027)
+- [x] T093 [US4] Implement backend catalog snapshot and expiring order creation in `backend/src/main/java/com/hotel/platformbilling/order/SubscriptionOrderService.java` (FR-027)
 - [ ] T094 [US4] Implement masked system-merchant configuration/readiness validation and system-merchant-only payment attempt creation in `backend/src/main/java/com/hotel/platformbilling/config/PlatformPaymentConfigurationService.java` and `backend/src/main/java/com/hotel/platformbilling/payment/PlatformPaymentAttemptService.java` (FR-009, FR-010, FR-028)
 - [ ] T095 [US4] Implement verified platform callback orchestration and exactly-once financial effect in `backend/src/main/java/com/hotel/platformbilling/payment/PlatformPaymentCallbackService.java` (FR-029, FR-030, FR-041)
 - [ ] T096 [US4] Implement idempotent contract, entitlement and history application in `backend/src/main/java/com/hotel/platformbilling/subscription/SubscriptionApplicationService.java` (FR-029-FR-031)
