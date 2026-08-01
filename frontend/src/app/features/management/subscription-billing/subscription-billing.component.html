@@ -87,6 +87,7 @@
     </div>
     <p class="snapshot-note">The catalog snapshot is immutable for this order. Provider environment and activation appear after a server-created payment attempt.</p>
   </section>
+  <app-platform-payment-panel *ngIf="latestOrder" [order]="latestOrder" (orderChanged)="updateLatestOrder($event)" />
 
   <section class="usage-summary" *ngIf="!isLoading && usage" aria-labelledby="usage-summary-title">
     <h3 id="usage-summary-title">Current usage</h3>

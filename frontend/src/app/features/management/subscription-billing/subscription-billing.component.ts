@@ -9,11 +9,12 @@ import {
   PlatformOrder,
   PlatformPolicyAvailability,
 } from '../../../core/services/platform-billing.service';
+import { PlatformPaymentPanelComponent } from './platform-payment-panel.component';
 
 @Component({
   selector: 'app-subscription-billing',
   standalone: true,
-  imports: [CommonModule, FeedbackStateComponent],
+  imports: [CommonModule, FeedbackStateComponent, PlatformPaymentPanelComponent],
   templateUrl: './subscription-billing.component.html',
   styleUrls: ['./subscription-billing.component.css'],
 })
@@ -158,6 +159,10 @@ export class SubscriptionBillingComponent implements OnInit {
 
   featureLimit(limit: number): string {
     return limit === -1 ? 'Unlimited' : String(limit);
+  }
+
+  updateLatestOrder(order: PlatformOrder): void {
+    this.latestOrder = order;
   }
 
   private updateLoadingState(): void {
