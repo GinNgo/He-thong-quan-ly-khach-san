@@ -20,6 +20,9 @@ import com.hotel.platformbilling.payment.PlatformFinancialTransactionRepository;
 import com.hotel.platformbilling.payment.PlatformPaymentAttempt;
 import com.hotel.platformbilling.payment.PlatformPaymentAttemptRepository;
 import com.hotel.platformbilling.payment.PlatformPaymentCallbackService;
+import com.hotel.platformbilling.subscription.SubscriptionApplicationService;
+import com.hotel.platformbilling.subscription.SubscriptionEntitlement;
+import com.hotel.platformbilling.subscription.SubscriptionHistory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -60,6 +63,7 @@ class PlatformPaymentCallbackServiceTest {
     @Mock private PaymentProviderAdapterRegistry adapterRegistry;
     @Mock private PaymentProviderAdapter adapter;
     @Mock private FinancialAuditService auditService;
+    @Mock private SubscriptionApplicationService applicationService;
 
     private PlatformPaymentCallbackService service;
 
@@ -72,6 +76,7 @@ class PlatformPaymentCallbackServiceTest {
                 configurationService,
                 adapterRegistry,
                 auditService,
+                applicationService,
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
@@ -80,6 +85,7 @@ class PlatformPaymentCallbackServiceTest {
         Fixture fixture = fixture();
         PaymentProviderAdapter.NormalizedCallback callback = callback(true, "event-1", "txn-1");
         arrange(fixture, callback);
+        arrangePurchaseApplication(fixture);
         when(transactionRepository.findByAttemptIdOrderByOccurredAtAsc(50L)).thenReturn(List.of());
         when(transactionRepository.findByIdempotencyIdentity(any())).thenReturn(Optional.empty());
         when(transactionRepository.saveAndFlush(any(PlatformFinancialTransaction.class)))
@@ -90,7 +96,8 @@ class PlatformPaymentCallbackServiceTest {
         assertTrue(first.accepted());
         assertFalse(first.replayed());
         assertEquals(PlatformPaymentAttempt.Status.SUCCESS, first.attemptStatus());
-        assertEquals(SubscriptionOrderState.PAID, first.orderStatus());
+        assertEquals(SubscriptionOrderState.APPLIED, first.orderStatus());
+        assertEquals("contract-public", first.contractPublicId());
         ArgumentCaptor<PlatformFinancialTransaction> transactionCaptor =
                 ArgumentCaptor.forClass(PlatformFinancialTransaction.class);
         verify(transactionRepository).saveAndFlush(transactionCaptor.capture());
@@ -110,8 +117,12 @@ class PlatformPaymentCallbackServiceTest {
 
         assertTrue(replay.accepted());
         assertTrue(replay.replayed());
+        assertEquals(SubscriptionOrderState.APPLIED, replay.orderStatus());
         assertEquals(transaction.getPublicId(), replay.transactionPublicId());
+        assertEquals("contract-public", replay.contractPublicId());
         verify(transactionRepository, times(1)).saveAndFlush(any(PlatformFinancialTransaction.class));
+        verify(applicationService, times(2)).applyPaidOrder(
+                "order-public", transaction.getPublicId(), "correlation-platform-callback");
     }
 
     @Test
@@ -174,6 +185,33 @@ class PlatformPaymentCallbackServiceTest {
         org.mockito.Mockito.lenient().when(attemptRepository.findByProviderEventForUpdate(
                 "SIMULATOR", PaymentEnvironmentGuard.PaymentEnvironment.SIMULATOR, callback.eventId()))
                 .thenReturn(Optional.empty());
+    }
+
+    private void arrangePurchaseApplication(Fixture fixture) {
+        when(applicationService.applyPaidOrder(
+                org.mockito.ArgumentMatchers.eq("order-public"),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq("correlation-platform-callback")))
+                .thenAnswer(invocation -> {
+                    boolean replayed = fixture.order().getStatus() == SubscriptionOrderState.APPLIED;
+                    if (fixture.order().getStatus() == SubscriptionOrderState.PAID) {
+                        fixture.order().transitionTo(
+                                SubscriptionOrderState.APPLIED,
+                                LocalDateTime.ofInstant(NOW, ZoneOffset.UTC));
+                    }
+                    return new SubscriptionApplicationService.ApplicationResult(
+                            fixture.order().getPublicId(),
+                            fixture.order().getStatus(),
+                            invocation.getArgument(1),
+                            "contract-public",
+                            fixture.order().getTargetHotel().getId(),
+                            SubscriptionEntitlement.Status.ACTIVE,
+                            LocalDateTime.ofInstant(NOW, ZoneOffset.UTC),
+                            LocalDateTime.ofInstant(NOW, ZoneOffset.UTC).plusYears(1),
+                            false,
+                            SubscriptionHistory.ActionType.PURCHASED,
+                            replayed);
+                });
     }
 
     private PlatformPaymentConfigurationService.ReadyConfiguration ready(
