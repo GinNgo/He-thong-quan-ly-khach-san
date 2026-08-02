@@ -349,7 +349,8 @@ public class NationwideDemoDataInitializer {
 
     private void seedService(Hotel hotel, int sequence) {
         String code = hotel.getCode() + "-BREAKFAST";
-        HotelService service = hotelServiceRepository.findByCode(code).orElseGet(HotelService::new);
+        HotelService service = hotelServiceRepository.findByHotelIdAndCodeIgnoreCase(hotel.getId(), code)
+                .orElseGet(HotelService::new);
         service.setCode(code);
         service.setHotel(hotel);
         service.setSystemService(false);

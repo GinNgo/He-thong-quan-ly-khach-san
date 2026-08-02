@@ -13,16 +13,19 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 @Entity
-@Table(name = "services")
+@Table(name = "services", indexes = {
+        @Index(name = "IX_services_hotel_status", columnList = "hotel_id,status"),
+        @Index(name = "IX_services_system_code", columnList = "is_system,code")
+})
 @org.hibernate.annotations.FilterDef(name = "hotelServiceTenantFilter", parameters = @org.hibernate.annotations.ParamDef(name = "hotelId", type = Long.class))
-@org.hibernate.annotations.Filter(name = "hotelServiceTenantFilter", condition = "hotel_id = :hotelId OR hotel_id IS NULL")
+@org.hibernate.annotations.Filter(name = "hotelServiceTenantFilter", condition = "(hotel_id = :hotelId AND is_system = 0) OR (hotel_id IS NULL AND is_system = 1)")
 public class HotelService extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String code;
 
     @Column(name = "name_vi", nullable = false, columnDefinition = "nvarchar(255)")
@@ -49,6 +52,17 @@ public class HotelService extends AuditableEntity {
 
     @Column(name = "is_system", nullable = false)
     private Boolean systemService = false;
+
+    @PrePersist
+    @PreUpdate
+    private void validateOwnershipScope() {
+        boolean system = Boolean.TRUE.equals(systemService);
+        if (system == (hotel != null)) {
+            throw new IllegalStateException(
+                    system ? "System service templates cannot belong to a property."
+                            : "Tenant services must belong to a property.");
+        }
+    }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

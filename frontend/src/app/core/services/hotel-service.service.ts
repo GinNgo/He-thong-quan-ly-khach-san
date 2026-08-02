@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 
 export interface HotelServiceDTO {
   id?: number;
+  hotelId?: number;
   code: string;
   nameVi: string;
   nameEn: string;
@@ -12,6 +13,7 @@ export interface HotelServiceDTO {
   descriptionVi?: string;
   descriptionEn?: string;
   status: string;
+  systemService?: boolean;
   createdAt?: string;
 }
 
@@ -22,12 +24,12 @@ export class HotelServiceService {
   private http = inject(HttpClient);
   private apiUrl = `${environment.apiUrl}/services`;
 
-  getServices(): Observable<HotelServiceDTO[]> {
-    return this.http.get<HotelServiceDTO[]>(this.apiUrl);
+  getServices(hotelId?: number): Observable<HotelServiceDTO[]> {
+    return this.http.get<HotelServiceDTO[]>(this.apiUrl, hotelId ? { params: { hotelId } } : {});
   }
 
-  createService(service: HotelServiceDTO): Observable<HotelServiceDTO> {
-    return this.http.post<HotelServiceDTO>(this.apiUrl, service);
+  createService(service: HotelServiceDTO, hotelId?: number): Observable<HotelServiceDTO> {
+    return this.http.post<HotelServiceDTO>(this.apiUrl, service, hotelId ? { params: { hotelId } } : {});
   }
 
   updateService(id: number, service: HotelServiceDTO): Observable<HotelServiceDTO> {

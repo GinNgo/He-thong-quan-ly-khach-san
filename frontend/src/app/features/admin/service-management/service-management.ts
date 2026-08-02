@@ -1,6 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { SharedModule } from '@app/shared/shared.module';
 import { HotelServiceService, HotelServiceDTO } from '@app/core/services/hotel-service.service';
+import { ManagementApiService, ManagedProperty } from '@app/core/services/management-api.service';
 import { MessageService } from 'primeng/api';
 import { finalize, timeout } from 'rxjs/operators';
 
@@ -13,21 +14,41 @@ import { finalize, timeout } from 'rxjs/operators';
 })
 export class ServiceManagement implements OnInit {
   services: HotelServiceDTO[] = [];
+  properties: ManagedProperty[] = [];
+  selectedPropertyId: number | null = null;
   loading = true;
   errorMessage = '';
 
   private hotelService = inject(HotelServiceService);
+  private managementApi = inject(ManagementApiService);
   private messageService = inject(MessageService);
 
   ngOnInit(): void {
-    this.loadServices();
+    this.managementApi.context().subscribe({
+      next: (context) => {
+        this.properties = context.properties ?? [];
+        this.selectedPropertyId = context.activePropertyId ?? this.properties[0]?.id ?? null;
+        this.loadServices();
+      },
+      error: (error) => {
+        this.loading = false;
+        this.errorMessage = error?.error?.message || 'Không thể tải danh sách cơ sở quản lý.';
+        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: this.errorMessage });
+      },
+    });
   }
 
   loadServices(): void {
     this.loading = true;
     this.errorMessage = '';
 
-    this.hotelService.getServices().pipe(
+    if (!this.selectedPropertyId) {
+      this.loading = false;
+      this.errorMessage = 'Hãy chọn một cơ sở trước khi tải dịch vụ.';
+      return;
+    }
+
+    this.hotelService.getServices(this.selectedPropertyId).pipe(
       timeout(10000),
       finalize(() => {
         this.loading = false;
@@ -41,5 +62,9 @@ export class ServiceManagement implements OnInit {
         this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: this.errorMessage });
       }
     });
+  }
+
+  onPropertyChange(): void {
+    this.loadServices();
   }
 }

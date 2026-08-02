@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 
 public class HotelServiceDTO {
     private Long id;
+    private Long hotelId;
     private String code;
     private String nameVi;
     private String nameEn;
@@ -12,6 +13,7 @@ public class HotelServiceDTO {
     private String descriptionVi;
     private String descriptionEn;
     private String status;
+    private Boolean systemService;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -21,6 +23,14 @@ public class HotelServiceDTO {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getHotelId() {
+        return hotelId;
+    }
+
+    public void setHotelId(Long hotelId) {
+        this.hotelId = hotelId;
     }
 
     public String getCode() {
@@ -77,6 +87,14 @@ public class HotelServiceDTO {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Boolean getSystemService() {
+        return systemService;
+    }
+
+    public void setSystemService(Boolean systemService) {
+        this.systemService = systemService;
     }
 
     public LocalDateTime getCreatedAt() {

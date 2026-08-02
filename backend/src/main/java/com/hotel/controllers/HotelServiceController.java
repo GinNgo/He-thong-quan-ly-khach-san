@@ -26,8 +26,9 @@ public class HotelServiceController {
     @GetMapping
     @Permission(function = FunctionCode.HOTEL, action = ActionCode.VIEW)
     @Operation(summary = "Get all services")
-    public ResponseEntity<List<HotelServiceDTO>> getAllServices() {
-        return ResponseEntity.ok(hotelServiceLogic.getAllServices());
+    public ResponseEntity<List<HotelServiceDTO>> getAllServices(
+            @RequestParam(required = false) Long hotelId) {
+        return ResponseEntity.ok(hotelServiceLogic.getAllServices(hotelId));
     }
 
     @GetMapping("/{id}")
@@ -40,8 +41,10 @@ public class HotelServiceController {
     @PostMapping
     @Permission(function = FunctionCode.HOTEL, action = ActionCode.CREATE)
     @Operation(summary = "Create new service")
-    public ResponseEntity<HotelServiceDTO> createService(@RequestBody HotelServiceDTO dto) {
-        return ResponseEntity.ok(hotelServiceLogic.createService(dto));
+    public ResponseEntity<HotelServiceDTO> createService(
+            @RequestParam(required = false) Long hotelId,
+            @RequestBody HotelServiceDTO dto) {
+        return ResponseEntity.ok(hotelServiceLogic.createService(hotelId, dto));
     }
 
     @PutMapping("/{id}")
