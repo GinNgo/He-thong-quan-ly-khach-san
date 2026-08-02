@@ -13,12 +13,9 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class ManagementPortalService {
-    private static final Map<String, Integer> NO_PLAN_LIMITS = Map.of(
-            "MAX_PROPERTIES", 1, "MAX_ROOM_TYPES", 2, "MAX_ROOMS", 5, "MAX_IMAGES", 5, "MAX_STAFF", 0);
-
     private final PropertyAccessService propertyAccessService;
     private final SubscriptionFeatureService subscriptionFeatureService;
-    private final AccountSubscriptionRepository accountSubscriptionRepository;
+    private final PropertySubscriptionEntitlementService propertyEntitlementService;
     private final HotelRepository hotelRepository;
     private final LocationRepository locationRepository;
     private final UserPropertyRepository userPropertyRepository;
@@ -28,39 +25,40 @@ public class ManagementPortalService {
     private final RoomRepository roomRepository;
     private final PropertyImageRepository propertyImageRepository;
     private final RoomTypeImageRepository roomTypeImageRepository;
+    private final RoomImageRepository roomImageRepository;
     private final HousekeepingTaskRepository housekeepingTaskRepository;
     private final RoomTypeService roomTypeService;
     private final RoomService roomService;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Map<String, Object> context(Long activePropertyId) {
         User user = propertyAccessService.currentUser();
         Set<Long> assignedIds = propertyAccessService.assignedHotelIds();
         List<Map<String, Object>> properties = hotelRepository.findAllById(assignedIds).stream()
                 .map(this::propertySummary).toList();
-        AccountSubscription subscription = accountSubscriptionRepository.findByUserIdAndStatus(user.getId(), "ACTIVE")
-                .stream().findFirst().orElseGet(() -> accountSubscriptionRepository
-                        .findFirstByUserIdOrderByStartAtDesc(user.getId()).orElse(null));
-        Map<String, Integer> limits = subscription != null && "ACTIVE".equals(subscription.getStatus())
-                ? subscriptionFeatureService.getActiveFeaturesForUser(user.getId()) : NO_PLAN_LIMITS;
         Long selectedId = activePropertyId != null ? activePropertyId : assignedIds.stream().findFirst().orElse(null);
         Hotel selectedProperty = selectedId == null ? null : propertyAccessService.requireAssignedHotel(selectedId);
+        PropertySubscriptionEntitlementService.EntitlementView entitlement = selectedId == null
+                ? PropertySubscriptionEntitlementService.EntitlementView.none(null, "PROPERTY_NOT_SELECTED")
+                : propertyEntitlementService.getCurrent(selectedId);
+        Map<String, Integer> limits = entitlement.limits();
         boolean activePropertyOperational = propertyAccessService.isOperational(selectedProperty);
-        Map<String, Long> usage = usage(assignedIds);
+        Map<String, Long> usage = usage(user.getId(), selectedId);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("userId", user.getId());
         result.put("fullName", user.getFullName());
         result.put("properties", properties);
         result.put("activePropertyId", selectedId);
         result.put("activePropertyOperational", activePropertyOperational);
-        result.put("planCode", subscription == null ? "NO_PLAN" : subscription.getPlan().getCode());
-        result.put("subscriptionStatus", subscription == null ? "NONE" : subscription.getStatus());
-        result.put("startAt", subscription == null ? null : subscription.getStartAt());
-        result.put("endAt", subscription == null ? null : subscription.getEndAt());
-        result.put("lifetime", subscription != null && Boolean.TRUE.equals(subscription.getIsLifetime()));
+        result.put("planCode", entitlement.planCode());
+        result.put("subscriptionStatus", entitlement.status());
+        result.put("subscriptionSource", entitlement.source());
+        result.put("startAt", entitlement.effectiveFrom());
+        result.put("endAt", entitlement.effectiveUntil());
+        result.put("lifetime", entitlement.lifetime());
         result.put("limits", limits);
         result.put("usage", usage);
-        result.put("upgradeRequired", subscription == null || !"ACTIVE".equals(subscription.getStatus()));
+        result.put("upgradeRequired", limits.isEmpty() || !"ACTIVE".equals(entitlement.status()));
         if (activePropertyOperational) result.put("dashboard", dashboard(selectedId));
         return result;
     }
@@ -74,8 +72,8 @@ public class ManagementPortalService {
     @Transactional
     public Map<String, Object> createProperty(ManagementPropertyRequest request) {
         User user = propertyAccessService.currentUser();
-        Set<Long> accessible = propertyAccessService.accessibleHotelIds();
-        requireWithinLimit(user, "MAX_PROPERTIES", accessible.size(), 1);
+        requireWithinLimit(user, "MAX_PROPERTIES",
+                userPropertyRepository.countActiveOwnedPropertiesByUserId(user.getId()), 1);
         if (request == null || request.getNameVi() == null || request.getNameVi().isBlank()
                 || request.getProvinceId() == null || request.getWardId() == null
                 || request.getAddress() == null || request.getAddress().isBlank()) {
@@ -156,8 +154,6 @@ public class ManagementPortalService {
     @Transactional
     public RoomTypeDTO createRoomType(RoomTypeDTO dto) {
         Hotel hotel = propertyAccessService.requireManagedHotel(dto.getHotelId());
-        User user = propertyAccessService.currentUser();
-        requireWithinLimit(user, "MAX_ROOM_TYPES", roomTypeRepository.countByHotelIdIn(propertyAccessService.accessibleHotelIds()), 1);
         dto.setHotelId(hotel.getId());
         return roomTypeService.createRoomType(dto);
     }
@@ -181,8 +177,6 @@ public class ManagementPortalService {
         RoomType roomType = roomTypeRepository.findById(dto.getRoomTypeId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy loại phòng."));
         propertyAccessService.requireCanManage(roomType.getHotel().getId());
-        requireWithinLimit(propertyAccessService.currentUser(), "MAX_ROOMS",
-                roomRepository.countByHotelIdIn(propertyAccessService.accessibleHotelIds()), 1);
         dto.setHotelId(roomType.getHotel().getId());
         if (dto.getHousekeepingStatus() == null) dto.setHousekeepingStatus("CLEAN");
         return roomService.createRoom(dto);
@@ -211,8 +205,8 @@ public class ManagementPortalService {
         if (request.getHotelId() != null && !request.getHotelId().equals(hotel.getId())) {
             throw new IllegalArgumentException("Loại phòng không thuộc cơ sở đã chọn.");
         }
-        requireWithinLimit(propertyAccessService.currentUser(), "MAX_ROOMS",
-                roomRepository.countByHotelIdIn(propertyAccessService.accessibleHotelIds()), quantity);
+        requireWithinPropertyLimit(hotel.getId(), "MAX_ROOMS",
+                roomRepository.countByHotelId(hotel.getId()), quantity);
         List<RoomDTO> created = new ArrayList<>();
         String prefix = request.getPrefix() == null ? "" : request.getPrefix().trim();
         for (int number = request.getFromNumber(); number <= request.getToNumber(); number++) {
@@ -255,19 +249,22 @@ public class ManagementPortalService {
     }
 
     private void requireWithinLimit(User user, String code, long current, int addition) {
-        Map<String, Integer> limits = subscriptionFeatureService.getActiveFeaturesForUser(user.getId());
-        int limit = limits.getOrDefault(code, NO_PLAN_LIMITS.getOrDefault(code, 0));
-        if (limit != -1 && current + addition > limit) {
-            throw new IllegalStateException("Đã vượt giới hạn " + code + " của gói hiện tại. Vui lòng nâng cấp gói dịch vụ.");
-        }
+        if (propertyAccessService.isSystemAdministrator()) return;
+        subscriptionFeatureService.checkFeatureLimit(user.getId(), code, current, addition);
     }
 
-    private Map<String, Long> usage(Set<Long> ids) {
-        long properties = ids.size();
-        long roomTypes = ids.isEmpty() ? 0 : roomTypeRepository.countByHotelIdIn(ids);
-        long rooms = ids.isEmpty() ? 0 : roomRepository.countByHotelIdIn(ids);
-        long images = ids.stream().mapToLong(id -> propertyImageRepository.countByHotelId(id)
-                + roomTypeImageRepository.countByRoomTypeHotelId(id)).sum();
+    private void requireWithinPropertyLimit(Long hotelId, String code, long current, int addition) {
+        if (propertyAccessService.isSystemAdministrator()) return;
+        subscriptionFeatureService.checkFeatureLimitForProperty(hotelId, code, current, addition);
+    }
+
+    private Map<String, Long> usage(Long userId, Long hotelId) {
+        long properties = userPropertyRepository.countActiveOwnedPropertiesByUserId(userId);
+        long roomTypes = hotelId == null ? 0 : roomTypeRepository.countByHotelId(hotelId);
+        long rooms = hotelId == null ? 0 : roomRepository.countByHotelId(hotelId);
+        long images = hotelId == null ? 0 : propertyImageRepository.countByHotelId(hotelId)
+                + roomTypeImageRepository.countByRoomTypeHotelId(hotelId)
+                + roomImageRepository.countByRoomHotelId(hotelId);
         return Map.of("properties", properties, "roomTypes", roomTypes, "rooms", rooms, "images", images);
     }
 

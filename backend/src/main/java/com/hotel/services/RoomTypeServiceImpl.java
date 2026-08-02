@@ -2,6 +2,8 @@ package com.hotel.services;
 
 import com.hotel.dtos.RoomTypeDTO;
 import com.hotel.entities.RoomType;
+import com.hotel.repositories.PropertyImageRepository;
+import com.hotel.repositories.RoomImageRepository;
 import com.hotel.repositories.RoomTypeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,7 +22,10 @@ public class RoomTypeServiceImpl implements RoomTypeService {
     private final RoomAvailabilityService roomAvailabilityService;
     private final com.hotel.repositories.RoomRepository roomRepository;
     private final com.hotel.repositories.RoomTypeImageRepository roomTypeImageRepository;
+    private final PropertyImageRepository propertyImageRepository;
+    private final RoomImageRepository roomImageRepository;
     private final PropertyAccessService propertyAccessService;
+    private final SubscriptionFeatureService subscriptionFeatureService;
 
     @Override
     @Transactional(readOnly = true)
@@ -71,6 +76,9 @@ public class RoomTypeServiceImpl implements RoomTypeService {
         mapToEntity(dto, roomType);
 
         com.hotel.entities.Hotel hotel = propertyAccessService.requireManagedHotel(dto.getHotelId());
+        Long hotelId = hotel.getId();
+        requireCapacity(hotelId, "MAX_ROOM_TYPES", roomTypeRepository.countByHotelId(hotelId), 1);
+        requireImageCapacity(hotelId, 0, imageCount(dto.getImageUrls()));
         if (roomTypeRepository.findByCodeAndHotelId(dto.getCode(), hotel.getId()).isPresent()) {
             throw new IllegalArgumentException("Mã loại phòng đã tồn tại trong cơ sở này.");
         }
@@ -87,6 +95,13 @@ public class RoomTypeServiceImpl implements RoomTypeService {
         RoomType roomType = roomTypeRepository.findById(id)
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
         propertyAccessService.requireAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
+        requireFeature(roomType.getHotel().getId(), "MAX_ROOM_TYPES");
+        if (dto.getImageUrls() != null) {
+            requireImageCapacity(
+                    roomType.getHotel().getId(),
+                    roomTypeImageRepository.findByRoomTypeIdOrderBySortOrderAsc(id).size(),
+                    imageCount(dto.getImageUrls()));
+        }
         if (dto.getHotelId() != null && !dto.getHotelId().equals(roomType.getHotel().getId())) {
             throw new IllegalArgumentException("Không thể chuyển loại phòng sang cơ sở khác.");
         }
@@ -106,6 +121,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
         RoomType roomType = roomTypeRepository.findById(id)
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
         propertyAccessService.requireAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
+        requireFeature(roomType.getHotel().getId(), "MAX_ROOM_TYPES");
         roomType.setStatus("INACTIVE");
         roomTypeRepository.save(roomType);
     }
@@ -142,6 +158,34 @@ public class RoomTypeServiceImpl implements RoomTypeService {
             roomTypeImageRepository.save(image);
             order++;
         }
+    }
+
+    private void requireFeature(Long hotelId, String featureCode) {
+        if (propertyAccessService.isSystemAdministrator()) return;
+        subscriptionFeatureService.requireFeatureForProperty(hotelId, featureCode);
+    }
+
+    private void requireCapacity(Long hotelId, String featureCode, long currentUsage, long addition) {
+        if (propertyAccessService.isSystemAdministrator()) return;
+        subscriptionFeatureService.checkFeatureLimitForProperty(hotelId, featureCode, currentUsage, addition);
+    }
+
+    private void requireImageCapacity(Long hotelId, long replacedImages, long requestedImages) {
+        if (replacedImages == 0 && requestedImages == 0) return;
+        if (propertyAccessService.isSystemAdministrator()) return;
+        long currentUsage = propertyImageRepository.countByHotelId(hotelId)
+                + roomTypeImageRepository.countByRoomTypeHotelId(hotelId)
+                + roomImageRepository.countByRoomHotelId(hotelId);
+        long retainedUsage = Math.max(0, currentUsage - replacedImages);
+        subscriptionFeatureService.checkFeatureLimitForProperty(
+                hotelId, "MAX_IMAGES", retainedUsage, requestedImages);
+    }
+
+    private long imageCount(List<String> imageUrls) {
+        if (imageUrls == null) return 0;
+        return imageUrls.stream()
+                .filter(url -> url != null && !url.trim().isBlank())
+                .count();
     }
 
     private RoomTypeDTO mapToDTO(RoomType entity) {

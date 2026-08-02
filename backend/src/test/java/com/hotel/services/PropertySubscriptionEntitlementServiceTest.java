@@ -158,6 +158,26 @@ class PropertySubscriptionEntitlementServiceTest {
         verify(legacyRepository, never()).saveAndFlush(any());
     }
 
+    @Test
+    void mutationReadUsesThePessimisticPlatformEntitlementLock() {
+        SubscriptionEntitlement entitlement = mock(SubscriptionEntitlement.class);
+        Hotel hotel = hotel(42L);
+        SubscriptionPlan plan = plan(7L, "PRO");
+        when(entitlement.getTargetHotel()).thenReturn(hotel);
+        when(entitlement.getPlan()).thenReturn(plan);
+        when(entitlement.getStatus()).thenReturn(SubscriptionEntitlement.Status.ACTIVE);
+        when(entitlement.getEffectiveFrom()).thenReturn(LocalDateTime.now().minusDays(1));
+        when(entitlement.isLifetime()).thenReturn(true);
+        when(entitlement.getFeatureSnapshotJson()).thenReturn(
+                "{\"features\":[{\"code\":\"MAX_ROOMS\",\"limit\":50}]}" );
+        when(platformRepository.findByTargetHotelIdForUpdate(42L)).thenReturn(Optional.of(entitlement));
+
+        var view = service.getCurrentForUpdate(42L);
+
+        assertEquals(50, view.limits().get("MAX_ROOMS"));
+        verify(platformRepository).findByTargetHotelIdForUpdate(42L);
+    }
+
     private LegacySubscriptionEntitlementProjection captureProjection() {
         ArgumentCaptor<LegacySubscriptionEntitlementProjection> captor =
                 ArgumentCaptor.forClass(LegacySubscriptionEntitlementProjection.class);

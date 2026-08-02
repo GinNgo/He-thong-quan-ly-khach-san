@@ -7,8 +7,10 @@ import com.hotel.dtos.RoomImageDTO;
 import com.hotel.entities.Room;
 import com.hotel.entities.RoomImage;
 import com.hotel.entities.RoomType;
+import com.hotel.repositories.PropertyImageRepository;
 import com.hotel.repositories.RoomImageRepository;
 import com.hotel.repositories.RoomRepository;
+import com.hotel.repositories.RoomTypeImageRepository;
 import com.hotel.repositories.RoomTypeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,7 +27,10 @@ public class RoomServiceImpl implements RoomService {
     private final RoomRepository roomRepository;
     private final RoomTypeRepository roomTypeRepository;
     private final RoomImageRepository roomImageRepository;
+    private final PropertyImageRepository propertyImageRepository;
+    private final RoomTypeImageRepository roomTypeImageRepository;
     private final PropertyAccessService propertyAccessService;
+    private final SubscriptionFeatureService subscriptionFeatureService;
 
     @Override
     public List<RoomDTO> getAllRooms() {
@@ -52,6 +57,9 @@ public class RoomServiceImpl implements RoomService {
         RoomType roomType = roomTypeRepository.findById(dto.getRoomTypeId())
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
         propertyAccessService.requireAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
+        Long hotelId = roomType.getHotel().getId();
+        requireCapacity(hotelId, "MAX_ROOMS", roomRepository.countByHotelId(hotelId), 1);
+        requireImageCapacity(hotelId, imageCount(dto.getImages()));
         if (dto.getHotelId() != null && !dto.getHotelId().equals(roomType.getHotel().getId())) {
             throw new IllegalArgumentException("Loại phòng không thuộc cơ sở đã chọn.");
         }
@@ -65,8 +73,9 @@ public class RoomServiceImpl implements RoomService {
         
         if (dto.getImages() != null && !dto.getImages().isEmpty()) {
             for (RoomImageDTO imgDto : dto.getImages()) {
+                if (imgDto == null || imgDto.getImageUrl() == null || imgDto.getImageUrl().trim().isBlank()) continue;
                 RoomImage img = new RoomImage();
-                img.setImageUrl(imgDto.getImageUrl());
+                img.setImageUrl(imgDto.getImageUrl().trim());
                 img.setIsPrimary(imgDto.getIsPrimary());
                 img.setRoom(room);
                 roomImageRepository.save(img);
@@ -83,6 +92,7 @@ public class RoomServiceImpl implements RoomService {
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy phòng."));
         propertyAccessService.requireAccessibleOrNotFound(room.getHotel().getId(), "phòng");
                 
+        requireFeature(room.getHotel().getId(), "MAX_ROOMS");
         RoomType roomType = roomTypeRepository.findById(dto.getRoomTypeId())
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
         if (!roomType.getHotel().getId().equals(room.getHotel().getId())) {
@@ -107,6 +117,7 @@ public class RoomServiceImpl implements RoomService {
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy phòng."));
         propertyAccessService.requireAccessibleOrNotFound(room.getHotel().getId(), "phòng");
+        requireFeature(room.getHotel().getId(), "MAX_ROOMS");
         if ("OCCUPIED".equals(room.getStatus())) {
             throw new IllegalStateException("Không thể ngừng phòng đang có khách.");
         }
@@ -132,6 +143,9 @@ public class RoomServiceImpl implements RoomService {
         if (request.getHotelId() != null && !request.getHotelId().equals(roomType.getHotel().getId())) {
             throw new IllegalArgumentException("Loại phòng không thuộc cơ sở đã chọn.");
         }
+        long requestedRooms = (long) request.getToNumber() - request.getFromNumber() + 1;
+        Long hotelId = roomType.getHotel().getId();
+        requireCapacity(hotelId, "MAX_ROOMS", roomRepository.countByHotelId(hotelId), requestedRooms);
         String prefix = request.getPrefix() == null ? "" : request.getPrefix().trim();
         List<RoomDTO> created = new ArrayList<>();
         List<String> failed = new ArrayList<>();
@@ -154,6 +168,32 @@ public class RoomServiceImpl implements RoomService {
             created.add(mapToDTO(roomRepository.save(room)));
         }
         return new BulkRoomResultDTO(created, failed);
+    }
+
+    private void requireFeature(Long hotelId, String featureCode) {
+        if (propertyAccessService.isSystemAdministrator()) return;
+        subscriptionFeatureService.requireFeatureForProperty(hotelId, featureCode);
+    }
+
+    private void requireCapacity(Long hotelId, String featureCode, long currentUsage, long addition) {
+        if (propertyAccessService.isSystemAdministrator()) return;
+        subscriptionFeatureService.checkFeatureLimitForProperty(hotelId, featureCode, currentUsage, addition);
+    }
+
+    private void requireImageCapacity(Long hotelId, long requestedImages) {
+        if (requestedImages == 0 || propertyAccessService.isSystemAdministrator()) return;
+        long currentUsage = propertyImageRepository.countByHotelId(hotelId)
+                + roomTypeImageRepository.countByRoomTypeHotelId(hotelId)
+                + roomImageRepository.countByRoomHotelId(hotelId);
+        subscriptionFeatureService.checkFeatureLimitForProperty(
+                hotelId, "MAX_IMAGES", currentUsage, requestedImages);
+    }
+
+    private long imageCount(List<RoomImageDTO> images) {
+        if (images == null) return 0;
+        return images.stream()
+                .filter(image -> image != null && image.getImageUrl() != null && !image.getImageUrl().trim().isBlank())
+                .count();
     }
 
     private RoomDTO mapToDTO(Room room) {

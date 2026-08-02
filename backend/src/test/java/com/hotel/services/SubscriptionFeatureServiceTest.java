@@ -27,6 +27,9 @@ class SubscriptionFeatureServiceTest {
     @Mock
     private AccountSubscriptionRepository accountSubscriptionRepository;
 
+    @Mock
+    private PropertySubscriptionEntitlementService propertyEntitlementService;
+
     @InjectMocks
     private SubscriptionFeatureService subscriptionFeatureService;
 
@@ -124,5 +127,76 @@ class SubscriptionFeatureServiceTest {
                 .thenReturn(List.of(premiumSubscription));
 
         assertDoesNotThrow(() -> subscriptionFeatureService.checkFeatureLimit(1L, "MAX_PROPERTIES", 10_000));
+    }
+
+    @Test
+    void checkFeatureLimit_WhenBulkAdditionExceedsRemainingCapacity_ShouldRejectMutation() {
+        when(accountSubscriptionRepository.findEffectiveSubscriptionsByUserId(1L))
+                .thenReturn(List.of(basicSubscription));
+
+        assertThrows(RuntimeException.class,
+                () -> subscriptionFeatureService.checkFeatureLimit(1L, "MAX_PROPERTIES", 0L, 2L));
+    }
+
+    @Test
+    void requireFeature_WithEffectiveEntitlement_ShouldAllowNonGrowingMutation() {
+        when(accountSubscriptionRepository.findEffectiveSubscriptionsByUserId(1L))
+                .thenReturn(List.of(basicSubscription));
+
+        assertDoesNotThrow(() -> subscriptionFeatureService.requireFeature(1L, "MAX_PROPERTIES"));
+    }
+
+    @Test
+    void propertyLimit_DoesNotAllowPremiumPropertyToUnlockBasicProperty() {
+        when(propertyEntitlementService.getCurrentForUpdate(10L)).thenReturn(
+                entitlement(10L, "BASIC", Map.of("MAX_ROOMS", 5)));
+        when(propertyEntitlementService.getCurrentForUpdate(20L)).thenReturn(
+                entitlement(20L, "PRO", Map.of("MAX_ROOMS", 50)));
+
+        assertThrows(IllegalStateException.class,
+                () -> subscriptionFeatureService.checkFeatureLimitForProperty(10L, "MAX_ROOMS", 5, 1));
+        assertDoesNotThrow(
+                () -> subscriptionFeatureService.checkFeatureLimitForProperty(20L, "MAX_ROOMS", 5, 1));
+    }
+
+    @Test
+    void propertyLimit_UsesTheLockedPropertyReadModelForEveryMutation() {
+        when(propertyEntitlementService.getCurrentForUpdate(10L)).thenReturn(
+                entitlement(10L, "PRO", Map.of("MAX_IMAGES", 10)));
+
+        assertDoesNotThrow(
+                () -> subscriptionFeatureService.checkFeatureLimitForProperty(10L, "MAX_IMAGES", 8, 2));
+
+        org.mockito.Mockito.verify(propertyEntitlementService).getCurrentForUpdate(10L);
+        org.mockito.Mockito.verifyNoInteractions(accountSubscriptionRepository);
+    }
+
+    @Test
+    void concurrentPropertyChecksKeepPremiumAndBasicLimitsIsolated() throws Exception {
+        when(propertyEntitlementService.getCurrentForUpdate(10L)).thenReturn(
+                entitlement(10L, "BASIC", Map.of("MAX_ROOMS", 5)));
+        when(propertyEntitlementService.getCurrentForUpdate(20L)).thenReturn(
+                entitlement(20L, "PRO", Map.of("MAX_ROOMS", 50)));
+        java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            java.util.concurrent.Future<?> basic = executor.submit(
+                    () -> subscriptionFeatureService.checkFeatureLimitForProperty(10L, "MAX_ROOMS", 5, 1));
+            java.util.concurrent.Future<?> premium = executor.submit(
+                    () -> subscriptionFeatureService.checkFeatureLimitForProperty(20L, "MAX_ROOMS", 5, 1));
+
+            assertThrows(java.util.concurrent.ExecutionException.class, basic::get);
+            assertDoesNotThrow(() -> { premium.get(); });
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    private PropertySubscriptionEntitlementService.EntitlementView entitlement(
+            Long hotelId,
+            String planCode,
+            Map<String, Integer> limits) {
+        return new PropertySubscriptionEntitlementService.EntitlementView(
+                hotelId, "PLATFORM", true, 1L, planCode, planCode, "ACTIVE",
+                java.time.LocalDateTime.now().minusDays(1), null, true, limits, "contract-1", null);
     }
 }

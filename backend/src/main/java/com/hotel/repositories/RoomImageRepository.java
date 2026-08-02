@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface RoomImageRepository extends JpaRepository<RoomImage, Long> {
     List<RoomImage> findByRoomId(Long roomId);
+    long countByRoomHotelId(Long hotelId);
 }

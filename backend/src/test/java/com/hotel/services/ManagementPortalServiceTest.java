@@ -2,7 +2,6 @@ package com.hotel.services;
 
 import com.hotel.entities.Hotel;
 import com.hotel.entities.User;
-import com.hotel.repositories.AccountSubscriptionRepository;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.HousekeepingTaskRepository;
 import com.hotel.repositories.LocationRepository;
@@ -22,7 +21,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -38,7 +36,7 @@ class ManagementPortalServiceTest {
 
     @Mock private PropertyAccessService propertyAccessService;
     @Mock private SubscriptionFeatureService subscriptionFeatureService;
-    @Mock private AccountSubscriptionRepository accountSubscriptionRepository;
+    @Mock private PropertySubscriptionEntitlementService propertyEntitlementService;
     @Mock private HotelRepository hotelRepository;
     @Mock private LocationRepository locationRepository;
     @Mock private UserPropertyRepository userPropertyRepository;
@@ -73,8 +71,8 @@ class ManagementPortalServiceTest {
         when(propertyAccessService.requireAssignedHotel(20L)).thenReturn(pending);
         when(propertyAccessService.isOperational(pending)).thenReturn(false);
         when(hotelRepository.findAllById(Set.of(20L))).thenReturn(List.of(pending));
-        lenient().when(accountSubscriptionRepository.findEffectiveSubscriptionsByUserId(10L)).thenReturn(List.of());
-        when(accountSubscriptionRepository.findFirstByUserIdOrderByStartAtDesc(10L)).thenReturn(Optional.empty());
+        when(propertyEntitlementService.getCurrent(20L)).thenReturn(
+                PropertySubscriptionEntitlementService.EntitlementView.none(20L, "NO_ENTITLEMENT"));
         lenient().when(userPropertyRepository.countActiveOwnedPropertiesByUserId(10L)).thenReturn(1L);
 
         Map<String, Object> context = service.context(20L);

@@ -67,7 +67,6 @@ public class HotelController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @com.hotel.security.RequireFeature("HOTEL")
     @GetMapping("/my-hotels")
     public ResponseEntity<List<Hotel>> getMyHotels(@org.springframework.security.core.annotation.AuthenticationPrincipal com.hotel.security.CustomUserDetails userDetails) {
         if (userDetails == null) {

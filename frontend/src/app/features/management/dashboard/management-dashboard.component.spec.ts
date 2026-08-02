@@ -24,6 +24,7 @@ describe('ManagementDashboardComponent', () => {
       activePropertyId: 1,
       planCode: 'STANDARD',
       subscriptionStatus: 'ACTIVE',
+      subscriptionSource: 'PLATFORM',
       lifetime: false,
       limits: { MAX_ROOMS: 50, MAX_PROPERTIES: 1 },
       usage: { rooms: 9, properties: 1 },
@@ -36,6 +37,7 @@ describe('ManagementDashboardComponent', () => {
     expect(element.textContent).not.toContain('Đang tải tổng quan...');
     expect(element.textContent).toContain('LuxeStay Hà Nội');
     expect(element.textContent).toContain('STANDARD');
+    expect(element.textContent).toContain('Entitlement source: PLATFORM');
   });
 
   it('shows approval guidance instead of operational metrics for a pending property', async () => {
@@ -66,6 +68,7 @@ describe('ManagementDashboardComponent', () => {
       activePropertyOperational: false,
       planCode: 'NO_PLAN',
       subscriptionStatus: 'NONE',
+      subscriptionSource: 'NONE',
       lifetime: false,
       limits: {},
       usage: { properties: 1 },
