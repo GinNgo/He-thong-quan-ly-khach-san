@@ -14,6 +14,7 @@ export interface Role {
   userCount?: number;
   roleType?: 'SYSTEM' | 'CUSTOM';
   updatedAt?: string;
+  version?: number;
 }
 
 export interface AppModule {
@@ -35,6 +36,7 @@ export interface AppFunction {
 }
 
 export interface UpdateRolePermissionsRequest {
+  expectedVersion: number;
   permissions: Array<{
     functionId: number;
     actionMask: number;
@@ -83,7 +85,7 @@ export class RoleService {
     );
   }
 
-  updateRolePermissions(roleId: number, data: UpdateRolePermissionsRequest): Observable<void> {
-    return this.http.post<void>(`${this.rolePermUrl}/${roleId}`, data);
+  updateRolePermissions(roleId: number, data: UpdateRolePermissionsRequest): Observable<number> {
+    return this.http.post<number>(`${this.rolePermUrl}/${roleId}`, data);
   }
 }

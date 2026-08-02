@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class RoleService {
-    private static final Set<String> SYSTEM_ROLE_CODES = Set.of(
+    static final Set<String> SYSTEM_ROLE_CODES = Set.of(
             "SUPER_ADMIN", "ADMIN", "CUSTOMER", "PROPERTY_OWNER", "HOTEL_ADMIN",
             "HOTEL_MANAGER", "RECEPTIONIST", "ACCOUNTANT");
     @Autowired
@@ -97,6 +97,7 @@ public class RoleService {
         dto.setUserCount(userRepository.countByRoleId(role.getId()));
         dto.setRoleType(Boolean.TRUE.equals(role.getSystemRole()) ? "SYSTEM" : "CUSTOM");
         dto.setUpdatedAt(role.getUpdatedAt());
+        dto.setVersion(role.getVersion());
         return dto;
     }
 }

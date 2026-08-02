@@ -24,6 +24,10 @@ public class RolePermission {
     @Column(name = "action_mask", nullable = false)
     private Integer actionMask;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Role getRole() { return role; }
@@ -32,4 +36,6 @@ public class RolePermission {
     public void setFunction(AppFunction function) { this.function = function; }
     public Integer getActionMask() { return actionMask; }
     public void setActionMask(Integer actionMask) { this.actionMask = actionMask; }
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 }

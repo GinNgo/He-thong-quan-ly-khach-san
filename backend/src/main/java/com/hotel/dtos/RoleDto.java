@@ -14,4 +14,5 @@ public class RoleDto {
     private Long userCount;
     private String roleType;
     private LocalDateTime updatedAt;
+    private Long version;
 }

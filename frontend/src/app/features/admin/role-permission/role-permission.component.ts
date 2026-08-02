@@ -38,7 +38,12 @@ export class RolePermissionComponent implements OnInit {
   private confirmationService = inject(ConfirmationService);
   private cdr = inject(ChangeDetectorRef);
 
-  get protectedRole(): boolean { return this.selectedRole?.code === 'SUPER_ADMIN'; }
+  get protectedRole(): boolean {
+    const governedCodes = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER', 'PROPERTY_OWNER', 'HOTEL_ADMIN', 'HOTEL_MANAGER', 'RECEPTIONIST', 'ACCOUNTANT'];
+    return Boolean(this.selectedRole?.systemRole)
+      || this.selectedRole?.roleType === 'SYSTEM'
+      || governedCodes.includes(this.selectedRole?.code || '');
+  }
 
   ngOnInit(): void {
     this.loadRoles();
@@ -141,15 +146,24 @@ export class RolePermissionComponent implements OnInit {
       }))
     );
 
+    if (this.selectedRole.version === undefined) {
+      this.errorMessage = 'Vai trò chưa có phiên bản để kiểm soát xung đột. Hãy tải lại danh sách vai trò.';
+      return;
+    }
+
     this.saving = true;
-    this.roleService.updateRolePermissions(this.selectedRole.id, { permissions }).pipe(
+    this.roleService.updateRolePermissions(this.selectedRole.id, {
+      expectedVersion: this.selectedRole.version,
+      permissions
+    }).pipe(
       timeout(10000),
       finalize(() => {
         this.saving = false;
         this.cdr.detectChanges();
       })
     ).subscribe({
-      next: () => {
+      next: (version) => {
+        this.selectedRole!.version = version;
         this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã cập nhật phân quyền.' });
         this.loadPermissions();
       },

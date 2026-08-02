@@ -5,6 +5,7 @@ import java.util.List;
 
 @Data
 public class UpdateRolePermissionsRequest {
+    private Long expectedVersion;
     private List<PermissionEntry> permissions;
 
     @Data

@@ -28,8 +28,7 @@ public class RolePermissionController {
 
     @PostMapping("/{roleId}")
     @Permission(function = FunctionCode.ROLE_PERMISSION, action = ActionCode.UPDATE)
-    public ResponseEntity<Void> updateRolePermissions(@PathVariable Long roleId, @RequestBody UpdateRolePermissionsRequest request) {
-        rolePermissionService.updateRolePermissions(roleId, request);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Long> updateRolePermissions(@PathVariable Long roleId, @RequestBody UpdateRolePermissionsRequest request) {
+        return ResponseEntity.ok(rolePermissionService.updateRolePermissions(roleId, request));
     }
 }
