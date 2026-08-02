@@ -199,7 +199,8 @@ public class PropertyRefundService {
     }
 
     private void validateOriginal(PropertyFinancialTransaction original) {
-        if (original.getDirection() != PropertyFinancialTransaction.Direction.DEBIT
+        if (original.isLegacyReconciliationRequired()
+                || original.getDirection() != PropertyFinancialTransaction.Direction.DEBIT
                 || original.getTransactionType() == PropertyFinancialTransaction.TransactionType.REFUND) {
             throw new FinancialException(FinancialErrorCode.INVALID_STATE_TRANSITION);
         }

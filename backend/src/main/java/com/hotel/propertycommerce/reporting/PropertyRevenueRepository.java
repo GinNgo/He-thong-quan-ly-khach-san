@@ -49,6 +49,7 @@ public class PropertyRevenueRepository {
                 where transaction.hotel.id = :propertyId
                   and transaction.occurredAt >= :fromInclusive
                   and transaction.occurredAt < :toExclusive
+                  and transaction.legacyReconciliationRequired = false
                 """);
         appendDirectPaymentFilters(jpql, "transaction", scope);
         appendRoomTypeFilter(jpql, "transaction.reservation", scope);

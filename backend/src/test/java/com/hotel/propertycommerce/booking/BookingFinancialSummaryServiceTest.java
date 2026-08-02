@@ -93,6 +93,21 @@ class BookingFinancialSummaryServiceTest {
                 () -> service.calculate(reservation, List.of(payment(other, 100_000, "other-property"))));
     }
 
+    @Test
+    void unverifiedLegacySettlementEvidenceDoesNotChangeAuthoritativeBalance() {
+        Reservation reservation = reservation(hotel(7L));
+        PropertyFinancialTransaction unverified = payment(reservation, 1_200_000, "legacy-unverified");
+        setField(unverified, "legacyReconciliationRequired", true);
+
+        BookingFinancialSummaryService.Summary summary = service.calculate(
+                reservation,
+                List.of(unverified));
+
+        assertMoney(0, summary.successfulPayments());
+        assertAmount(1_200_000, summary.remainingBalance());
+        assertEquals(BookingFinancialState.UNPAID, summary.financialState());
+    }
+
     private PropertyFinancialTransaction payment(Reservation reservation, long amount, String identity) {
         return PropertyFinancialTransaction.record(
                 "txn-" + identity,

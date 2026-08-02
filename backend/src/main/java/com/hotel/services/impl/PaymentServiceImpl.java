@@ -48,47 +48,6 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public PaymentDTO processPayment(PaymentDTO dto) {
-        Reservation reservation = reservationRepository.findByIdForUpdate(dto.getReservationId())
-                .orElseThrow(() -> new RuntimeException("Reservation not found"));
-
-        String transactionId = dto.getTransactionId();
-        if (transactionId == null || transactionId.isBlank()) {
-            transactionId = UUID.randomUUID().toString();
-        } else {
-            transactionId = transactionId.trim();
-            var existing = paymentRepository.findByTransactionId(transactionId);
-            if (existing.isPresent()) {
-                if (!existing.get().getReservation().getId().equals(dto.getReservationId())) {
-                    throw new IllegalArgumentException("Transaction ID belongs to another reservation.");
-                }
-                return mapToDTO(existing.get());
-            }
-        }
-
-        Payment payment = new Payment();
-        payment.setReservation(reservation);
-        payment.setAmount(dto.getAmount());
-        payment.setPaymentMethod(dto.getPaymentMethod());
-        payment.setStatus("SUCCESS");
-        payment.setTransactionId(transactionId);
-        payment.setPaymentDate(LocalDateTime.now());
-
-        Payment saved = paymentRepository.save(payment);
-
-        // Loyalty Points: 100,000 VND = 1 point
-        if (reservation.getUser() != null) {
-            User user = reservation.getUser();
-            int earnedPoints = payment.getAmount().divide(new java.math.BigDecimal(100000), java.math.RoundingMode.DOWN).intValue();
-            user.setPoints((user.getPoints() == null ? 0 : user.getPoints()) + earnedPoints);
-            userRepository.save(user);
-        }
-
-        return mapToDTO(saved);
-    }
-
-    @Override
-    @Transactional
     public void refundSuccessfulPayments(Long reservationId) {
         Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
                 .orElseThrow(() -> new RuntimeException("Reservation not found"));

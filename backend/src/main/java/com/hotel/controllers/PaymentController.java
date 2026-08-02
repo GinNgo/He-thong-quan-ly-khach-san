@@ -6,6 +6,7 @@ import com.hotel.services.PaymentService;
 import com.hotel.services.ReservationService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import com.hotel.security.Permission;
@@ -34,8 +35,13 @@ public class PaymentController {
 
     @PostMapping
     @Permission(function = FunctionCode.FINANCE, action = ActionCode.CREATE)
-    public ResponseEntity<PaymentDTO> processPayment(@RequestBody PaymentDTO dto) {
-        return ResponseEntity.ok(paymentService.processPayment(dto));
+    public ResponseEntity<Void> processPayment(@RequestBody(required = false) PaymentDTO dto) {
+        // Legacy callers cannot prove a server-owned amount or settlement event.
+        // Keep the route discoverable long enough to return a clear successor.
+        return ResponseEntity.status(HttpStatus.GONE)
+                .header("Deprecation", "true")
+                .header("Link", "</api/reservations/{reservationId}/payment-attempts>; rel=successor-version")
+                .build();
     }
 
     // Generate Online Payment URL

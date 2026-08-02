@@ -275,7 +275,8 @@ public class InvoiceFinalizationService {
         List<PropertyInvoicePaymentAllocation> allocations = new ArrayList<>();
         BigDecimal allocated = BigDecimal.ZERO;
         for (PropertyFinancialTransaction transaction : transactions) {
-            if (transaction.getDirection() != PropertyFinancialTransaction.Direction.DEBIT
+            if (transaction.isLegacyReconciliationRequired()
+                    || transaction.getDirection() != PropertyFinancialTransaction.Direction.DEBIT
                     || transaction.getTransactionType() == PropertyFinancialTransaction.TransactionType.REFUND) {
                 continue;
             }

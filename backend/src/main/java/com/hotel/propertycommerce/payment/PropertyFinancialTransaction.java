@@ -130,6 +130,9 @@ public class PropertyFinancialTransaction {
     @Column(name = "recorded_at", nullable = false, updatable = false)
     private LocalDateTime recordedAt;
 
+    @Column(name = "legacy_reconciliation_required", nullable = false, updatable = false)
+    private boolean legacyReconciliationRequired;
+
     protected PropertyFinancialTransaction() {
     }
 
@@ -171,6 +174,7 @@ public class PropertyFinancialTransaction {
         transaction.actorId = actorId;
         transaction.reason = normalizeOptional(reason);
         transaction.occurredAt = Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+        transaction.legacyReconciliationRequired = false;
         transaction.validateEvidence();
         return transaction;
     }

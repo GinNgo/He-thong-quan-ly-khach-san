@@ -4,7 +4,6 @@ import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { ReservationService, Reservation } from '../../../core/services/reservation.service';
-import { PaymentService } from '../../../core/services/payment.service';
 import { InvoiceService } from '../../../core/services/invoice.service';
 import { Router } from '@angular/router';
 import { CardModule } from 'primeng/card';
@@ -51,7 +50,6 @@ export class ReservationManagement implements OnInit {
 
   constructor(
     private reservationService: ReservationService, 
-    private paymentService: PaymentService,
     private invoiceService: InvoiceService,
     private hotelServiceService: HotelServiceService,
     private messageService: MessageService,
@@ -146,22 +144,6 @@ export class ReservationManagement implements OnInit {
     this.loadReservations();
   }
 
-  processPayment(res: Reservation) {
-    if (!res.id || !res.totalAmount) return;
-    this.paymentService.processPayment({
-      reservationId: res.id,
-      amount: res.totalAmount,
-      paymentMethod: 'CASH'
-    }).subscribe({
-      next: (data) => {
-        this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã thanh toán Booking RES-' + res.id });
-        this.loadReservations();
-      },
-      error: (err) => {
-        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Thanh toán thất bại' });
-      }
-    });
-  }
 
   generateInvoice(resId: number | undefined) {
     if (!resId) return;

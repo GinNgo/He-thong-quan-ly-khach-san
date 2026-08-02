@@ -21,6 +21,7 @@ import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -81,6 +82,14 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
         return response(HttpStatus.BAD_REQUEST, "MISSING_PARAMETER", "A required request parameter is missing.",
                 request, Map.of(ex.getParameterName(), "Required parameter is missing."), false, null);
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ApiErrorResponse> handleMissingHeader(
+            MissingRequestHeaderException ex,
+            HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, "MISSING_HEADER", "A required request header is missing.",
+                request, Map.of(ex.getHeaderName(), "Required header is missing."), false, null);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)

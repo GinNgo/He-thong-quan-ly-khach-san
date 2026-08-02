@@ -7,7 +7,6 @@ import java.util.List;
 
 public interface PaymentService {
     List<PaymentDTO> getPaymentsByReservation(Long reservationId);
-    PaymentDTO processPayment(PaymentDTO dto);
     PaymentCompletionResult handleSuccessfulPayment(Long reservationId, String method, String transactionId);
     PaymentCompletionResult handleSuccessfulPayment(
             Long reservationId,

@@ -382,6 +382,9 @@ public class FolioCalculationService {
         if (!transactions.isEmpty()) {
             for (PropertyFinancialTransaction transaction : transactions) {
                 validateTransactionOwnership(reservation, transaction);
+                if (transaction.isLegacyReconciliationRequired()) {
+                    continue;
+                }
                 BigDecimal amount = money(transaction.getAmount(), "transaction amount");
                 if (transaction.getTransactionType() == TransactionType.REFUND) {
                     refunds = refunds.add(amount);

@@ -72,6 +72,9 @@ public class BookingFinancialSummaryService {
         long sourceVersion = 0;
         for (PropertyFinancialTransaction transaction : evidence) {
             validateOwnership(reservation, transaction);
+            if (transaction.isLegacyReconciliationRequired()) {
+                continue;
+            }
             BigDecimal amount = transaction.money().amount();
             if (transaction.getTransactionType() == TransactionType.REFUND) {
                 refundTotal = refundTotal.add(amount);

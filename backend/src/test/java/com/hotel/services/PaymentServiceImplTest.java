@@ -1,6 +1,5 @@
 package com.hotel.services;
 
-import com.hotel.dtos.PaymentDTO;
 import com.hotel.entities.Payment;
 import com.hotel.entities.Reservation;
 import com.hotel.entities.User;
@@ -244,35 +243,4 @@ class PaymentServiceImplTest {
         verify(userRepository, never()).save(any(User.class));
     }
 
-    @Test
-    void processPayment_WithDuplicateTransaction_ShouldReturnExistingWithoutPoints() {
-        Reservation reservation = new Reservation();
-        reservation.setId(42L);
-
-        Payment existingPayment = new Payment();
-        existingPayment.setId(7L);
-        existingPayment.setReservation(reservation);
-        existingPayment.setAmount(new BigDecimal("250000"));
-        existingPayment.setPaymentMethod("MOMO");
-        existingPayment.setStatus("SUCCESS");
-        existingPayment.setTransactionId("TX_123");
-
-        PaymentDTO request = new PaymentDTO();
-        request.setReservationId(42L);
-        request.setAmount(new BigDecimal("250000"));
-        request.setPaymentMethod("MOMO");
-        request.setTransactionId("TX_123");
-
-        when(reservationRepository.findByIdForUpdate(42L))
-                .thenReturn(Optional.of(reservation));
-        when(paymentRepository.findByTransactionId("TX_123"))
-                .thenReturn(Optional.of(existingPayment));
-
-        PaymentDTO result = paymentService.processPayment(request);
-
-        assertEquals(7L, result.getId());
-        assertEquals("TX_123", result.getTransactionId());
-        verify(paymentRepository, never()).save(any(Payment.class));
-        verify(userRepository, never()).save(any(User.class));
-    }
 }

@@ -90,6 +90,24 @@ class FolioCalculationServiceTest {
     }
 
     @Test
+    void quarantinedLegacyLedgerEvidenceDoesNotSettleOrFallBackToLegacyPaymentRows() {
+        Fixture fixture = fixture();
+        ReservationDetail room = roomDetail(fixture, 1_000_000, 11L);
+        PropertyFinancialTransaction quarantined = transaction(
+                fixture, 1_000_000, PropertyFinancialTransaction.Direction.DEBIT,
+                PropertyFinancialTransaction.TransactionType.ROOM_PAYMENT, 31L, null);
+        ReflectionTestUtils.setField(quarantined, "legacyReconciliationRequired", true);
+        Payment sameLegacyRow = legacyPayment(fixture, 1_000_000, 41L);
+
+        FolioCalculationService.Folio folio = calculator().calculateFromEvidence(
+                fixture.reservation(), List.of(room), List.of(), List.of(),
+                List.of(quarantined), List.of(sameLegacyRow));
+
+        assertThat(folio.successfulPayments().amount()).isZero();
+        assertThat(folio.balance()).isEqualByComparingTo("1000000");
+    }
+
+    @Test
     void fallsBackToActiveLegacyServicesAndSuccessfulLegacyPayments() {
         Fixture fixture = fixture();
         ReflectionTestUtils.setField(fixture.reservation(), "depositBookingTotal", null);

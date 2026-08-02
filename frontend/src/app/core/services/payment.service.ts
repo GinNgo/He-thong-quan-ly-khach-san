@@ -26,9 +26,6 @@ export class PaymentService {
     return this.http.get<Payment[]>(`${this.apiUrl}/reservation/${reservationId}`);
   }
 
-  processPayment(payment: Payment): Observable<Payment> {
-    return this.http.post<Payment>(this.apiUrl, payment);
-  }
 
   createPaymentUrl(reservationId: number, method: string): Observable<{url: string}> {
     return this.http.get<{url: string}>(`${this.apiUrl}/create-url?reservationId=${reservationId}&method=${method}`);
