@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { HttpClient, provideHttpClient, withInterceptors, HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth';
+import { ClientObservabilityService } from '../services/client-observability.service';
 import { errorInterceptor } from './error-interceptor';
 
 describe('errorInterceptor', () => {
@@ -10,17 +11,20 @@ describe('errorInterceptor', () => {
   let httpClient: HttpClient;
   let routerSpy: any;
   let authServiceSpy: any;
+  let observabilitySpy: any;
 
   beforeEach(() => {
     routerSpy = { navigate: vi.fn(), url: '/' };
     authServiceSpy = { logout: vi.fn() };
+    observabilitySpy = { recordHttpFailure: vi.fn() };
 
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
         { provide: Router, useValue: routerSpy },
-        { provide: AuthService, useValue: authServiceSpy }
+        { provide: AuthService, useValue: authServiceSpy },
+        { provide: ClientObservabilityService, useValue: observabilitySpy }
       ]
     });
 
@@ -78,6 +82,22 @@ describe('errorInterceptor', () => {
     expect(routerSpy.navigate).toHaveBeenCalledWith(['/403'], {
       queryParams: { reason: 'FORBIDDEN_FEATURE' },
     });
+    expect(observabilitySpy.recordHttpFailure).toHaveBeenCalledWith('GET', 403, undefined);
+  });
+
+  it('records the response correlation id without forwarding the request body or URL', () => {
+    httpClient.post('/api/private/customer@example.com', { password: 'secret' }).subscribe({ error: () => undefined });
+
+    const req = httpMock.expectOne('/api/private/customer@example.com');
+    req.flush({
+      status: 503,
+      code: 'SERVICE_UNAVAILABLE',
+      message: 'Unavailable',
+      correlationId: 'corr-safe-42',
+      retryable: true,
+    }, { status: 503, statusText: 'Unavailable' });
+
+    expect(observabilitySpy.recordHttpFailure).toHaveBeenCalledWith('POST', 503, 'corr-safe-42');
   });
 
   it('should handle 401 error in admin area', () => {

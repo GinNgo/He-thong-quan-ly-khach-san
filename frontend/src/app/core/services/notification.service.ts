@@ -2,8 +2,9 @@ import { Injectable, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { Observable, Subject } from 'rxjs';
-import { Client, IFrame, IMessage } from '@stomp/stompjs';
+import { Client, IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { ClientObservabilityService } from './client-observability.service';
 
 export interface AppNotification {
   id: number;
@@ -22,10 +23,15 @@ export class NotificationService {
   private apiUrl = `${environment.apiUrl}/notifications`;
   private stompClient: Client;
   private notificationSubject = new Subject<AppNotification>();
+  private connectionCorrelationId: string | null = null;
 
   public notifications$ = this.notificationSubject.asObservable();
 
-  constructor(private http: HttpClient, private ngZone: NgZone) {
+  constructor(
+    private http: HttpClient,
+    private ngZone: NgZone,
+    private observability: ClientObservabilityService
+  ) {
     this.stompClient = new Client({
       // Dùng SockJS để hỗ trợ tốt hơn
       webSocketFactory: () => new SockJS(`${environment.apiUrl.replace('/api', '')}/ws`),
@@ -33,7 +39,6 @@ export class NotificationService {
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
       onConnect: () => {
-        console.log('STOMP connected');
         this.stompClient.subscribe('/topic/notifications', (message: IMessage) => {
           if (message.body) {
             const notif = JSON.parse(message.body) as AppNotification;
@@ -43,14 +48,24 @@ export class NotificationService {
           }
         });
       },
-      onStompError: (frame: IFrame) => {
-        console.error('STOMP Error:', frame.headers['message']);
+      onStompError: () => {
+        this.observability.recordStompFailure('notification', 'broker', this.connectionCorrelationId);
+      },
+      onWebSocketError: () => {
+        this.observability.recordStompFailure('notification', 'socket', this.connectionCorrelationId);
+      },
+      onWebSocketClose: (event: CloseEvent) => {
+        if (!event.wasClean) {
+          this.observability.recordStompFailure('notification', 'close', this.connectionCorrelationId);
+        }
       }
     });
   }
 
   // Kết nối khi Admin đăng nhập hoặc ở AdminLayout
   connect() {
+    this.connectionCorrelationId = this.observability.createCorrelationId('notification');
+    this.stompClient.connectHeaders = { 'X-Correlation-ID': this.connectionCorrelationId };
     if (!this.stompClient.active) {
       this.stompClient.activate();
     }
@@ -61,6 +76,7 @@ export class NotificationService {
     if (this.stompClient.active) {
       this.stompClient.deactivate();
     }
+    this.connectionCorrelationId = null;
   }
 
   getAdminNotifications(): Observable<AppNotification[]> {

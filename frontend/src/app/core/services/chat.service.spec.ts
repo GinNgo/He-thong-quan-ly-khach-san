@@ -42,4 +42,22 @@ describe('ChatService', () => {
     expect(request.request.method).toBe('GET');
     request.flush([]);
   });
+
+  it('adds a fresh correlation id to each published STOMP message', () => {
+    const publish = vi.fn();
+    const mutableService = service as unknown as {
+      connected: boolean;
+      stompClient: { publish: typeof publish };
+    };
+    mutableService.connected = true;
+    mutableService.stompClient = { publish };
+
+    expect(service.sendCustomerMessage('hello')).toBe(true);
+    expect(publish).toHaveBeenCalledWith(expect.objectContaining({
+      destination: '/app/chat.support.send',
+      headers: {
+        'X-Correlation-ID': expect.stringMatching(/^chat-message-/),
+      },
+    }));
+  });
 });

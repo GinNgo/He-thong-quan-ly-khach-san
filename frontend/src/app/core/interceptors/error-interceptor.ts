@@ -4,13 +4,19 @@ import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { isApiError } from '../../shared/financial/financial.models';
 import { AuthService } from '../services/auth';
+import { ClientObservabilityService } from '../services/client-observability.service';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const authService = inject(AuthService);
+  const observability = inject(ClientObservabilityService);
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
+      const correlationId = isApiError(error.error)
+        ? error.error.correlationId
+        : error.headers.get('X-Correlation-ID');
+      observability.recordHttpFailure(req.method, error.status, correlationId);
       const currentUrl = router.url || '';
       const isAdminArea = currentUrl.startsWith('/admin') || currentUrl.startsWith('/management');
       const isProtectedClientArea = ['/booking', '/profile', '/booking-history', '/my-invoices', '/settings']

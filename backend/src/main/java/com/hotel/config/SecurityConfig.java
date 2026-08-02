@@ -56,6 +56,8 @@ public class SecurityConfig {
                         "/api/payment-providers/platform/*/refund-callback").permitAll()
                 .requestMatchers("/api/rooms/search").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .requestMatchers("/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness").permitAll()
+                .requestMatchers("/actuator/**").hasAnyAuthority("SUPER_ADMIN", "ROLE_SUPER_ADMIN")
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/ws-chat/**").permitAll()
                 .requestMatchers("/api/notifications/**").permitAll()
@@ -74,6 +76,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(java.util.Arrays.asList("*"));
         configuration.setAllowedMethods(java.util.Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.Arrays.asList("Authorization", "Content-Type"));
+        configuration.setExposedHeaders(java.util.List.of("X-Correlation-ID"));
         org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

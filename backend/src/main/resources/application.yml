@@ -103,6 +103,9 @@ jwt:
 app:
   websocket:
     allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:4200}
+  observability:
+    scheduler:
+      pool-size: ${OBSERVABILITY_SCHEDULER_POOL_SIZE:2}
   location-import:
     enabled: true
     file-path: ../docs/34_tinh_huyen_xa.json
@@ -123,3 +126,21 @@ app:
     max-results-per-batch: 100
     request-delay-ms: 1000
     auto-publish: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  pattern:
+    level: "%5p [correlationId:%X{correlationId:-none}]"

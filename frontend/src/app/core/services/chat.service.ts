@@ -5,6 +5,7 @@ import SockJS from 'sockjs-client';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from './auth';
+import { ClientObservabilityService } from './client-observability.service';
 
 export interface ChatMessage {
   id?: number;
@@ -31,10 +32,12 @@ export type ChatConnectionState = 'idle' | 'connecting' | 'connected' | 'reconne
 export class ChatService {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
+  private readonly observability = inject(ClientObservabilityService);
   private readonly apiUrl = `${environment.apiUrl}/chat`;
   private stompClient: Client | null = null;
   private connectionMode: ChatMode | null = null;
   private connected = false;
+  private connectionCorrelationId: string | null = null;
 
   private readonly messageSubject = new BehaviorSubject<ChatMessage | null>(null);
   private readonly connectionStateSubject = new BehaviorSubject<ChatConnectionState>('idle');
@@ -57,12 +60,14 @@ export class ChatService {
 
     this.disconnect();
     this.connectionMode = mode;
+    this.connectionCorrelationId = this.observability.createCorrelationId('chat');
     this.setConnectionState('connecting', '');
 
     const client = new Client({
       webSocketFactory: () => new SockJS(`${this.apiOrigin()}/ws-chat`) as WebSocket,
       connectHeaders: {
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
+        'X-Correlation-ID': this.connectionCorrelationId,
       },
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
@@ -77,16 +82,19 @@ export class ChatService {
       },
       onStompError: (frame) => {
         this.connected = false;
+        this.observability.recordStompFailure('chat', 'broker', this.connectionCorrelationId);
         this.setConnectionState('error', frame.headers['message'] || 'Kết nối chat bị từ chối.');
       },
       onWebSocketClose: () => {
         this.connected = false;
         if (client.active) {
+          this.observability.recordStompFailure('chat', 'close', this.connectionCorrelationId);
           this.setConnectionState('reconnecting', 'Đang thử kết nối lại…');
         }
       },
       onWebSocketError: () => {
         this.connected = false;
+        this.observability.recordStompFailure('chat', 'socket', this.connectionCorrelationId);
         this.setConnectionState('error', 'Không thể kết nối tới CSKH.');
       }
     });
@@ -100,6 +108,7 @@ export class ChatService {
     this.connected = false;
     this.stompClient = null;
     this.connectionMode = null;
+    this.connectionCorrelationId = null;
     this.setConnectionState('idle', '');
     if (client?.active) {
       void client.deactivate();
@@ -137,7 +146,11 @@ export class ChatService {
     }
 
     try {
-      this.stompClient.publish({ destination, body: JSON.stringify(body) });
+      this.stompClient.publish({
+        destination,
+        body: JSON.stringify(body),
+        headers: { 'X-Correlation-ID': this.observability.createCorrelationId('chat-message') },
+      });
       return true;
     } catch {
       this.setConnectionState('error', 'Không thể gửi tin nhắn. Hãy thử lại.');
