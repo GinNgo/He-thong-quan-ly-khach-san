@@ -70,6 +70,9 @@ public class ReservationChargeLine {
     @Column(name = "source_version", length = 80, updatable = false)
     private String sourceVersion;
 
+    @Column(name = "legacy_service_item_id", updatable = false)
+    private Long legacyServiceItemId;
+
     @Column(length = 80, updatable = false)
     private String code;
 

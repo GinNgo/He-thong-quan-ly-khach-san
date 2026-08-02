@@ -114,6 +114,47 @@ class FolioCalculationServiceTest {
     }
 
     @Test
+    void countsBackfilledLegacyServiceExactlyOnce() {
+        Fixture fixture = fixture();
+        ReflectionTestUtils.setField(fixture.reservation(), "depositBookingTotal", null);
+        ReservationDetail room = roomDetail(fixture, 1_000_000, 11L);
+        ReservationServiceItem legacyService = legacyService(fixture, 75_000, 2, 51L);
+        ReservationChargeLine migratedLine = ReservationChargeLine.create(
+                fixture.hotel(),
+                fixture.reservation(),
+                ReservationChargeLine.ChargeType.SERVICE,
+                15L,
+                "LEGACY-SERVICE-ITEM:51",
+                "LEGACY-SVC",
+                "Legacy service",
+                "Backfilled legacy evidence",
+                BigDecimal.valueOf(75_000),
+                BigDecimal.valueOf(2),
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.valueOf(150_000),
+                LocalDateTime.of(2026, 8, 1, 3, 0),
+                fixture.actor(),
+                null);
+        ReflectionTestUtils.setField(migratedLine, "id", 71L);
+        ReflectionTestUtils.setField(migratedLine, "legacyServiceItemId", 51L);
+
+        FolioCalculationService.Folio folio = calculator().calculateFromEvidence(
+                fixture.reservation(),
+                List.of(room),
+                List.of(legacyService),
+                List.of(migratedLine),
+                List.of(),
+                List.of());
+
+        assertThat(folio.serviceCharges().amount()).isEqualByComparingTo("150000");
+        assertThat(folio.grossCharges().amount()).isEqualByComparingTo("1150000");
+        assertThat(folio.lines()).extracting(FolioCalculationService.FolioLine::sourceType)
+                .contains("RESERVATION_CHARGE_LINE")
+                .doesNotContain("LEGACY_RESERVATION_SERVICE");
+    }
+
+    @Test
     void rejectsDuplicateReversalsAndCrossReservationEvidence() {
         Fixture fixture = fixture();
         ReservationDetail room = roomDetail(fixture, 1_000_000, 11L);

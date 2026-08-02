@@ -115,7 +115,18 @@ public class FolioCalculationService {
         if (!hasRoomChargeLines) {
             addAuthoritativeRoomCharges(reservation, safeList(details), totals, lines);
         }
-        addLegacyServiceCharges(reservation, safeList(legacyServices), totals, lines);
+        Set<Long> reconciledLegacyServiceIds = new HashSet<>();
+        for (ReservationChargeLine line : authoritativeLines) {
+            if (line != null && line.getLegacyServiceItemId() != null) {
+                reconciledLegacyServiceIds.add(line.getLegacyServiceItemId());
+            }
+        }
+        addLegacyServiceCharges(
+                reservation,
+                safeList(legacyServices),
+                reconciledLegacyServiceIds,
+                totals,
+                lines);
         addChargeLines(reservation, authoritativeLines, totals, lines);
         totals.requireNonNegative();
 
@@ -219,10 +230,14 @@ public class FolioCalculationService {
     private void addLegacyServiceCharges(
             Reservation reservation,
             List<ReservationServiceItem> legacyServices,
+            Set<Long> reconciledLegacyServiceIds,
             Components totals,
             List<FolioLine> lines) {
         for (ReservationServiceItem item : legacyServices) {
             if (item == null || !"ACTIVE".equals(item.getStatus())) {
+                continue;
+            }
+            if (item.getId() != null && reconciledLegacyServiceIds.contains(item.getId())) {
                 continue;
             }
             validateReservationOwner(reservation, item.getReservation(), "Legacy service line");

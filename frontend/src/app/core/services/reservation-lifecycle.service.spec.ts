@@ -35,4 +35,8 @@ describe('ReservationService lifecycle commands', () => {
     expect(noShow.request.method).toBe('POST');
     noShow.flush({ id: 43 });
   });
+
+  it('does not expose the retired legacy service-charge mutation', () => {
+    expect('addExtraService' in service).toBe(false);
+  });
 });

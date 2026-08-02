@@ -11,10 +11,7 @@ import { CardModule } from 'primeng/card';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { DialogModule } from 'primeng/dialog';
-import { SelectModule } from 'primeng/select';
-import { InputNumberModule } from 'primeng/inputnumber';
 import { TooltipModule } from 'primeng/tooltip';
-import { FormsModule } from '@angular/forms';
 import { HotelServiceService, HotelServiceDTO } from '../../../core/services/hotel-service.service';
 import { CheckoutResult } from '../../../core/services/property-checkout.service';
 import { ReservationCheckoutComponent } from './reservation-checkout.component';
@@ -32,10 +29,7 @@ import { Observable, finalize } from 'rxjs';
     CardModule,
     ToastModule,
     DialogModule,
-    SelectModule,
-    InputNumberModule,
     TooltipModule,
-    FormsModule,
     ReservationCheckoutComponent,
   ],
   providers: [MessageService],
@@ -46,10 +40,8 @@ export class ReservationManagement implements OnInit {
   reservations: Reservation[] = [];
   services: HotelServiceDTO[] = [];
   
-  showAddServiceDialog = false;
   showCheckoutDialog = false;
   selectedReservationId: number | null = null;
-  newServiceItem = { serviceId: 0, quantity: 1 };
   private permissionService = inject(PermissionService);
   readonly canUpdateReservation = this.permissionService.hasPermission(FunctionCode.RESERVATION, ActionCode.UPDATE);
   readonly canCheckIn = this.permissionService.hasPermission(FunctionCode.CHECKIN, ActionCode.UPDATE);
@@ -138,13 +130,6 @@ export class ReservationManagement implements OnInit {
     this.router.navigate(['/admin/reservations/timeline']);
   }
 
-  openAddServiceDialog(res: Reservation) {
-    if (!res.id) return;
-    this.selectedReservationId = res.id;
-    this.newServiceItem = { serviceId: 0, quantity: 1 };
-    this.showAddServiceDialog = true;
-  }
-
   openCheckoutWorkspace(res: Reservation) {
     if (!res.id) return;
     this.selectedReservationId = res.id;
@@ -159,25 +144,6 @@ export class ReservationManagement implements OnInit {
     });
     this.showCheckoutDialog = false;
     this.loadReservations();
-  }
-
-  submitAddService() {
-    if (!this.selectedReservationId || !this.newServiceItem.serviceId || this.newServiceItem.quantity < 1) {
-      this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Vui lòng chọn dịch vụ và số lượng hợp lệ' });
-      return;
-    }
-    
-    this.reservationService.addExtraService(this.selectedReservationId, this.newServiceItem.serviceId, this.newServiceItem.quantity)
-      .subscribe({
-        next: (res) => {
-          this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã thêm dịch vụ' });
-          this.showAddServiceDialog = false;
-          this.loadReservations();
-        },
-        error: (err) => {
-          this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Thêm dịch vụ thất bại' });
-        }
-      });
   }
 
   processPayment(res: Reservation) {

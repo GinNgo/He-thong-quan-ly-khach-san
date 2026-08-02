@@ -146,10 +146,13 @@ public class ReservationController {
     }
 
     @PostMapping("/{id}/services")
-    @PreAuthorize("hasAnyAuthority('PROPERTY_OWNER','HOTEL_MANAGER','RECEPTIONIST','HOTEL_ADMIN','SUPER_ADMIN','ADMIN')")
-    public ResponseEntity<ReservationServiceItemDTO> addExtraService(
+    @Permission(function = FunctionCode.RESERVATION_SERVICE, action = ActionCode.CREATE)
+    public ResponseEntity<Void> addExtraService(
             @PathVariable Long id, @RequestBody AddServiceRequest request) {
-        return ResponseEntity.ok(reservationService.addExtraService(id, request));
+        return ResponseEntity.status(HttpStatus.GONE)
+                .header("Deprecation", "true")
+                .header("Link", "</api/management/reservations/" + id + "/charges/services>; rel=successor-version")
+                .build();
     }
 
     private ResponseEntity<ReservationDTO> createIdempotentReservation(

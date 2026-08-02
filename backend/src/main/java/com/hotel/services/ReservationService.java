@@ -37,8 +37,6 @@ public class ReservationService {
     private final RoomAvailabilityService roomAvailabilityService;
     private final NotificationService notificationService;
     private final EmailService emailService;
-    private final ReservationServiceItemRepository reservationServiceItemRepository;
-    private final HotelServiceRepository hotelServiceRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
     private final PaymentService paymentService;
@@ -389,57 +387,6 @@ public class ReservationService {
         });
         roomRepository.saveAllAndFlush(lockedRooms.values().stream().toList());
         reservationRoomRepository.saveAllAndFlush(activeAssignments);
-    }
-
-    @Transactional
-    public ReservationServiceItemDTO addExtraService(Long reservationId, AddServiceRequest request) {
-        Reservation reservation = findReservation(reservationId);
-        requireOperationalAccess(reservation);
-        if (!"CHECKED_IN".equals(reservation.getStatus())) {
-            throw new IllegalStateException("Chỉ có thể thêm dịch vụ khi khách đang ở.");
-        }
-        if (request == null || request.getServiceId() == null || request.getQuantity() == null || request.getQuantity() < 1) {
-            throw new IllegalArgumentException("Dịch vụ và số lượng phải hợp lệ.");
-        }
-
-        HotelService service = hotelServiceRepository.findById(request.getServiceId())
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy dịch vụ."));
-        boolean systemService = Boolean.TRUE.equals(service.getSystemService());
-        boolean sameHotel = service.getHotel() != null && service.getHotel().getId().equals(reservation.getHotel().getId());
-        if (!systemService && !sameHotel) {
-            throw new IllegalArgumentException("Dịch vụ không thuộc cơ sở của booking này.");
-        }
-        if (!"ACTIVE".equals(service.getStatus())) {
-            throw new IllegalStateException("Dịch vụ hiện không hoạt động.");
-        }
-
-        ReservationServiceItem item = new ReservationServiceItem();
-        item.setReservation(reservation);
-        item.setHotelService(service);
-        item.setQuantity(request.getQuantity());
-        item.setPrice(service.getPrice());
-        item.setTotalAmount(service.getPrice().multiply(BigDecimal.valueOf(request.getQuantity())));
-        item.setUsedAt(LocalDateTime.now());
-        item.setStatus("ACTIVE");
-        org.springframework.security.core.Authentication authentication =
-                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getName())) {
-            userRepository.findByUsername(authentication.getName()).ifPresent(item::setAddedBy);
-        }
-        ReservationServiceItem savedItem = reservationServiceItemRepository.save(item);
-
-        reservation.setTotalAmount(reservation.getTotalAmount().add(item.getTotalAmount()));
-        reservationRepository.save(reservation);
-
-        ReservationServiceItemDTO dto = new ReservationServiceItemDTO();
-        dto.setId(savedItem.getId());
-        dto.setReservationId(reservation.getId());
-        dto.setServiceId(service.getId());
-        dto.setServiceNameVi(service.getNameVi());
-        dto.setQuantity(savedItem.getQuantity());
-        dto.setPrice(savedItem.getPrice());
-        dto.setTotalAmount(savedItem.getTotalAmount());
-        return dto;
     }
 
     @Transactional(readOnly = true)

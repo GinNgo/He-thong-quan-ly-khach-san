@@ -70,10 +70,6 @@ export class ReservationService {
     return this.http.post<Reservation>(`${this.apiUrl}/${id}/cancel`, {}, options);
   }
 
-  addExtraService(id: number, serviceId: number, quantity: number): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/${id}/services`, { serviceId, quantity });
-  }
-
   deleteReservation(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }

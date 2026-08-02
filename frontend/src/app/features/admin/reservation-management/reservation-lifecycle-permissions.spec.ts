@@ -1,10 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { NEVER, of } from 'rxjs';
 import { Reservation, ReservationService } from '../../../core/services/reservation.service';
 import { PaymentService } from '../../../core/services/payment.service';
 import { InvoiceService } from '../../../core/services/invoice.service';
 import { HotelServiceService } from '../../../core/services/hotel-service.service';
 import { PermissionService, ActionCode, FunctionCode } from '../../../core/services/permission.service';
+import { PropertyCheckoutService } from '../../../core/services/property-checkout.service';
 import { Router } from '@angular/router';
 import { ReservationManagement } from './reservation-management';
 
@@ -48,12 +49,14 @@ describe('ReservationManagement lifecycle permissions', () => {
         { provide: PaymentService, useValue: {} },
         { provide: InvoiceService, useValue: {} },
         { provide: HotelServiceService, useValue: { getServices: vi.fn(() => of([])) } },
+        { provide: PropertyCheckoutService, useValue: { preview: vi.fn(() => NEVER) } },
         { provide: Router, useValue: { navigate: vi.fn() } },
         {
           provide: PermissionService,
           useValue: {
             hasPermission: vi.fn((functionCode: string, actionCode: number) =>
               (functionCode === FunctionCode.RESERVATION && actionCode === ActionCode.UPDATE) ||
+              (functionCode === FunctionCode.HOTEL_SERVICE && actionCode === ActionCode.VIEW) ||
               (functionCode === FunctionCode.CHECKIN && actionCode === ActionCode.UPDATE) ||
               (functionCode === FunctionCode.RESERVATION_CANCEL && actionCode === ActionCode.UPDATE) ||
               (functionCode === FunctionCode.RESERVATION_NO_SHOW && actionCode === ActionCode.UPDATE)),
@@ -91,5 +94,14 @@ describe('ReservationManagement lifecycle permissions', () => {
     expect(fixture.nativeElement.querySelector('[data-action="check-in"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-action="no-show"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-action="cancel-operational"]')).toBeNull();
+  });
+
+  it('routes in-stay service work to the authoritative folio workspace', () => {
+    component.openCheckoutWorkspace({ ...reservation, status: 'CHECKED_IN' });
+
+    expect(component.selectedReservationId).toBe(55);
+    expect(component.showCheckoutDialog).toBe(true);
+    expect('openAddServiceDialog' in component).toBe(false);
+    expect('submitAddService' in component).toBe(false);
   });
 });

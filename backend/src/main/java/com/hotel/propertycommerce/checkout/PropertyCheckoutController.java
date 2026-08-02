@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -60,13 +61,16 @@ public class PropertyCheckoutController {
         ReservationChargeLine.ChargeType chargeType = enumValue(
                 request == null ? null : request.chargeType(),
                 ReservationChargeLine.ChargeType.class);
+        LocalDateTime serviceUsedAt = request == null || request.serviceUsedAt() == null
+                ? LocalDateTime.now(ZoneOffset.UTC)
+                : request.serviceUsedAt();
         ReservationChargeLine line = chargeService.addServiceCharge(
                 new ReservationChargeService.AddServiceChargeCommand(
                         reservationId,
                         request == null ? null : request.serviceId(),
                         chargeType,
                         request == null ? null : request.quantity(),
-                        request == null ? null : request.serviceUsedAt()));
+                        serviceUsedAt));
         return ResponseEntity.status(201).body(ChargeResponse.from(line, correlationId));
     }
 
