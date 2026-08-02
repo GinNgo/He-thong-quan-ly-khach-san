@@ -262,10 +262,11 @@ public class ManagementPortalService {
         long properties = userPropertyRepository.countActiveOwnedPropertiesByUserId(userId);
         long roomTypes = hotelId == null ? 0 : roomTypeRepository.countByHotelId(hotelId);
         long rooms = hotelId == null ? 0 : roomRepository.countByHotelId(hotelId);
+        long staff = hotelId == null ? 0 : userPropertyRepository.countActiveStaffByHotelId(hotelId);
         long images = hotelId == null ? 0 : propertyImageRepository.countByHotelId(hotelId)
                 + roomTypeImageRepository.countByRoomTypeHotelId(hotelId)
                 + roomImageRepository.countByRoomHotelId(hotelId);
-        return Map.of("properties", properties, "roomTypes", roomTypes, "rooms", rooms, "images", images);
+        return Map.of("properties", properties, "roomTypes", roomTypes, "rooms", rooms, "staff", staff, "images", images);
     }
 
     private Map<String, Object> dashboard(Long hotelId) {

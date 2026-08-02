@@ -15,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -28,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -55,6 +57,9 @@ class UserServiceTest {
 
     @Mock
     private SubscriptionFeatureService subscriptionFeatureService;
+
+    @Mock
+    private PropertySubscriptionEntitlementService propertyEntitlementService;
 
     @InjectMocks
     private UserService userService;
@@ -91,15 +96,21 @@ class UserServiceTest {
         when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
         when(roleRepository.findAllById(Set.of(3L))).thenReturn(List.of(receptionist));
         when(propertyAccessService.requireManagedHotel(10L)).thenReturn(hotel);
-        when(propertyAccessService.accessibleHotelIds()).thenReturn(Set.of(10L));
-        when(userPropertyRepository.countActiveStaffByHotelIds(Set.of(10L))).thenReturn(4L);
+        when(propertyEntitlementService.getCurrentForUpdate(10L)).thenReturn(
+                PropertySubscriptionEntitlementService.EntitlementView.none(10L, "TEST"));
+        when(userPropertyRepository.countActiveStaffByHotelId(10L)).thenReturn(4L);
         when(propertyAccessService.currentUser()).thenReturn(owner);
         when(passwordEncoder.encode("secret")).thenReturn("encoded");
         when(userRepository.save(staff)).thenReturn(staff);
 
         userService.createUser(staff, Set.of(3L), 10L);
 
-        verify(subscriptionFeatureService).checkFeatureLimit(1L, "MAX_STAFF", 4);
+        verify(subscriptionFeatureService).checkFeatureLimitForProperty(10L, "MAX_STAFF", 4L, 1L);
+        InOrder quotaOrder = inOrder(propertyEntitlementService, userPropertyRepository, subscriptionFeatureService, userRepository);
+        quotaOrder.verify(propertyEntitlementService).getCurrentForUpdate(10L);
+        quotaOrder.verify(userPropertyRepository).countActiveStaffByHotelId(10L);
+        quotaOrder.verify(subscriptionFeatureService).checkFeatureLimitForProperty(10L, "MAX_STAFF", 4L, 1L);
+        quotaOrder.verify(userRepository).save(staff);
         ArgumentCaptor<UserProperty> mapping = ArgumentCaptor.forClass(UserProperty.class);
         verify(userPropertyRepository).save(mapping.capture());
         assertSame(staff, mapping.getValue().getUser());
@@ -107,6 +118,27 @@ class UserServiceTest {
         assertEquals("STAFF", mapping.getValue().getRelationshipType());
         assertEquals("ACTIVE", mapping.getValue().getStatus());
         assertEquals("encoded", staff.getPasswordHash());
+    }
+
+    @Test
+    void createUser_WithMultipleAccessibleProperties_UsesOnlyTargetPropertyQuota() {
+        Hotel target = new Hotel();
+        target.setId(11L);
+        target.setName("Hotel B");
+        when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
+        when(roleRepository.findAllById(Set.of(3L))).thenReturn(List.of(receptionist));
+        when(propertyAccessService.requireManagedHotel(11L)).thenReturn(target);
+        when(propertyEntitlementService.getCurrentForUpdate(11L)).thenReturn(
+                PropertySubscriptionEntitlementService.EntitlementView.none(11L, "TEST"));
+        when(userPropertyRepository.countActiveStaffByHotelId(11L)).thenReturn(2L);
+        when(propertyAccessService.currentUser()).thenReturn(owner);
+        when(passwordEncoder.encode("secret")).thenReturn("encoded");
+        when(userRepository.save(staff)).thenReturn(staff);
+
+        userService.createUser(staff, Set.of(3L), 11L);
+
+        verify(subscriptionFeatureService).checkFeatureLimitForProperty(11L, "MAX_STAFF", 2L, 1L);
+        verify(userPropertyRepository, never()).countActiveStaffByHotelIds(Set.of(10L, 11L));
     }
 
     @Test
@@ -141,11 +173,11 @@ class UserServiceTest {
         when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
         when(roleRepository.findAllById(Set.of(3L))).thenReturn(List.of(receptionist));
         when(propertyAccessService.requireManagedHotel(10L)).thenReturn(hotel);
-        when(propertyAccessService.accessibleHotelIds()).thenReturn(Set.of(10L));
-        when(userPropertyRepository.countActiveStaffByHotelIds(Set.of(10L))).thenReturn(10L);
-        when(propertyAccessService.currentUser()).thenReturn(owner);
+        when(propertyEntitlementService.getCurrentForUpdate(10L)).thenReturn(
+                PropertySubscriptionEntitlementService.EntitlementView.none(10L, "TEST"));
+        when(userPropertyRepository.countActiveStaffByHotelId(10L)).thenReturn(10L);
         doThrow(new RuntimeException("Bạn đã đạt giới hạn của gói dịch vụ."))
-                .when(subscriptionFeatureService).checkFeatureLimit(1L, "MAX_STAFF", 10);
+                .when(subscriptionFeatureService).checkFeatureLimitForProperty(10L, "MAX_STAFF", 10L, 1L);
 
         assertThrows(RuntimeException.class, () -> userService.createUser(staff, Set.of(3L), 10L));
 
@@ -253,7 +285,9 @@ class UserServiceTest {
         when(propertyAccessService.requireManagedHotel(10L)).thenReturn(hotel);
         when(propertyAccessService.accessibleHotelIds()).thenReturn(Set.of(10L));
         when(userPropertyRepository.findStaffAssignmentsForUpdate(2L)).thenReturn(List.of(historical));
-        when(userPropertyRepository.countActiveStaffByHotelIds(Set.of(10L))).thenReturn(3L);
+        when(propertyEntitlementService.getCurrentForUpdate(10L)).thenReturn(
+                PropertySubscriptionEntitlementService.EntitlementView.none(10L, "TEST"));
+        when(userPropertyRepository.countActiveStaffByHotelId(10L)).thenReturn(3L);
         when(userRepository.save(staff)).thenReturn(staff);
 
         userService.reactivateStaff(2L, lifecycleRequest(10L, "New seasonal contract"));
@@ -266,7 +300,7 @@ class UserServiceTest {
         assertEquals("INACTIVE", historical.getStatus());
         assertEquals("Previous contract ended", historical.getStatusReason());
         assertEquals("ACTIVE", staff.getStatus());
-        verify(subscriptionFeatureService).checkFeatureLimit(1L, "MAX_STAFF", 3);
+        verify(subscriptionFeatureService).checkFeatureLimitForProperty(10L, "MAX_STAFF", 3L, 1L);
         verify(userRepository, never()).delete(any());
     }
 

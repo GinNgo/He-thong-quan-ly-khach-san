@@ -3,7 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
 
 export interface ManagedProperty { id: number; code: string; nameVi: string; propertyType: string; address: string; approvalStatus: string; operationStatus: string; operational?: boolean; mainImage?: string; isDemo: boolean; }
-export interface ManagementContext { properties: ManagedProperty[]; activePropertyId?: number; activePropertyOperational?: boolean; planCode: string; subscriptionStatus: string; subscriptionSource?: string; endAt?: string; lifetime: boolean; limits: Record<string, number>; usage: Record<string, number>; upgradeRequired: boolean; dashboard?: Record<string, number>; }
+export interface ManagementUsage { properties?: number; roomTypes?: number; rooms?: number; staff?: number; images?: number; }
+export interface ManagementContext { properties: ManagedProperty[]; activePropertyId?: number; activePropertyOperational?: boolean; planCode: string; subscriptionStatus: string; subscriptionSource?: string; endAt?: string; lifetime: boolean; limits: Record<string, number>; usage: ManagementUsage; upgradeRequired: boolean; dashboard?: Record<string, number>; }
 
 @Injectable({ providedIn: 'root' })
 export class ManagementApiService {

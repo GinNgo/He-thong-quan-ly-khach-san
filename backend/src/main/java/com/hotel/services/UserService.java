@@ -100,16 +100,7 @@ public class UserService {
             throw new IllegalArgumentException("Vui lòng chọn cơ sở cho nhân viên.");
         }
 
-        if (!systemAdministrator) {
-            java.util.Set<Long> accessibleHotelIds = propertyAccessService.accessibleHotelIds();
-            long currentStaff = accessibleHotelIds.isEmpty()
-                    ? 0
-                    : userPropertyRepository.countActiveStaffByHotelIds(accessibleHotelIds);
-            subscriptionFeatureService.checkFeatureLimit(
-                    propertyAccessService.currentUser().getId(),
-                    "MAX_STAFF",
-                    Math.toIntExact(currentStaff));
-        }
+        checkStaffQuota(hotelId, systemAdministrator);
 
         user.setPasswordHash(passwordEncoder.encode(user.getPasswordHash() != null ? user.getPasswordHash() : "123456"));
         user.setCreatedAt(java.time.LocalDateTime.now());
@@ -139,10 +130,6 @@ public class UserService {
     public UserDto updateUser(Long id, User userDetails, java.util.Set<Long> roleIds, Long hotelId) {
         boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
         User user = requireManageableUser(id, systemAdministrator);
-        if (!systemAdministrator) {
-            subscriptionFeatureService.requireFeature(propertyAccessService.currentUser().getId(), "MAX_STAFF");
-        }
-
         java.util.Set<com.hotel.entities.Role> roles = roleIds == null
                 ? user.getRoles()
                 : new java.util.HashSet<>(roleRepository.findAllById(roleIds));
@@ -267,14 +254,7 @@ public class UserService {
             throw new IllegalStateException("A suspended or disabled account requires system account review.");
         }
 
-        if (!systemAdministrator) {
-            java.util.Set<Long> accessibleHotelIds = propertyAccessService.accessibleHotelIds();
-            long currentStaff = accessibleHotelIds.isEmpty()
-                    ? 0
-                    : userPropertyRepository.countActiveStaffByHotelIds(accessibleHotelIds);
-            subscriptionFeatureService.checkFeatureLimit(
-                    actor.getId(), "MAX_STAFF", Math.toIntExact(currentStaff));
-        }
+        checkStaffQuota(hotel.getId(), systemAdministrator);
 
         java.time.LocalDateTime now = java.time.LocalDateTime.now();
         com.hotel.entities.UserProperty assignment = new com.hotel.entities.UserProperty();
@@ -356,6 +336,16 @@ public class UserService {
         }
         return userPropertyRepository.findByUserIdAndRelationshipType(id, "STAFF").stream()
                 .anyMatch(item -> item.getHotel() != null && hotelIds.contains(item.getHotel().getId()));
+    }
+
+    /** Locks the property's entitlement before reading usage so concurrent staff adds serialize. */
+    private void checkStaffQuota(Long hotelId, boolean systemAdministrator) {
+        if (systemAdministrator) {
+            return;
+        }
+        propertyEntitlementService.getCurrentForUpdate(hotelId);
+        long currentStaff = userPropertyRepository.countActiveStaffByHotelId(hotelId);
+        subscriptionFeatureService.checkFeatureLimitForProperty(hotelId, "MAX_STAFF", currentStaff, 1);
     }
 
     private String requireLifecycleReason(StaffLifecycleRequest request) {
@@ -467,6 +457,9 @@ public class UserService {
 
     @Autowired
     private SubscriptionFeatureService subscriptionFeatureService;
+
+    @Autowired
+    private PropertySubscriptionEntitlementService propertyEntitlementService;
 
     @Autowired
     private com.hotel.repositories.ChatMessageRepository chatMessageRepository;

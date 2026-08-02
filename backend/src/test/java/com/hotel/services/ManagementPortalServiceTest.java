@@ -74,11 +74,15 @@ class ManagementPortalServiceTest {
         when(propertyEntitlementService.getCurrent(20L)).thenReturn(
                 PropertySubscriptionEntitlementService.EntitlementView.none(20L, "NO_ENTITLEMENT"));
         lenient().when(userPropertyRepository.countActiveOwnedPropertiesByUserId(10L)).thenReturn(1L);
+        when(userPropertyRepository.countActiveStaffByHotelId(20L)).thenReturn(2L);
 
         Map<String, Object> context = service.context(20L);
         List<Map<String, Object>> properties = (List<Map<String, Object>>) context.get("properties");
 
         assertEquals(20L, context.get("activePropertyId"));
+        @SuppressWarnings("unchecked")
+        Map<String, Long> usage = (Map<String, Long>) context.get("usage");
+        assertEquals(2L, usage.get("staff"));
         assertEquals(false, context.get("activePropertyOperational"));
         assertFalse((Boolean) properties.getFirst().get("operational"));
         assertNull(context.get("dashboard"));

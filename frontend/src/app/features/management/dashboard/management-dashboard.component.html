@@ -13,7 +13,7 @@
     <app-feedback-state state="empty" title="Chưa có cơ sở được cấp" message="Tài khoản này chưa có cơ sở lưu trú để hiển thị tổng quan." />
   } @else if (context) {
     @if (context.upgradeRequired) { <div class="upgrade"><strong>Gói {{ context.planCode }}</strong><span>Một số chức năng nâng cao đang bị giới hạn. Dữ liệu đã nhập vẫn được giữ nguyên.</span><a routerLink="/management/billing">Xem gói dịch vụ</a></div> }
-    <div class="summary"><div><span>Gói hiện tại</span><strong>{{ context.planCode }}</strong></div><div><span>Trạng thái</span><strong>{{ context.subscriptionStatus }}</strong></div><div><span>Cơ sở</span><strong>{{ context.usage['properties'] || 0 }} / {{ limit('MAX_PROPERTIES') }}</strong></div><div><span>Phòng</span><strong>{{ context.usage['rooms'] || 0 }} / {{ limit('MAX_ROOMS') }}</strong></div></div>
+    <div class="summary"><div><span>Gói hiện tại</span><strong>{{ context.planCode }}</strong></div><div><span>Trạng thái</span><strong>{{ context.subscriptionStatus }}</strong></div><div><span>Cơ sở</span><strong>{{ context.usage.properties || 0 }} / {{ limit('MAX_PROPERTIES') }}</strong></div><div><span>Phòng</span><strong>{{ context.usage.rooms || 0 }} / {{ limit('MAX_ROOMS') }}</strong></div><div><span>Nhân viên</span><strong>{{ context.usage.staff || 0 }} / {{ limit('MAX_STAFF') }}</strong></div></div>
     <p class="entitlement-source">Entitlement source: <strong>{{ context.subscriptionSource || 'NONE' }}</strong>. Room usage is scoped to the selected property.</p>
     @if (!activePropertyOperational && activeProperty) {
       <div class="operation-gate" role="status">
