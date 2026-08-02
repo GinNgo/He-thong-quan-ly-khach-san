@@ -15,6 +15,7 @@ import com.hotel.propertycommerce.refund.PropertyRefundAttemptRepository;
 import com.hotel.propertycommerce.refund.PropertyRefundRequest;
 import com.hotel.propertycommerce.refund.PropertyRefundRequestRepository;
 import com.hotel.propertycommerce.refund.PropertyRefundService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +40,7 @@ public class RefundProviderOrchestrator {
     private final PlatformRefundService platformRefundService;
     private final Clock clock;
 
+    @Autowired
     public RefundProviderOrchestrator(
             RefundProviderGateway gateway,
             PropertyRefundRequestRepository propertyRequestRepository,

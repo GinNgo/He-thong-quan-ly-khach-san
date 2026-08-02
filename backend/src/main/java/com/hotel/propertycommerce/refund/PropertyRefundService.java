@@ -9,6 +9,7 @@ import com.hotel.paymentprovider.error.FinancialException;
 import com.hotel.propertycommerce.payment.PropertyFinancialTransaction;
 import com.hotel.propertycommerce.payment.PropertyFinancialTransactionRepository;
 import com.hotel.services.PropertyAccessService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +34,7 @@ public class PropertyRefundService {
     private final FinancialAuditService auditService;
     private final Clock clock;
 
+    @Autowired
     public PropertyRefundService(
             PropertyFinancialTransactionRepository transactionRepository,
             PropertyRefundRequestRepository requestRepository,

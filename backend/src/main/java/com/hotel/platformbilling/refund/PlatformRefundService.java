@@ -9,6 +9,7 @@ import com.hotel.paymentprovider.error.FinancialException;
 import com.hotel.platformbilling.payment.PlatformFinancialTransaction;
 import com.hotel.platformbilling.payment.PlatformFinancialTransactionRepository;
 import com.hotel.services.PropertyAccessService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +39,7 @@ public class PlatformRefundService {
     private final String configuredPolicyVersion;
     private final Clock clock;
 
+    @Autowired
     public PlatformRefundService(
             PlatformFinancialTransactionRepository transactionRepository,
             PlatformRefundRequestRepository requestRepository,
