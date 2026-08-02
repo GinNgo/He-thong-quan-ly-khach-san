@@ -12,6 +12,8 @@ import com.hotel.security.ActionCode;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.Permission;
 import com.hotel.services.SubscriptionCatalogService;
+import com.hotel.services.PropertySubscriptionEntitlementService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,7 +40,31 @@ public class PlatformBillingController {
     private final SubscriptionPolicyService policyService;
     private final PlatformPaymentConfigurationService configurationService;
     private final PlatformBillingQueryService queryService;
+    private final PropertySubscriptionEntitlementService entitlementService;
 
+    @Autowired
+    public PlatformBillingController(
+            SubscriptionCatalogService catalogService,
+            SubscriptionOrderService orderService,
+            PlatformPaymentAttemptService attemptService,
+            SubscriptionRenewalService renewalService,
+            SubscriptionUpgradeService upgradeService,
+            SubscriptionPolicyService policyService,
+            PlatformPaymentConfigurationService configurationService,
+            PlatformBillingQueryService queryService,
+            PropertySubscriptionEntitlementService entitlementService) {
+        this.catalogService = catalogService;
+        this.orderService = orderService;
+        this.attemptService = attemptService;
+        this.renewalService = renewalService;
+        this.upgradeService = upgradeService;
+        this.policyService = policyService;
+        this.configurationService = configurationService;
+        this.queryService = queryService;
+        this.entitlementService = entitlementService;
+    }
+
+    /** Compatibility constructor retained for focused controller tests and integrations. */
     public PlatformBillingController(
             SubscriptionCatalogService catalogService,
             SubscriptionOrderService orderService,
@@ -48,14 +74,8 @@ public class PlatformBillingController {
             SubscriptionPolicyService policyService,
             PlatformPaymentConfigurationService configurationService,
             PlatformBillingQueryService queryService) {
-        this.catalogService = catalogService;
-        this.orderService = orderService;
-        this.attemptService = attemptService;
-        this.renewalService = renewalService;
-        this.upgradeService = upgradeService;
-        this.policyService = policyService;
-        this.configurationService = configurationService;
-        this.queryService = queryService;
+        this(catalogService, orderService, attemptService, renewalService, upgradeService, policyService,
+                configurationService, queryService, null);
     }
 
     @GetMapping("/subscription-plans")
@@ -134,6 +154,13 @@ public class PlatformBillingController {
     public ResponseEntity<List<PlatformBillingQueryService.HistoryItem>> history(
             @PathVariable Long targetHotelId) {
         return ResponseEntity.ok(queryService.history(targetHotelId));
+    }
+
+    @GetMapping("/subscriptions/{targetHotelId}/entitlement")
+    @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.VIEW)
+    public ResponseEntity<PropertySubscriptionEntitlementService.EntitlementView> entitlement(
+            @PathVariable Long targetHotelId) {
+        return ResponseEntity.ok(entitlementService.getCurrent(targetHotelId));
     }
 
     @GetMapping("/subscription-policies")

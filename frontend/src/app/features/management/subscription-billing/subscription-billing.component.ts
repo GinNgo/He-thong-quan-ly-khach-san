@@ -2,10 +2,10 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FeedbackStateComponent } from '../../../shared/components/feedback-state/feedback-state.component';
-import { AccountSubscription, SubscriptionService, SubscriptionUsage } from '../../../core/services/subscription.service';
 import {
   PlatformBillingService,
   PlatformCatalogPlan,
+  PlatformSubscriptionEntitlement,
   PlatformOrder,
   PlatformPolicyAvailability,
 } from '../../../core/services/platform-billing.service';
@@ -20,13 +20,11 @@ import { PlatformPaymentPanelComponent } from './platform-payment-panel.componen
 })
 export class SubscriptionBillingComponent implements OnInit {
   private readonly platformBilling = inject(PlatformBillingService);
-  private readonly subscriptionService = inject(SubscriptionService);
   private readonly route = inject(ActivatedRoute);
   private readonly cdr = inject(ChangeDetectorRef);
 
   plans: PlatformCatalogPlan[] = [];
-  mySubscription: AccountSubscription | null = null;
-  usage: SubscriptionUsage | null = null;
+  currentEntitlement: PlatformSubscriptionEntitlement | null = null;
   policyAvailability: PlatformPolicyAvailability | null = null;
   latestOrder: PlatformOrder | null = null;
   activePropertyId?: number;
@@ -38,15 +36,13 @@ export class SubscriptionBillingComponent implements OnInit {
   creatingOrderFor?: number;
   private loadingPlans = true;
   private loadingSubscription = true;
-  private loadingUsage = true;
   loadingPolicy = true;
 
   ngOnInit(): void {
     const propertyId = Number(this.route.snapshot.queryParamMap.get('propertyId'));
     this.activePropertyId = Number.isInteger(propertyId) && propertyId > 0 ? propertyId : undefined;
     this.loadPlans();
-    this.loadMySubscription();
-    this.loadUsage();
+    this.loadEntitlement();
     this.loadPolicyAvailability();
   }
 
@@ -70,38 +66,27 @@ export class SubscriptionBillingComponent implements OnInit {
     });
   }
 
-  loadMySubscription(): void {
+  loadEntitlement(): void {
     this.loadingSubscription = true;
     this.subscriptionError = '';
     this.updateLoadingState();
-    this.subscriptionService.getMySubscriptions().subscribe({
+    if (!this.activePropertyId) {
+      this.currentEntitlement = null;
+      this.subscriptionError = 'Select a managed property to view its entitlement.';
+      this.loadingSubscription = false;
+      this.updateLoadingState();
+      return;
+    }
+    this.platformBilling.getEntitlement(this.activePropertyId).subscribe({
       next: (data) => {
-        this.mySubscription = data?.[0] || null;
+        this.currentEntitlement = data;
         this.loadingSubscription = false;
         this.updateLoadingState();
         this.cdr.markForCheck();
       },
       error: (err) => {
-        this.subscriptionError = err?.error?.message || 'Unable to load the current subscription.';
+        this.subscriptionError = err?.error?.message || 'Unable to load the selected property entitlement.';
         this.loadingSubscription = false;
-        this.updateLoadingState();
-        this.cdr.markForCheck();
-      },
-    });
-  }
-
-  loadUsage(): void {
-    this.loadingUsage = true;
-    this.updateLoadingState();
-    this.subscriptionService.getMyUsage().subscribe({
-      next: (data) => {
-        this.usage = data;
-        this.loadingUsage = false;
-        this.updateLoadingState();
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.loadingUsage = false;
         this.updateLoadingState();
         this.cdr.markForCheck();
       },
@@ -136,7 +121,7 @@ export class SubscriptionBillingComponent implements OnInit {
     this.orderError = '';
     this.creatingOrderFor = plan.id;
     const idempotencyKey = this.newIdempotencyKey('platform-order');
-    const currentPlanId = this.mySubscription?.plan?.id;
+    const currentPlanId = this.currentEntitlement?.planId ?? undefined;
     const request = currentPlanId === plan.id
       ? this.platformBilling.createRenewalOrder(this.activePropertyId, idempotencyKey)
       : currentPlanId
@@ -166,8 +151,8 @@ export class SubscriptionBillingComponent implements OnInit {
 
   orderActionLabel(plan: PlatformCatalogPlan): string {
     if (this.creatingOrderFor === plan.id) return 'Creating secure order...';
-    if (this.mySubscription?.plan?.id === plan.id) return 'Create renewal order';
-    return this.mySubscription ? 'Create upgrade order' : 'Create purchase order';
+    if (this.currentEntitlement?.planId === plan.id) return 'Create renewal order';
+    return this.currentEntitlement?.planId ? 'Create upgrade order' : 'Create purchase order';
   }
 
   updateLatestOrder(order: PlatformOrder): void {
@@ -175,7 +160,7 @@ export class SubscriptionBillingComponent implements OnInit {
   }
 
   private updateLoadingState(): void {
-    this.isLoading = this.loadingPlans || this.loadingSubscription || this.loadingUsage || this.loadingPolicy;
+    this.isLoading = this.loadingPlans || this.loadingSubscription || this.loadingPolicy;
   }
 
   private newIdempotencyKey(prefix: string): string {

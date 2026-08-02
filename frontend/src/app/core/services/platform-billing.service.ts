@@ -101,6 +101,22 @@ export interface PlatformSubscriptionHistoryItem {
   occurredAt: string;
 }
 
+export interface PlatformSubscriptionEntitlement {
+  targetHotelId: number;
+  source: 'PLATFORM' | 'LEGACY_PROJECTION' | 'NONE' | string;
+  platformAuthoritative: boolean;
+  planId?: number | null;
+  planCode: string;
+  planName?: string | null;
+  status: string;
+  effectiveFrom?: string | null;
+  effectiveUntil?: string | null;
+  lifetime: boolean;
+  limits: Record<string, number>;
+  sourceReference?: string | null;
+  migrationBlocker?: string | null;
+}
+
 export interface PlatformPolicyAvailability {
   downgradeConfigured: boolean;
   prorationConfigured: boolean;
@@ -244,6 +260,12 @@ export class PlatformBillingService {
   getHistory(targetHotelId: number): Observable<PlatformSubscriptionHistoryItem[]> {
     return this.http.get<PlatformSubscriptionHistoryItem[]>(
       `${this.baseUrl}/subscriptions/${targetHotelId}/history`,
+    );
+  }
+
+  getEntitlement(targetHotelId: number): Observable<PlatformSubscriptionEntitlement> {
+    return this.http.get<PlatformSubscriptionEntitlement>(
+      `${this.baseUrl}/subscriptions/${targetHotelId}/entitlement`,
     );
   }
 

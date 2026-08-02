@@ -8,20 +8,24 @@
     <div class="source-pill"><span class="status-dot"></span> Backend authoritative</div>
   </header>
 
-  <div class="current-plan-card" *ngIf="mySubscription">
+  <div class="current-plan-card" *ngIf="currentEntitlement && currentEntitlement.status !== 'NONE'">
     <div class="plan-header">
-      <h3>Current subscription</h3>
-      <span class="status-badge" [class.active]="mySubscription.status === 'ACTIVE'">{{ mySubscription.status }}</span>
+      <h3>Selected property entitlement</h3>
+      <span class="status-badge" [class.active]="currentEntitlement.status === 'ACTIVE'">{{ currentEntitlement.status }}</span>
     </div>
     <div class="plan-details">
-      <div class="plan-name">{{ mySubscription.plan?.nameVi || mySubscription.plan?.nameEn || 'No plan' }}</div>
+      <div class="plan-name">{{ currentEntitlement.planName || currentEntitlement.planCode || 'No plan' }}</div>
       <div class="plan-meta">
-        <p *ngIf="mySubscription.endAt">Expires: <strong>{{ mySubscription.endAt | date:'dd/MM/yyyy' }}</strong></p>
-        <p *ngIf="!mySubscription.endAt">Lifetime subscription</p>
+        <p *ngIf="currentEntitlement.effectiveUntil">Expires: <strong>{{ currentEntitlement.effectiveUntil | date:'dd/MM/yyyy' }}</strong></p>
+        <p *ngIf="!currentEntitlement.effectiveUntil">Lifetime or open-ended entitlement</p>
+        <small>Source: {{ currentEntitlement.source }}</small>
       </div>
     </div>
   </div>
-  <app-feedback-state *ngIf="subscriptionError && !mySubscription" state="error" title="Current subscription unavailable" [message]="subscriptionError" actionLabel="Retry" (actionTriggered)="loadMySubscription()" />
+  <app-feedback-state *ngIf="subscriptionError && !currentEntitlement" state="error" title="Property entitlement unavailable" [message]="subscriptionError" actionLabel="Retry" (actionTriggered)="loadEntitlement()" />
+  <div class="inline-error" *ngIf="currentEntitlement?.migrationBlocker" role="status">
+    This property has no active entitlement: {{ currentEntitlement.migrationBlocker }}
+  </div>
 
   <section class="policy-card" *ngIf="policyAvailability && !loadingPolicy" aria-labelledby="policy-title">
     <div>
@@ -65,7 +69,7 @@
         </ul>
       </div>
       <div class="card-footer">
-        <span class="current-plan-label" *ngIf="mySubscription?.plan?.id === plan.id">Current plan</span>
+        <span class="current-plan-label" *ngIf="currentEntitlement?.planId === plan.id">Current plan</span>
         <button class="btn btn-primary w-full" type="button" [disabled]="creatingOrderFor === plan.id" (click)="createOrder(plan)">
           {{ orderActionLabel(plan) }}
         </button>
@@ -89,12 +93,12 @@
   </section>
   <app-platform-payment-panel *ngIf="latestOrder" [order]="latestOrder" (orderChanged)="updateLatestOrder($event)" />
 
-  <section class="usage-summary" *ngIf="!isLoading && usage" aria-labelledby="usage-summary-title">
-    <h3 id="usage-summary-title">Current usage</h3>
+  <section class="usage-summary" *ngIf="!isLoading && currentEntitlement" aria-labelledby="usage-summary-title">
+    <h3 id="usage-summary-title">Property entitlement limits</h3>
     <div class="usage-grid">
-      <div *ngFor="let feature of usage.features">
-        <span>{{ feature.nameVi || feature.nameEn || feature.code }}</span>
-        <strong>{{ feature.usage }} / {{ featureLimit(feature.limit) }}</strong>
+      <div *ngFor="let feature of currentEntitlement.limits | keyvalue">
+        <span>{{ feature.key }}</span>
+        <strong>{{ featureLimit(feature.value) }}</strong>
       </div>
     </div>
   </section>

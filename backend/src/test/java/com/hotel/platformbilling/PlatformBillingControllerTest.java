@@ -10,6 +10,7 @@ import com.hotel.platformbilling.subscription.SubscriptionPolicyService;
 import com.hotel.platformbilling.subscription.SubscriptionRenewalService;
 import com.hotel.platformbilling.subscription.SubscriptionUpgradeService;
 import com.hotel.services.SubscriptionCatalogService;
+import com.hotel.services.PropertySubscriptionEntitlementService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +37,7 @@ class PlatformBillingControllerTest {
     @Mock private SubscriptionPolicyService policyService;
     @Mock private PlatformPaymentConfigurationService configurationService;
     @Mock private PlatformBillingQueryService queryService;
+    @Mock private PropertySubscriptionEntitlementService entitlementService;
 
     private PlatformBillingController controller;
 
@@ -43,7 +45,7 @@ class PlatformBillingControllerTest {
     void setUp() {
         controller = new PlatformBillingController(
                 catalogService, orderService, attemptService, renewalService, upgradeService,
-                policyService, configurationService, queryService);
+                policyService, configurationService, queryService, entitlementService);
     }
 
     @Test
@@ -79,5 +81,17 @@ class PlatformBillingControllerTest {
         var response = controller.validateConfiguration("MOMO");
 
         assertEquals(readiness, response.getBody());
+    }
+
+    @Test
+    void entitlementEndpointDelegatesToThePropertyScopedReadModel() {
+        PropertySubscriptionEntitlementService.EntitlementView expected =
+                PropertySubscriptionEntitlementService.EntitlementView.none(42L, "NONE");
+        when(entitlementService.getCurrent(42L)).thenReturn(expected);
+
+        var response = controller.entitlement(42L);
+
+        assertEquals(expected, response.getBody());
+        verify(entitlementService).getCurrent(42L);
     }
 }

@@ -28,7 +28,7 @@ describe('SubscriptionBillingComponent', () => {
 
   it('creates a backend-owned purchase order and renders truthful policy blockers', async () => {
     const plan = standardPlan();
-    flushInitial([plan], []);
+    flushInitial([plan], entitlement(1, undefined, 'NONE'));
     await fixture.whenStable();
     fixture.componentInstance.createOrder(plan);
 
@@ -48,7 +48,7 @@ describe('SubscriptionBillingComponent', () => {
 
   it('creates a renewal order for the current plan', async () => {
     const plan = standardPlan();
-    flushInitial([plan], [subscription(plan)]);
+    flushInitial([plan], entitlement(1, plan));
     await fixture.whenStable();
     fixture.componentInstance.createOrder(plan);
 
@@ -62,7 +62,7 @@ describe('SubscriptionBillingComponent', () => {
   it('creates an upgrade order without client price or credit fields', async () => {
     const current = standardPlan();
     const target = { ...standardPlan(), id: 2, code: 'PRO', nameVi: 'Professional', nameEn: 'Professional', price: 2400000 };
-    flushInitial([current, target], [subscription(current)]);
+    flushInitial([current, target], entitlement(1, current));
     await fixture.whenStable();
     fixture.componentInstance.createOrder(target);
 
@@ -77,7 +77,7 @@ describe('SubscriptionBillingComponent', () => {
     http.expectOne(`${environment.apiUrl}/platform/subscription-plans`).flush(
       { message: 'Catalog unavailable' }, { status: 503, statusText: 'Unavailable' },
     );
-    flushSubscriptionAndPolicy([]);
+    flushEntitlementAndPolicy(entitlement(1, undefined, 'NONE'));
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -86,18 +86,13 @@ describe('SubscriptionBillingComponent', () => {
     expect(element.textContent).not.toContain('Create purchase order');
   });
 
-  function flushInitial(plans: PlatformCatalogPlan[], subscriptions: unknown[]): void {
+  function flushInitial(plans: PlatformCatalogPlan[], current: unknown): void {
     http.expectOne(`${environment.apiUrl}/platform/subscription-plans`).flush(plans);
-    flushSubscriptionAndPolicy(subscriptions);
+    flushEntitlementAndPolicy(current);
   }
 
-  function flushSubscriptionAndPolicy(subscriptions: unknown[]): void {
-    http.expectOne(`${environment.apiUrl}/subscriptions/me`).flush(subscriptions);
-    http.expectOne(`${environment.apiUrl}/subscriptions/me/usage`).flush({
-      planCode: subscriptions.length ? 'STANDARD' : 'NO_PLAN',
-      subscriptionStatus: subscriptions.length ? 'ACTIVE' : 'NONE',
-      lifetime: false, limits: {}, usage: {}, features: [],
-    });
+  function flushEntitlementAndPolicy(current: unknown): void {
+    http.expectOne(`${environment.apiUrl}/platform/subscriptions/42/entitlement`).flush(current as object);
     http.expectOne(`${environment.apiUrl}/platform/subscription-policies`).flush({
       downgradeConfigured: false,
       prorationConfigured: false,
@@ -115,8 +110,22 @@ describe('SubscriptionBillingComponent', () => {
     };
   }
 
-  function subscription(plan: PlatformCatalogPlan) {
-    return { id: 10, plan, startAt: '2026-07-01T00:00:00', endAt: '2026-08-01T00:00:00', isLifetime: false, status: 'ACTIVE' };
+  function entitlement(planId: number, plan?: PlatformCatalogPlan, status = 'ACTIVE') {
+    return {
+      targetHotelId: 42,
+      source: status === 'NONE' ? 'NONE' : 'PLATFORM',
+      platformAuthoritative: status !== 'NONE',
+      planId: status === 'NONE' ? null : plan?.id ?? planId,
+      planCode: status === 'NONE' ? 'NO_PLAN' : plan?.code ?? 'STANDARD',
+      planName: status === 'NONE' ? null : plan?.nameVi ?? 'Standard',
+      status,
+      effectiveFrom: '2026-07-01T00:00:00',
+      effectiveUntil: status === 'NONE' ? null : '2026-08-01T00:00:00',
+      lifetime: false,
+      limits: status === 'NONE' ? {} : { MAX_PROPERTIES: 3 },
+      sourceReference: status === 'NONE' ? null : 'contract-1',
+      migrationBlocker: status === 'NONE' ? 'LEGACY_SCOPE_AMBIGUOUS_OR_MISSING' : null,
+    };
   }
 
   function orderResponse(operation: 'PURCHASE' | 'RENEW' | 'UPGRADE', plan: PlatformCatalogPlan) {
