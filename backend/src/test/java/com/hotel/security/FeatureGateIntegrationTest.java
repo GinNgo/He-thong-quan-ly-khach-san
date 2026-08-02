@@ -1,6 +1,7 @@
 package com.hotel.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hotel.BackendApplication;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +27,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(
+        classes = BackendApplication.class,
+        properties = "payment.property.encryption-key=test-property-payment-encryption-key")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class FeatureGateIntegrationTest {

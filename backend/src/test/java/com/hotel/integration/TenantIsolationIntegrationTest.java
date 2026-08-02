@@ -1,5 +1,6 @@
 package com.hotel.integration;
 
+import com.hotel.BackendApplication;
 import com.hotel.dtos.RoomDTO;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.HousekeepingTask;
@@ -40,7 +41,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(
+        classes = BackendApplication.class,
+        properties = "payment.property.encryption-key=test-property-payment-encryption-key")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
@@ -363,6 +366,7 @@ public class TenantIsolationIntegrationTest {
         mockMvc.perform(get("/api/payments/create-url")
                         .param("reservationId", reservationD.getId().toString())
                         .param("method", "MOMO")
+                        .header("Idempotency-Key", "tenant-isolation-customer-c-payment")
                         .with(user(createCustomerDetails(customerC))))
                 .andExpect(status().isNotFound());
     }

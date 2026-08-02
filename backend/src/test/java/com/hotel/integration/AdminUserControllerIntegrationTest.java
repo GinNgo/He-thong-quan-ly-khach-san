@@ -1,6 +1,7 @@
 package com.hotel.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hotel.BackendApplication;
 import com.hotel.dtos.UserRequest;
 import com.hotel.entities.User;
 import com.hotel.repositories.UserRepository;
@@ -29,7 +30,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(
+        classes = BackendApplication.class,
+        properties = "payment.property.encryption-key=test-property-payment-encryption-key")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
