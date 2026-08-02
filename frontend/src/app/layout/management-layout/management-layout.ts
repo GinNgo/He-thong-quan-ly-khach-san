@@ -15,6 +15,7 @@ interface ManagementLink {
   icon: string;
   functionCode?: FunctionCode;
   actionCode?: ActionCode;
+  operationalOnly?: boolean;
 }
 
 @Component({
@@ -41,8 +42,8 @@ export class ManagementLayout implements OnInit, OnDestroy {
       links: [
         { label: 'Tổng quan', url: '/management/dashboard', icon: 'dashboard' },
         { label: 'Cơ sở lưu trú', url: '/management/properties', icon: 'domain' },
-        { label: 'Loại phòng', url: '/management/room-types', icon: 'bed' },
-        { label: 'Phòng vật lý', url: '/management/rooms', icon: 'meeting_room' },
+        { label: 'Loại phòng', url: '/management/room-types', icon: 'bed', operationalOnly: true },
+        { label: 'Phòng vật lý', url: '/management/rooms', icon: 'meeting_room', operationalOnly: true },
       ],
     },
     {
@@ -54,6 +55,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
           icon: 'account_balance_wallet',
           functionCode: FunctionCode.PROPERTY_PAYMENT_CONFIG,
           actionCode: ActionCode.VIEW,
+          operationalOnly: true,
         },
         {
           label: 'Gói dịch vụ',
@@ -71,6 +73,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
           icon: 'monitoring',
           functionCode: FunctionCode.REPORT,
           actionCode: ActionCode.VIEW,
+          operationalOnly: true,
         },
       ],
     },
@@ -86,6 +89,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
   contextError = '';
   properties: ManagedProperty[] = [];
   activePropertyId?: number;
+  activePropertyOperational = false;
 
   private subscriptions = new Subscription();
 
@@ -126,6 +130,9 @@ export class ManagementLayout implements OnInit, OnDestroy {
         next: (context) => {
           this.properties = context.properties;
           this.activePropertyId = context.activePropertyId;
+          this.activePropertyOperational = context.activePropertyOperational
+            ?? this.activeProperty?.operational
+            ?? false;
           this.contextLoading = false;
 
           if (updateUrl && context.activePropertyId === propertyId) {
@@ -139,6 +146,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
         error: () => {
           this.properties = [];
           this.activePropertyId = undefined;
+          this.activePropertyOperational = false;
           this.contextLoading = false;
           this.contextError = 'Không thể tải danh sách cơ sở.';
           this.cdr.markForCheck();
@@ -193,7 +201,12 @@ export class ManagementLayout implements OnInit, OnDestroy {
     return this.isMobileViewport ? this.isMobileSidebarOpen : !this.isSidebarCollapsed;
   }
 
+  get activeProperty(): ManagedProperty | undefined {
+    return this.properties.find((property) => property.id === this.activePropertyId);
+  }
+
   canViewLink(link: ManagementLink): boolean {
+    if (link.operationalOnly && !this.activePropertyOperational) return false;
     return !link.functionCode || this.permissionService.hasPermission(
       link.functionCode,
       link.actionCode ?? ActionCode.VIEW,

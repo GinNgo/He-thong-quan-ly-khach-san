@@ -37,4 +37,46 @@ describe('ManagementDashboardComponent', () => {
     expect(element.textContent).toContain('LuxeStay Hà Nội');
     expect(element.textContent).toContain('STANDARD');
   });
+
+  it('shows approval guidance instead of operational metrics for a pending property', async () => {
+    const context$ = new Subject<ManagementContext>();
+    await TestBed.configureTestingModule({
+      imports: [ManagementDashboardComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ManagementApiService, useValue: { context: () => context$ } },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManagementDashboardComponent);
+    fixture.detectChanges();
+    context$.next({
+      properties: [{
+        id: 2,
+        code: 'PENDING-2',
+        nameVi: 'Cơ sở mới',
+        propertyType: 'HOTEL',
+        address: 'Huế',
+        approvalStatus: 'PENDING_APPROVAL',
+        operationStatus: 'INACTIVE',
+        operational: false,
+        isDemo: false,
+      }],
+      activePropertyId: 2,
+      activePropertyOperational: false,
+      planCode: 'NO_PLAN',
+      subscriptionStatus: 'NONE',
+      lifetime: false,
+      limits: {},
+      usage: { properties: 1 },
+      upgradeRequired: true,
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent || '';
+    expect(text).toContain('Chưa thể vận hành');
+    expect(text).toContain('PENDING_APPROVAL');
+    expect(text).not.toContain('Phòng trống');
+  });
 });

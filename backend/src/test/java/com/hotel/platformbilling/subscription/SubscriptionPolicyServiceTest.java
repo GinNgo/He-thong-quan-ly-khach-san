@@ -34,7 +34,7 @@ class SubscriptionPolicyServiceTest {
     void blocksDowngradeBeforeAnyOrderCanBeCreated() {
         Hotel hotel = new Hotel();
         hotel.setId(20L);
-        when(propertyAccessService.requireManagedHotel(20L)).thenReturn(hotel);
+        when(propertyAccessService.requireAssignedHotel(20L)).thenReturn(hotel);
 
         FinancialException exception = assertThrows(FinancialException.class, () ->
                 service.createDowngradeOrder(new SubscriptionPolicyService.DowngradeOrderCommand(
@@ -43,14 +43,14 @@ class SubscriptionPolicyServiceTest {
         assertEquals(FinancialErrorCode.POLICY_NOT_CONFIGURED, exception.code());
         assertTrue(exception.getMessage().contains("downgrade"));
         assertEquals("POLICY=SUBSCRIPTION_DOWNGRADE;STATUS=NOT_CONFIGURED", exception.currentState());
-        verify(propertyAccessService).requireManagedHotel(20L);
+        verify(propertyAccessService).requireAssignedHotel(20L);
     }
 
     @Test
     void blocksProrationForUpgradeAndDowngradeWithoutAcceptingClientAmounts() {
         Hotel hotel = new Hotel();
         hotel.setId(20L);
-        when(propertyAccessService.requireManagedHotel(20L)).thenReturn(hotel);
+        when(propertyAccessService.requireAssignedHotel(20L)).thenReturn(hotel);
 
         FinancialException exception = assertThrows(FinancialException.class, () ->
                 service.requireProrationPolicy(new SubscriptionPolicyService.ProrationPolicyCommand(
@@ -59,7 +59,7 @@ class SubscriptionPolicyServiceTest {
         assertEquals(FinancialErrorCode.POLICY_NOT_CONFIGURED, exception.code());
         assertTrue(exception.getMessage().contains("Proration"));
         assertEquals("POLICY=SUBSCRIPTION_PRORATION;STATUS=NOT_CONFIGURED", exception.currentState());
-        verify(propertyAccessService).requireManagedHotel(20L);
+        verify(propertyAccessService).requireAssignedHotel(20L);
     }
 
     @Test
@@ -75,7 +75,7 @@ class SubscriptionPolicyServiceTest {
 
     @Test
     void preservesTenantAccessDenialInsteadOfLeakingPolicyDetails() {
-        when(propertyAccessService.requireManagedHotel(20L))
+        when(propertyAccessService.requireAssignedHotel(20L))
                 .thenThrow(new FinancialException(FinancialErrorCode.TENANT_ACCESS_DENIED));
 
         FinancialException exception = assertThrows(FinancialException.class, () ->

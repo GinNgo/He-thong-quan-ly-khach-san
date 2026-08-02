@@ -35,22 +35,24 @@ public class ManagementPortalService {
     @Transactional(readOnly = true)
     public Map<String, Object> context(Long activePropertyId) {
         User user = propertyAccessService.currentUser();
-        Set<Long> accessibleIds = propertyAccessService.accessibleHotelIds();
-        List<Map<String, Object>> properties = hotelRepository.findAllById(accessibleIds).stream()
+        Set<Long> assignedIds = propertyAccessService.assignedHotelIds();
+        List<Map<String, Object>> properties = hotelRepository.findAllById(assignedIds).stream()
                 .map(this::propertySummary).toList();
         AccountSubscription subscription = accountSubscriptionRepository.findByUserIdAndStatus(user.getId(), "ACTIVE")
                 .stream().findFirst().orElseGet(() -> accountSubscriptionRepository
                         .findFirstByUserIdOrderByStartAtDesc(user.getId()).orElse(null));
         Map<String, Integer> limits = subscription != null && "ACTIVE".equals(subscription.getStatus())
                 ? subscriptionFeatureService.getActiveFeaturesForUser(user.getId()) : NO_PLAN_LIMITS;
-        Long selectedId = activePropertyId != null ? activePropertyId : accessibleIds.stream().findFirst().orElse(null);
-        if (selectedId != null) propertyAccessService.requireCanManage(selectedId);
-        Map<String, Long> usage = usage(accessibleIds);
+        Long selectedId = activePropertyId != null ? activePropertyId : assignedIds.stream().findFirst().orElse(null);
+        Hotel selectedProperty = selectedId == null ? null : propertyAccessService.requireAssignedHotel(selectedId);
+        boolean activePropertyOperational = propertyAccessService.isOperational(selectedProperty);
+        Map<String, Long> usage = usage(assignedIds);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("userId", user.getId());
         result.put("fullName", user.getFullName());
         result.put("properties", properties);
         result.put("activePropertyId", selectedId);
+        result.put("activePropertyOperational", activePropertyOperational);
         result.put("planCode", subscription == null ? "NO_PLAN" : subscription.getPlan().getCode());
         result.put("subscriptionStatus", subscription == null ? "NONE" : subscription.getStatus());
         result.put("startAt", subscription == null ? null : subscription.getStartAt());
@@ -59,13 +61,13 @@ public class ManagementPortalService {
         result.put("limits", limits);
         result.put("usage", usage);
         result.put("upgradeRequired", subscription == null || !"ACTIVE".equals(subscription.getStatus()));
-        if (selectedId != null) result.put("dashboard", dashboard(selectedId));
+        if (activePropertyOperational) result.put("dashboard", dashboard(selectedId));
         return result;
     }
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> properties() {
-        return hotelRepository.findAllById(propertyAccessService.accessibleHotelIds()).stream()
+        return hotelRepository.findAllById(propertyAccessService.assignedHotelIds()).stream()
                 .map(this::propertySummary).toList();
     }
 
@@ -292,6 +294,7 @@ public class ManagementPortalService {
         data.put("wardId", hotel.getWardId());
         data.put("approvalStatus", hotel.getApprovalStatus());
         data.put("operationStatus", hotel.getOperationStatus());
+        data.put("operational", propertyAccessService.isOperational(hotel));
         data.put("mainImage", hotel.getMainImage());
         data.put("isDemo", hotel.getIsDemo());
         return data;

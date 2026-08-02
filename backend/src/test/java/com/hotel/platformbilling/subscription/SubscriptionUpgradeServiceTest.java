@@ -83,7 +83,7 @@ class SubscriptionUpgradeServiceTest {
     @Test
     void createsFullCatalogPriceUpgradeOrderForStrictlyHigherLimitsWithinCurrentUsage() {
         Fixture fixture = fixture();
-        when(propertyAccessService.requireManagedHotel(20L)).thenReturn(fixture.hotel());
+        when(propertyAccessService.requireAssignedHotel(20L)).thenReturn(fixture.hotel());
         when(entitlementRepository.findByTargetHotelIdForUpdate(20L))
                 .thenReturn(Optional.of(fixture.entitlement()));
         when(planRepository.findByIdForSnapshot(31L)).thenReturn(Optional.of(fixture.targetPlan()));
@@ -112,7 +112,7 @@ class SubscriptionUpgradeServiceTest {
                 .findFirst()
                 .orElseThrow()
                 .setLimitValue(5);
-        when(propertyAccessService.requireManagedHotel(20L)).thenReturn(fixture.hotel());
+        when(propertyAccessService.requireAssignedHotel(20L)).thenReturn(fixture.hotel());
         when(entitlementRepository.findByTargetHotelIdForUpdate(20L))
                 .thenReturn(Optional.of(fixture.entitlement()));
         when(planRepository.findByIdForSnapshot(31L)).thenReturn(Optional.of(fixture.targetPlan()));
@@ -127,7 +127,7 @@ class SubscriptionUpgradeServiceTest {
     @Test
     void rejectsUpgradeWhenCurrentUsageAlreadyExceedsTheTargetLimit() {
         Fixture fixture = fixture();
-        when(propertyAccessService.requireManagedHotel(20L)).thenReturn(fixture.hotel());
+        when(propertyAccessService.requireAssignedHotel(20L)).thenReturn(fixture.hotel());
         when(entitlementRepository.findByTargetHotelIdForUpdate(20L))
                 .thenReturn(Optional.of(fixture.entitlement()));
         when(planRepository.findByIdForSnapshot(31L)).thenReturn(Optional.of(fixture.targetPlan()));

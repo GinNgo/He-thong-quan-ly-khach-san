@@ -116,7 +116,7 @@ public class SubscriptionOrderService {
         User authenticated = propertyAccessService.currentUser();
         User owner = userRepository.findByIdForUpdate(authenticated.getId())
                 .orElseThrow(() -> new FinancialException(FinancialErrorCode.RESOURCE_NOT_FOUND));
-        Hotel targetHotel = propertyAccessService.requireManagedHotel(targetHotelId);
+        Hotel targetHotel = propertyAccessService.requireAssignedHotel(targetHotelId);
         String requestHash = requestHash(targetHotelId, planId, operation);
 
         var existing = orderRepository.findByOwnerIdAndIdempotencyKeyForUpdate(owner.getId(), idempotencyKey);

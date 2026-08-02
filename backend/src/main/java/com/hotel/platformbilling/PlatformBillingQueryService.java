@@ -110,7 +110,7 @@ public class PlatformBillingQueryService {
 
     @Transactional(readOnly = true)
     public List<HistoryItem> history(Long targetHotelId) {
-        propertyAccessService.requireManagedHotel(targetHotelId);
+        propertyAccessService.requireAssignedHotel(targetHotelId);
         return historyRepository.findByTargetHotelIdOrderByOccurredAtDesc(targetHotelId).stream()
                 .map(this::historyItem)
                 .toList();

@@ -77,7 +77,7 @@ class SubscriptionRenewalServiceTest {
     void createsRenewalOrderForTheCurrentEntitlementPlan() {
         Fixture fixture = fixture();
         SubscriptionOrderService.OrderResponse expected = response(fixture.renewalOrder());
-        when(propertyAccessService.requireManagedHotel(20L)).thenReturn(fixture.hotel());
+        when(propertyAccessService.requireAssignedHotel(20L)).thenReturn(fixture.hotel());
         when(entitlementRepository.findByTargetHotelIdForUpdate(20L))
                 .thenReturn(Optional.of(fixture.entitlement()));
         when(orderService.createLifecycleOrder(any())).thenReturn(expected);
@@ -102,7 +102,7 @@ class SubscriptionRenewalServiceTest {
         ReflectionTestUtils.setField(fixture.currentContract(), "effectiveUntil", null);
         ReflectionTestUtils.setField(fixture.entitlement(), "lifetime", true);
         ReflectionTestUtils.setField(fixture.entitlement(), "effectiveUntil", null);
-        when(propertyAccessService.requireManagedHotel(20L)).thenReturn(fixture.hotel());
+        when(propertyAccessService.requireAssignedHotel(20L)).thenReturn(fixture.hotel());
         when(entitlementRepository.findByTargetHotelIdForUpdate(20L))
                 .thenReturn(Optional.of(fixture.entitlement()));
 

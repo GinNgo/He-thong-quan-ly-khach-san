@@ -61,7 +61,7 @@ public class SubscriptionRenewalService {
         if (command == null || command.targetHotelId() == null) {
             throw new IllegalArgumentException("Target property is required for subscription renewal.");
         }
-        propertyAccessService.requireManagedHotel(command.targetHotelId());
+        propertyAccessService.requireAssignedHotel(command.targetHotelId());
         SubscriptionEntitlement entitlement = entitlementRepository
                 .findByTargetHotelIdForUpdate(command.targetHotelId())
                 .orElseThrow(() -> new FinancialException(FinancialErrorCode.RESOURCE_NOT_FOUND));

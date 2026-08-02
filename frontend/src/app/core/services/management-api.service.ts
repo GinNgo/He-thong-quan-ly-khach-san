@@ -2,8 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
 
-export interface ManagedProperty { id: number; code: string; nameVi: string; propertyType: string; address: string; approvalStatus: string; operationStatus: string; mainImage?: string; isDemo: boolean; }
-export interface ManagementContext { properties: ManagedProperty[]; activePropertyId?: number; planCode: string; subscriptionStatus: string; endAt?: string; lifetime: boolean; limits: Record<string, number>; usage: Record<string, number>; upgradeRequired: boolean; dashboard?: Record<string, number>; }
+export interface ManagedProperty { id: number; code: string; nameVi: string; propertyType: string; address: string; approvalStatus: string; operationStatus: string; operational?: boolean; mainImage?: string; isDemo: boolean; }
+export interface ManagementContext { properties: ManagedProperty[]; activePropertyId?: number; activePropertyOperational?: boolean; planCode: string; subscriptionStatus: string; endAt?: string; lifetime: boolean; limits: Record<string, number>; usage: Record<string, number>; upgradeRequired: boolean; dashboard?: Record<string, number>; }
 
 @Injectable({ providedIn: 'root' })
 export class ManagementApiService {

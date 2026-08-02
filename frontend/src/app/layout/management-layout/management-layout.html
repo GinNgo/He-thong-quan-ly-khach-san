@@ -146,6 +146,20 @@
       </div>
     </header>
 
+    @if (activeProperty && !activePropertyOperational) {
+      <aside class="property-status-banner" role="alert" aria-live="polite">
+        <span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span>
+        <div>
+          <strong>Chưa thể vận hành {{ activeProperty.nameVi }}</strong>
+          <span>
+            Duyệt: {{ activeProperty.approvalStatus }} · Vận hành: {{ activeProperty.operationStatus }}.
+            Bạn vẫn có thể hoàn thiện hồ sơ cơ sở và quản lý gói dịch vụ.
+          </span>
+        </div>
+        <a routerLink="/management/billing" [queryParams]="{ propertyId: activeProperty.id }">Xem gói dịch vụ</a>
+      </aside>
+    }
+
     <main id="management-main-content" class="management-content" tabindex="-1">
       <router-outlet></router-outlet>
     </main>

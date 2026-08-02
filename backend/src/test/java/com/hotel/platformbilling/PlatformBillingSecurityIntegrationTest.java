@@ -92,7 +92,7 @@ class PlatformBillingSecurityIntegrationTest {
         User owner = user(10L, "owner");
         when(propertyAccessService.currentUser()).thenReturn(owner);
         when(userRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(owner));
-        when(propertyAccessService.requireManagedHotel(20L))
+        when(propertyAccessService.requireAssignedHotel(20L))
                 .thenThrow(new SecurityException("property is not managed by the owner"));
 
         assertThrows(SecurityException.class, () -> orderService.createPurchaseOrder(

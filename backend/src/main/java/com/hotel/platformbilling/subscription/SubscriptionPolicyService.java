@@ -28,14 +28,14 @@ public class SubscriptionPolicyService {
     @Transactional(readOnly = true)
     public SubscriptionOrderService.OrderResponse createDowngradeOrder(DowngradeOrderCommand command) {
         validateDowngrade(command);
-        propertyAccessService.requireManagedHotel(command.targetHotelId());
+        propertyAccessService.requireAssignedHotel(command.targetHotelId());
         throw blocked(DOWNGRADE_POLICY, DOWNGRADE_MESSAGE);
     }
 
     @Transactional(readOnly = true)
     public void requireProrationPolicy(ProrationPolicyCommand command) {
         validateProration(command);
-        propertyAccessService.requireManagedHotel(command.targetHotelId());
+        propertyAccessService.requireAssignedHotel(command.targetHotelId());
         throw blocked(PRORATION_POLICY, PRORATION_MESSAGE);
     }
 

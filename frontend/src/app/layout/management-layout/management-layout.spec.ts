@@ -97,6 +97,7 @@ describe('ManagementLayout', () => {
 
   it('shows the payment configuration menu only with its dedicated view permission', async () => {
     let allowed = false;
+    const context$ = new Subject<ManagementContext>();
     await TestBed.configureTestingModule({
       imports: [ManagementLayout],
       providers: [
@@ -115,7 +116,7 @@ describe('ManagementLayout', () => {
             logout: () => undefined,
           },
         },
-        { provide: ManagementApiService, useValue: { context: () => new Subject<ManagementContext>() } },
+        { provide: ManagementApiService, useValue: { context: () => context$ } },
         { provide: PermissionService, useValue: { hasPermission: vi.fn(() => allowed) } },
       ],
     }).compileComponents();
@@ -130,7 +131,81 @@ describe('ManagementLayout', () => {
     fixture.destroy();
     const allowedFixture = TestBed.createComponent(ManagementLayout);
     allowedFixture.detectChanges();
+    context$.next({
+      properties: [{ id: 1, code: 'HOTEL-1', nameVi: 'LuxeStay Hà Nội', propertyType: 'HOTEL', address: 'Hà Nội', approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', operational: true, isDemo: false }],
+      activePropertyId: 1,
+      activePropertyOperational: true,
+      planCode: 'STANDARD',
+      subscriptionStatus: 'ACTIVE',
+      lifetime: false,
+      limits: {},
+      usage: {},
+      upgradeRequired: false,
+    });
+    await allowedFixture.whenStable();
+    allowedFixture.detectChanges();
     const allowedLinks = Array.from(allowedFixture.nativeElement.querySelectorAll('a') as NodeListOf<HTMLAnchorElement>);
     expect(allowedLinks.some((link) => link.textContent?.includes('Cấu hình thanh toán'))).toBe(true);
+  });
+
+  it('keeps setup and billing visible but hides operational links for a pending property', async () => {
+    const context$ = new Subject<ManagementContext>();
+    await TestBed.configureTestingModule({
+      imports: [ManagementLayout],
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            currentUser$: new BehaviorSubject<AuthState>({
+              isAuthenticated: true,
+              username: 'owner',
+              fullName: 'Owner',
+              avatarUrl: '',
+              roles: ['PROPERTY_OWNER'],
+              permissions: [],
+            }),
+            logout: () => undefined,
+          },
+        },
+        { provide: ManagementApiService, useValue: { context: () => context$ } },
+        { provide: PermissionService, useValue: { hasPermission: vi.fn(() => true) } },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManagementLayout);
+    fixture.detectChanges();
+    context$.next({
+      properties: [{
+        id: 7,
+        code: 'PENDING-7',
+        nameVi: 'Khách sạn đang chờ duyệt',
+        propertyType: 'HOTEL',
+        address: 'Đà Nẵng',
+        approvalStatus: 'PENDING_APPROVAL',
+        operationStatus: 'INACTIVE',
+        operational: false,
+        isDemo: false,
+      }],
+      activePropertyId: 7,
+      activePropertyOperational: false,
+      planCode: 'NO_PLAN',
+      subscriptionStatus: 'NONE',
+      lifetime: false,
+      limits: {},
+      usage: { properties: 1 },
+      upgradeRequired: true,
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent || '';
+    expect(text).toContain('Cơ sở lưu trú');
+    expect(text).toContain('Gói dịch vụ');
+    expect(text).toContain('Chưa thể vận hành');
+    expect(text).not.toContain('Loại phòng');
+    expect(text).not.toContain('Phòng vật lý');
+    expect(text).not.toContain('Cấu hình thanh toán');
+    expect(text).not.toContain('Doanh thu cơ sở');
   });
 });

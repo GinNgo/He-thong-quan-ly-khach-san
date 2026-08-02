@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { ManagementApiService, ManagementContext } from '../../../core/services/management-api.service';
+import { ManagedProperty, ManagementApiService, ManagementContext } from '../../../core/services/management-api.service';
 import { FeedbackStateComponent } from '../../../shared/components/feedback-state/feedback-state.component';
 
 @Component({
@@ -27,6 +27,8 @@ export class ManagementDashboardComponent implements OnInit {
     });
   }
   selectProperty(): void { this.load(this.selectedPropertyId); }
+  get activeProperty(): ManagedProperty | undefined { return this.context?.properties.find(property => property.id === this.selectedPropertyId); }
+  get activePropertyOperational(): boolean { return this.context?.activePropertyOperational ?? this.activeProperty?.operational ?? false; }
   value(name: string): number { return this.context?.dashboard?.[name] || 0; }
   limit(name: string): string { const value = this.context?.limits?.[name]; return value === -1 ? 'Không giới hạn' : String(value ?? 0); }
 }

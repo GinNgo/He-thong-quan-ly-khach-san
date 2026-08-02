@@ -76,7 +76,7 @@ public class SubscriptionUpgradeService {
         if (command == null || command.targetHotelId() == null || command.targetPlanId() == null) {
             throw new IllegalArgumentException("Target property and upgrade plan are required.");
         }
-        propertyAccessService.requireManagedHotel(command.targetHotelId());
+        propertyAccessService.requireAssignedHotel(command.targetHotelId());
         SubscriptionEntitlement entitlement = entitlementRepository
                 .findByTargetHotelIdForUpdate(command.targetHotelId())
                 .orElseThrow(() -> new FinancialException(FinancialErrorCode.RESOURCE_NOT_FOUND));

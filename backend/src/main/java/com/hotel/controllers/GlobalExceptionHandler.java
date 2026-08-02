@@ -2,6 +2,7 @@ package com.hotel.controllers;
 
 import com.hotel.exceptions.ApiErrorResponse;
 import com.hotel.exceptions.CorrelationIdSupport;
+import com.hotel.exceptions.PropertyNotOperationalException;
 import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.paymentprovider.error.FinancialException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -104,6 +105,14 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
         return response(HttpStatus.CONFLICT, "CONFLICT", safeMessage(ex, "The request conflicts with current state."),
                 request, Map.of(), false, null);
+    }
+
+    @ExceptionHandler(PropertyNotOperationalException.class)
+    public ResponseEntity<ApiErrorResponse> handlePropertyNotOperational(
+            PropertyNotOperationalException ex,
+            HttpServletRequest request) {
+        return response(HttpStatus.CONFLICT, PropertyNotOperationalException.ERROR_CODE,
+                ex.getMessage(), request, Map.of(), false, ex.currentState());
     }
 
     @ExceptionHandler(OptimisticLockingFailureException.class)

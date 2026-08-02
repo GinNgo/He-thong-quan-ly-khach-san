@@ -187,7 +187,7 @@ class SubscriptionOrderServiceTest {
 
         Hotel secondHotel = new Hotel();
         secondHotel.setId(21L);
-        when(propertyAccessService.requireManagedHotel(21L)).thenReturn(secondHotel);
+        when(propertyAccessService.requireAssignedHotel(21L)).thenReturn(secondHotel);
         org.mockito.Mockito.reset(planRepository, orderRepository);
         when(orderRepository.findByOwnerIdAndIdempotencyKeyForUpdate(10L, "purchase-key"))
                 .thenReturn(Optional.of(captor.getValue()));
@@ -251,7 +251,7 @@ class SubscriptionOrderServiceTest {
     private void authorize(Fixture fixture) {
         when(propertyAccessService.currentUser()).thenReturn(fixture.owner());
         when(userRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(fixture.owner()));
-        when(propertyAccessService.requireManagedHotel(20L)).thenReturn(fixture.hotel());
+        when(propertyAccessService.requireAssignedHotel(20L)).thenReturn(fixture.hotel());
     }
 
     private Fixture fixture() {
