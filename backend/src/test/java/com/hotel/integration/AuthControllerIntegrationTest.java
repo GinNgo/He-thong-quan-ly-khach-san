@@ -12,11 +12,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,6 +34,8 @@ public class AuthControllerIntegrationTest {
     private static final String REGISTERED_USERNAME = "auth_http_registered_user";
     private static final String WRONG_PASSWORD_USERNAME = "auth_http_wrong_password";
     private static final String INVALID_USERNAME = "abc";
+    private static final String SUSPENDED_USERNAME = "auth_http_suspended_user";
+    private static final String REVOKED_USERNAME = "auth_http_revoked_user";
 
     @Autowired
     private MockMvc mockMvc;
@@ -45,9 +49,17 @@ public class AuthControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @BeforeEach
     void setUp() {
-        List.of(REGISTERED_USERNAME, WRONG_PASSWORD_USERNAME, INVALID_USERNAME).forEach(username ->
+        List.of(
+                REGISTERED_USERNAME,
+                WRONG_PASSWORD_USERNAME,
+                INVALID_USERNAME,
+                SUSPENDED_USERNAME,
+                REVOKED_USERNAME).forEach(username ->
                 userRepository.findByUsername(username).ifPresent(userRepository::delete));
         userRepository.flush();
     }
@@ -127,5 +139,60 @@ public class AuthControllerIntegrationTest {
                         .header("Authorization", "Bearer invalid-token"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void testLogin_RejectsSuspendedAccountWithStableCode() throws Exception {
+        createUser(SUSPENDED_USERNAME, "auth-http-suspended@example.com", "SUSPENDED");
+
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setUsername(SUSPENDED_USERNAME);
+        loginRequest.setPassword("Password@123");
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.code").value("ACCOUNT_DISABLED"))
+                .andExpect(jsonPath("$.message").value("This account is not active."))
+                .andExpect(jsonPath("$.retryable").value(false))
+                .andExpect(jsonPath("$.path").value("/api/auth/login"));
+    }
+
+    @Test
+    void testProtectedEndpoint_InvalidatesExistingJwtAfterAccountIsDisabled() throws Exception {
+        User user = createUser(REVOKED_USERNAME, "auth-http-revoked@example.com", "ACTIVE");
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setUsername(REVOKED_USERNAME);
+        loginRequest.setPassword("Password@123");
+
+        String loginBody = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String token = objectMapper.readTree(loginBody).get("accessToken").asText();
+
+        jdbcTemplate.update("update users set status = ? where id = ?", "DISABLED", user.getId());
+
+        mockMvc.perform(get("/api/users/me")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("ACCOUNT_DISABLED"))
+                .andExpect(jsonPath("$.retryable").value(false))
+                .andExpect(jsonPath("$.path").value("/api/users/me"));
+    }
+
+    private User createUser(String username, String email, String accountStatus) {
+        User user = new User();
+        user.setUsername(username);
+        user.setPasswordHash(passwordEncoder.encode("Password@123"));
+        user.setEmail(email);
+        user.setStatus(accountStatus);
+        user.setRoles(Set.of());
+        return userRepository.saveAndFlush(user);
     }
 }

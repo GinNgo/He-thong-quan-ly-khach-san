@@ -26,14 +26,21 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
+        boolean accountDisabled = AccountDisabledAuthenticationException.causedByAccountDisabled(authException);
+        String code = accountDisabled
+                ? AccountDisabledAuthenticationException.ERROR_CODE
+                : "UNAUTHORIZED";
+        String message = accountDisabled
+                ? AccountDisabledAuthenticationException.DEFAULT_MESSAGE
+                : "Full authentication is required to access this resource";
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         String correlationId = CorrelationIdSupport.resolve(request);
         response.setHeader(CorrelationIdSupport.HEADER, correlationId);
         ApiErrorResponse body = new ApiErrorResponse(
                 HttpStatus.UNAUTHORIZED.value(),
-                "UNAUTHORIZED",
-                "Full authentication is required to access this resource",
+                code,
+                message,
                 correlationId,
                 Map.of(),
                 false,
@@ -41,4 +48,5 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
                 request.getRequestURI());
         objectMapper.writeValue(response.getOutputStream(), body);
     }
+
 }

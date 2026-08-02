@@ -70,6 +70,20 @@ class ChatChannelInterceptorTest {
     }
 
     @Test
+    void suspendedAccountCannotReconnectToChatWithAnExistingToken() {
+        when(jwtTokenProvider.validateToken("valid-token")).thenReturn(true);
+        when(jwtTokenProvider.getUsername("valid-token")).thenReturn("suspended");
+        when(userDetailsService.loadUserByUsername("suspended"))
+                .thenThrow(new AccountDisabledAuthenticationException());
+
+        assertThrows(
+                AccountDisabledAuthenticationException.class,
+                () -> interceptor.preSend(
+                        message(SimpMessageType.CONNECT, null, "Bearer valid-token", null),
+                        channel));
+    }
+
+    @Test
     void customerCannotSubscribeToSupportQueue() {
         Message<byte[]> message = message(
                 SimpMessageType.SUBSCRIBE,

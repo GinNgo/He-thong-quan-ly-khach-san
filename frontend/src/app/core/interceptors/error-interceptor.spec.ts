@@ -167,4 +167,24 @@ describe('errorInterceptor', () => {
     expect(authServiceSpy.logout).toHaveBeenCalled();
     expect(routerSpy.navigate).not.toHaveBeenCalled();
   });
+
+  it('clears the session and preserves the stable reason when an account is disabled', () => {
+    routerSpy.url = '/profile';
+    httpClient.get('/api/users/me').subscribe({ error: () => undefined });
+
+    const req = httpMock.expectOne('/api/users/me');
+    req.flush({
+      status: 401,
+      code: 'ACCOUNT_DISABLED',
+      message: 'This account is not active.',
+      retryable: false,
+      fieldErrors: {},
+      path: '/api/users/me',
+    }, { status: 401, statusText: 'Unauthorized' });
+
+    expect(authServiceSpy.logout).toHaveBeenCalled();
+    expect(routerSpy.navigate).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: '/profile', reason: 'ACCOUNT_DISABLED' },
+    });
+  });
 });

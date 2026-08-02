@@ -65,6 +65,20 @@ class NotificationChannelInterceptorTest {
     }
 
     @Test
+    void disabledAccountCannotReconnectToNotificationsWithAnExistingToken() {
+        when(jwtTokenProvider.validateToken("valid-token")).thenReturn(true);
+        when(jwtTokenProvider.getUsername("valid-token")).thenReturn("disabled");
+        when(userDetailsService.loadUserByUsername("disabled"))
+                .thenThrow(new AccountDisabledAuthenticationException());
+
+        assertThrows(
+                AccountDisabledAuthenticationException.class,
+                () -> interceptor.preSend(
+                        message(SimpMessageType.CONNECT, null, "Bearer valid-token", null),
+                        channel));
+    }
+
+    @Test
     void actorWithoutReportPermissionCannotSubscribeToAdminTopic() {
         Message<byte[]> message = message(
                 SimpMessageType.SUBSCRIBE,

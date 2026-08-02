@@ -65,8 +65,9 @@ public class AuthServiceTest {
 
         Authentication authentication = mock(Authentication.class);
         when(authentication.getName()).thenReturn("testuser");
+        when(authentication.getAuthorities()).thenReturn(java.util.Collections.emptyList());
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(authentication);
-        // Removed unused mock
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
         when(jwtUtil.generateToken(any(Authentication.class))).thenReturn("mocked-jwt-token");
 
         AuthResponse response = authService.login(request);

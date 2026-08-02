@@ -5,6 +5,7 @@ import { catchError, throwError } from 'rxjs';
 import { isApiError } from '../../shared/financial/financial.models';
 import { AuthService } from '../services/auth';
 import { ClientObservabilityService } from '../services/client-observability.service';
+import { ACCOUNT_DISABLED_CODE } from '../auth/account-status-error';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
@@ -21,6 +22,8 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       const isAdminArea = currentUrl.startsWith('/admin') || currentUrl.startsWith('/management');
       const isProtectedClientArea = ['/booking', '/profile', '/booking-history', '/my-invoices', '/settings']
         .some(path => currentUrl.startsWith(path));
+      const errorCode = isApiError(error.error) ? error.error.code : undefined;
+      const accountDisabled = errorCode === ACCOUNT_DISABLED_CODE;
 
       if (error.status === 403) {
         const errCode = isApiError(error.error) ? error.error.code : 'ACCESS_DENIED';
@@ -28,9 +31,19 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           router.navigate(['/403'], { queryParams: { reason: errCode } });
         }
       } else if (error.status === 401) {
-        if (!req.url.includes('/api/auth/login')) {
+        if (accountDisabled || !req.url.includes('/api/auth/login')) {
           authService.logout();
           localStorage.removeItem('permissions');
+          if (accountDisabled) {
+            if (isAdminArea && !currentUrl.includes('/admin/login')) {
+              router.navigate(['/admin/login'], { queryParams: { reason: ACCOUNT_DISABLED_CODE } });
+            } else if (!currentUrl.includes('/login')) {
+              router.navigate(['/login'], {
+                queryParams: { returnUrl: currentUrl, reason: ACCOUNT_DISABLED_CODE },
+              });
+            }
+            return throwError(() => error);
+          }
           // A stale token from another portal must not replace a public page with Login/403.
           if (isAdminArea && !currentUrl.includes('/admin/login')) {
             router.navigate(['/admin/login']);

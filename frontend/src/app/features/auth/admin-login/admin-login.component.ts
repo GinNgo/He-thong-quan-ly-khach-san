@@ -1,7 +1,12 @@
 import { Component, ChangeDetectionStrategy, inject, ChangeDetectorRef, OnInit } from '@angular/core';
 import { SharedModule } from '@app/shared/shared.module';
 import { AuthService } from '@app/core/services/auth';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import {
+  ACCOUNT_DISABLED_CODE,
+  ACCOUNT_DISABLED_MESSAGE,
+  authenticationErrorMessage,
+} from '@app/core/auth/account-status-error';
 
 @Component({
   standalone: true,
@@ -22,9 +27,13 @@ export class AdminLoginComponent implements OnInit {
 
   private authService = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
 
   ngOnInit() {
+    if (this.route.snapshot.queryParams['reason'] === ACCOUNT_DISABLED_CODE) {
+      this.errorMessage = ACCOUNT_DISABLED_MESSAGE;
+    }
     if (this.authService.isLoggedIn()) {
       const userStr = localStorage.getItem('user');
       let username = '';
@@ -68,7 +77,7 @@ export class AdminLoginComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: (err) => {
-        this.errorMessage = 'Sai tài khoản hoặc mật khẩu.';
+        this.errorMessage = authenticationErrorMessage(err, 'Sai tài khoản hoặc mật khẩu.');
         this.isLoading = false;
         this.cdr.markForCheck();
       }

@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import com.hotel.security.AccountDisabledAuthenticationException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -134,6 +135,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleAuthentication(
             AuthenticationException ex,
             HttpServletRequest request) {
+        if (AccountDisabledAuthenticationException.causedByAccountDisabled(ex)) {
+            return response(
+                    HttpStatus.UNAUTHORIZED,
+                    AccountDisabledAuthenticationException.ERROR_CODE,
+                    AccountDisabledAuthenticationException.DEFAULT_MESSAGE,
+                    request,
+                    Map.of(),
+                    false,
+                    null);
+        }
         return response(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED",
                 "Full authentication is required to access this resource",
                 request, Map.of(), false, null);

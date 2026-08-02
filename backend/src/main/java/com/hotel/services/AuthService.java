@@ -7,8 +7,10 @@ import com.hotel.entities.Role;
 import com.hotel.entities.User;
 import com.hotel.repositories.RoleRepository;
 import com.hotel.repositories.UserRepository;
+import com.hotel.security.AccountStatusPolicy;
 import com.hotel.security.JwtTokenProvider;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -59,6 +61,10 @@ public class AuthService {
                         loginRequest.getPassword()
                 )
         );
+        User authenticatedUser = userRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new BadCredentialsException("Invalid username or password."));
+        AccountStatusPolicy.requireActive(authenticatedUser);
+
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -132,6 +138,8 @@ public class AuthService {
                     user = userRepository.save(user);
                 }
 
+                AccountStatusPolicy.requireActive(user);
+
                 Authentication authentication = new UsernamePasswordAuthenticationToken(
                         user.getUsername(), null, user.getRoles().stream()
                         .map(r -> new org.springframework.security.core.authority.SimpleGrantedAuthority(r.getCode()))
@@ -144,6 +152,8 @@ public class AuthService {
             } else {
                 throw new RuntimeException("Invalid Google ID token.");
             }
+        } catch (org.springframework.security.core.AuthenticationException exception) {
+            throw exception;
         } catch (Exception e) {
             throw new RuntimeException("Google authentication failed", e);
         }

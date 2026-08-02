@@ -29,6 +29,9 @@ export class LoginComponent implements OnInit {
 
   ngOnInit() {
     this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
+    if (this.route.snapshot.queryParams['reason'] === 'ACCOUNT_DISABLED') {
+      this.errorMessage = 'Tài khoản đã bị tạm ngưng hoặc vô hiệu hóa. Vui lòng liên hệ bộ phận hỗ trợ. / This account is suspended or disabled.';
+    }
 
     if (this.authService.isLoggedIn()) {
       const userStr = localStorage.getItem('user');
@@ -72,8 +75,10 @@ export class LoginComponent implements OnInit {
         this.isLoading = false;
         this.cdr.markForCheck();
       },
-      error: (err) => {
-        this.errorMessage = 'Sai tài khoản hoặc mật khẩu.';
+      error: (error) => {
+        this.errorMessage = error?.error?.code === 'ACCOUNT_DISABLED'
+          ? 'Tài khoản đã bị tạm ngưng hoặc vô hiệu hóa. Vui lòng liên hệ bộ phận hỗ trợ. / This account is suspended or disabled.'
+          : 'Sai tài khoản hoặc mật khẩu.';
         this.isLoading = false;
         this.cdr.markForCheck();
       }

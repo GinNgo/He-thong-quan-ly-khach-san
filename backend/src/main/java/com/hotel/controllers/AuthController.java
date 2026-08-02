@@ -6,6 +6,7 @@ import com.hotel.dtos.GoogleLoginRequest;
 import com.hotel.dtos.RegisterRequest;
 import com.hotel.exceptions.ApiErrorResponse;
 import com.hotel.exceptions.CorrelationIdSupport;
+import com.hotel.security.AccountDisabledAuthenticationException;
 import com.hotel.services.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -48,7 +49,25 @@ public class AuthController {
     public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
             org.springframework.security.core.AuthenticationException ex,
             HttpServletRequest request) {
+        if (AccountDisabledAuthenticationException.causedByAccountDisabled(ex)) {
+            return error(
+                    HttpStatus.UNAUTHORIZED,
+                    AccountDisabledAuthenticationException.ERROR_CODE,
+                    AccountDisabledAuthenticationException.DEFAULT_MESSAGE,
+                    request);
+        }
         return error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid username or password.", request);
+    }
+
+    @ExceptionHandler(AccountDisabledAuthenticationException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccountDisabled(
+            AccountDisabledAuthenticationException exception,
+            HttpServletRequest request) {
+        return error(
+                HttpStatus.UNAUTHORIZED,
+                AccountDisabledAuthenticationException.ERROR_CODE,
+                AccountDisabledAuthenticationException.DEFAULT_MESSAGE,
+                request);
     }
 
     @ExceptionHandler(IllegalStateException.class)
