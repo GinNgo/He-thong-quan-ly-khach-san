@@ -53,6 +53,7 @@ public class RoomServiceImpl implements RoomService {
     @Override
     @Transactional
     public RoomDTO createRoom(RoomDTO dto) {
+        RoomStatePolicy.requireInitialState(dto);
         Room room = new Room();
         RoomType roomType = roomTypeRepository.findById(dto.getRoomTypeId())
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
@@ -69,6 +70,7 @@ public class RoomServiceImpl implements RoomService {
         mapToEntity(dto, room);
         room.setHotel(roomType.getHotel());
         room.setRoomType(roomType);
+        RoomStatePolicy.initialize(room);
         room = roomRepository.save(room);
         
         if (dto.getImages() != null && !dto.getImages().isEmpty()) {
@@ -88,10 +90,10 @@ public class RoomServiceImpl implements RoomService {
     @Override
     @Transactional
     public RoomDTO updateRoom(Long id, RoomDTO dto) {
-        Room room = roomRepository.findById(id)
+        Room room = roomRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy phòng."));
         propertyAccessService.requireAccessibleOrNotFound(room.getHotel().getId(), "phòng");
-                
+        RoomStatePolicy.requireMetadataOnlyUpdate(room, dto);
         requireFeature(room.getHotel().getId(), "MAX_ROOMS");
         RoomType roomType = roomTypeRepository.findById(dto.getRoomTypeId())
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
@@ -113,16 +115,28 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     @Transactional
-    public void deleteRoom(Long id) {
-        Room room = roomRepository.findById(id)
-                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy phòng."));
-        propertyAccessService.requireAccessibleOrNotFound(room.getHotel().getId(), "phòng");
+    public RoomDTO startMaintenance(Long id) {
+        Room room = findLockedRoom(id);
         requireFeature(room.getHotel().getId(), "MAX_ROOMS");
-        if ("OCCUPIED".equals(room.getStatus())) {
-            throw new IllegalStateException("Không thể ngừng phòng đang có khách.");
-        }
-        room.setStatus("OUT_OF_SERVICE");
-        room.setMaintenanceStatus("OUT_OF_SERVICE");
+        RoomStatePolicy.startMaintenance(room);
+        return mapToDTO(roomRepository.save(room));
+    }
+
+    @Override
+    @Transactional
+    public RoomDTO completeMaintenance(Long id) {
+        Room room = findLockedRoom(id);
+        requireFeature(room.getHotel().getId(), "MAX_ROOMS");
+        RoomStatePolicy.completeMaintenance(room);
+        return mapToDTO(roomRepository.save(room));
+    }
+
+    @Override
+    @Transactional
+    public void deleteRoom(Long id) {
+        Room room = findLockedRoom(id);
+        requireFeature(room.getHotel().getId(), "MAX_ROOMS");
+        RoomStatePolicy.deactivate(room);
         roomRepository.save(room);
     }
 
@@ -137,6 +151,7 @@ public class RoomServiceImpl implements RoomService {
         if (request.getToNumber() - request.getFromNumber() + 1 > 200) {
             throw new IllegalArgumentException("Mỗi lần chỉ được tạo tối đa 200 phòng.");
         }
+        RoomStatePolicy.requireInitialStatus(request.getStatus());
         RoomType roomType = roomTypeRepository.findById(request.getRoomTypeId())
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
         propertyAccessService.requireAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
@@ -160,9 +175,7 @@ public class RoomServiceImpl implements RoomService {
             room.setRoomType(roomType);
             room.setRoomNumber(roomNumber);
             room.setFloor(request.getFloor());
-            room.setStatus(request.getStatus() == null ? "AVAILABLE" : request.getStatus());
-            room.setHousekeepingStatus("CLEAN");
-            room.setMaintenanceStatus("NONE");
+            RoomStatePolicy.initialize(room);
             room.setMaxGuests(roomType.getMaxGuests());
             room.setIsDemo(false);
             created.add(mapToDTO(roomRepository.save(room)));
@@ -173,6 +186,13 @@ public class RoomServiceImpl implements RoomService {
     private void requireFeature(Long hotelId, String featureCode) {
         if (propertyAccessService.isSystemAdministrator()) return;
         subscriptionFeatureService.requireFeatureForProperty(hotelId, featureCode);
+    }
+
+    private Room findLockedRoom(Long id) {
+        Room room = roomRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy phòng."));
+        propertyAccessService.requireAccessibleOrNotFound(room.getHotel().getId(), "phòng");
+        return room;
     }
 
     private void requireCapacity(Long hotelId, String featureCode, long currentUsage, long addition) {
@@ -235,9 +255,6 @@ public class RoomServiceImpl implements RoomService {
     private void mapToEntity(RoomDTO dto, Room room) {
         room.setRoomNumber(dto.getRoomNumber());
         room.setFloor(dto.getFloor());
-        room.setStatus(dto.getStatus());
-        if (dto.getMaintenanceStatus() != null) room.setMaintenanceStatus(dto.getMaintenanceStatus());
-        if (dto.getHousekeepingStatus() != null) room.setHousekeepingStatus(dto.getHousekeepingStatus());
         room.setMaxGuests(dto.getMaxGuests());
         room.setDescriptionVi(dto.getDescriptionVi());
         room.setDescriptionEn(dto.getDescriptionEn());

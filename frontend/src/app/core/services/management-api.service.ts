@@ -19,4 +19,6 @@ export class ManagementApiService {
   createRoomType(body: any) { return this.http.post<any>(`${this.baseUrl}/room-types`, body); }
   createRoom(body: any) { return this.http.post<any>(`${this.baseUrl}/rooms`, body); }
   bulkRooms(body: any) { return this.http.post<any[]>(`${this.baseUrl}/rooms/bulk`, body); }
+  startRoomMaintenance(roomId: number) { return this.http.post<any>(`${this.baseUrl}/rooms/${roomId}/maintenance/start`, {}); }
+  completeRoomMaintenance(roomId: number) { return this.http.post<any>(`${this.baseUrl}/rooms/${roomId}/maintenance/complete`, {}); }
 }

@@ -252,7 +252,11 @@ public class ReservationServiceTest {
     void cancelMyReservation_AsOwner_ShouldRefundAndReleaseRooms() {
         mockReservation.setStatus("CONFIRMED");
         com.hotel.entities.Room room = new com.hotel.entities.Room();
-        room.setStatus("OCCUPIED");
+        room.setId(12L);
+        room.setHotel(mockHotel);
+        room.setStatus("RESERVED");
+        room.setHousekeepingStatus("CLEAN");
+        room.setMaintenanceStatus("NONE");
         com.hotel.entities.ReservationRoom assignment = new com.hotel.entities.ReservationRoom();
         assignment.setRoom(room);
         assignment.setStatus("ASSIGNED");
@@ -260,6 +264,8 @@ public class ReservationServiceTest {
         when(reservationRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(mockReservation));
         when(reservationRoomRepository.findByReservationDetailReservationId(1L))
                 .thenReturn(java.util.List.of(assignment));
+        when(roomRepository.findAllByIdForUpdate(java.util.List.of(12L)))
+                .thenReturn(java.util.List.of(room));
         when(reservationRepository.save(any(Reservation.class))).thenReturn(mockReservation);
 
         ReservationDTO result = reservationService.cancelMyReservation(1L, "testcustomer");

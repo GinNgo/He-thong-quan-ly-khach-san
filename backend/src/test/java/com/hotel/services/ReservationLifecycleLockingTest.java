@@ -41,6 +41,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -116,7 +117,7 @@ class ReservationLifecycleLockingTest {
         secondRoom = room(hotel, roomType, 12L, "102");
 
         when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
-        when(reservationRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(reservation));
+        lenient().when(reservationRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(reservation));
         when(reservationDetailRepository.findByReservationId(42L)).thenReturn(List.of(detail));
     }
 
@@ -141,6 +142,9 @@ class ReservationLifecycleLockingTest {
         assertThat(assignments.getValue())
                 .extracting(item -> item.getRoom().getId())
                 .containsExactly(11L, 12L);
+        assertThat(firstRoom.getStatus()).isEqualTo("RESERVED");
+        assertThat(secondRoom.getStatus()).isEqualTo("RESERVED");
+        verify(roomRepository).saveAllAndFlush(List.of(firstRoom, secondRoom));
     }
 
     @Test
@@ -178,6 +182,24 @@ class ReservationLifecycleLockingTest {
         order.verify(roomRepository).findAllByIdForUpdate(List.of(11L));
         assertThat(firstRoom.getStatus()).isEqualTo("OCCUPIED");
         assertThat(reservation.getStatus()).isEqualTo("CHECKED_IN");
+    }
+
+    @Test
+    void availableRoomLookupExcludesReservedOrOtherwiseNonAssignableStates() {
+        detail.setQuantity(1);
+        secondRoom.setStatus("RESERVED");
+        when(reservationRepository.findById(42L)).thenReturn(Optional.of(reservation));
+        when(roomRepository.findAvailableRoomsByRoomTypeAndDate(
+                7L,
+                List.of("MAINTENANCE", "OUT_OF_SERVICE", "DIRTY", "CLEANING", "OCCUPIED"),
+                RoomAvailabilityService.RELEASED_RESERVATION_STATUSES,
+                reservation.getCheckInDate(),
+                reservation.getCheckOutDate()))
+                .thenReturn(List.of(firstRoom, secondRoom));
+
+        assertThat(reservationService.getAvailableRooms(42L))
+                .extracting(com.hotel.dtos.RoomDTO::getId)
+                .containsExactly(11L);
     }
 
     private AssignRoomsRequest request(Long... roomIds) {

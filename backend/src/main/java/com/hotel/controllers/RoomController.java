@@ -59,6 +59,20 @@ public class RoomController {
         return ResponseEntity.ok(roomService.updateRoom(id, dto));
     }
 
+    @PostMapping("/{id}/maintenance/start")
+    @Permission(function = FunctionCode.ROOM, action = ActionCode.UPDATE)
+    @Operation(summary = "Start room maintenance")
+    public ResponseEntity<RoomDTO> startMaintenance(@PathVariable Long id) {
+        return ResponseEntity.ok(roomService.startMaintenance(id));
+    }
+
+    @PostMapping("/{id}/maintenance/complete")
+    @Permission(function = FunctionCode.ROOM, action = ActionCode.UPDATE)
+    @Operation(summary = "Complete room maintenance")
+    public ResponseEntity<RoomDTO> completeMaintenance(@PathVariable Long id) {
+        return ResponseEntity.ok(roomService.completeMaintenance(id));
+    }
+
     @DeleteMapping("/{id}")
     @Permission(function = FunctionCode.ROOM, action = ActionCode.DELETE)
     @Operation(summary = "Delete room")

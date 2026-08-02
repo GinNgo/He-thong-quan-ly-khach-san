@@ -9,6 +9,7 @@ import com.hotel.paymentprovider.error.FinancialException;
 import com.hotel.repositories.HousekeepingTaskRepository;
 import com.hotel.repositories.ReservationRoomRepository;
 import com.hotel.repositories.RoomRepository;
+import com.hotel.services.RoomStatePolicy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -90,10 +91,9 @@ public class CheckoutOperationsService {
                 throw concurrent("Room assignment changed to an unsupported checkout state.");
             }
 
+            RoomStatePolicy.checkout(room);
             assignment.setStatus(RELEASED);
             assignment.setReleasedAt(occurredAt);
-            room.setStatus("DIRTY");
-            room.setHousekeepingStatus("DIRTY");
             changedAssignments.add(assignment);
             changedRooms.add(room);
 

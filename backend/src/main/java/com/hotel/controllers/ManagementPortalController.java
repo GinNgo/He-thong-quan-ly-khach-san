@@ -65,6 +65,16 @@ public class ManagementPortalController {
         return ResponseEntity.ok(service.updateRoom(id, request));
     }
 
+    @PostMapping("/rooms/{id}/maintenance/start")
+    public ResponseEntity<RoomDTO> startRoomMaintenance(@PathVariable Long id) {
+        return ResponseEntity.ok(service.startRoomMaintenance(id));
+    }
+
+    @PostMapping("/rooms/{id}/maintenance/complete")
+    public ResponseEntity<RoomDTO> completeRoomMaintenance(@PathVariable Long id) {
+        return ResponseEntity.ok(service.completeRoomMaintenance(id));
+    }
+
     @PostMapping("/housekeeping/{taskId}/complete")
     public ResponseEntity<Map<String, Object>> completeHousekeeping(@PathVariable Long taskId) {
         return ResponseEntity.ok(service.completeHousekeeping(taskId));

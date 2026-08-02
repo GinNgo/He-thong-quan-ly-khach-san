@@ -189,6 +189,7 @@ public class ReservationService {
         List<ReservationRoom> newAssignments = new java.util.ArrayList<>();
         for (Room room : rooms) {
             validateAssignableRoom(reservation, detail, room);
+            RoomStatePolicy.reserve(room);
             ReservationRoom assignment = new ReservationRoom();
             assignment.setReservationDetail(detail);
             assignment.setRoom(room);
@@ -196,6 +197,7 @@ public class ReservationService {
             assignment.setStatus("ASSIGNED");
             newAssignments.add(assignment);
         }
+        roomRepository.saveAllAndFlush(rooms);
         reservationRoomRepository.saveAllAndFlush(newAssignments);
 
         detail.setRoom(rooms.get(0));
@@ -250,18 +252,11 @@ public class ReservationService {
             }
             assignments.forEach(item -> {
                 Room lockedRoom = lockedRooms.get(item.getRoom().getId());
-                lockedRoom.setStatus("OCCUPIED");
-                lockedRoom.setHousekeepingStatus("CLEAN");
+                RoomStatePolicy.checkIn(lockedRoom);
                 roomRepository.save(lockedRoom);
             });
         } else if (RoomAvailabilityService.RELEASED_RESERVATION_STATUSES.contains(normalizedStatus)) {
-            assignments.stream().filter(item -> "ASSIGNED".equals(item.getStatus())).forEach(item -> {
-                item.setStatus("RELEASED");
-                item.setReleasedAt(LocalDateTime.now());
-                reservationRoomRepository.save(item);
-                item.getRoom().setStatus("AVAILABLE");
-                roomRepository.save(item.getRoom());
-            });
+            releaseAssignments(assignments);
         } else if ("CONFIRMED".equals(normalizedStatus) && reservation.getUser().getEmail() != null) {
             emailService.sendBookingConfirmation(
                     reservation.getUser().getEmail(), reservation.getUser().getFullName(), reservation.getId(),
@@ -300,13 +295,39 @@ public class ReservationService {
         }
 
         paymentService.refundSuccessfulPayments(reservation.getId());
-        assignments.stream().filter(item -> "ASSIGNED".equals(item.getStatus())).forEach(item -> {
+        releaseAssignments(assignments);
+    }
+
+    private void releaseAssignments(List<ReservationRoom> assignments) {
+        List<ReservationRoom> activeAssignments = assignments.stream()
+                .filter(item -> "ASSIGNED".equals(item.getStatus()))
+                .toList();
+        if (activeAssignments.isEmpty()) return;
+
+        List<Long> roomIds = activeAssignments.stream()
+                .map(ReservationRoom::getRoom)
+                .map(Room::getId)
+                .distinct()
+                .sorted()
+                .toList();
+        java.util.Map<Long, Room> lockedRooms = roomRepository.findAllByIdForUpdate(roomIds).stream()
+                .collect(Collectors.toMap(Room::getId, room -> room));
+        if (lockedRooms.size() != roomIds.size()) {
+            throw new FinancialException(
+                    FinancialErrorCode.CONCURRENT_MODIFICATION,
+                    "An assigned room changed during release; retry safely.");
+        }
+
+        LocalDateTime releasedAt = LocalDateTime.now();
+        activeAssignments.forEach(item -> {
+            Room lockedRoom = lockedRooms.get(item.getRoom().getId());
+            RoomStatePolicy.releaseReservation(lockedRoom);
+            item.setRoom(lockedRoom);
             item.setStatus("RELEASED");
-            item.setReleasedAt(LocalDateTime.now());
-            reservationRoomRepository.save(item);
-            item.getRoom().setStatus("AVAILABLE");
-            roomRepository.save(item.getRoom());
+            item.setReleasedAt(releasedAt);
         });
+        roomRepository.saveAllAndFlush(lockedRooms.values().stream().toList());
+        reservationRoomRepository.saveAllAndFlush(activeAssignments);
     }
 
     @Transactional
@@ -374,6 +395,7 @@ public class ReservationService {
                         RoomAvailabilityService.RELEASED_RESERVATION_STATUSES,
                         reservation.getCheckInDate(), reservation.getCheckOutDate()).stream()
                 .filter(room -> room.getHotel().getId().equals(reservation.getHotel().getId()))
+                .filter(RoomStatePolicy::isAssignable)
                 .map(this::availableRoomDto).toList();
     }
 
@@ -434,9 +456,8 @@ public class ReservationService {
         if (!room.getRoomType().getId().equals(detail.getRoomType().getId())) {
             throw new IllegalArgumentException("Phòng được chọn không thuộc đúng loại phòng đã đặt.");
         }
-        if (!"AVAILABLE".equals(room.getStatus()) || !"CLEAN".equals(room.getHousekeepingStatus())
-                || !"NONE".equals(room.getMaintenanceStatus())) {
-            throw new IllegalStateException("Phòng " + room.getRoomNumber() + " đang bảo trì.");
+        if (!RoomStatePolicy.isAssignable(room)) {
+            throw new IllegalStateException("Phòng " + room.getRoomNumber() + " không sạch hoặc không sẵn sàng.");
         }
         if (reservationRoomRepository.hasConflictingAssignment(
                 room.getId(), reservation.getId(), RoomAvailabilityService.RELEASED_RESERVATION_STATUSES,

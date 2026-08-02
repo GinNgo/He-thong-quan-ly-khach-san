@@ -20,6 +20,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -73,10 +75,13 @@ class RoomServiceImplTest {
         existing.setId(30L);
         existing.setHotel(hotel);
         existing.setRoomType(roomType);
+        existing.setStatus("AVAILABLE");
+        existing.setHousekeepingStatus("CLEAN");
+        existing.setMaintenanceStatus("NONE");
         RoomDTO request = new RoomDTO();
         request.setRoomTypeId(20L);
 
-        when(roomRepository.findById(30L)).thenReturn(Optional.of(existing));
+        when(roomRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(existing));
         when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
         doThrow(new RuntimeException("upgrade required"))
                 .when(subscriptionFeatureService).requireFeatureForProperty(10L, "MAX_ROOMS");
@@ -104,5 +109,50 @@ class RoomServiceImplTest {
         assertThrows(RuntimeException.class, () -> roomService.bulkCreate(request));
 
         verify(roomRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void updateRoomLocksAggregateAndRejectsStateMutation() {
+        Room existing = room("AVAILABLE", "CLEAN", "NONE");
+        existing.setId(30L);
+        existing.setHotel(hotel);
+        existing.setRoomType(roomType);
+        RoomDTO request = new RoomDTO();
+        request.setRoomTypeId(20L);
+        request.setRoomNumber("101");
+        request.setFloor(1);
+        request.setStatus("OCCUPIED");
+
+        when(roomRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(existing));
+
+        assertThrows(IllegalStateException.class, () -> roomService.updateRoom(30L, request));
+        verify(roomRepository, never()).save(any(Room.class));
+    }
+
+    @Test
+    void maintenanceCommandsUseLockedRoomAndPolicy() {
+        Room existing = room("AVAILABLE", "CLEAN", "NONE");
+        existing.setId(30L);
+        existing.setHotel(hotel);
+        existing.setRoomType(roomType);
+        when(roomRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(existing));
+        when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(roomImageRepository.findByRoomId(30L)).thenReturn(java.util.List.of());
+
+        RoomDTO started = roomService.startMaintenance(30L);
+        assertEquals("MAINTENANCE", started.getStatus());
+        RoomDTO completed = roomService.completeMaintenance(30L);
+        assertEquals("AVAILABLE", completed.getStatus());
+        verify(roomRepository, org.mockito.Mockito.times(2)).findByIdForUpdate(30L);
+    }
+
+    private Room room(String status, String housekeeping, String maintenance) {
+        Room room = new Room();
+        room.setStatus(status);
+        room.setHousekeepingStatus(housekeeping);
+        room.setMaintenanceStatus(maintenance);
+        room.setMaxGuests(2);
+        room.setIsDemo(false);
+        return room;
     }
 }

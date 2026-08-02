@@ -10,6 +10,8 @@ public interface RoomService {
     RoomDTO getRoomById(Long id);
     RoomDTO createRoom(RoomDTO roomDTO);
     RoomDTO updateRoom(Long id, RoomDTO roomDTO);
+    RoomDTO startMaintenance(Long id);
+    RoomDTO completeMaintenance(Long id);
     void deleteRoom(Long id);
     BulkRoomResultDTO bulkCreate(BulkRoomRequest request);
 }

@@ -199,6 +199,7 @@ public class ManagementPortalService {
         }
         int quantity = request.getToNumber() - request.getFromNumber() + 1;
         if (quantity > 200) throw new IllegalArgumentException("Mỗi lần chỉ được tạo tối đa 200 phòng.");
+        RoomStatePolicy.requireInitialStatus(request.getStatus());
         RoomType roomType = roomTypeRepository.findById(request.getRoomTypeId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy loại phòng."));
         Hotel hotel = propertyAccessService.requireManagedHotel(roomType.getHotel().getId());
@@ -219,9 +220,7 @@ public class ManagementPortalService {
             room.setRoomType(roomType);
             room.setRoomNumber(roomNumber);
             room.setFloor(request.getFloor());
-            room.setStatus(request.getStatus() == null ? "AVAILABLE" : request.getStatus());
-            room.setHousekeepingStatus("CLEAN");
-            room.setMaintenanceStatus("NONE");
+            RoomStatePolicy.initialize(room);
             room.setMaxGuests(roomType.getMaxGuests());
             room.setIsDemo(false);
             created.add(roomDto(roomRepository.save(room)));
@@ -237,15 +236,25 @@ public class ManagementPortalService {
         if (!Set.of("PENDING", "IN_PROGRESS").contains(task.getStatus())) {
             throw new IllegalStateException("Tác vụ dọn phòng đã kết thúc.");
         }
-        Room room = task.getRoom();
+        Room room = roomRepository.findByIdForUpdate(task.getRoom().getId())
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy phòng của tác vụ dọn phòng."));
         task.setStatus("COMPLETED");
         task.setCompletedAt(LocalDateTime.now());
-        room.setHousekeepingStatus("CLEAN");
-        if ("NONE".equals(room.getMaintenanceStatus())) room.setStatus("AVAILABLE");
+        RoomStatePolicy.completeHousekeeping(room);
         roomRepository.save(room);
         housekeepingTaskRepository.save(task);
         return Map.of("taskId", task.getId(), "status", task.getStatus(), "roomId", room.getId(),
                 "roomStatus", room.getStatus(), "housekeepingStatus", room.getHousekeepingStatus());
+    }
+
+    @Transactional
+    public RoomDTO startRoomMaintenance(Long id) {
+        return roomService.startMaintenance(id);
+    }
+
+    @Transactional
+    public RoomDTO completeRoomMaintenance(Long id) {
+        return roomService.completeMaintenance(id);
     }
 
     private void requireWithinLimit(User user, String code, long current, int addition) {

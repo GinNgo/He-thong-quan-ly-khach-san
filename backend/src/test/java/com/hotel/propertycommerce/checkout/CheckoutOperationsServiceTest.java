@@ -65,6 +65,7 @@ class CheckoutOperationsServiceTest {
         room.setHotel(hotel);
         room.setStatus("OCCUPIED");
         room.setHousekeepingStatus("CLEAN");
+        room.setMaintenanceStatus("NONE");
         ReservationDetail detail = new ReservationDetail();
         detail.setId(71L);
         detail.setReservation(reservation);
@@ -106,6 +107,7 @@ class CheckoutOperationsServiceTest {
         assignment.setReleasedAt(LocalDateTime.of(2026, 8, 1, 2, 0));
         room.setStatus("AVAILABLE");
         room.setHousekeepingStatus("CLEAN");
+        room.setMaintenanceStatus("NONE");
         arrangeAssignments();
 
         CheckoutOperationsService.CheckoutOperationsResult result = service.apply(reservation);

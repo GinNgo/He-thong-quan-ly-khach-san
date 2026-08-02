@@ -1,6 +1,8 @@
 package com.hotel.services;
 
 import com.hotel.entities.Hotel;
+import com.hotel.entities.HousekeepingTask;
+import com.hotel.entities.Room;
 import com.hotel.entities.User;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.HousekeepingTaskRepository;
@@ -21,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -87,5 +90,33 @@ class ManagementPortalServiceTest {
         assertFalse((Boolean) properties.getFirst().get("operational"));
         assertNull(context.get("dashboard"));
         verify(propertyAccessService, never()).requireManagedHotel(20L);
+    }
+
+    @Test
+    void housekeepingCompletionLocksRoomAndUsesAuthoritativeTransition() {
+        Hotel hotel = new Hotel();
+        hotel.setId(20L);
+        Room room = new Room();
+        room.setId(30L);
+        room.setHotel(hotel);
+        room.setStatus("DIRTY");
+        room.setHousekeepingStatus("DIRTY");
+        room.setMaintenanceStatus("NONE");
+        HousekeepingTask task = new HousekeepingTask();
+        task.setId(40L);
+        task.setHotel(hotel);
+        task.setRoom(room);
+        task.setStatus("PENDING");
+
+        when(housekeepingTaskRepository.findById(40L)).thenReturn(Optional.of(task));
+        when(roomRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(room));
+
+        Map<String, Object> result = service.completeHousekeeping(40L);
+
+        assertEquals("AVAILABLE", result.get("roomStatus"));
+        assertEquals("CLEAN", result.get("housekeepingStatus"));
+        verify(roomRepository).findByIdForUpdate(30L);
+        verify(roomRepository).save(room);
+        verify(housekeepingTaskRepository).save(task);
     }
 }

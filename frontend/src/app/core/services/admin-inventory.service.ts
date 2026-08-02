@@ -19,7 +19,7 @@ export interface AdminRoom {
 }
 export interface BulkRoomRequest {
   hotelId: number; roomTypeId: number; floor: number; fromNumber: number;
-  toNumber: number; prefix?: string; status: string;
+  toNumber: number; prefix?: string; status?: 'AVAILABLE';
 }
 export interface BulkRoomResult { created: AdminRoom[]; failedRoomNumbers: string[]; }
 
@@ -37,6 +37,8 @@ export class AdminInventoryService {
   getRooms(): Observable<AdminRoom[]> { return this.http.get<AdminRoom[]>(`${this.api}/rooms`); }
   createRoom(value: Partial<AdminRoom>): Observable<AdminRoom> { return this.http.post<AdminRoom>(`${this.api}/rooms`, value); }
   updateRoom(id: number, value: Partial<AdminRoom>): Observable<AdminRoom> { return this.http.put<AdminRoom>(`${this.api}/rooms/${id}`, value); }
+  startRoomMaintenance(id: number): Observable<AdminRoom> { return this.http.post<AdminRoom>(`${this.api}/rooms/${id}/maintenance/start`, {}); }
+  completeRoomMaintenance(id: number): Observable<AdminRoom> { return this.http.post<AdminRoom>(`${this.api}/rooms/${id}/maintenance/complete`, {}); }
   deleteRoom(id: number): Observable<void> { return this.http.delete<void>(`${this.api}/rooms/${id}`); }
   bulkCreateRooms(value: BulkRoomRequest): Observable<BulkRoomResult> { return this.http.post<BulkRoomResult>(`${this.api}/rooms/bulk`, value); }
 }

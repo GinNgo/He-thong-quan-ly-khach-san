@@ -59,6 +59,10 @@ public class Room extends AuditableEntity {
     @Column(columnDefinition = "nvarchar(1000)")
     private String note;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     // Getters and Setters omitted for brevity
 
     public Long getId() {
