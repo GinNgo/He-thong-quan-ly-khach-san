@@ -1,6 +1,8 @@
 package com.hotel.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hotel.exceptions.ApiErrorResponse;
+import com.hotel.exceptions.CorrelationIdSupport;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
@@ -11,9 +13,7 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.io.IOException;
-import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @Component
 public class PermissionInterceptor implements HandlerInterceptor {
@@ -97,14 +97,10 @@ public class PermissionInterceptor implements HandlerInterceptor {
                                 int status, String code, String message) throws IOException {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(status);
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("status", status);
-        body.put("code", code);
-        body.put("message", message);
-        String correlationId = request.getHeader("X-Correlation-ID");
-        body.put("correlationId", correlationId == null || correlationId.isBlank() ? UUID.randomUUID().toString() : correlationId);
-        body.put("retryable", false);
-        body.put("path", request.getRequestURI());
+        String correlationId = CorrelationIdSupport.resolve(request);
+        response.setHeader(CorrelationIdSupport.HEADER, correlationId);
+        ApiErrorResponse body = new ApiErrorResponse(
+                status, code, message, correlationId, Map.of(), false, null, request.getRequestURI());
         objectMapper.writeValue(response.getOutputStream(), body);
     }
 }

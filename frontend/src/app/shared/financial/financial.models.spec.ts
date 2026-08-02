@@ -1,6 +1,8 @@
 import {
+  canSafelyRetryApiError,
   financialStateLabel,
   formatVnd,
+  isApiError,
   isFinancialError,
   parseVndAmount,
 } from './financial.models';
@@ -22,5 +24,8 @@ describe('financial models', () => {
     expect(financialStateLabel('PAID', 'en')).toBe('Paid');
     expect(isFinancialError({ code: 'INVALID_AMOUNT', message: 'Invalid', retryable: false })).toBe(true);
     expect(isFinancialError({ code: 'INVALID_AMOUNT' })).toBe(false);
+    expect(isApiError({ code: 'CONFLICT', message: 'Reload', retryable: true, currentState: 'PENDING' })).toBe(true);
+    expect(canSafelyRetryApiError({ code: 'CONFLICT', message: 'Reload', retryable: true })).toBe(true);
+    expect(canSafelyRetryApiError({ code: 'INVALID_REQUEST', message: 'Fix input', retryable: false })).toBe(false);
   });
 });

@@ -97,7 +97,11 @@ public class AuthControllerIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(content().string("Sai tài khoản hoặc mật khẩu"));
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
+                .andExpect(jsonPath("$.correlationId").isString())
+                .andExpect(jsonPath("$.retryable").value(false))
+                .andExpect(jsonPath("$.path").value("/api/auth/login"));
     }
 
     @Test

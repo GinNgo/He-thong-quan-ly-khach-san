@@ -7,14 +7,18 @@ export interface FinancialMoney {
   currency: FinancialCurrency;
 }
 
-export interface FinancialError {
+export interface ApiError {
+  status?: number;
   code: string;
   message: string;
   correlationId?: string;
   fieldErrors?: Record<string, string>;
   retryable: boolean;
   currentState?: string;
+  path?: string;
 }
+
+export type FinancialError = ApiError;
 
 export type FinancialState =
   | 'CREATED'
@@ -53,12 +57,20 @@ export function formatVnd(value: FinancialAmount, locale = 'vi-VN'): string {
   }).format(parseVndAmount(value));
 }
 
-export function isFinancialError(value: unknown): value is FinancialError {
+export function isApiError(value: unknown): value is ApiError {
   if (!value || typeof value !== 'object') return false;
-  const candidate = value as Partial<FinancialError>;
+  const candidate = value as Partial<ApiError>;
   return typeof candidate.code === 'string'
     && typeof candidate.message === 'string'
     && typeof candidate.retryable === 'boolean';
+}
+
+export function isFinancialError(value: unknown): value is FinancialError {
+  return isApiError(value);
+}
+
+export function canSafelyRetryApiError(value: unknown): boolean {
+  return isApiError(value) && value.retryable;
 }
 
 const STATE_LABELS: Record<string, { vi: string; en: string }> = {

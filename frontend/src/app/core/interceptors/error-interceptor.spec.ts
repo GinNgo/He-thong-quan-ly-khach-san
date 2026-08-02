@@ -62,6 +62,24 @@ describe('errorInterceptor', () => {
     expect(routerSpy.navigate).not.toHaveBeenCalled();
   });
 
+  it('uses the stable API error code as the forbidden-route reason', () => {
+    httpClient.get('/api/test').subscribe({ error: () => undefined });
+
+    const req = httpMock.expectOne('/api/test');
+    req.flush({
+      status: 403,
+      code: 'FORBIDDEN_FEATURE',
+      message: 'Upgrade required',
+      retryable: false,
+      fieldErrors: {},
+      path: '/api/test',
+    }, { status: 403, statusText: 'Forbidden' });
+
+    expect(routerSpy.navigate).toHaveBeenCalledWith(['/403'], {
+      queryParams: { reason: 'FORBIDDEN_FEATURE' },
+    });
+  });
+
   it('should handle 401 error in admin area', () => {
     routerSpy.url = '/admin/dashboard';
 

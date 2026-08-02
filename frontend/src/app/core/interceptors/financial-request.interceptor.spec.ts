@@ -45,4 +45,24 @@ describe('financialRequestInterceptor', () => {
     expect(request.request.headers.get('Idempotency-Key')).toBe('idem-1');
     request.flush({ ok: true });
   });
+
+  it('preserves stable retry and current-state metadata from API errors', () => {
+    let captured: any;
+    client.post('/api/payments', {}).subscribe({ error: error => captured = error });
+    const request = http.expectOne('/api/payments');
+    request.flush({
+      status: 409,
+      code: 'CONCURRENT_MODIFICATION',
+      message: 'Reload current state.',
+      correlationId: 'corr-1',
+      fieldErrors: {},
+      retryable: true,
+      currentState: 'PENDING',
+      path: '/api/payments',
+    }, { status: 409, statusText: 'Conflict' });
+
+    expect(captured.error.retryable).toBe(true);
+    expect(captured.error.currentState).toBe('PENDING');
+    expect(captured.error.correlationId).toBe('corr-1');
+  });
 });

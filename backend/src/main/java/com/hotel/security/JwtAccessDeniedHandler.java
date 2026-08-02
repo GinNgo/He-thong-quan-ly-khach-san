@@ -1,6 +1,8 @@
 package com.hotel.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hotel.exceptions.ApiErrorResponse;
+import com.hotel.exceptions.CorrelationIdSupport;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
@@ -10,7 +12,6 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 
 @Component
@@ -27,13 +28,17 @@ public class JwtAccessDeniedHandler implements AccessDeniedHandler {
                        AccessDeniedException accessDeniedException) throws IOException {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpStatus.FORBIDDEN.value());
-
-        Map<String, Object> body = new HashMap<>();
-        body.put("status", HttpStatus.FORBIDDEN.value());
-        body.put("code", "ACCESS_DENIED");
-        body.put("message", "Access is denied");
-        body.put("path", request.getRequestURI());
-
+        String correlationId = CorrelationIdSupport.resolve(request);
+        response.setHeader(CorrelationIdSupport.HEADER, correlationId);
+        ApiErrorResponse body = new ApiErrorResponse(
+                HttpStatus.FORBIDDEN.value(),
+                "ACCESS_DENIED",
+                "Access is denied",
+                correlationId,
+                Map.of(),
+                false,
+                null,
+                request.getRequestURI());
         objectMapper.writeValue(response.getOutputStream(), body);
     }
 }

@@ -2,6 +2,7 @@ import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
+import { isApiError } from '../../shared/financial/financial.models';
 import { AuthService } from '../services/auth';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
@@ -16,7 +17,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         .some(path => currentUrl.startsWith(path));
 
       if (error.status === 403) {
-        const errCode = error.error?.code || 'ACCESS_DENIED';
+        const errCode = isApiError(error.error) ? error.error.code : 'ACCESS_DENIED';
         if (!currentUrl.includes('/403')) {
           router.navigate(['/403'], { queryParams: { reason: errCode } });
         }

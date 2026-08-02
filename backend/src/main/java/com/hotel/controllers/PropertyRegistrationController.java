@@ -18,8 +18,7 @@ public class PropertyRegistrationController {
     @PostMapping("/register")
     public ResponseEntity<?> registerProperty(@RequestBody PartnerRegisterRequest request,
                                               org.springframework.security.core.Authentication authentication) {
-        try {
-            registrationService.registerPropertyOwner(
+        registrationService.registerPropertyOwner(
                 request.getEmail(),
                 request.getPassword(),
                 request.getFullName(),
@@ -27,11 +26,8 @@ public class PropertyRegistrationController {
                 request.getPropertyName(),
                 request.getPropertyAddress(),
                 authentication == null ? null : authentication.getName()
-            );
-            return ResponseEntity.ok().body("Registration successful. Please login.");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        );
+        return ResponseEntity.ok().body("Registration successful. Please login.");
     }
 
     @PreAuthorize("isAuthenticated()")

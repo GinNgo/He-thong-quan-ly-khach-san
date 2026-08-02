@@ -34,8 +34,8 @@ The machine baseline includes 41 API controllers, 143 business services, 43 enti
 | Property Operations | 31 | 2 | 10 | 2 | 12 | 5 | 0 | 0 |
 | Public Booking | 30 | 1 | 17 | 2 | 8 | 2 | 0 | 0 |
 | Stay Lifecycle | 29 | 1 | 13 | 1 | 8 | 6 | 0 | 0 |
-| Cross-Cutting | 42 | 6 | 20 | 0 | 7 | 7 | 2 | 0 |
-| **Total inventory rows** | **179** | **15** | **74** | **7** | **47** | **29** | **7** | **0** |
+| Cross-Cutting | 42 | 7 | 19 | 0 | 7 | 7 | 2 | 0 |
+| **Total inventory rows** | **179** | **16** | **73** | **7** | **47** | **29** | **7** | **0** |
 
 ## Explicit Evidence Aliases
 
@@ -217,7 +217,7 @@ Aliases retain separate source rows for traceability, but final unique-capabilit
 | CROSS-028 | Cross-Cutting | Financial append-only audit and redaction | No audit viewer | None | `FinancialAuditService` records context, actor, states, reason, identities, correlation and redacted metadata | Financial audit events | Internal financial services | Audit service test passed | `PARTIAL` | P1 | Add tenant/system read APIs, retention/export policy, pagination and an authorized audit viewer with IDOR/privacy tests. | [cross-cutting.md](inventory/cross-cutting.md) |
 | CROSS-029 | Cross-Cutting | Support conversation audit | No audit/history panel | None | Assignment/reply/escalation and denied attempts write tenant-owned support events | Support conversation events | Internal support services | Isolation integration verifies denied and accepted events | `PARTIAL` | P1 | Expose immutable event history to authorized supervisors and add close/reopen/read-state events plus retention controls. | [cross-cutting.md](inventory/cross-cutting.md) |
 | CROSS-030 | Cross-Cutting | General operational/admin audit log | No system audit route | None | No unified audit for staff, roles, property, room, maintenance and lifecycle mutations | Missing outside financial/support slices | Missing | Source trace | `MISSING` | P0 | Add append-only tenant/system audit events with actor, reason, before/after, correlation and secure viewer/export before release. | [cross-cutting.md](inventory/cross-cutting.md) |
-| CROSS-031 | Cross-Cutting | Stable error response and retry semantics | Financial screens consume typed errors; legacy screens often use raw messages/console | Financial interceptor plus ad hoc handlers | Financial errors are stable; many legacy controllers still throw generic exceptions with inconsistent HTTP/message behavior | Logs and responses | Per endpoint | Financial error tests exist; source shows mixed legacy handling | `PARTIAL` | P1 | Extend the stable error envelope, correlation id and retryable/current-state semantics to every API, then complete the error expectation catalog. | [cross-cutting.md](inventory/cross-cutting.md) |
+| CROSS-031 | Cross-Cutting | Stable error response and retry semantics | Shared Angular API-error model preserves code, fields, correlation, retryability and current state | Correlation/idempotency and navigation interceptors preserve the envelope | Controller advice, auth handlers, Spring Security and permission interception emit one stable envelope; external provider callback ACK bodies remain protocol-specific | Responses plus transaction rollback boundaries | Per endpoint | Fresh backend/frontend runs passed 40/40; evidence: `docs/testing/evidence/007/remediation/T189-stable-error-envelope.md` | `COMPLETE_VERIFIED` | P1 | Preserve additive compatibility and the completed catalog; new endpoints must classify retry safety and never expose internal exception detail. | [cross-cutting.md](inventory/cross-cutting.md) |
 | CROSS-032 | Cross-Cutting | Loading, error and empty-state presentation | Stronger on Home, chat, notifications, management and reports; inconsistent on legacy admin screens | Mixed component-local state and `FeedbackStateComponent` | APIs provide varied errors | None | UI only | Focused components pass; several legacy screens only log errors to console | `PARTIAL` | P1 | Inventory every route state, replace console-only failures, provide accessible retry/empty guidance and add component/browser assertions per route. | [cross-cutting.md](inventory/cross-cutting.md) |
 | CROSS-033 | Cross-Cutting | Async cancellation, duplicate-submit and safe retry | Implemented in selected search/payment/chat/report flows | RxJS cancellation and local busy flags vary | Server idempotency exists mainly for financial mutations | Mixed | Per action | Current focused suites cover selected flows only | `PARTIAL` | P1 | Standardize request cancellation/busy/retry behavior and prove every mutation against double-click, timeout, reload and conflicting retry. | [cross-cutting.md](inventory/cross-cutting.md) |
 | CROSS-034 | Cross-Cutting | Home/login responsive layout and visible keyboard entry | `/` and `/login` | Public layout/components | Public APIs are not required for layout assertion | Browser layout | Public | 8/8 viewport cases passed at 375, 768, 1024 and 1440 widths with no horizontal overflow and visible focus | `COMPLETE_VERIFIED` | P1 | Preserve the viewport/focus suite while extending the same matrix to authenticated routes. | [cross-cutting.md](inventory/cross-cutting.md) |
@@ -248,6 +248,7 @@ These are the only rows carried as `COMPLETE_VERIFIED`. Each has executable evid
 | CROSS-006 | Registration welcome-email template and safe failure | Email tests 2/2 and prior registration component evidence passed | [cross-cutting.md](inventory/cross-cutting.md) |
 | CROSS-013 | Support tenant isolation and denied-action audit | H2 isolation integration 2/2 passed with denied-event assertions | [cross-cutting.md](inventory/cross-cutting.md) |
 | CROSS-025 | Shared CSV/Excel/PDF financial export renderer | Export unit/integration 3/3 passed; platform browser download wiring passed with intercepted API | [cross-cutting.md](inventory/cross-cutting.md) |
+| CROSS-031 | Stable error response and retry semantics | Shared controller/security envelope plus Angular preservation tests passed 40/40 | [cross-cutting.md](inventory/cross-cutting.md) |
 | CROSS-034 | Home/login responsive layout and visible keyboard entry | 8/8 viewport cases passed at 375, 768, 1024 and 1440 widths with no horizontal overflow and visible focus | [cross-cutting.md](inventory/cross-cutting.md) |
 | CROSS-038 | Reduced motion and VI/EN Home layout stability | Reduced-motion plus five cold desktop and mobile locale runs passed without layout shift | [cross-cutting.md](inventory/cross-cutting.md) |
 | CROSS-042 | Cross-cutting HTTP/WebSocket integration harness | Full-context HTTP/STOMP plus controller/interceptor suites passed 24/24 permission and negative assertions | [cross-cutting.md](inventory/cross-cutting.md) |
@@ -256,8 +257,8 @@ These are the only rows carried as `COMPLETE_VERIFIED`. Each has executable evid
 
 - Raw inventory rows: 179.
 - Explicit aliases: 2; unique capability groups: 177.
-- Raw `COMPLETE_VERIFIED` rows: 15; unique complete groups after aliasing: 13.
-- Remaining non-external incomplete rows: 157; T184-T188 are complete and T189-T345 remain in the generated remediation backlog.
+- Raw `COMPLETE_VERIFIED` rows: 16; unique complete groups after aliasing: 14.
+- Remaining non-external incomplete rows: 156; T184-T189 are complete and T190-T345 remain in the generated remediation backlog.
 - External-blocker rows requiring safe adapter/configuration work: 7.
 - T148 traceability is maintained in `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md`.
 - Production payment, production SMTP/social credentials, real-money execution and destructive cleanup remain prohibited.

@@ -1,6 +1,6 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { catchError, throwError } from 'rxjs';
-import { isFinancialError } from '../../shared/financial/financial.models';
+import { isApiError } from '../../shared/financial/financial.models';
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -26,8 +26,8 @@ export const financialRequestInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(outgoing).pipe(
     catchError((error: HttpErrorResponse) => {
-      // Keep the backend contract intact so feature services can safely branch on retryable.
-      if (isFinancialError(error.error)) return throwError(() => error);
+      // Keep the shared backend contract intact so feature services can branch on retryable/currentState.
+      if (isApiError(error.error)) return throwError(() => error);
       return throwError(() => error);
     }),
   );
