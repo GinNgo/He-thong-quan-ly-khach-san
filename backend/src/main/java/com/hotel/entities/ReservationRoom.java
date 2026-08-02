@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -31,6 +32,12 @@ public class ReservationRoom extends AuditableEntity {
 
     @Column(name = "released_at")
     private LocalDateTime releasedAt;
+
+    @Column(name = "stay_start_date")
+    private LocalDate stayStartDate;
+
+    @Column(name = "stay_end_date")
+    private LocalDate stayEndDate;
 
     @Column(nullable = false)
     private String status = "ASSIGNED";

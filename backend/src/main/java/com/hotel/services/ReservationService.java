@@ -220,6 +220,8 @@ public class ReservationService {
             assignment.setReservationDetail(detail);
             assignment.setRoom(room);
             assignment.setAssignedAt(LocalDateTime.now());
+            assignment.setStayStartDate(reservation.getCheckInDate());
+            assignment.setStayEndDate(reservation.getCheckOutDate());
             assignment.setStatus("ASSIGNED");
             newAssignments.add(assignment);
         }
