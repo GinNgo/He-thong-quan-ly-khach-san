@@ -51,6 +51,18 @@ export class ReservationService {
     return this.http.put<Reservation>(`${this.apiUrl}/${id}/status?status=${status}`, {});
   }
 
+  checkIn(id: number): Observable<Reservation> {
+    return this.http.post<Reservation>(`${this.apiUrl}/${id}/check-in`, {});
+  }
+
+  cancelOperational(id: number): Observable<Reservation> {
+    return this.http.post<Reservation>(`${this.apiUrl}/${id}/cancel-operational`, {});
+  }
+
+  markNoShow(id: number): Observable<Reservation> {
+    return this.http.post<Reservation>(`${this.apiUrl}/${id}/no-show`, {});
+  }
+
   cancelMyReservation(id: number, idempotencyKey?: string): Observable<Reservation> {
     const options = idempotencyKey
       ? { headers: new HttpHeaders({ 'Idempotency-Key': idempotencyKey }) }

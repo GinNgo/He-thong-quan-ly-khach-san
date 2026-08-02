@@ -1,0 +1,95 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
+import { Reservation, ReservationService } from '../../../core/services/reservation.service';
+import { PaymentService } from '../../../core/services/payment.service';
+import { InvoiceService } from '../../../core/services/invoice.service';
+import { HotelServiceService } from '../../../core/services/hotel-service.service';
+import { PermissionService, ActionCode, FunctionCode } from '../../../core/services/permission.service';
+import { Router } from '@angular/router';
+import { ReservationManagement } from './reservation-management';
+
+describe('ReservationManagement lifecycle permissions', () => {
+  let fixture: ComponentFixture<ReservationManagement>;
+  let component: ReservationManagement;
+  let reservationService: {
+    getAllReservations: ReturnType<typeof vi.fn>;
+    checkIn: ReturnType<typeof vi.fn>;
+    cancelOperational: ReturnType<typeof vi.fn>;
+    markNoShow: ReturnType<typeof vi.fn>;
+    updateReservationStatus: ReturnType<typeof vi.fn>;
+  };
+
+  const reservation: Reservation = {
+    id: 55,
+    userId: 8,
+    username: 'guest',
+    checkInDate: '2026-08-02',
+    checkOutDate: '2026-08-03',
+    guests: 2,
+    totalAmount: 500000,
+    status: 'CONFIRMED',
+    paymentMethod: 'MOMO',
+    details: [],
+  };
+
+  beforeEach(async () => {
+    reservationService = {
+      getAllReservations: vi.fn(() => of([reservation])),
+      checkIn: vi.fn(() => of(reservation)),
+      cancelOperational: vi.fn(() => of(reservation)),
+      markNoShow: vi.fn(() => of(reservation)),
+      updateReservationStatus: vi.fn(() => of(reservation)),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [ReservationManagement],
+      providers: [
+        { provide: ReservationService, useValue: reservationService },
+        { provide: PaymentService, useValue: {} },
+        { provide: InvoiceService, useValue: {} },
+        { provide: HotelServiceService, useValue: { getServices: vi.fn(() => of([])) } },
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        {
+          provide: PermissionService,
+          useValue: {
+            hasPermission: vi.fn((functionCode: string, actionCode: number) =>
+              (functionCode === FunctionCode.RESERVATION && actionCode === ActionCode.UPDATE) ||
+              (functionCode === FunctionCode.CHECKIN && actionCode === ActionCode.UPDATE) ||
+              (functionCode === FunctionCode.RESERVATION_CANCEL && actionCode === ActionCode.UPDATE) ||
+              (functionCode === FunctionCode.RESERVATION_NO_SHOW && actionCode === ActionCode.UPDATE)),
+          },
+        },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(ReservationManagement);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('shows dedicated actions and invokes their dedicated client commands', () => {
+    expect(fixture.nativeElement.querySelector('[data-action="check-in"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-action="no-show"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-action="cancel-operational"]')).not.toBeNull();
+
+    component.checkIn(55);
+    component.markNoShow(55);
+    component.cancelOperational(55);
+
+    expect(reservationService.checkIn).toHaveBeenCalledWith(55);
+    expect(reservationService.markNoShow).toHaveBeenCalledWith(55);
+    expect(reservationService.cancelOperational).toHaveBeenCalledWith(55);
+  });
+
+  it('does not render lifecycle controls when the dedicated masks are absent', async () => {
+    const permissionService = TestBed.inject(PermissionService) as unknown as { hasPermission: ReturnType<typeof vi.fn> };
+    permissionService.hasPermission.mockReturnValue(false);
+
+    fixture = TestBed.createComponent(ReservationManagement);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-action="check-in"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-action="no-show"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-action="cancel-operational"]')).toBeNull();
+  });
+});

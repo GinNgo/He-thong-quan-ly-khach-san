@@ -301,6 +301,21 @@ public class ReservationService {
     }
 
     @Transactional
+    public ReservationDTO checkIn(Long id) {
+        return updateReservationStatus(id, "CHECKED_IN");
+    }
+
+    @Transactional
+    public ReservationDTO cancelOperational(Long id) {
+        return updateReservationStatus(id, "CANCELLED");
+    }
+
+    @Transactional
+    public ReservationDTO markNoShow(Long id) {
+        return updateReservationStatus(id, "NO_SHOW");
+    }
+
+    @Transactional
     public ReservationDTO cancelMyReservation(Long id, String username) {
         Reservation reservation = reservationRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy booking."));

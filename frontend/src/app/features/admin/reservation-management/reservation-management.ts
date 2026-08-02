@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
@@ -13,10 +13,13 @@ import { ToastModule } from 'primeng/toast';
 import { DialogModule } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
 import { InputNumberModule } from 'primeng/inputnumber';
+import { TooltipModule } from 'primeng/tooltip';
 import { FormsModule } from '@angular/forms';
 import { HotelServiceService, HotelServiceDTO } from '../../../core/services/hotel-service.service';
 import { CheckoutResult } from '../../../core/services/property-checkout.service';
 import { ReservationCheckoutComponent } from './reservation-checkout.component';
+import { ActionCode, FunctionCode, PermissionService } from '../../../core/services/permission.service';
+import { Observable, finalize } from 'rxjs';
 
 @Component({
   selector: 'app-reservation-management',
@@ -31,6 +34,7 @@ import { ReservationCheckoutComponent } from './reservation-checkout.component';
     DialogModule,
     SelectModule,
     InputNumberModule,
+    TooltipModule,
     FormsModule,
     ReservationCheckoutComponent,
   ],
@@ -46,6 +50,12 @@ export class ReservationManagement implements OnInit {
   showCheckoutDialog = false;
   selectedReservationId: number | null = null;
   newServiceItem = { serviceId: 0, quantity: 1 };
+  private permissionService = inject(PermissionService);
+  readonly canUpdateReservation = this.permissionService.hasPermission(FunctionCode.RESERVATION, ActionCode.UPDATE);
+  readonly canCheckIn = this.permissionService.hasPermission(FunctionCode.CHECKIN, ActionCode.UPDATE);
+  readonly canCancelOperational = this.permissionService.hasPermission(FunctionCode.RESERVATION_CANCEL, ActionCode.UPDATE);
+  readonly canMarkNoShow = this.permissionService.hasPermission(FunctionCode.RESERVATION_NO_SHOW, ActionCode.UPDATE);
+  readonly lifecycleActionKey = signal<string | null>(null);
 
   constructor(
     private reservationService: ReservationService, 
@@ -82,11 +92,42 @@ export class ReservationManagement implements OnInit {
   }
 
   updateStatus(id: number | undefined, status: string) {
-    if (id) {
-      this.reservationService.updateReservationStatus(id, status).subscribe(() => {
-        this.loadReservations();
-      });
-    }
+    if (!id) return;
+    this.runLifecycleAction(
+      id,
+      `STATUS_${status}`,
+      this.reservationService.updateReservationStatus(id, status),
+      'Đã cập nhật trạng thái đặt phòng',
+    );
+  }
+
+  checkIn(id: number | undefined) {
+    if (!id) return;
+    this.runLifecycleAction(id, 'CHECK_IN', this.reservationService.checkIn(id), 'Đã nhận phòng');
+  }
+
+  cancelOperational(id: number | undefined) {
+    if (!id) return;
+    this.runLifecycleAction(
+      id,
+      'CANCEL',
+      this.reservationService.cancelOperational(id),
+      'Đã hủy đặt phòng',
+    );
+  }
+
+  markNoShow(id: number | undefined) {
+    if (!id) return;
+    this.runLifecycleAction(
+      id,
+      'NO_SHOW',
+      this.reservationService.markNoShow(id),
+      'Đã đánh dấu khách không đến',
+    );
+  }
+
+  isLifecycleBusy(id: number | undefined, action: string): boolean {
+    return Boolean(id && this.lifecycleActionKey() === `${action}:${id}`);
   }
 
   createNew() {
@@ -166,5 +207,34 @@ export class ReservationManagement implements OnInit {
         this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Chưa có thanh toán để xuất hóa đơn' });
       }
     });
+  }
+
+  private runLifecycleAction(
+    reservationId: number,
+    action: string,
+    request$: Observable<Reservation>,
+    successDetail: string,
+  ) {
+    if (this.lifecycleActionKey()) return;
+    this.lifecycleActionKey.set(`${action}:${reservationId}`);
+    request$
+      .pipe(finalize(() => this.lifecycleActionKey.set(null)))
+      .subscribe({
+        next: () => {
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Thành công',
+            detail: successDetail,
+          });
+          this.loadReservations();
+        },
+        error: () => {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Không thể thực hiện',
+            detail: 'Tài khoản không có quyền hoặc trạng thái đặt phòng không còn phù hợp.',
+          });
+        },
+      });
   }
 }

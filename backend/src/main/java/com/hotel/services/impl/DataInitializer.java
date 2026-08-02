@@ -71,6 +71,10 @@ public class DataInitializer implements CommandLineRunner {
         initFunction(hotelModule, FunctionCode.ROOM.name(), "Phòng", "/admin/rooms", "pi pi-home", 3);
         initFunction(hotelModule, FunctionCode.RESERVATION.name(), "Đặt phòng", "/admin/reservations", "pi pi-calendar", 4);
         initFunction(hotelModule, FunctionCode.HOTEL_SERVICE.name(), "Dịch vụ khách sạn", "/admin/services", "pi pi-box", 5);
+        initFunction(hotelModule, FunctionCode.RESERVATION_ASSIGNMENT.name(), "Gán phòng lưu trú", null, "pi pi-link", 40);
+        initFunction(hotelModule, FunctionCode.CHECKIN.name(), "Nhận phòng", null, "pi pi-sign-in", 41);
+        initFunction(hotelModule, FunctionCode.RESERVATION_CANCEL.name(), "Hủy đặt phòng vận hành", null, "pi pi-times-circle", 42);
+        initFunction(hotelModule, FunctionCode.RESERVATION_NO_SHOW.name(), "Đánh dấu khách không đến", null, "pi pi-user-minus", 43);
         deprecateFunction("CHAT");
 
         initFunction(financeModule, FunctionCode.INVOICE.name(), "Hóa đơn", "/admin/invoices", "pi pi-file-o", 1);
@@ -107,6 +111,7 @@ public class DataInitializer implements CommandLineRunner {
         syncAllPermissions(adminRole, allActions);
         ensurePermission(propertyOwnerRole, FunctionCode.USER,
                 ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.DELETE);
+        seedReservationLifecyclePermissions(propertyOwnerRole);
         seedDefaultRolePermissions(hotelAdminRole);
         seedDefaultRolePermissions(hotelManagerRole);
         seedReceptionistPermissions(receptionistRole);
@@ -287,6 +292,7 @@ public class DataInitializer implements CommandLineRunner {
         ensurePermission(role, FunctionCode.ROOM_TYPE, manage);
         ensurePermission(role, FunctionCode.ROOM, manage);
         ensurePermission(role, FunctionCode.RESERVATION, manage | ActionCode.APPROVE);
+        seedReservationLifecyclePermissions(role);
         ensurePermission(role, FunctionCode.HOTEL_SERVICE, manage);
         ensurePermission(role, FunctionCode.INVOICE, manageAndExport);
         ensurePermission(role, FunctionCode.RESERVATION_PAYMENT, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE);
@@ -298,6 +304,7 @@ public class DataInitializer implements CommandLineRunner {
         ensurePermission(role, FunctionCode.ROOM_TYPE, ActionCode.VIEW);
         ensurePermission(role, FunctionCode.ROOM, ActionCode.VIEW | ActionCode.UPDATE);
         ensurePermission(role, FunctionCode.RESERVATION, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE);
+        seedReservationLifecyclePermissions(role);
         ensurePermission(role, FunctionCode.INVOICE, ActionCode.VIEW | ActionCode.CREATE);
     }
 
@@ -306,6 +313,13 @@ public class DataInitializer implements CommandLineRunner {
         ensurePermission(role, FunctionCode.REPORT, ActionCode.VIEW);
         ensurePermission(role, FunctionCode.INVOICE, invoiceMask);
         ensurePermission(role, FunctionCode.RESERVATION_PAYMENT, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.EXPORT);
+    }
+
+    private void seedReservationLifecyclePermissions(Role role) {
+        ensurePermission(role, FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.VIEW | ActionCode.UPDATE);
+        ensurePermission(role, FunctionCode.CHECKIN, ActionCode.UPDATE);
+        ensurePermission(role, FunctionCode.RESERVATION_CANCEL, ActionCode.UPDATE);
+        ensurePermission(role, FunctionCode.RESERVATION_NO_SHOW, ActionCode.UPDATE);
     }
 
     private void ensurePermission(Role role, FunctionCode functionCode, int actionMask) {

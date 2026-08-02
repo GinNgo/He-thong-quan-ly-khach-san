@@ -18,12 +18,17 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/reservations")
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RequiredArgsConstructor
 public class ReservationController {
+
+    private static final Set<String> DEDICATED_LIFECYCLE_STATUSES = Set.of(
+            "CANCELLED", "NO_SHOW", "CHECKED_IN", "CHECKED_OUT");
 
     private final ReservationService reservationService;
     private final MutationIdempotencyService mutationIdempotencyService;
@@ -73,37 +78,50 @@ public class ReservationController {
     }
 
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyAuthority('PROPERTY_OWNER','HOTEL_MANAGER','RECEPTIONIST','HOTEL_ADMIN','SUPER_ADMIN','ADMIN')")
+    @Permission(function = FunctionCode.RESERVATION, action = ActionCode.UPDATE)
     public ResponseEntity<ReservationDTO> updateStatus(@PathVariable Long id, @RequestParam String status) {
+        requireGenericStatusEndpoint(status);
         return ResponseEntity.ok(reservationService.updateReservationStatus(id, status));
     }
 
     @PutMapping("/{id}/rooms")
-    @PreAuthorize("hasAnyAuthority('PROPERTY_OWNER','HOTEL_MANAGER','RECEPTIONIST','HOTEL_ADMIN','SUPER_ADMIN','ADMIN')")
+    @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.UPDATE)
     public ResponseEntity<ReservationDTO> assignRooms(@PathVariable Long id, @RequestBody AssignRoomsRequest request) {
         return ResponseEntity.ok(reservationService.assignRooms(id, request));
     }
 
     @GetMapping("/{id}/available-rooms")
-    @PreAuthorize("hasAnyAuthority('PROPERTY_OWNER','HOTEL_MANAGER','RECEPTIONIST','HOTEL_ADMIN','SUPER_ADMIN','ADMIN')")
+    @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.VIEW)
     public ResponseEntity<List<RoomDTO>> availableRooms(@PathVariable Long id) {
         return ResponseEntity.ok(reservationService.getAvailableRooms(id));
     }
 
     @PostMapping("/{id}/assign-rooms")
-    @PreAuthorize("hasAnyAuthority('PROPERTY_OWNER','HOTEL_MANAGER','RECEPTIONIST','HOTEL_ADMIN','SUPER_ADMIN','ADMIN')")
+    @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.UPDATE)
     public ResponseEntity<ReservationDTO> assignRoomsPost(@PathVariable Long id, @RequestBody AssignRoomsRequest request) {
         return ResponseEntity.ok(reservationService.assignRooms(id, request));
     }
 
     @PostMapping("/{id}/check-in")
-    @PreAuthorize("hasAnyAuthority('PROPERTY_OWNER','HOTEL_MANAGER','RECEPTIONIST','HOTEL_ADMIN','SUPER_ADMIN','ADMIN')")
+    @Permission(function = FunctionCode.CHECKIN, action = ActionCode.UPDATE)
     public ResponseEntity<ReservationDTO> checkIn(@PathVariable Long id) {
-        return ResponseEntity.ok(reservationService.updateReservationStatus(id, "CHECKED_IN"));
+        return ResponseEntity.ok(reservationService.checkIn(id));
+    }
+
+    @PostMapping("/{id}/cancel-operational")
+    @Permission(function = FunctionCode.RESERVATION_CANCEL, action = ActionCode.UPDATE)
+    public ResponseEntity<ReservationDTO> cancelOperational(@PathVariable Long id) {
+        return ResponseEntity.ok(reservationService.cancelOperational(id));
+    }
+
+    @PostMapping("/{id}/no-show")
+    @Permission(function = FunctionCode.RESERVATION_NO_SHOW, action = ActionCode.UPDATE)
+    public ResponseEntity<ReservationDTO> markNoShow(@PathVariable Long id) {
+        return ResponseEntity.ok(reservationService.markNoShow(id));
     }
 
     @PostMapping("/{id}/check-out")
-    @PreAuthorize("hasAnyAuthority('PROPERTY_OWNER','HOTEL_MANAGER','RECEPTIONIST','HOTEL_ADMIN','SUPER_ADMIN','ADMIN')")
+    @Permission(function = FunctionCode.CHECKOUT, action = ActionCode.CREATE)
     public ResponseEntity<CheckoutResultDTO> checkOut(@PathVariable Long id,
             @RequestBody(required = false) CheckoutRequest request) {
         return ResponseEntity.ok(reservationService.checkout(id, request));
@@ -183,5 +201,16 @@ public class ReservationController {
     }
 
     private record CancellationPayload(Long reservationId) {
+    }
+
+    private void requireGenericStatusEndpoint(String status) {
+        if (status == null || status.isBlank()) {
+            throw new IllegalArgumentException("Reservation status is required.");
+        }
+        String normalized = status.trim().toUpperCase(Locale.ROOT);
+        if (DEDICATED_LIFECYCLE_STATUSES.contains(normalized)) {
+            throw new IllegalArgumentException(
+                    "Use the dedicated reservation lifecycle endpoint for status " + normalized + ".");
+        }
     }
 }
