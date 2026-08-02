@@ -19,6 +19,19 @@ public interface ReservationRoomRepository extends JpaRepository<ReservationRoom
             select assignment
             from ReservationRoom assignment
             join fetch assignment.room room
+            where assignment.reservationDetail.id = :reservationDetailId
+              and assignment.status = :status
+            order by assignment.id
+            """)
+    List<ReservationRoom> findByReservationDetailIdAndStatusForUpdate(
+            @Param("reservationDetailId") Long reservationDetailId,
+            @Param("status") String status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select assignment
+            from ReservationRoom assignment
+            join fetch assignment.room room
             join assignment.reservationDetail detail
             where detail.reservation.id = :reservationId
               and assignment.status = 'ASSIGNED'

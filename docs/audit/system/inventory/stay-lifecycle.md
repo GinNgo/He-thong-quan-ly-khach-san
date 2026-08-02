@@ -56,7 +56,7 @@ favorites and vouchers required by FR-043 and FR-044.
 | STAY-026 | Favorites/wishlist | No favorite action or saved-stays route | None | No favorite entity/API/service | Missing | Customer ownership missing | No source/test | `MISSING` | P1 | Add owner-bound idempotent favorite records, list/remove APIs, card/detail controls, empty/loading states and tenant/public eligibility tests. |
 | STAY-027 | Voucher/promotion application and redemption | Home has promotional/member cards and a static `PromotionsComponent` that can copy supplied codes | No quote/booking voucher client | No promotion catalog, eligibility, stacking, validation, reservation snapshot or redemption service | Missing | Missing | Display/copy source only; no financial effect | `PLACEHOLDER` | P1 | Implement approved promotion/membership/sponsored-placement policies, backend quote consistency, stacking/redemption limits and admin/customer lifecycle UI after product rules are approved. |
 | STAY-028 | End-to-end stay journey through the UI | Admin reservations/checkout plus customer invoices | Reservation, payment-attempt, checkout and invoice clients | All expected APIs can be represented by the browser fixture | Browser state only in this test | Mocked role/session | Playwright 1/1 passed with all `/api/**` calls intercepted | `PARTIAL` | P1 | Run the same journey against the real backend and deterministic SQL Server fixture, including assignment, negative permission, timeout, retry and rollback cases. |
-| STAY-029 | Stay lifecycle concurrency and executable database evidence | Not user-facing | Unit/component suites execute | Checkout has locks and unique effects, but assignment lacks locking and no real database stay transaction suite covers assignment through housekeeping | SQL Server behavior remains unexecuted for this slice | Test-only | Fresh service/UI suites passed; no live database concurrency run | `BROKEN` | P0 | Add SQL Server simultaneous assignment/check-in/checkout/replay tests and real persistence rollback boundaries before making a release claim. |
+| STAY-029 | Stay lifecycle concurrency and executable database evidence | Not user-facing | Unit/component suites execute | Assignment now locks the reservation, active assignment rows and candidate rooms in deterministic order; check-in locks assigned rows and rooms; checkout keeps locked replay-safe housekeeping effects | `reservation_rooms`, `rooms`, `housekeeping_tasks` with real SQL Server transaction boundaries | Test-only | Locking unit 3/3, H2 persistence rollback/replay 2/2 and isolated SQL Server assignment/check-in/checkout/replay/rollback 2/2 passed; evidence: `docs/testing/evidence/007/remediation/T192-stay-lifecycle-sqlserver.md` | `COMPLETE_VERIFIED` | P0 | Preserve the SQL Server harness and rerun it against each supported SQL Server upgrade; invoice-finalization failure coverage remains tracked by STAY-019. |
 
 ## Required Remediation Order
 
@@ -65,8 +65,8 @@ T149 must order stay-lifecycle remediation as follows:
 1. Disable the client-authoritative legacy payment and service mutations in STAY-015
    and STAY-012, then reconcile their data into the authoritative folio without
    duplicating money.
-2. Close the P0 assignment, permission and database-concurrency boundaries in
-   STAY-007, STAY-011, STAY-019 and STAY-029.
+2. Close the remaining P0 assignment, permission and checkout-aggregate boundaries in
+   STAY-007, STAY-011 and STAY-019; STAY-029 now has executable SQL Server evidence.
 3. Implement assignment UI and repair manual booking/check-in before expanding
    cancellation/no-show or housekeeping workflow UI.
 4. Add cancellation/change policies and immutable lifecycle audit, then complete
