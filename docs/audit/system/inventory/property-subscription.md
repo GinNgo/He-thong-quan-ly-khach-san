@@ -19,7 +19,7 @@ required by FR-043 and FR-044.
 | Command / evidence | Result | Evidence impact |
 |---|---|---|
 | Focused backend service suite for claim, catalog, legacy limits, platform purchase/application/renewal/upgrade/policy | 33/33 passed | Claim quota rollback, legacy limit aggregation and the isolated Platform Billing lifecycle are current. |
-| Focused backend controller suite including `PropertyClaimControllerIntegrationTest` and `SubscriptionControllerIntegrationTest` | 33 service tests passed, but both controller classes failed before their methods executed because multiple nested `@SpringBootConfiguration` classes were discovered | HTTP claim and legacy subscription endpoints are not currently verified. |
+| T185 claim/subscription HTTP and lifecycle suite | 13/13 controller assertions and 3/3 focused service assertions passed | Claim/subscription permission, malformed-payload rejection, principal ownership, DTO serialization, quota rollback and subscription usage lifecycle are executable. |
 | Focused Angular owner/admin billing suite | 8/8 passed | Partner overview table/permission/approve request, platform order UI, payment panel and policy blocker presentation are current. |
 | `docs/audit/financial/PLATFORM_BILLING_AUDIT.md` and T093-T110 evidence | Existing purchase, renewal, upgrade, callback, exactly-once application and browser evidence | The isolated Platform Billing flow can remain complete; this does not prove the legacy management entitlement bridge. |
 
@@ -51,7 +51,7 @@ required by FR-043 and FR-044.
 | PROP-SUB-022 | Subscription expiry and explicit revoke | UI can display dates/status but has no lifecycle action | No revoke call | Legacy scheduler scans all rows and is not tested; no platform contract/entitlement expiry or revoke service/endpoint was found | Legacy and platform status fields can remain stale | Missing/admin policy | No scheduler/revoke evidence | `MISSING` | P1 | Add clock-driven expiration and explicit audited revoke transitions for authoritative platform contract/entitlement/history; retain historical read/export access and test boundary times. |
 | PROP-SUB-023 | Subscription-refund entitlement effect | Platform refund UI/service exists | Platform refund client | Refund service blocks without an approved `PlatformRefundEntitlementPolicy` | Platform refund, contract, entitlement and history | Platform refund permissions | Existing refund tests prove safe policy blocking | `BLOCKED_EXTERNAL` | P1 | Approve full/partial refund entitlement policy, implement a versioned policy adapter and test exact contract/entitlement/history effects without touching Property Commerce. |
 | PROP-SUB-024 | Plan and feature administration/versioning | `/admin/plans` is read-only and falls back to a `mailto:` upgrade link | Legacy catalog read only | No admin plan/feature create/update/activate/version API found; seed initializers mutate catalog | `subscription_plans`, `subscription_features`, `plan_features` | Missing plan-admin mutation permission | No CRUD/version test | `MISSING` | P1 | Add governed versioned plan administration, prevent edits from changing existing order snapshots/contracts, validate limits/prices and audit activation/deactivation. |
-| PROP-SUB-025 | Claim/subscription HTTP test harness | Not user-facing | Angular focused suite executes | Both `@WebMvcTest` classes fail application discovery before test methods | Test H2/boot context | Test-only | Fresh run reproduced multiple `@SpringBootConfiguration` collision | `BROKEN` | P1 | Pin controller tests to `BackendApplication`, isolate nested test applications and execute permission, validation, serialization and lifecycle assertions. |
+| PROP-SUB-025 | Claim/subscription HTTP test harness | Not user-facing | Angular focused suite executes | Both MVC slices pin `BackendApplication`; the JPA tenant interceptor is isolated while real security filters and controller advice execute | MVC slice plus focused Mockito service lifecycle tests | Test-only | Fresh Maven runs passed 13/13 HTTP and 3/3 service assertions; evidence: `docs/testing/evidence/007/remediation/T185-claim-subscription-http.md` | `COMPLETE_VERIFIED` | P1 | Preserve the pinned context and tenant-interceptor isolation; claim privacy/state-machine gaps remain tracked by PROP-SUB-010 through PROP-SUB-013, while entitlement ownership remains PROP-SUB-019 through PROP-SUB-021. |
 
 ## Required Lifecycle Order
 
@@ -68,5 +68,5 @@ No production merchant, real payment, automatic downgrade/proration or refund-en
 may be enabled by these remediation tasks without the separate approvals already required by
 Feature 007.
 
-Inventory count: 2 `COMPLETE_VERIFIED`, 4 `PARTIAL`, 0 `PLACEHOLDER`, 12 `BROKEN`,
+Inventory count: 3 `COMPLETE_VERIFIED`, 4 `PARTIAL`, 0 `PLACEHOLDER`, 11 `BROKEN`,
 5 `MISSING`, 2 `BLOCKED_EXTERNAL`, 0 `NOT_APPLICABLE`.

@@ -30,12 +30,12 @@ The machine baseline includes 41 API controllers, 143 business services, 43 enti
 | Domain | Rows | Complete verified | Partial | Placeholder | Broken | Missing | Blocked external | Not applicable |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | Authentication and Account | 22 | 2 | 10 | 2 | 1 | 4 | 3 | 0 |
-| Property and Subscription | 25 | 2 | 4 | 0 | 12 | 5 | 2 | 0 |
+| Property and Subscription | 25 | 3 | 4 | 0 | 11 | 5 | 2 | 0 |
 | Property Operations | 31 | 1 | 10 | 2 | 13 | 5 | 0 | 0 |
 | Public Booking | 30 | 0 | 17 | 2 | 9 | 2 | 0 | 0 |
 | Stay Lifecycle | 29 | 1 | 13 | 1 | 8 | 6 | 0 | 0 |
 | Cross-Cutting | 42 | 5 | 20 | 0 | 8 | 7 | 2 | 0 |
-| **Total inventory rows** | **179** | **11** | **74** | **7** | **51** | **29** | **7** | **0** |
+| **Total inventory rows** | **179** | **12** | **74** | **7** | **50** | **29** | **7** | **0** |
 
 ## Explicit Evidence Aliases
 
@@ -96,7 +96,7 @@ Aliases retain separate source rows for traceability, but final unique-capabilit
 | PROP-SUB-022 | Property and Subscription | Subscription expiry and explicit revoke | UI can display dates/status but has no lifecycle action | No revoke call | Legacy scheduler scans all rows and is not tested; no platform contract/entitlement expiry or revoke service/endpoint was found | Legacy and platform status fields can remain stale | Missing/admin policy | No scheduler/revoke evidence | `MISSING` | P1 | Add clock-driven expiration and explicit audited revoke transitions for authoritative platform contract/entitlement/history; retain historical read/export access and test boundary times. | [property-subscription.md](inventory/property-subscription.md) |
 | PROP-SUB-023 | Property and Subscription | Subscription-refund entitlement effect | Platform refund UI/service exists | Platform refund client | Refund service blocks without an approved `PlatformRefundEntitlementPolicy` | Platform refund, contract, entitlement and history | Platform refund permissions | Existing refund tests prove safe policy blocking | `BLOCKED_EXTERNAL` | P1 | Approve full/partial refund entitlement policy, implement a versioned policy adapter and test exact contract/entitlement/history effects without touching Property Commerce. | [property-subscription.md](inventory/property-subscription.md) |
 | PROP-SUB-024 | Property and Subscription | Plan and feature administration/versioning | `/admin/plans` is read-only and falls back to a `mailto:` upgrade link | Legacy catalog read only | No admin plan/feature create/update/activate/version API found; seed initializers mutate catalog | `subscription_plans`, `subscription_features`, `plan_features` | Missing plan-admin mutation permission | No CRUD/version test | `MISSING` | P1 | Add governed versioned plan administration, prevent edits from changing existing order snapshots/contracts, validate limits/prices and audit activation/deactivation. | [property-subscription.md](inventory/property-subscription.md) |
-| PROP-SUB-025 | Property and Subscription | Claim/subscription HTTP test harness | Not user-facing | Angular focused suite executes | Both `@WebMvcTest` classes fail application discovery before test methods | Test H2/boot context | Test-only | Fresh run reproduced multiple `@SpringBootConfiguration` collision | `BROKEN` | P1 | Pin controller tests to `BackendApplication`, isolate nested test applications and execute permission, validation, serialization and lifecycle assertions. | [property-subscription.md](inventory/property-subscription.md) |
+| PROP-SUB-025 | Property and Subscription | Claim/subscription HTTP test harness | Not user-facing | Angular focused suite executes | Both MVC slices pin `BackendApplication`; the JPA tenant interceptor is isolated while real security filters and controller advice execute | MVC slice plus focused Mockito service lifecycle tests | Test-only | Fresh Maven runs passed 13/13 HTTP and 3/3 service assertions; evidence: `docs/testing/evidence/007/remediation/T185-claim-subscription-http.md` | `COMPLETE_VERIFIED` | P1 | Preserve the pinned context and tenant-interceptor isolation; claim privacy/state-machine gaps remain tracked by PROP-SUB-010 through PROP-SUB-013, while entitlement ownership remains PROP-SUB-019 through PROP-SUB-021. | [property-subscription.md](inventory/property-subscription.md) |
 | PROP-OPS-001 | Property Operations | Staff list and tenant-scoped read | `/admin/users`; `UserManagement` | `UserService.getUsers()` | `GET /api/users`; `UserService.getAllUsers()` uses accessible property ids for non-system users | `users`, `user_properties`, roles | `USER:VIEW` | Staff service scope test passed; HTTP test did not start | `PARTIAL` | P1 | Repair the HTTP harness, test multi-property and cross-property reads, return only staff fields required by the screen and stop loading property options from the public hotel search. | [property-operations.md](inventory/property-operations.md) |
 | PROP-OPS-002 | Property Operations | Staff creation and property assignment | Staff create dialog | `UserService.createUser()` | `POST /api/users`; validates accessible property, blocks privileged roles and checks `MAX_STAFF` | Creates `users`, roles and active `user_properties` staff mapping | `USER:CREATE` | Four staff creation/quota/scope unit cases passed | `PARTIAL` | P1 | Add validated DTOs, explicit password policy/invitation flow, allowed staff-role allowlist, duplicate normalization, transactional HTTP tests and remove the hard-coded fallback password. | [property-operations.md](inventory/property-operations.md) |
 | PROP-OPS-003 | Property Operations | Staff update, role change and property move | Staff edit dialog | `UserService.updateUser()` | `PUT /api/users/{id}`; blocks self/privileged/cross-property mutation and moves active staff mapping | Updates user and staff mappings | `USER:UPDATE` | Property-move unit case passed; no HTTP/concurrency test | `PARTIAL` | P1 | Validate state/roles/fields, lock concurrent moves, preserve assignment history, use property-scoped entitlement and add positive/IDOR/rollback tests. | [property-operations.md](inventory/property-operations.md) |
@@ -240,6 +240,7 @@ These are the only rows carried as `COMPLETE_VERIFIED`. Each has executable evid
 | AUTH-022 | Auth HTTP integration test harness | Full `BackendApplication` H2 integration suite passed 4/4 with deterministic fixtures | [auth-account.md](inventory/auth-account.md) |
 | PROP-SUB-016 | Authoritative platform plan catalog and order snapshot | Platform evidence plus fresh platform service/UI tests | [property-subscription.md](inventory/property-subscription.md) |
 | PROP-SUB-017 | Platform purchase, renewal and approved upgrade | Existing T093-T110 browser/evidence plus fresh platform tests passed | [property-subscription.md](inventory/property-subscription.md) |
+| PROP-SUB-025 | Claim/subscription HTTP test harness | Pinned MVC suites passed 13/13 and focused claim/catalog service lifecycle tests passed 3/3 | [property-subscription.md](inventory/property-subscription.md) |
 | PROP-OPS-022 | Checkout creates dirty room and one housekeeping task | Fresh `CheckoutOperationsServiceTest` 6/6 passed plus prior T080 evidence | [property-operations.md](inventory/property-operations.md) |
 | STAY-022 | Checkout creates one dirty-room housekeeping effect | Fresh `CheckoutOperationsServiceTest` 6/6 and intercepted Playwright dirty-room assertion passed | [stay-lifecycle.md](inventory/stay-lifecycle.md) |
 | CROSS-006 | Registration welcome-email template and safe failure | Email tests 2/2 and prior registration component evidence passed | [cross-cutting.md](inventory/cross-cutting.md) |
@@ -252,8 +253,8 @@ These are the only rows carried as `COMPLETE_VERIFIED`. Each has executable evid
 
 - Raw inventory rows: 179.
 - Explicit aliases: 2; unique capability groups: 177.
-- Raw `COMPLETE_VERIFIED` rows: 11; unique complete groups after aliasing: 9.
-- Remaining non-external incomplete rows: 161; T184 is complete and T185-T345 remain in the generated remediation backlog.
+- Raw `COMPLETE_VERIFIED` rows: 12; unique complete groups after aliasing: 10.
+- Remaining non-external incomplete rows: 160; T184-T185 are complete and T186-T345 remain in the generated remediation backlog.
 - External-blocker rows requiring safe adapter/configuration work: 7.
 - T148 traceability is maintained in `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md`.
 - Production payment, production SMTP/social credentials, real-money execution and destructive cleanup remain prohibited.
