@@ -69,6 +69,27 @@ class FinancialIdempotencyServiceTest {
                 .filter(result -> result instanceof FinancialIdempotencyService.Acquired).count());
     }
 
+    @Test
+    void reservationClaimCanResolvePropertyOwnershipInsideTheLockedMutation() {
+        FinancialIdempotencyRepository repository = mock(FinancialIdempotencyRepository.class);
+        ConcurrentHashMap<String, FinancialIdempotencyRecord> records = new ConcurrentHashMap<>();
+        stubStore(repository, records);
+        FinancialIdempotencyService service = new FinancialIdempotencyService(repository, new ObjectMapper());
+
+        FinancialIdempotencyService.BeginResult result = service.begin(
+                new FinancialIdempotencyService.BeginCommand(
+                        "PROPERTY_COMMERCE",
+                        "RESERVATION_CREATE",
+                        "customer@example.test",
+                        "booking-key",
+                        Map.of("roomTypeId", 7),
+                        null,
+                        null,
+                        "corr"));
+
+        assertInstanceOf(FinancialIdempotencyService.Acquired.class, result);
+    }
+
     private FinancialIdempotencyService.BeginResult claimAfter(CountDownLatch start, FinancialIdempotencyService service) {
         try {
             start.await(5, TimeUnit.SECONDS);

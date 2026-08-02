@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
@@ -51,8 +51,11 @@ export class ReservationService {
     return this.http.put<Reservation>(`${this.apiUrl}/${id}/status?status=${status}`, {});
   }
 
-  cancelMyReservation(id: number): Observable<Reservation> {
-    return this.http.post<Reservation>(`${this.apiUrl}/${id}/cancel`, {});
+  cancelMyReservation(id: number, idempotencyKey?: string): Observable<Reservation> {
+    const options = idempotencyKey
+      ? { headers: new HttpHeaders({ 'Idempotency-Key': idempotencyKey }) }
+      : {};
+    return this.http.post<Reservation>(`${this.apiUrl}/${id}/cancel`, {}, options);
   }
 
   addExtraService(id: number, serviceId: number, quantity: number): Observable<any> {

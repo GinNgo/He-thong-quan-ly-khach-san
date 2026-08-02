@@ -6,6 +6,7 @@ import { finalize } from 'rxjs';
 import { AuthService } from '@app/core/services/auth';
 import { ClientApiService, ReservationSummary, UserContext } from '@app/core/services/client-api.service';
 import { ReservationService } from '@app/core/services/reservation.service';
+import { AsyncActionCoordinatorService } from '@app/core/services/async-action-coordinator.service';
 import { UserService } from '@app/core/services/user';
 
 @Component({
@@ -18,6 +19,7 @@ export class ProfileComponent implements OnInit {
   private readonly clientApi = inject(ClientApiService);
   private readonly userService = inject(UserService);
   private readonly reservationService = inject(ReservationService);
+  private readonly actionCoordinator = inject(AsyncActionCoordinatorService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
@@ -102,7 +104,9 @@ export class ProfileComponent implements OnInit {
     this.cancellingId = id;
     this.bookingsError = '';
     this.success = '';
-    this.reservationService.cancelMyReservation(id).pipe(
+    const idempotencyKey = this.getCancellationKey(id);
+    this.actionCoordinator
+      .run(`reservation:cancel:${id}`, () => this.reservationService.cancelMyReservation(id, idempotencyKey)).pipe(
       finalize(() => {
         this.cancellingId = null;
         this.changeDetector.detectChanges();
@@ -113,12 +117,23 @@ export class ProfileComponent implements OnInit {
           booking.id === id ? { ...booking, status: updated.status || 'CANCELLED' } : booking
         );
         this.success = 'Đã hủy đặt phòng và xử lý hoàn tiền.';
+        sessionStorage.removeItem(`hotel:reservation-cancel:${id}`);
         this.loadProfile();
       },
       error: err => {
         this.bookingsError = err.error?.message || 'Không thể hủy đặt phòng. Vui lòng thử lại.';
       }
     });
+  }
+
+  private getCancellationKey(id: number): string {
+    const storageKey = `hotel:reservation-cancel:${id}`;
+    const current = sessionStorage.getItem(storageKey);
+    if (current) return current;
+    const generated = globalThis.crypto?.randomUUID?.()
+      ?? `cancel-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    sessionStorage.setItem(storageKey, generated);
+    return generated;
   }
 
   logout(): void { this.authService.logout(); this.router.navigate(['/']); }

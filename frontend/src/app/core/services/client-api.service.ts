@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, catchError, shareReplay, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
@@ -210,8 +210,11 @@ export class ClientApiService {
     return this.http.get<RoomType[]>(`${this.apiUrl}/room-types/public/hotel/${hotelId}`, { params });
   }
 
-  bookRoom(reservation: ReservationRequest): Observable<any> {
-    return this.http.post(`${this.apiUrl}/reservations/book`, reservation);
+  bookRoom(reservation: ReservationRequest, idempotencyKey?: string): Observable<any> {
+    const options = idempotencyKey
+      ? { headers: new HttpHeaders({ 'Idempotency-Key': idempotencyKey }) }
+      : {};
+    return this.http.post(`${this.apiUrl}/reservations/book`, reservation, options);
   }
 
   getMyBookings(): Observable<ReservationSummary[]> {

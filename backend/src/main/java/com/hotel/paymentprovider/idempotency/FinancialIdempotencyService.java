@@ -97,7 +97,9 @@ public class FinancialIdempotencyService {
                 || blank(command.scopeKey()) || blank(command.idempotencyKey())) {
             throw new IllegalArgumentException("Financial idempotency identity is required");
         }
-        if (command.context().equals("PROPERTY_COMMERCE") && command.hotelId() == null) {
+        if (command.context().equals("PROPERTY_COMMERCE")
+                && command.hotelId() == null
+                && !command.operation().startsWith("RESERVATION_")) {
             throw new FinancialException(FinancialErrorCode.TENANT_ACCESS_DENIED);
         }
     }

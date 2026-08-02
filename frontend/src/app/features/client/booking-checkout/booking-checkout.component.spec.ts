@@ -4,6 +4,7 @@ import { of, Subject } from 'rxjs';
 import { ClientApiService } from '../../../core/services/client-api.service';
 import { PropertyPaymentService } from '../../../core/services/property-payment.service';
 import { BookingCheckoutComponent } from './booking-checkout.component';
+import { AsyncActionCoordinatorService } from '../../../core/services/async-action-coordinator.service';
 
 describe('BookingCheckoutComponent', () => {
   let fixture: ComponentFixture<BookingCheckoutComponent>;
@@ -30,6 +31,7 @@ describe('BookingCheckoutComponent', () => {
       providers: [
         { provide: ClientApiService, useValue: clientApi },
         { provide: PropertyPaymentService, useValue: paymentApi },
+        { provide: AsyncActionCoordinatorService, useValue: new AsyncActionCoordinatorService() },
         { provide: Router, useValue: { navigate: vi.fn() } },
         {
           provide: ActivatedRoute,
@@ -95,6 +97,7 @@ describe('BookingCheckoutComponent', () => {
     component.submitBooking();
 
     expect(clientApi.bookRoom).toHaveBeenCalledTimes(1);
+    expect(clientApi.bookRoom.mock.calls[0][1]).toEqual(expect.any(String));
     expect(component.isSubmitting).toBe(true);
 
     reservation$.next({ id: 77 });

@@ -9,6 +9,7 @@ import {
   PropertyPaymentService,
 } from '../../../core/services/property-payment.service';
 import { PropertyPaymentPanelComponent } from './property-payment-panel.component';
+import { AsyncActionCoordinatorService } from '../../../core/services/async-action-coordinator.service';
 
 @Component({
   selector: 'app-booking-checkout',
@@ -23,6 +24,7 @@ export class BookingCheckoutComponent implements OnInit {
   private clientApi = inject(ClientApiService);
   private propertyPaymentService = inject(PropertyPaymentService);
   private changeDetector = inject(ChangeDetectorRef);
+  private actionCoordinator = inject(AsyncActionCoordinatorService);
 
   roomTypeId: number = 0;
   roomTypeName = '';
@@ -54,6 +56,7 @@ export class BookingCheckoutComponent implements OnInit {
   private paymentIdempotencyKey = '';
   private paymentRequestIdentity = '';
   private reservedPaymentMethod = '';
+  private bookingIdempotencyKey = '';
 
   ngOnInit(): void {
     this.route.paramMap.subscribe(params => {
@@ -105,9 +108,11 @@ export class BookingCheckoutComponent implements OnInit {
     }
 
     this.isSubmitting = true;
-    this.clientApi.bookRoom(this.bookingData).subscribe({
+    const bookingKey = this.getBookingIdempotencyKey();
+    this.actionCoordinator.run('booking:create', () => this.clientApi.bookRoom(this.bookingData, bookingKey)).subscribe({
       next: (res) => {
         this.reservationDetails = res;
+        this.clearBookingIdempotencyKey();
         this.reservedPaymentMethod = this.bookingData.paymentMethod;
         
         if (this.bookingData.paymentMethod !== 'PAY_AT_HOTEL') {
@@ -244,5 +249,35 @@ export class BookingCheckoutComponent implements OnInit {
     const cryptoApi = globalThis.crypto as Crypto | undefined;
     if (cryptoApi?.randomUUID) return cryptoApi.randomUUID();
     return `payment-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  private getBookingIdempotencyKey(): string {
+    if (this.bookingIdempotencyKey) return this.bookingIdempotencyKey;
+    const identity = [
+      this.roomTypeId,
+      this.bookingData.checkInDate,
+      this.bookingData.checkOutDate,
+      this.bookingData.quantity,
+      this.bookingData.adults,
+      this.bookingData.children,
+      this.bookingData.paymentMethod,
+    ].join(':');
+    const storageKey = `hotel:booking:idempotency:${identity}`;
+    this.bookingIdempotencyKey = sessionStorage.getItem(storageKey) || this.newRequestId();
+    sessionStorage.setItem(storageKey, this.bookingIdempotencyKey);
+    return this.bookingIdempotencyKey;
+  }
+
+  private clearBookingIdempotencyKey(): void {
+    const identity = [
+      this.roomTypeId,
+      this.bookingData.checkInDate,
+      this.bookingData.checkOutDate,
+      this.bookingData.quantity,
+      this.bookingData.adults,
+      this.bookingData.children,
+      this.bookingData.paymentMethod,
+    ].join(':');
+    sessionStorage.removeItem(`hotel:booking:idempotency:${identity}`);
   }
 }

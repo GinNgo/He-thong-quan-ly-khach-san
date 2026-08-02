@@ -1,6 +1,9 @@
 package com.hotel.controllers;
 
 import com.hotel.dtos.*;
+import com.hotel.exceptions.CorrelationIdSupport;
+import com.hotel.paymentprovider.idempotency.FinancialIdempotencyService;
+import com.hotel.paymentprovider.idempotency.MutationIdempotencyService;
 import com.hotel.security.ActionCode;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.Permission;
@@ -12,7 +15,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/reservations")
@@ -21,12 +27,15 @@ import java.util.List;
 public class ReservationController {
 
     private final ReservationService reservationService;
+    private final MutationIdempotencyService mutationIdempotencyService;
 
     @PostMapping
     @Permission(function = FunctionCode.RESERVATION, action = ActionCode.CREATE)
     public ResponseEntity<ReservationDTO> createReservation(Authentication authentication,
-                                                             @RequestBody ReservationRequest request) {
-        return new ResponseEntity<>(reservationService.createReservation(authentication.getName(), request), HttpStatus.CREATED);
+                                                             @RequestBody ReservationRequest request,
+                                                             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+                                                             HttpServletRequest httpRequest) {
+        return createIdempotentReservation(authentication.getName(), request, idempotencyKey, httpRequest);
     }
 
     @GetMapping
@@ -49,8 +58,19 @@ public class ReservationController {
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("hasAuthority('CUSTOMER')")
-    public ResponseEntity<ReservationDTO> cancelMyReservation(Authentication authentication, @PathVariable Long id) {
-        return ResponseEntity.ok(reservationService.cancelMyReservation(id, authentication.getName()));
+    public ResponseEntity<ReservationDTO> cancelMyReservation(
+            Authentication authentication,
+            @PathVariable Long id,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            HttpServletRequest httpRequest) {
+        String username = authentication.getName();
+        ReservationDTO response = mutationIdempotencyService.execute(
+                mutationCommand("RESERVATION_CANCEL", username + ":" + id, idempotencyKey,
+                        new CancellationPayload(id), httpRequest),
+                HttpStatus.OK.value(),
+                ReservationDTO.class,
+                () -> reservationService.cancelMyReservation(id, username));
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}/status")
@@ -91,15 +111,21 @@ public class ReservationController {
     }
 
     @PostMapping("/public/book")
-    public ResponseEntity<ReservationDTO> createPublicReservation(@RequestBody ReservationRequest request) {
-        return new ResponseEntity<>(reservationService.createReservation(null, request), HttpStatus.CREATED);
+    public ResponseEntity<ReservationDTO> createPublicReservation(
+            @RequestBody ReservationRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            HttpServletRequest httpRequest) {
+        String publicScope = "PUBLIC:" + httpRequest.getRemoteAddr();
+        return createIdempotentReservation(publicScope, request, idempotencyKey, httpRequest, null);
     }
 
     @PostMapping("/book")
     @PreAuthorize("hasAuthority('CUSTOMER')")
     public ResponseEntity<ReservationDTO> createCustomerReservation(Authentication authentication,
-                                                                    @RequestBody ReservationRequest request) {
-        return new ResponseEntity<>(reservationService.createReservation(authentication.getName(), request), HttpStatus.CREATED);
+                                                                    @RequestBody ReservationRequest request,
+                                                                    @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+                                                                    HttpServletRequest httpRequest) {
+        return createIdempotentReservation(authentication.getName(), request, idempotencyKey, httpRequest);
     }
 
     @PostMapping("/{id}/services")
@@ -107,5 +133,50 @@ public class ReservationController {
     public ResponseEntity<ReservationServiceItemDTO> addExtraService(
             @PathVariable Long id, @RequestBody AddServiceRequest request) {
         return ResponseEntity.ok(reservationService.addExtraService(id, request));
+    }
+
+    private ResponseEntity<ReservationDTO> createIdempotentReservation(
+            String username,
+            ReservationRequest request,
+            String idempotencyKey,
+            HttpServletRequest httpRequest) {
+        return createIdempotentReservation(username, request, idempotencyKey, httpRequest, username);
+    }
+
+    private ResponseEntity<ReservationDTO> createIdempotentReservation(
+            String scope,
+            ReservationRequest request,
+            String idempotencyKey,
+            HttpServletRequest httpRequest,
+            String serviceUsername) {
+        ReservationDTO response = mutationIdempotencyService.execute(
+                mutationCommand("RESERVATION_CREATE", scope, idempotencyKey, request, httpRequest),
+                HttpStatus.CREATED.value(),
+                ReservationDTO.class,
+                () -> reservationService.createReservation(serviceUsername, request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    private FinancialIdempotencyService.BeginCommand mutationCommand(
+            String operation,
+            String scope,
+            String idempotencyKey,
+            Object payload,
+            HttpServletRequest request) {
+        String normalizedKey = idempotencyKey == null || idempotencyKey.isBlank()
+                ? UUID.randomUUID().toString()
+                : idempotencyKey;
+        return new FinancialIdempotencyService.BeginCommand(
+                "PROPERTY_COMMERCE",
+                operation,
+                scope,
+                normalizedKey,
+                payload,
+                null,
+                null,
+                CorrelationIdSupport.resolve(request));
+    }
+
+    private record CancellationPayload(Long reservationId) {
     }
 }
