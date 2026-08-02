@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -48,6 +49,12 @@ public class ReservationService {
 
     @Transactional
     public ReservationDTO createReservation(String username, ReservationRequest request) {
+        return createReservation(username, request, null, null);
+    }
+
+    @Transactional
+    public ReservationDTO createReservation(String username, ReservationRequest request,
+                                            String idempotencyScope, String idempotencyKey) {
         validateReservationRequest(request);
 
         User user = username == null || username.isBlank()
@@ -56,8 +63,8 @@ public class ReservationService {
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng đặt phòng."));
 
         RoomType roomType = roomTypeRepository.findByIdForUpdate(request.getRoomTypeId())
-        publicInventoryEligibilityPolicy.requireSellableRoomTypeForBooking(roomType);
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy loại phòng."));
+        publicInventoryEligibilityPolicy.requireSellableRoomTypeForBooking(roomType);
         Hotel hotel = roomType.getHotel();
 
         int quantity = request.getQuantity() == null ? 1 : request.getQuantity();
@@ -96,6 +103,8 @@ public class ReservationService {
         reservation.setPaymentMethod(request.getPaymentMethod());
         reservation.setSpecialRequests(request.getSpecialRequests());
         reservation.setTotalAmount(totalAmount);
+        reservation.setBookingIdempotencyScope(idempotencyScope);
+        reservation.setBookingIdempotencyKey(idempotencyKey);
         reservation.captureDepositPolicy(depositPolicySnapshot);
         Reservation savedReservation = reservationRepository.save(reservation);
 
@@ -137,6 +146,15 @@ public class ReservationService {
         Reservation reservation = findReservation(id);
         authorizeReservationView(reservation);
         return mapToDTO(reservation);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ReservationDTO> findByBookingIdempotency(String scope, String key) {
+        if (scope == null || scope.isBlank() || key == null || key.isBlank()) {
+            return Optional.empty();
+        }
+        return reservationRepository.findByBookingIdempotencyScopeAndBookingIdempotencyKey(scope, key)
+                .map(this::mapToDTO);
     }
 
     @Transactional(readOnly = true)

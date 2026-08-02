@@ -112,7 +112,6 @@ export class BookingCheckoutComponent implements OnInit {
     this.actionCoordinator.run('booking:create', () => this.clientApi.bookRoom(this.bookingData, bookingKey)).subscribe({
       next: (res) => {
         this.reservationDetails = res;
-        this.clearBookingIdempotencyKey();
         this.reservedPaymentMethod = this.bookingData.paymentMethod;
         
         if (this.bookingData.paymentMethod !== 'PAY_AT_HOTEL') {
@@ -263,21 +262,24 @@ export class BookingCheckoutComponent implements OnInit {
       this.bookingData.paymentMethod,
     ].join(':');
     const storageKey = `hotel:booking:idempotency:${identity}`;
-    this.bookingIdempotencyKey = sessionStorage.getItem(storageKey) || this.newRequestId();
-    sessionStorage.setItem(storageKey, this.bookingIdempotencyKey);
-    return this.bookingIdempotencyKey;
-  }
+    const stored = localStorage.getItem(storageKey);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as { key?: string; expiresAt?: number };
+        if (parsed.key && Number(parsed.expiresAt) > Date.now()) {
+          this.bookingIdempotencyKey = parsed.key;
+          return this.bookingIdempotencyKey;
+        }
+      } catch {
+        // Replace legacy/plain entries with the bounded shared-tab format.
+      }
+    }
 
-  private clearBookingIdempotencyKey(): void {
-    const identity = [
-      this.roomTypeId,
-      this.bookingData.checkInDate,
-      this.bookingData.checkOutDate,
-      this.bookingData.quantity,
-      this.bookingData.adults,
-      this.bookingData.children,
-      this.bookingData.paymentMethod,
-    ].join(':');
-    sessionStorage.removeItem(`hotel:booking:idempotency:${identity}`);
+    this.bookingIdempotencyKey = this.newRequestId();
+    localStorage.setItem(storageKey, JSON.stringify({
+      key: this.bookingIdempotencyKey,
+      expiresAt: Date.now() + 30 * 60 * 1000,
+    }));
+    return this.bookingIdempotencyKey;
   }
 }

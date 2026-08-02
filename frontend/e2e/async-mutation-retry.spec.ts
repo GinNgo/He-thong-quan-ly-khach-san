@@ -64,4 +64,61 @@ test.describe('duplicate-safe booking mutation', () => {
     expect(requests[0]).toBeTruthy();
     expect(requests[1]).toBe(requests[0]);
   });
+
+  test('keeps the booking key across a reload after an unknown outcome', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('token', 'e2e-customer-token');
+      localStorage.setItem('user', JSON.stringify({
+        username: 'customer.demo@example.com',
+        fullName: 'Customer Demo',
+        roles: ['CUSTOMER'],
+      }));
+    });
+    await page.route('**/api/users/me', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 91,
+        username: 'customer.demo@example.com',
+        email: 'customer.demo@example.com',
+        fullName: 'Customer Demo',
+        roles: [{ code: 'CUSTOMER' }],
+      }),
+    }));
+
+    const requests: string[] = [];
+    let firstAttempt = true;
+    await page.route('**/api/reservations/book', async route => {
+      const key = route.request().headers()['idempotency-key'] || '';
+      requests.push(key);
+      if (firstAttempt) {
+        firstAttempt = false;
+        await route.abort('timedout');
+        return;
+      }
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: 88, status: 'PENDING_PAYMENT' }),
+      });
+    });
+
+    await page.goto(bookingUrl);
+    await page.locator('#booking-last-name').fill('Nguyen');
+    await page.locator('#booking-first-name').fill('An');
+    await page.locator('#booking-phone').fill('0900000000');
+    await page.locator('form button[type="submit"]').click();
+    await expect(page.locator('[role="alert"]').first()).toBeVisible();
+
+    await page.reload();
+    await page.locator('#booking-last-name').fill('Nguyen');
+    await page.locator('#booking-first-name').fill('An');
+    await page.locator('#booking-phone').fill('0900000000');
+    await page.locator('form button[type="submit"]').click();
+
+    await expect(page.locator('text=#88')).toBeVisible();
+    expect(requests).toHaveLength(2);
+    expect(requests[0]).toBeTruthy();
+    expect(requests[1]).toBe(requests[0]);
+  });
 });

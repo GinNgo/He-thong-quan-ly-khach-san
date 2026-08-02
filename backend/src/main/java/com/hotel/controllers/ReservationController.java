@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/reservations")
@@ -149,11 +148,16 @@ public class ReservationController {
             String idempotencyKey,
             HttpServletRequest httpRequest,
             String serviceUsername) {
+        FinancialIdempotencyService.BeginCommand command =
+                mutationCommand("RESERVATION_CREATE", scope, idempotencyKey, request, httpRequest);
         ReservationDTO response = mutationIdempotencyService.execute(
-                mutationCommand("RESERVATION_CREATE", scope, idempotencyKey, request, httpRequest),
+                command,
                 HttpStatus.CREATED.value(),
                 ReservationDTO.class,
-                () -> reservationService.createReservation(serviceUsername, request));
+                () -> reservationService.createReservation(
+                        serviceUsername, request, command.scopeKey(), command.idempotencyKey()),
+                () -> reservationService.findByBookingIdempotency(
+                        command.scopeKey(), command.idempotencyKey()).orElse(null));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -161,11 +165,12 @@ public class ReservationController {
             String operation,
             String scope,
             String idempotencyKey,
-            Object payload,
+        Object payload,
             HttpServletRequest request) {
-        String normalizedKey = idempotencyKey == null || idempotencyKey.isBlank()
-                ? UUID.randomUUID().toString()
-                : idempotencyKey;
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("Idempotency-Key is required for reservation mutations.");
+        }
+        String normalizedKey = idempotencyKey.trim();
         return new FinancialIdempotencyService.BeginCommand(
                 "PROPERTY_COMMERCE",
                 operation,

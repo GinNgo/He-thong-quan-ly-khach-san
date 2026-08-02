@@ -8,9 +8,12 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.hotel.paymentprovider.error.FinancialErrorCode;
 import com.hotel.paymentprovider.error.FinancialException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -29,17 +32,42 @@ public class FinancialIdempotencyService {
 
     private final FinancialIdempotencyRepository repository;
     private final ObjectMapper objectMapper;
+    private final TransactionTemplate requiresNew;
 
-    public FinancialIdempotencyService(FinancialIdempotencyRepository repository, ObjectMapper objectMapper) {
+    @Autowired
+    public FinancialIdempotencyService(FinancialIdempotencyRepository repository, ObjectMapper objectMapper,
+                                       PlatformTransactionManager transactionManager) {
         this.repository = repository;
         this.objectMapper = objectMapper;
+        this.requiresNew = new TransactionTemplate(transactionManager);
+        this.requiresNew.setPropagationBehavior(TransactionTemplate.PROPAGATION_REQUIRES_NEW);
     }
 
-    @Transactional
+    FinancialIdempotencyService(FinancialIdempotencyRepository repository, ObjectMapper objectMapper) {
+        this.repository = repository;
+        this.objectMapper = objectMapper;
+        this.requiresNew = null;
+    }
+
     public BeginResult begin(BeginCommand command) {
         validate(command);
         String key = normalize(command.idempotencyKey());
         String hash = hash(command.payload());
+        if (requiresNew == null) {
+            try {
+                return claim(command, key, hash);
+            } catch (DataIntegrityViolationException race) {
+                return winner(command, key, hash);
+            }
+        }
+        try {
+            return requiresNew.execute(status -> claim(command, key, hash));
+        } catch (DataIntegrityViolationException race) {
+            return requiresNew.execute(status -> winner(command, key, hash));
+        }
+    }
+
+    private BeginResult claim(BeginCommand command, String key, String hash) {
         var existing = repository.findByContextAndOperationAndScopeKeyAndIdempotencyKey(
                 command.context(), command.operation(), command.scopeKey(), key);
         if (existing.isPresent()) {
@@ -50,14 +78,14 @@ public class FinancialIdempotencyService {
                 command.context(), command.operation(), command.scopeKey(), key, hash,
                 command.hotelId(), command.ownerUserId(), correlation(command.correlationId()),
                 LocalDateTime.now(ZoneOffset.UTC));
-        try {
-            return new Acquired(repository.saveAndFlush(candidate));
-        } catch (DataIntegrityViolationException race) {
-            var winner = repository.findByContextAndOperationAndScopeKeyAndIdempotencyKey(
-                    command.context(), command.operation(), command.scopeKey(), key)
-                    .orElseThrow(() -> new FinancialException(FinancialErrorCode.CONCURRENT_MODIFICATION));
-            return existingResult(winner, hash);
-        }
+        return new Acquired(repository.saveAndFlush(candidate));
+    }
+
+    private BeginResult winner(BeginCommand command, String key, String hash) {
+        FinancialIdempotencyRecord winner = repository.findByContextAndOperationAndScopeKeyAndIdempotencyKey(
+                        command.context(), command.operation(), command.scopeKey(), key)
+                .orElseThrow(() -> new FinancialException(FinancialErrorCode.CONCURRENT_MODIFICATION));
+        return existingResult(winner, hash);
     }
 
     @Transactional

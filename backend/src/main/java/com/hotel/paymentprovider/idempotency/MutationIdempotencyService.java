@@ -46,11 +46,29 @@ public class MutationIdempotencyService {
             int responseStatus,
             Class<T> responseType,
             Supplier<T> mutation) {
+        return execute(command, responseStatus, responseType, mutation, () -> null);
+    }
+
+    /**
+     * Executes a mutation and optionally recovers a business result that was
+     * committed before the client lost the original response.
+     */
+    public <T> T execute(
+            FinancialIdempotencyService.BeginCommand command,
+            int responseStatus,
+            Class<T> responseType,
+            Supplier<T> mutation,
+            Supplier<T> recovery) {
         FinancialIdempotencyService.BeginResult begin = begin(command);
         if (begin instanceof FinancialIdempotencyService.Replay replay) {
             return deserialize(replay.responseBody(), responseType);
         }
         if (begin instanceof FinancialIdempotencyService.InProgress) {
+            T recovered = recovery.get();
+            if (recovered != null) {
+                complete(begin.recordId(), responseStatus, serialize(recovered));
+                return recovered;
+            }
             throw new FinancialException(
                     FinancialErrorCode.CONCURRENT_MODIFICATION,
                     "An equivalent request is still being processed. Retry with the same key after it completes.");

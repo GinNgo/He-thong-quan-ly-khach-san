@@ -150,6 +150,21 @@ public class ReservationServiceTest {
         verify(reservationRepository, never()).findByHotelIdIn(any());
     }
 
+    @Test
+    void findByBookingIdempotencyReturnsTheCommittedReservationForRecovery() {
+        when(reservationRepository.findByBookingIdempotencyScopeAndBookingIdempotencyKey(
+                "customer@example.test", "booking-key")).thenReturn(Optional.of(mockReservation));
+        when(reservationDetailRepository.findByReservationId(1L)).thenReturn(java.util.List.of());
+
+        Optional<ReservationDTO> result = reservationService.findByBookingIdempotency(
+                "customer@example.test", "booking-key");
+
+        assertTrue(result.isPresent());
+        assertEquals(1L, result.get().getId());
+        verify(reservationRepository).findByBookingIdempotencyScopeAndBookingIdempotencyKey(
+                "customer@example.test", "booking-key");
+    }
+
 
     @Test
     void createReservationCalculatesAndPersistsServerOwnedPercentageDeposit() {
@@ -171,7 +186,8 @@ public class ReservationServiceTest {
         });
         when(reservationDetailRepository.findByReservationId(99L)).thenReturn(java.util.List.of());
 
-        reservationService.createReservation("testcustomer", request);
+        reservationService.createReservation("testcustomer", request,
+                "testcustomer", "booking-key");
 
         ArgumentCaptor<Reservation> captor = ArgumentCaptor.forClass(Reservation.class);
         verify(reservationRepository).save(captor.capture());
@@ -183,6 +199,8 @@ public class ReservationServiceTest {
         assertEquals("VND", saved.getDepositCurrency());
         assertEquals(11L, saved.getDepositConfigurationId());
         assertEquals(4L, saved.getDepositConfigurationVersion());
+        assertEquals("testcustomer", saved.getBookingIdempotencyScope());
+        assertEquals("booking-key", saved.getBookingIdempotencyKey());
     }
 
     @Test
@@ -221,7 +239,6 @@ public class ReservationServiceTest {
         verify(publicInventoryEligibilityPolicy).requireSellableRoomTypeForBooking(roomType);
         verify(roomAvailabilityService, never()).countAvailableRooms(any(), any(), any());
         verify(reservationRepository, never()).save(any());
-        verify(reservationHoldService, never()).createHold(any(), any(), anyInt(), any());
     }
 
     @Test

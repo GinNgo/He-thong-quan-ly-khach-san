@@ -18,6 +18,7 @@ describe('BookingCheckoutComponent', () => {
   };
 
   beforeEach(async () => {
+    localStorage.clear();
     reservation$ = new Subject<any>();
     queryParams$ = new Subject<Record<string, string>>();
     clientApi = { bookRoom: vi.fn(() => reservation$) };
@@ -105,6 +106,24 @@ describe('BookingCheckoutComponent', () => {
     expect(component.bookingSuccess).toBe(true);
   });
 
+  it('shares one booking identity with a second tab after an unknown outcome', () => {
+    setValidBooking('PAY_AT_HOTEL');
+    component.submitBooking();
+    const firstKey = clientApi.bookRoom.mock.calls[0][1];
+    reservation$.error({ status: 0 });
+    reservation$ = new Subject<any>();
+
+    const secondFixture = TestBed.createComponent(BookingCheckoutComponent);
+    const secondComponent = secondFixture.componentInstance;
+    secondFixture.detectChanges();
+    setValidBooking('PAY_AT_HOTEL', secondComponent);
+    secondComponent.submitBooking();
+
+    expect(clientApi.bookRoom).toHaveBeenCalledTimes(2);
+    expect(clientApi.bookRoom.mock.calls[1][1]).toBe(firstKey);
+    secondFixture.destroy();
+  });
+
   it('creates a server-owned deposit attempt after the reservation succeeds', () => {
     const paymentAttempt$ = new Subject<any>();
     paymentApi.createAttempt.mockReturnValue(paymentAttempt$);
@@ -166,13 +185,16 @@ describe('BookingCheckoutComponent', () => {
     expect(component.paymentAttempt?.attemptId).toBe('attempt-2');
   });
 
-  function setValidBooking(paymentMethod: string): void {
-    component.roomTypeId = 1;
-    component.hotelId = 10;
-    component.roomTypeName = 'Deluxe';
-    component.nightlyPrice = 500000;
-    component.contextError = '';
-    component.bookingData = {
+  function setValidBooking(
+    paymentMethod: string,
+    target: BookingCheckoutComponent = component,
+  ): void {
+    target.roomTypeId = 1;
+    target.hotelId = 10;
+    target.roomTypeName = 'Deluxe';
+    target.nightlyPrice = 500000;
+    target.contextError = '';
+    target.bookingData = {
       roomTypeId: 1,
       checkInDate: '2026-08-10',
       checkOutDate: '2026-08-12',

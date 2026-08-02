@@ -74,6 +74,16 @@ public class Reservation extends AuditableEntity {
     @Column(name = "deposit_currency", length = 3)
     private String depositCurrency;
 
+    /**
+     * Booking-level identity lets a retry recover a reservation if the
+     * response was lost after the business transaction committed.
+     */
+    @Column(name = "booking_idempotency_scope", length = 160)
+    private String bookingIdempotencyScope;
+
+    @Column(name = "booking_idempotency_key", length = 160)
+    private String bookingIdempotencyKey;
+
 
 
     // Getters and Setters omitted for brevity
@@ -206,4 +216,14 @@ public class Reservation extends AuditableEntity {
     public BigDecimal getDepositBookingTotal() { return depositBookingTotal; }
     public BigDecimal getDepositRequired() { return depositRequired; }
     public String getDepositCurrency() { return depositCurrency; }
+
+    public String getBookingIdempotencyScope() { return bookingIdempotencyScope; }
+    public void setBookingIdempotencyScope(String bookingIdempotencyScope) {
+        this.bookingIdempotencyScope = bookingIdempotencyScope;
+    }
+
+    public String getBookingIdempotencyKey() { return bookingIdempotencyKey; }
+    public void setBookingIdempotencyKey(String bookingIdempotencyKey) {
+        this.bookingIdempotencyKey = bookingIdempotencyKey;
+    }
 }

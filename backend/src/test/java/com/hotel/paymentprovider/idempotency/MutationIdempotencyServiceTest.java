@@ -69,6 +69,19 @@ class MutationIdempotencyServiceTest {
     }
 
     @Test
+    void inProgressRequestRecoversACommittedBusinessResultWithoutRunningMutationAgain() {
+        when(delegate.begin(any())).thenReturn(new FinancialIdempotencyService.InProgress(17L, "corr-original"));
+        SampleResponse recovered = new SampleResponse(77, "created");
+
+        SampleResponse response = service.execute(command(), 201, SampleResponse.class,
+                () -> new SampleResponse(99, "duplicate"),
+                () -> recovered);
+
+        assertEquals(recovered, response);
+        verify(delegate).complete(17L, 201, "{\"id\":77,\"status\":\"created\"}");
+    }
+
+    @Test
     void failedClaimCanRetryWithTheSameIdentity() {
         when(delegate.begin(any())).thenReturn(new FinancialIdempotencyService.RetryableFailure(17L));
 

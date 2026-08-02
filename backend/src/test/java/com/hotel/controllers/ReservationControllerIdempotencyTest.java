@@ -20,9 +20,12 @@ import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -38,7 +41,9 @@ class ReservationControllerIdempotencyTest {
     @BeforeEach
     void setUp() {
         controller = new ReservationController(reservationService, mutationIdempotencyService);
-        when(mutationIdempotencyService.execute(any(), anyInt(), eq(ReservationDTO.class), any()))
+        lenient().when(mutationIdempotencyService.execute(any(), anyInt(), eq(ReservationDTO.class), any()))
+                .thenAnswer(invocation -> mutation(invocation.getArgument(3)));
+        lenient().when(mutationIdempotencyService.execute(any(), anyInt(), eq(ReservationDTO.class), any(), any()))
                 .thenAnswer(invocation -> mutation(invocation.getArgument(3)));
     }
 
@@ -48,19 +53,31 @@ class ReservationControllerIdempotencyTest {
         ReservationDTO created = new ReservationDTO();
         created.setId(77L);
         when(authentication.getName()).thenReturn("customer@example.test");
-        when(reservationService.createReservation("customer@example.test", request)).thenReturn(created);
+        when(reservationService.createReservation(
+                "customer@example.test", request, "customer@example.test", "booking-key"))
+                .thenReturn(created);
 
         var response = controller.createCustomerReservation(
                 authentication, request, "booking-key", servletRequest("corr-1"));
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals(77L, response.getBody().getId());
-        FinancialIdempotencyService.BeginCommand command = capturedCommand();
+        FinancialIdempotencyService.BeginCommand command = capturedCreateCommand();
         assertEquals("RESERVATION_CREATE", command.operation());
         assertEquals("customer@example.test", command.scopeKey());
         assertEquals("booking-key", command.idempotencyKey());
         assertEquals("corr-1", command.correlationId());
         assertNull(command.hotelId());
+    }
+
+    @Test
+    void bookingRejectsMissingIdempotencyKeyInsteadOfGeneratingAnUnreplayableIdentity() {
+        when(authentication.getName()).thenReturn("customer@example.test");
+
+        assertThrows(IllegalArgumentException.class, () -> controller.createCustomerReservation(
+                authentication, bookingRequest(), "  ", servletRequest("corr-3")));
+
+        verify(mutationIdempotencyService, never()).execute(any(), anyInt(), eq(ReservationDTO.class), any(), any());
     }
 
     @Test
@@ -85,6 +102,13 @@ class ReservationControllerIdempotencyTest {
         ArgumentCaptor<FinancialIdempotencyService.BeginCommand> captor =
                 ArgumentCaptor.forClass(FinancialIdempotencyService.BeginCommand.class);
         verify(mutationIdempotencyService).execute(captor.capture(), anyInt(), eq(ReservationDTO.class), any());
+        return captor.getValue();
+    }
+
+    private FinancialIdempotencyService.BeginCommand capturedCreateCommand() {
+        ArgumentCaptor<FinancialIdempotencyService.BeginCommand> captor =
+                ArgumentCaptor.forClass(FinancialIdempotencyService.BeginCommand.class);
+        verify(mutationIdempotencyService).execute(captor.capture(), anyInt(), eq(ReservationDTO.class), any(), any());
         return captor.getValue();
     }
 
