@@ -1,5 +1,6 @@
 package com.hotel.services;
 
+import com.hotel.dtos.PropertyClaimResponseDTO;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.PropertyClaimRequest;
 import com.hotel.entities.User;
@@ -8,6 +9,8 @@ import com.hotel.repositories.PropertyClaimRequestRepository;
 import com.hotel.repositories.UserPropertyRepository;
 import com.hotel.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +28,7 @@ public class PropertyClaimService {
     private final PropertyOwnershipLifecycleService ownershipLifecycleService;
 
     @Transactional
-    public PropertyClaimRequest requestClaim(Long propertyId, Long userId, String verificationMethod, String verificationData, String note) {
+    public PropertyClaimResponseDTO requestClaim(Long propertyId, Long userId, String verificationMethod, String verificationData, String note) {
         Hotel property = hotelRepository.findById(propertyId)
                 .orElseThrow(() -> new IllegalArgumentException("Property not found"));
         
@@ -51,11 +54,11 @@ public class PropertyClaimService {
 
         PropertyClaimRequest saved = claimRepository.save(claim);
         ownershipLifecycleService.createPendingOwner(user, property);
-        return saved;
+        return toResponse(saved);
     }
 
     @Transactional
-    public PropertyClaimRequest approveClaim(Long claimId, Long adminUserId) {
+    public PropertyClaimResponseDTO approveClaim(Long claimId, Long adminUserId) {
         PropertyClaimRequest claim = claimRepository.findById(claimId)
                 .orElseThrow(() -> new IllegalArgumentException("Claim request not found"));
         
@@ -85,11 +88,11 @@ public class PropertyClaimService {
         property.setOperationStatus("ACTIVE");
         hotelRepository.save(property);
 
-        return claim;
+        return toResponse(claim);
     }
 
     @Transactional
-    public PropertyClaimRequest rejectClaim(Long claimId, Long adminUserId, String reason) {
+    public PropertyClaimResponseDTO rejectClaim(Long claimId, Long adminUserId, String reason) {
         PropertyClaimRequest claim = claimRepository.findById(claimId)
                 .orElseThrow(() -> new IllegalArgumentException("Claim request not found"));
         
@@ -109,11 +112,11 @@ public class PropertyClaimService {
         claim.setRejectionReason(reason);
         ownershipLifecycleService.deactivatePendingOwner(
                 claim.getProperty().getId(), claim.getRequesterUser().getId());
-        return claimRepository.save(claim);
+        return toResponse(claimRepository.save(claim));
     }
 
     @Transactional
-    public PropertyClaimRequest cancelClaim(Long claimId, Long requesterUserId) {
+    public PropertyClaimResponseDTO cancelClaim(Long claimId, Long requesterUserId) {
         PropertyClaimRequest claim = claimRepository.findById(claimId)
                 .orElseThrow(() -> new IllegalArgumentException("Claim request not found"));
         if (!claim.getRequesterUser().getId().equals(requesterUserId)) {
@@ -125,6 +128,40 @@ public class PropertyClaimService {
         claim.setStatus("CANCELLED");
         ownershipLifecycleService.deactivatePendingOwner(
                 claim.getProperty().getId(), requesterUserId);
-        return claimRepository.save(claim);
+        return toResponse(claimRepository.save(claim));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<PropertyClaimResponseDTO> listClaims(String status, Pageable pageable) {
+        Page<PropertyClaimRequest> claims = status == null || status.isBlank()
+                ? claimRepository.findAll(pageable)
+                : claimRepository.findByStatus(status, pageable);
+        return claims.map(this::toResponse);
+    }
+
+    private PropertyClaimResponseDTO toResponse(PropertyClaimRequest claim) {
+        Hotel property = claim.getProperty();
+        User requester = claim.getRequesterUser();
+        User reviewer = claim.getReviewedBy();
+        return new PropertyClaimResponseDTO(
+                claim.getId(),
+                property == null ? null : new PropertyClaimResponseDTO.PropertySummary(
+                        property.getId(), property.getCode(), property.getName(),
+                        property.getApprovalStatus(), property.getOperationStatus()),
+                userSummary(requester),
+                claim.getVerificationMethod(),
+                claim.getVerificationData(),
+                claim.getNote(),
+                claim.getStatus(),
+                userSummary(reviewer),
+                claim.getReviewedAt(),
+                claim.getRejectionReason(),
+                claim.getCreatedAt());
+    }
+
+    private PropertyClaimResponseDTO.UserSummary userSummary(User user) {
+        if (user == null) return null;
+        return new PropertyClaimResponseDTO.UserSummary(
+                user.getId(), user.getUsername(), user.getEmail(), user.getFullName());
     }
 }

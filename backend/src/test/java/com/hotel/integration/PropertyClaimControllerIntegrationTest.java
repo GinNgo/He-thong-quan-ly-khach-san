@@ -3,8 +3,7 @@ package com.hotel.integration;
 import com.hotel.BackendApplication;
 import com.hotel.config.SecurityConfig;
 import com.hotel.controllers.PropertyClaimController;
-import com.hotel.entities.PropertyClaimRequest;
-import com.hotel.repositories.PropertyClaimRequestRepository;
+import com.hotel.dtos.PropertyClaimResponseDTO;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.JwtAccessDeniedHandler;
@@ -58,9 +57,6 @@ class PropertyClaimControllerIntegrationTest {
     private PropertyClaimService claimService;
 
     @MockBean
-    private PropertyClaimRequestRepository claimRepository;
-
-    @MockBean
     private UserDetailsService userDetailsService;
 
     @MockBean
@@ -84,8 +80,7 @@ class PropertyClaimControllerIntegrationTest {
 
     @Test
     void claimRequestUsesAuthenticatedUserIdInsteadOfPayloadIdentity() throws Exception {
-        PropertyClaimRequest claim = claim(81L, "PENDING");
-        claim.setVerificationMethod("EMAIL");
+        PropertyClaimResponseDTO claim = claim(81L, "PENDING", "EMAIL", null);
         when(claimService.requestClaim(
                 17L,
                 42L,
@@ -108,7 +103,10 @@ class PropertyClaimControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(81L))
                 .andExpect(jsonPath("$.status").value("PENDING"))
-                .andExpect(jsonPath("$.verificationMethod").value("EMAIL"));
+                .andExpect(jsonPath("$.verificationMethod").value("EMAIL"))
+                .andExpect(jsonPath("$.requesterUser.passwordHash").doesNotExist())
+                .andExpect(jsonPath("$.requesterUser.roles").doesNotExist())
+                .andExpect(jsonPath("$.property.userProperties").doesNotExist());
 
         verify(claimService).requestClaim(
                 17L,
@@ -131,7 +129,7 @@ class PropertyClaimControllerIntegrationTest {
 
     @Test
     void approverAuthorityPassesAuthenticatedAdminId() throws Exception {
-        when(claimService.approveClaim(8L, 71L)).thenReturn(claim(8L, "APPROVED"));
+        when(claimService.approveClaim(8L, 71L)).thenReturn(claim(8L, "APPROVED", null, null));
 
         mockMvc.perform(post("/api/admin/property-claims/{id}/approve", 8L)
                         .with(user(principal(71L, "PROPERTY_CLAIM_APPROVE"))))
@@ -144,8 +142,8 @@ class PropertyClaimControllerIntegrationTest {
 
     @Test
     void approverAuthorityPassesAuthenticatedAdminIdAndRejectReason() throws Exception {
-        PropertyClaimRequest rejected = claim(9L, "REJECTED");
-        rejected.setRejectionReason("Ownership evidence is incomplete");
+        PropertyClaimResponseDTO rejected = claim(
+                9L, "REJECTED", null, "Ownership evidence is incomplete");
         when(claimService.rejectClaim(9L, 72L, "Ownership evidence is incomplete"))
                 .thenReturn(rejected);
 
@@ -165,7 +163,7 @@ class PropertyClaimControllerIntegrationTest {
 
     @Test
     void requesterCanCancelOwnPendingClaim() throws Exception {
-        when(claimService.cancelClaim(12L, 42L)).thenReturn(claim(12L, "CANCELLED"));
+        when(claimService.cancelClaim(12L, 42L)).thenReturn(claim(12L, "CANCELLED", null, null));
 
         mockMvc.perform(post("/api/property-claims/{id}/cancel", 12L)
                         .with(user(principal(42L, "USER"))))
@@ -192,7 +190,7 @@ class PropertyClaimControllerIntegrationTest {
 
     @Test
     void superAdminAuthorityCanViewClaims() throws Exception {
-        when(claimRepository.findAll(any(org.springframework.data.domain.Pageable.class)))
+        when(claimService.listClaims(any(), any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(Page.empty());
 
         mockMvc.perform(get("/api/admin/property-claims")
@@ -200,11 +198,19 @@ class PropertyClaimControllerIntegrationTest {
                 .andExpect(status().isOk());
     }
 
-    private PropertyClaimRequest claim(Long id, String status) {
-        PropertyClaimRequest claim = new PropertyClaimRequest();
-        claim.setId(id);
-        claim.setStatus(status);
-        return claim;
+    private PropertyClaimResponseDTO claim(Long id, String status, String verificationMethod, String rejectionReason) {
+        return new PropertyClaimResponseDTO(
+                id,
+                new PropertyClaimResponseDTO.PropertySummary(17L, "HOTEL-17", "Safe Hotel", "PENDING_APPROVAL", "INACTIVE"),
+                new PropertyClaimResponseDTO.UserSummary(42L, "claim-user-42", "owner@example.com", "Claim User"),
+                verificationMethod,
+                verificationMethod == null ? null : "owner@example.com",
+                null,
+                status,
+                null,
+                null,
+                rejectionReason,
+                null);
     }
 
     private CustomUserDetails principal(Long userId, String... authorities) {

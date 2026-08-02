@@ -3,6 +3,7 @@ package com.hotel.services;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.PropertyClaimRequest;
 import com.hotel.entities.User;
+import com.hotel.dtos.PropertyClaimResponseDTO;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.PropertyClaimRequestRepository;
 import com.hotel.repositories.UserPropertyRepository;
@@ -70,10 +71,10 @@ class PropertyClaimServiceTest {
         when(userRepository.findById(7L)).thenReturn(Optional.of(requester));
         when(claimRepository.save(any(PropertyClaimRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        PropertyClaimRequest result = claimService.requestClaim(
+        PropertyClaimResponseDTO result = claimService.requestClaim(
                 10L, 7L, "EMAIL", "owner@example.com", "Verify ownership");
 
-        assertEquals("PENDING", result.getStatus());
+        assertEquals("PENDING", result.status());
         verify(ownershipLifecycleService).createPendingOwner(requester, property);
         verify(ownershipLifecycleService, never()).activateOwner(any(), any());
     }
@@ -105,9 +106,9 @@ class PropertyClaimServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
         when(claimRepository.save(claim)).thenReturn(claim);
 
-        PropertyClaimRequest result = claimService.rejectClaim(20L, 1L, "Insufficient evidence");
+        PropertyClaimResponseDTO result = claimService.rejectClaim(20L, 1L, "Insufficient evidence");
 
-        assertEquals("REJECTED", result.getStatus());
+        assertEquals("REJECTED", result.status());
         verify(ownershipLifecycleService).deactivatePendingOwner(10L, 7L);
     }
 
@@ -119,9 +120,9 @@ class PropertyClaimServiceTest {
         when(claimRepository.findById(20L)).thenReturn(Optional.of(claim));
         when(claimRepository.save(claim)).thenReturn(claim);
 
-        PropertyClaimRequest result = claimService.cancelClaim(20L, 7L);
+        PropertyClaimResponseDTO result = claimService.cancelClaim(20L, 7L);
 
-        assertEquals("CANCELLED", result.getStatus());
+        assertEquals("CANCELLED", result.status());
         verify(ownershipLifecycleService).deactivatePendingOwner(10L, 7L);
         assertThrows(SecurityException.class, () -> claimService.cancelClaim(20L, 99L));
     }

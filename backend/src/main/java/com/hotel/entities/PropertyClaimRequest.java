@@ -1,5 +1,6 @@
 package com.hotel.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
@@ -18,10 +19,12 @@ public class PropertyClaimRequest extends AuditableEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "property_id", nullable = false)
+    @JsonIgnore
     private Hotel property;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "requester_user_id", nullable = false)
+    @JsonIgnore
     private User requesterUser;
 
     @Column(name = "verification_method")
@@ -38,6 +41,7 @@ public class PropertyClaimRequest extends AuditableEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reviewed_by")
+    @JsonIgnore
     private User reviewedBy;
 
     @Column(name = "reviewed_at")

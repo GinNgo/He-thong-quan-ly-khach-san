@@ -1,5 +1,6 @@
 package com.hotel.entities;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
@@ -24,6 +25,7 @@ public class User extends AuditableEntity {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 

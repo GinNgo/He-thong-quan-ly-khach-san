@@ -1,7 +1,6 @@
 package com.hotel.controllers;
 
-import com.hotel.entities.PropertyClaimRequest;
-import com.hotel.repositories.PropertyClaimRequestRepository;
+import com.hotel.dtos.PropertyClaimResponseDTO;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.services.PropertyClaimService;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +19,6 @@ import java.util.Map;
 public class PropertyClaimController {
 
     private final PropertyClaimService claimService;
-    private final PropertyClaimRequestRepository claimRepository;
 
     @PostMapping("/properties/{propertyId}/claim")
     @PreAuthorize("isAuthenticated()")
@@ -32,7 +30,7 @@ public class PropertyClaimController {
         String verificationData = payload.get("verificationData");
         String note = payload.get("note");
 
-        PropertyClaimRequest claim = claimService.requestClaim(
+        PropertyClaimResponseDTO claim = claimService.requestClaim(
                 propertyId,
                 principal.getUserId(),
                 verificationMethod,
@@ -43,11 +41,10 @@ public class PropertyClaimController {
 
     @GetMapping("/admin/property-claims")
     @PreAuthorize("hasAuthority('PROPERTY_CLAIM_VIEW') or hasAuthority('SUPER_ADMIN')")
-    public ResponseEntity<Page<PropertyClaimRequest>> getAllClaims(@RequestParam(required = false) String status, Pageable pageable) {
-        if (status != null && !status.isEmpty()) {
-            return ResponseEntity.ok(claimRepository.findByStatus(status, pageable));
-        }
-        return ResponseEntity.ok(claimRepository.findAll(pageable));
+    public ResponseEntity<Page<PropertyClaimResponseDTO>> getAllClaims(
+            @RequestParam(required = false) String status,
+            Pageable pageable) {
+        return ResponseEntity.ok(claimService.listClaims(status, pageable));
     }
 
     @PostMapping("/admin/property-claims/{id}/approve")
@@ -55,7 +52,7 @@ public class PropertyClaimController {
     public ResponseEntity<?> approveClaim(
             @PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails principal) {
-        PropertyClaimRequest claim = claimService.approveClaim(id, principal.getUserId());
+        PropertyClaimResponseDTO claim = claimService.approveClaim(id, principal.getUserId());
         return ResponseEntity.ok(claim);
     }
 
@@ -66,7 +63,7 @@ public class PropertyClaimController {
             @RequestBody Map<String, String> payload,
             @AuthenticationPrincipal CustomUserDetails principal) {
         String reason = payload.get("reason");
-        PropertyClaimRequest claim = claimService.rejectClaim(id, principal.getUserId(), reason);
+        PropertyClaimResponseDTO claim = claimService.rejectClaim(id, principal.getUserId(), reason);
         return ResponseEntity.ok(claim);
     }
 
