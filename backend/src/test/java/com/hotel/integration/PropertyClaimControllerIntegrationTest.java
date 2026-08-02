@@ -13,6 +13,7 @@ import com.hotel.security.JwtAuthenticationEntryPoint;
 import com.hotel.security.JwtTokenProvider;
 import com.hotel.security.TenantFilterInterceptor;
 import com.hotel.services.PropertyClaimService;
+import com.hotel.observability.OperationalMetrics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,6 +65,9 @@ class PropertyClaimControllerIntegrationTest {
 
     @MockBean
     private TenantFilterInterceptor tenantFilterInterceptor;
+
+    @MockBean
+    private OperationalMetrics operationalMetrics;
 
     @BeforeEach
     void allowMvcRequestsThroughTenantFilter() {
@@ -157,6 +161,18 @@ class PropertyClaimControllerIntegrationTest {
                 .andExpect(jsonPath("$.rejectionReason").value("Ownership evidence is incomplete"));
 
         verify(claimService).rejectClaim(9L, 72L, "Ownership evidence is incomplete");
+    }
+
+    @Test
+    void requesterCanCancelOwnPendingClaim() throws Exception {
+        when(claimService.cancelClaim(12L, 42L)).thenReturn(claim(12L, "CANCELLED"));
+
+        mockMvc.perform(post("/api/property-claims/{id}/cancel", 12L)
+                        .with(user(principal(42L, "USER"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        verify(claimService).cancelClaim(12L, 42L);
     }
 
     @Test

@@ -14,12 +14,12 @@ import java.time.LocalDateTime;
 public class PropertyRegistrationService {
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final HotelRepository hotelRepository;
     private final UserPropertyRepository userPropertyRepository;
     private final SubscriptionPlanRepository planRepository;
     private final AccountSubscriptionRepository accountSubscriptionRepository;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    private final PropertyOwnershipLifecycleService ownershipLifecycleService;
 
     @Transactional
     public User registerPropertyOwner(String email, String password, String fullName, String phone,
@@ -52,14 +52,6 @@ public class PropertyRegistrationService {
                 .anyMatch(mapping -> "PENDING_APPROVAL".equals(mapping.getHotel().getApprovalStatus()))) {
             throw new IllegalStateException("Hồ sơ đối tác của tài khoản đang chờ duyệt.");
         }
-        Role ownerRole = roleRepository.findByCode("PROPERTY_OWNER")
-                .orElseThrow(() -> new RuntimeException("Role PROPERTY_OWNER not found in DB"));
-        java.util.Set<Role> roles = user.getRoles() == null
-                ? new java.util.HashSet<>() : new java.util.HashSet<>(user.getRoles());
-        roles.add(ownerRole);
-        user.setRoles(roles);
-        user = userRepository.save(user);
-
         // 2. Create Property
         Hotel property = new Hotel();
         property.setName(propertyName);
@@ -70,14 +62,7 @@ public class PropertyRegistrationService {
         property = hotelRepository.save(property);
 
         // 3. Map User to Property
-        UserProperty up = new UserProperty();
-        up.setUser(user);
-        up.setHotel(property);
-        up.setRelationshipType("OWNER");
-        up.setIsPrimaryOwner(true);
-        up.setStatus("ACTIVE");
-        up.setStartDate(LocalDateTime.now());
-        userPropertyRepository.save(up);
+        ownershipLifecycleService.createPendingOwner(user, property);
 
         // 4. Assign Default Plan (e.g. BASIC)
         SubscriptionPlan basicPlan = planRepository.findByCode("BASIC").orElse(null);
@@ -92,6 +77,16 @@ public class PropertyRegistrationService {
         }
 
         return user;
+    }
+
+    @Transactional
+    public Hotel approveProperty(Long propertyId) {
+        return ownershipLifecycleService.approveProperty(propertyId);
+    }
+
+    @Transactional
+    public Hotel rejectProperty(Long propertyId) {
+        return ownershipLifecycleService.rejectProperty(propertyId);
     }
 
     @Transactional(readOnly = true)

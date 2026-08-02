@@ -3,7 +3,6 @@ package com.hotel.services;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.PropertyClaimRequest;
 import com.hotel.entities.User;
-import com.hotel.entities.UserProperty;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.PropertyClaimRequestRepository;
 import com.hotel.repositories.UserPropertyRepository;
@@ -22,6 +21,8 @@ public class PropertyClaimService {
     private final HotelRepository hotelRepository;
     private final UserRepository userRepository;
     private final UserPropertyRepository userPropertyRepository;
+    private final SubscriptionFeatureService subscriptionFeatureService;
+    private final PropertyOwnershipLifecycleService ownershipLifecycleService;
 
     @Transactional
     public PropertyClaimRequest requestClaim(Long propertyId, Long userId, String verificationMethod, String verificationData, String note) {
@@ -48,7 +49,9 @@ public class PropertyClaimService {
         claim.setNote(note);
         claim.setStatus("PENDING");
 
-        return claimRepository.save(claim);
+        PropertyClaimRequest saved = claimRepository.save(claim);
+        ownershipLifecycleService.createPendingOwner(user, property);
+        return saved;
     }
 
     @Transactional
@@ -65,6 +68,10 @@ public class PropertyClaimService {
 
         Hotel property = claim.getProperty();
         User requester = claim.getRequesterUser();
+        long currentProperties = userPropertyRepository.countActiveOwnedPropertiesByUserId(requester.getId());
+        subscriptionFeatureService.checkFeatureLimit(
+                requester.getId(), "MAX_PROPERTIES", currentProperties, 1);
+        ownershipLifecycleService.activateOwner(property.getId(), requester.getId());
 
         // Update Claim Status
         claim.setStatus("APPROVED");
@@ -73,16 +80,10 @@ public class PropertyClaimService {
         claimRepository.save(claim);
 
         // Update Property Status
-        property.setApprovalStatus("ACTIVE");
+        property.setApprovalStatus("APPROVED");
         property.setStatus("ACTIVE");
+        property.setOperationStatus("ACTIVE");
         hotelRepository.save(property);
-
-        // Create UserProperty mapping for OWNER
-        UserProperty userProperty = new UserProperty();
-        userProperty.setHotel(property);
-        userProperty.setUser(requester);
-        userProperty.setRelationshipType("OWNER");
-        userPropertyRepository.save(userProperty);
 
         return claim;
     }
@@ -95,11 +96,35 @@ public class PropertyClaimService {
         User admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new IllegalArgumentException("Admin user not found"));
 
+        if (!"PENDING".equals(claim.getStatus())) {
+            throw new IllegalStateException("Claim is not in PENDING state.");
+        }
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("Rejection reason is required.");
+        }
+
         claim.setStatus("REJECTED");
         claim.setReviewedBy(admin);
         claim.setReviewedAt(LocalDateTime.now());
         claim.setRejectionReason(reason);
-        
+        ownershipLifecycleService.deactivatePendingOwner(
+                claim.getProperty().getId(), claim.getRequesterUser().getId());
+        return claimRepository.save(claim);
+    }
+
+    @Transactional
+    public PropertyClaimRequest cancelClaim(Long claimId, Long requesterUserId) {
+        PropertyClaimRequest claim = claimRepository.findById(claimId)
+                .orElseThrow(() -> new IllegalArgumentException("Claim request not found"));
+        if (!claim.getRequesterUser().getId().equals(requesterUserId)) {
+            throw new SecurityException("Bạn không có quyền huỷ yêu cầu này.");
+        }
+        if (!"PENDING".equals(claim.getStatus())) {
+            throw new IllegalStateException("Chỉ có thể huỷ yêu cầu đang chờ duyệt.");
+        }
+        claim.setStatus("CANCELLED");
+        ownershipLifecycleService.deactivatePendingOwner(
+                claim.getProperty().getId(), requesterUserId);
         return claimRepository.save(claim);
     }
 }

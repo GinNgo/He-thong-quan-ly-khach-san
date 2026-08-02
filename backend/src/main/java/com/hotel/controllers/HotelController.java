@@ -26,6 +26,9 @@ public class HotelController {
     @Autowired
     private com.hotel.services.PropertyAccessService propertyAccessService;
 
+    @Autowired
+    private com.hotel.services.PropertyRegistrationService propertyRegistrationService;
+
     @GetMapping("/public/search")
     public ResponseEntity<List<Hotel>> searchHotels(
             @RequestParam(required = false) String city,
@@ -105,26 +108,22 @@ public class HotelController {
     public ResponseEntity<Hotel> submitHotel(@PathVariable Long id) {
         Hotel hotel = hotelService.getHotelById(id)
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy cơ sở."));
-        propertyAccessService.requireAccessibleOrNotFound(id, "cơ sở");
+        propertyAccessService.requireAssignedHotel(id);
         hotel.setStatus("PENDING");
+        hotel.setApprovalStatus("PENDING_APPROVAL");
+        hotel.setOperationStatus("INACTIVE");
         return ResponseEntity.ok(hotelService.updateHotel(id, hotel));
     }
 
     @PreAuthorize("hasAuthority('SUPER_ADMIN')")
     @PostMapping("/{id}/approve")
     public ResponseEntity<Hotel> approveHotel(@PathVariable Long id) {
-        return hotelService.getHotelById(id).map(hotel -> {
-            hotel.setStatus("ACTIVE");
-            return ResponseEntity.ok(hotelService.updateHotel(id, hotel));
-        }).orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy cơ sở."));
+        return ResponseEntity.ok(propertyRegistrationService.approveProperty(id));
     }
 
     @PreAuthorize("hasAuthority('SUPER_ADMIN')")
     @PostMapping("/{id}/reject")
     public ResponseEntity<Hotel> rejectHotel(@PathVariable Long id) {
-        return hotelService.getHotelById(id).map(hotel -> {
-            hotel.setStatus("REJECTED");
-            return ResponseEntity.ok(hotelService.updateHotel(id, hotel));
-        }).orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy cơ sở."));
+        return ResponseEntity.ok(propertyRegistrationService.rejectProperty(id));
     }
 }

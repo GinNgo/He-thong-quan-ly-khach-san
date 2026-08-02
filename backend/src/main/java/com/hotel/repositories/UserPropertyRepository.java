@@ -15,7 +15,18 @@ public interface UserPropertyRepository extends JpaRepository<UserProperty, Long
     List<UserProperty> findByUserIdAndRelationshipType(Long userId, String relationshipType);
     List<UserProperty> findByHotelId(Long hotelId);
     java.util.Optional<UserProperty> findByUserIdAndHotelIdAndRelationshipType(Long userId, Long hotelId, String relationshipType);
+    List<UserProperty> findByHotelIdAndRelationshipTypeAndStatus(Long hotelId, String relationshipType, String status);
+    long countByHotelIdAndRelationshipTypeAndStatus(Long hotelId, String relationshipType, String status);
     long countByUserIdAndStatus(Long userId, String status);
+
+    @Query("""
+            select count(up)
+            from UserProperty up
+            where up.user.id = :userId
+              and up.status = 'ACTIVE'
+              and up.relationshipType = 'OWNER'
+            """)
+    long countActiveOwnedPropertiesByUserId(@Param("userId") Long userId);
 
     @Query("""
             select count(distinct up.user.id)

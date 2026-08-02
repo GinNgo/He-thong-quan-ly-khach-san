@@ -1,11 +1,14 @@
 package com.hotel.integration;
 
 import com.hotel.controllers.HotelController;
+import com.hotel.BackendApplication;
 import com.hotel.entities.User;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.security.FunctionCode;
 import com.hotel.services.HotelManagementService;
 import com.hotel.services.PropertyAccessService;
+import com.hotel.services.PropertyRegistrationService;
+import com.hotel.observability.OperationalMetrics;
 import com.hotel.services.RoomTypeService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +17,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.ContextConfiguration;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,12 +28,14 @@ import com.hotel.security.JwtAccessDeniedHandler;
 import com.hotel.security.JwtAuthFilter;
 import com.hotel.security.JwtAuthenticationEntryPoint;
 import com.hotel.security.JwtTokenProvider;
+import com.hotel.security.TenantFilterInterceptor;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(HotelController.class)
+@ContextConfiguration(classes = BackendApplication.class)
 @Import({SecurityConfig.class, JwtAuthFilter.class, JwtTokenProvider.class, JwtAuthenticationEntryPoint.class, JwtAccessDeniedHandler.class})
 class HotelControllerIntegrationTest {
 
@@ -44,6 +50,15 @@ class HotelControllerIntegrationTest {
 
     @MockBean
     private PropertyAccessService propertyAccessService;
+
+    @MockBean
+    private PropertyRegistrationService propertyRegistrationService;
+
+    @MockBean
+    private OperationalMetrics operationalMetrics;
+
+    @MockBean
+    private TenantFilterInterceptor tenantFilterInterceptor;
 
     @MockBean
     private UserDetailsService userDetailsService;
