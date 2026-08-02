@@ -48,4 +48,17 @@ describe('HotelDetailComponent', () => {
     expect(component.pageError).toContain('Không tìm thấy chỗ nghỉ này');
     expect(fixture.nativeElement.textContent).toContain('Chuyến đi vẫn có thể tiếp tục');
   });
+
+  it('hides stale property details when the public room catalog becomes unavailable', () => {
+    api.getHotelById.mockReturnValue(of({ id: 44, name: 'Stale property' }));
+    api.getRoomTypesByHotel.mockReturnValue(throwError(() => ({ status: 404 })));
+
+    params$.next(convertToParamMap({ id: '44' }));
+    fixture.detectChanges();
+
+    expect(api.getRoomTypesByHotel).toHaveBeenCalledWith(44, undefined, undefined, 2);
+    expect(component.hotel).toBeNull();
+    expect(component.roomTypes).toEqual([]);
+    expect(component.pageError).toContain('Không tìm thấy chỗ nghỉ này');
+  });
 });

@@ -79,6 +79,9 @@ public class ReservationServiceTest {
     @Mock
     private PropertyPaymentConfigurationRepository propertyPaymentConfigurationRepository;
 
+    @Mock
+    private PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
+
     @InjectMocks
     private ReservationService reservationService;
 
@@ -200,6 +203,25 @@ public class ReservationServiceTest {
 
         assertEquals(FinancialErrorCode.POLICY_NOT_CONFIGURED, exception.code());
         verify(reservationRepository, never()).save(any());
+    }
+
+    @Test
+    void createReservationRejectsInactiveRoomTypeImmediatelyAfterTakingTheLock() {
+        ReservationRequest request = bookingRequest();
+        RoomType roomType = roomType();
+        when(userRepository.findByUsername("testcustomer")).thenReturn(Optional.of(mockUser));
+        when(roomTypeRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(roomType));
+        doThrow(new IllegalStateException("room type inactive"))
+                .when(publicInventoryEligibilityPolicy).requireSellableRoomTypeForBooking(roomType);
+
+        assertThrows(IllegalStateException.class,
+                () -> reservationService.createReservation("testcustomer", request));
+
+        verify(roomTypeRepository).findByIdForUpdate(5L);
+        verify(publicInventoryEligibilityPolicy).requireSellableRoomTypeForBooking(roomType);
+        verify(roomAvailabilityService, never()).countAvailableRooms(any(), any(), any());
+        verify(reservationRepository, never()).save(any());
+        verify(reservationHoldService, never()).createHold(any(), any(), anyInt(), any());
     }
 
     @Test

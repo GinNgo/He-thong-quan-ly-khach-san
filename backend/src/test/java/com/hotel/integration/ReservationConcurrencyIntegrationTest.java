@@ -77,7 +77,7 @@ class ReservationConcurrencyIntegrationTest {
     void twoSimultaneousBookingsForOneRoomProduceOneSuccessAndOneSoldOutFailure() throws Exception {
         LocalDate checkIn = LocalDate.of(2028, 2, 10);
         LocalDate checkOut = checkIn.plusDays(2);
-        FixtureIds ids = transactionTemplate.execute(status -> createFixture());
+        FixtureIds ids = transactionTemplate.execute(status -> createFixture("BOOKING"));
         assertThat(ids).isNotNull();
 
         CountDownLatch ready = new CountDownLatch(2);
@@ -133,14 +133,78 @@ class ReservationConcurrencyIntegrationTest {
         assertThat(availabilityService.countAvailableRooms(ids.roomTypeId(), checkIn, checkOut)).isZero();
     }
 
-    private FixtureIds createFixture() {
-        Hotel hotel = hotelRepository.saveAndFlush(hotel("CONCURRENCY-TEST-HOTEL"));
+    @Test
+    void concurrentRoomTypeDeactivationWinsBeforeBookingAndPreventsStaleSale() throws Exception {
+        LocalDate checkIn = LocalDate.of(2028, 3, 10);
+        LocalDate checkOut = checkIn.plusDays(2);
+        FixtureIds ids = transactionTemplate.execute(status -> createFixture("DEACTIVATE"));
+        assertThat(ids).isNotNull();
+        long holdsBefore = holdRepository.count();
+
+        CountDownLatch roomTypeLocked = new CountDownLatch(1);
+        CountDownLatch allowDeactivationCommit = new CountDownLatch(1);
+        CountDownLatch bookingStarted = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<Void> deactivation = executor.submit(() -> {
+                transactionTemplate.executeWithoutResult(status -> {
+                    RoomType roomType = roomTypeRepository.findByIdForUpdate(ids.roomTypeId()).orElseThrow();
+                    roomType.setStatus("INACTIVE");
+                    roomTypeLocked.countDown();
+                    try {
+                        if (!allowDeactivationCommit.await(5, TimeUnit.SECONDS)) {
+                            throw new IllegalStateException("Deactivation commit timed out.");
+                        }
+                    } catch (InterruptedException exception) {
+                        Thread.currentThread().interrupt();
+                        throw new IllegalStateException("Deactivation was interrupted.", exception);
+                    }
+                    roomTypeRepository.saveAndFlush(roomType);
+                });
+                return null;
+            });
+
+            assertThat(roomTypeLocked.await(5, TimeUnit.SECONDS)).isTrue();
+            Future<Attempt> booking = executor.submit(() -> {
+                bookingStarted.countDown();
+                try {
+                    return new Attempt(
+                            reservationService.createReservation(
+                                    ids.username(),
+                                    request(ids.roomTypeId(), checkIn, checkOut)),
+                            null);
+                } catch (Throwable error) {
+                    return new Attempt(null, error);
+                }
+            });
+
+            assertThat(bookingStarted.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(booking.isDone()).isFalse();
+            allowDeactivationCommit.countDown();
+            deactivation.get(20, TimeUnit.SECONDS);
+
+            Attempt attempt = booking.get(20, TimeUnit.SECONDS);
+            assertThat(attempt.succeeded()).isFalse();
+            assertThat(attempt.error()).isInstanceOf(IllegalStateException.class);
+            assertThat(attempt.error().getMessage()).contains("no longer available");
+        } finally {
+            allowDeactivationCommit.countDown();
+            executor.shutdownNow();
+        }
+
+        assertThat(reservationRepository.countByUserIdAndStatusIn(
+                ids.userId(), List.of(ReservationStatus.PENDING_PAYMENT.name()))).isZero();
+        assertThat(holdRepository.count()).isEqualTo(holdsBefore);
+    }
+
+    private FixtureIds createFixture(String suffix) {
+        Hotel hotel = hotelRepository.saveAndFlush(hotel("CONCURRENCY-TEST-HOTEL-" + suffix));
         PropertyPaymentConfiguration paymentConfiguration = new PropertyPaymentConfiguration(hotel);
         ReflectionTestUtils.setField(paymentConfiguration, "enabled", true);
         paymentConfigurationRepository.saveAndFlush(paymentConfiguration);
-        RoomType roomType = roomTypeRepository.saveAndFlush(roomType(hotel, "CONCURRENT-DELUXE"));
-        roomRepository.saveAndFlush(room(hotel, roomType, "C-101"));
-        User user = userRepository.saveAndFlush(user("concurrent_booking_user"));
+        RoomType roomType = roomTypeRepository.saveAndFlush(roomType(hotel, "CONCURRENT-DELUXE-" + suffix));
+        roomRepository.saveAndFlush(room(hotel, roomType, "C-101-" + suffix));
+        User user = userRepository.saveAndFlush(user("concurrent_booking_user_" + suffix.toLowerCase()));
         return new FixtureIds(user.getId(), user.getUsername(), roomType.getId());
     }
 

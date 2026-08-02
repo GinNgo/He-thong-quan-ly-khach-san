@@ -44,6 +44,7 @@ public class ReservationService {
     private final PropertyPaymentConfigurationRepository propertyPaymentConfigurationRepository;
     private final InvoiceFinalizationService invoiceFinalizationService;
     private final CheckoutOperationsService checkoutOperationsService;
+    private final PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
 
     @Transactional
     public ReservationDTO createReservation(String username, ReservationRequest request) {
@@ -55,9 +56,9 @@ public class ReservationService {
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng đặt phòng."));
 
         RoomType roomType = roomTypeRepository.findByIdForUpdate(request.getRoomTypeId())
+        publicInventoryEligibilityPolicy.requireSellableRoomTypeForBooking(roomType);
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy loại phòng."));
         Hotel hotel = roomType.getHotel();
-        validateHotelCanReceiveBookings(hotel);
 
         int quantity = request.getQuantity() == null ? 1 : request.getQuantity();
         int adults = request.getAdults() != null ? request.getAdults() : request.getGuests();

@@ -36,6 +36,7 @@ class RoomTypeServiceImplTest {
     @Mock private RoomImageRepository roomImageRepository;
     @Mock private PropertyAccessService propertyAccessService;
     @Mock private SubscriptionFeatureService subscriptionFeatureService;
+    @Mock private PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
 
     @InjectMocks
     private RoomTypeServiceImpl roomTypeService;

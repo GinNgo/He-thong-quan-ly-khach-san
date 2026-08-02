@@ -26,6 +26,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
     private final RoomImageRepository roomImageRepository;
     private final PropertyAccessService propertyAccessService;
     private final SubscriptionFeatureService subscriptionFeatureService;
+    private final PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
 
     @Override
     @Transactional(readOnly = true)
@@ -46,9 +47,11 @@ public class RoomTypeServiceImpl implements RoomTypeService {
     @Override
     @Transactional(readOnly = true)
     public List<RoomTypeDTO> getRoomTypesByHotelId(Long hotelId, LocalDate checkIn, LocalDate checkOut, Integer guests) {
+        publicInventoryEligibilityPolicy.requirePublicProperty(hotelId);
         boolean hasStayDates = checkIn != null && checkOut != null;
 
         return roomTypeRepository.findByHotelId(hotelId).stream()
+                .filter(publicInventoryEligibilityPolicy::isPubliclySellable)
                 .filter(roomType -> roomAvailabilityService.canHost(roomType, guests))
                 .map(roomType -> {
                     RoomTypeDTO dto = mapToDTO(roomType);

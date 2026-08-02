@@ -359,9 +359,9 @@ public class DataInitializer implements CommandLineRunner {
         User customer1 = ensureMockUser("customer1", "customer1", "Nguyen Van A", "nva@hotel.com", "ACTIVE", customerRole, null);
         User customer2 = ensureMockUser("customer2", "customer2", "Le Thi B", "ltb@hotel.com", "ACTIVE", customerRole, null);
         
-        com.hotel.entities.HotelService breakfast = ensureMockService("SVC_BREAKFAST", "Ăn sáng Buffet", "Buffet sáng tiêu chuẩn quốc tế", new BigDecimal("150000"));
-        com.hotel.entities.HotelService laundry = ensureMockService("SVC_LAUNDRY", "Dịch vụ giặt ủi", "Giặt sấy lấy ngay trong ngày", new BigDecimal("50000"));
-        com.hotel.entities.HotelService airportTransfer = ensureMockService("SVC_TRANSFER", "Đưa đón sân bay", "Xe 4 chỗ đưa đón sân bay 2 chiều", new BigDecimal("350000"));
+        com.hotel.entities.HotelService breakfast = ensureMockService(hotel, "SVC_BREAKFAST", "Ăn sáng Buffet", "Buffet sáng tiêu chuẩn quốc tế", new BigDecimal("150000"));
+        com.hotel.entities.HotelService laundry = ensureMockService(hotel, "SVC_LAUNDRY", "Dịch vụ giặt ủi", "Giặt sấy lấy ngay trong ngày", new BigDecimal("50000"));
+        com.hotel.entities.HotelService airportTransfer = ensureMockService(hotel, "SVC_TRANSFER", "Đưa đón sân bay", "Xe 4 chỗ đưa đón sân bay 2 chiều", new BigDecimal("350000"));
 
         ensureMockReservations(hotel, customer1, customer2);
     }
@@ -382,12 +382,12 @@ public class DataInitializer implements CommandLineRunner {
         return userRepository.save(user);
     }
 
-    private com.hotel.entities.HotelService ensureMockService(String code, String name, String description, BigDecimal price) {
-        return hotelServiceRepository.findAll().stream()
-                .filter(s -> s.getCode().equals(code))
-                .findFirst()
+    private com.hotel.entities.HotelService ensureMockService(Hotel hotel, String code, String name, String description, BigDecimal price) {
+        return hotelServiceRepository.findByHotelIdAndCodeIgnoreCase(hotel.getId(), code)
                 .orElseGet(() -> {
                     com.hotel.entities.HotelService service = new com.hotel.entities.HotelService();
+                    service.setHotel(hotel);
+                    service.setSystemService(false);
                     service.setCode(code);
                     service.setNameVi(name);
                     service.setNameEn(name);

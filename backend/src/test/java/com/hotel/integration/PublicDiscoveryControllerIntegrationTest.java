@@ -3,8 +3,10 @@ package com.hotel.integration;
 import com.hotel.BackendApplication;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.Location;
+import com.hotel.entities.RoomType;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.LocationRepository;
+import com.hotel.repositories.RoomTypeRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +16,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
 
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
@@ -33,11 +37,13 @@ class PublicDiscoveryControllerIntegrationTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private LocationRepository locationRepository;
     @Autowired private HotelRepository hotelRepository;
+    @Autowired private RoomTypeRepository roomTypeRepository;
 
     private Location province;
     private Location currentProvince;
     private Location ward;
     private Location secondProvince;
+    private Hotel hotel;
 
     @BeforeEach
     void setUp() {
@@ -50,7 +56,7 @@ class PublicDiscoveryControllerIntegrationTest {
         landmark("TEST-LM2-" + suffix, "Cầu Rồng", "CULTURE", secondProvince, 16.0611, 108.2277, "ACTIVE");
         landmark("TEST-LM3-" + suffix, "Điểm thử", "NATURE", province, null, null, "INACTIVE");
 
-        Hotel hotel = new Hotel();
+        hotel = new Hotel();
         hotel.setName("LuxeStay Riverside Mỹ Tho");
         hotel.setNameVi("Khách sạn Ánh Dương Mỹ Tho");
         hotel.setCode("TEST-H-" + suffix);
@@ -67,6 +73,8 @@ class PublicDiscoveryControllerIntegrationTest {
         hotel.setAverageRating(8.7);
         hotel.setMainImage("/assets/demo/hotel-demo-1.png");
         hotelRepository.saveAndFlush(hotel);
+        roomTypeRepository.saveAndFlush(roomType("ACTIVE-" + suffix, "ACTIVE"));
+        roomTypeRepository.saveAndFlush(roomType("INACTIVE-" + suffix, "INACTIVE"));
     }
 
     @Test
@@ -136,6 +144,27 @@ class PublicDiscoveryControllerIntegrationTest {
     }
 
     @Test
+    void publicRoomCatalogFiltersInactiveTypesAndRejectsStalePropertyUrls() throws Exception {
+        mockMvc.perform(get("/api/public/properties/{hotelId}/room-types", hotel.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].status").value("ACTIVE"));
+
+        mockMvc.perform(get("/api/room-types/public/hotel/{hotelId}", hotel.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].status").value("ACTIVE"));
+
+        hotel.setOperationStatus("SUSPENDED");
+        hotelRepository.saveAndFlush(hotel);
+
+        mockMvc.perform(get("/api/public/properties/{hotelId}/room-types", hotel.getId()))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/room-types/public/hotel/{hotelId}", hotel.getId()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void currentProvinceList_HidesLegacyProvinceRows() throws Exception {
         mockMvc.perform(get("/api/public/locations/provinces"))
                 .andExpect(status().isOk())
@@ -171,5 +200,20 @@ class PublicDiscoveryControllerIntegrationTest {
         location.setNameEn("Landmark " + code);
         location.setStatus(status);
         return locationRepository.saveAndFlush(location);
+    }
+
+    private RoomType roomType(String code, String status) {
+        RoomType roomType = new RoomType();
+        roomType.setHotel(hotel);
+        roomType.setCode(code);
+        roomType.setNameVi("Loai phong " + code);
+        roomType.setNameEn("Room type " + code);
+        roomType.setMaxGuest(2);
+        roomType.setMaxAdults(2);
+        roomType.setMaxChildren(0);
+        roomType.setMaxGuests(2);
+        roomType.setBasePrice(new BigDecimal("500000"));
+        roomType.setStatus(status);
+        return roomType;
     }
 }
