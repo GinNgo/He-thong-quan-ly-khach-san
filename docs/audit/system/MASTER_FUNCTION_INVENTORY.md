@@ -1,6 +1,6 @@
 # Master Function Inventory
 
-Audit date: 2026-08-01
+Audit date: 2026-08-02
 Scope: consolidated evidence index for every capability row discovered by T141 through T146.
 This file preserves the route, UI, service, API, database, permission, test, status, severity and remediation evidence from all six source inventories.
 
@@ -32,10 +32,10 @@ The machine baseline includes 41 API controllers, 143 business services, 43 enti
 | Authentication and Account | 22 | 2 | 10 | 2 | 1 | 4 | 3 | 0 |
 | Property and Subscription | 25 | 3 | 4 | 0 | 11 | 5 | 2 | 0 |
 | Property Operations | 31 | 2 | 10 | 2 | 12 | 5 | 0 | 0 |
-| Public Booking | 30 | 0 | 17 | 2 | 9 | 2 | 0 | 0 |
+| Public Booking | 30 | 1 | 17 | 2 | 8 | 2 | 0 | 0 |
 | Stay Lifecycle | 29 | 1 | 13 | 1 | 8 | 6 | 0 | 0 |
 | Cross-Cutting | 42 | 5 | 20 | 0 | 8 | 7 | 2 | 0 |
-| **Total inventory rows** | **179** | **13** | **74** | **7** | **49** | **29** | **7** | **0** |
+| **Total inventory rows** | **179** | **14** | **74** | **7** | **48** | **29** | **7** | **0** |
 
 ## Explicit Evidence Aliases
 
@@ -157,7 +157,7 @@ Aliases retain separate source rows for traceability, but final unique-capabilit
 | PUB-027 | Public Booking | Anonymous public booking identity and ownership | Reachable `POST /api/reservations/public/book`, but no current UI uses it | None | Creates a new `guest_<millisecond>` user with fake local email and `NOPASSWORD`; no lookup token, ownership credential or duplicate-guest policy | `users`, reservations and PII | Public | Source trace | `BROKEN` | P1 | Disable the endpoint or implement a verified guest-booking identity/retrieval model, collision-safe identity, consent/retention rules, rate limits and owner-bound confirmation/access. | [public-booking.md](inventory/public-booking.md) |
 | PUB-028 | Public Booking | Booking success and payment-attempt retry | Checkout success panel | Booking component and property payment panel | Reservation is created once in component state; payment attempt uses idempotency and can retry without recreating that in-memory reservation | Reservation and payment attempts | Customer | Checkout/payment-panel units passed; no live provider/API journey | `PARTIAL` | P1 | Persist resumable checkout state, recover after reload or redirect, distinguish reservation success from payment success and execute pending/success/failure/expiry browser journeys. | [public-booking.md](inventory/public-booking.md) |
 | PUB-029 | Public Booking | Public search query performance and result consistency | Search results | One request from UI | Each page row triggers additional room-type, per-room-type availability and image queries after a native query with multiple correlated subqueries | Hotels, room types, rooms, images and reservations | Public | Source trace; no performance measurement | `PARTIAL` | P2 | Replace N+1 enrichment with bounded projections/batches, index the canonical predicates and measure p95 for representative nationwide data and maximum page size. | [public-booking.md](inventory/public-booking.md) |
-| PUB-030 | Public Booking | Public-booking HTTP, concurrency and runnable API evidence | Live UI currently displays recoverable connection failures | Angular error states are present | Four relevant Spring integration classes cannot discover one application configuration | H2 test context; live API not connected | Test/runtime only | Fresh failures reproduced; Angular remains green | `BROKEN` | P1 | Pin integration tests to `BackendApplication`, isolate nested test applications, start deterministic public fixtures and rerun autocomplete-search-detail-booking plus concurrency evidence. | [public-booking.md](inventory/public-booking.md) |
+| PUB-030 | Public Booking | Public-booking HTTP, concurrency and runnable API evidence | Not user-facing; supports public discovery/search/booking verification | Angular public flows remain covered separately | Four integration suites pin `BackendApplication` and use deterministic public, booking and simulator-payment fixtures | H2 isolated contexts with persisted rooms, reservations, payment policy and holds | Test/runtime only | Fresh Maven run passed 14/14; evidence: `docs/testing/evidence/007/remediation/T187-public-booking-http-concurrency.md` | `COMPLETE_VERIFIED` | P1 | Preserve the pinned contexts and deterministic fixtures; live browser/API product journeys and SQL Server races remain tracked by their capability rows. | [public-booking.md](inventory/public-booking.md) |
 | STAY-001 | Stay Lifecycle | Reservation list, detail and operational status visibility | `/admin/reservations`, customer `/profile?tab=bookings`, reservation timeline component | `ReservationService`, `ClientApiService` | `GET /api/reservations`, `/{id}`, `/my-bookings`; DTO includes payment/refund summaries | Reservations, details, assignments, payments and refunds | Customer ownership or reservation view/broad operational roles | Admin/profile component tests passed; no successful role-based live API journey | `PARTIAL` | P1 | Add real seeded customer/receptionist/manager list-detail journeys, stable pagination/filtering, event history and explicit loading/error/empty evidence. | [stay-lifecycle.md](inventory/stay-lifecycle.md) |
 | STAY-002 | Stay Lifecycle | Change dates, guests, room quantity or room type after booking | No reachable edit/reschedule UI | None | No modification, re-quote or reschedule command/API found | No change request, price-delta or policy snapshot | Missing | No source/test | `MISSING` | P1 | Define allowed states, availability re-locking, re-quote/price-delta/refund rules and immutable change history before adding customer/staff UI. | [stay-lifecycle.md](inventory/stay-lifecycle.md) |
 | STAY-003 | Stay Lifecycle | Customer-owned booking cancellation | Customer booking card cancel action | `cancelMyReservation()` | `POST /api/reservations/{id}/cancel`; locks booking, checks owner/state, requests refunds, releases rooms and holds | Reservation, assignments, holds and refund requests | `CUSTOMER` plus resource ownership | Four reservation cancellation unit cases and profile UI tests passed | `PARTIAL` | P1 | Add reason/confirmation, HTTP/IDOR/concurrency tests, provider-failure recovery and a real browser cancellation-to-refund journey. | [stay-lifecycle.md](inventory/stay-lifecycle.md) |
@@ -243,6 +243,7 @@ These are the only rows carried as `COMPLETE_VERIFIED`. Each has executable evid
 | PROP-SUB-025 | Claim/subscription HTTP test harness | Pinned MVC suites passed 13/13 and focused claim/catalog service lifecycle tests passed 3/3 | [property-subscription.md](inventory/property-subscription.md) |
 | PROP-OPS-022 | Checkout creates dirty room and one housekeeping task | Fresh `CheckoutOperationsServiceTest` 6/6 passed plus prior T080 evidence | [property-operations.md](inventory/property-operations.md) |
 | PROP-OPS-030 | Operations HTTP, tenant and feature-gate test harness | Pinned full-context H2 suites passed 17/17 permission, IDOR, tenant, feature and architecture assertions | [property-operations.md](inventory/property-operations.md) |
+| PUB-030 | Public-booking HTTP, concurrency and runnable API evidence | Pinned full-context H2 suites passed 14/14 discovery, search, booking-lock and hold-expiry assertions | [public-booking.md](inventory/public-booking.md) |
 | STAY-022 | Checkout creates one dirty-room housekeeping effect | Fresh `CheckoutOperationsServiceTest` 6/6 and intercepted Playwright dirty-room assertion passed | [stay-lifecycle.md](inventory/stay-lifecycle.md) |
 | CROSS-006 | Registration welcome-email template and safe failure | Email tests 2/2 and prior registration component evidence passed | [cross-cutting.md](inventory/cross-cutting.md) |
 | CROSS-013 | Support tenant isolation and denied-action audit | H2 isolation integration 2/2 passed with denied-event assertions | [cross-cutting.md](inventory/cross-cutting.md) |
@@ -254,8 +255,8 @@ These are the only rows carried as `COMPLETE_VERIFIED`. Each has executable evid
 
 - Raw inventory rows: 179.
 - Explicit aliases: 2; unique capability groups: 177.
-- Raw `COMPLETE_VERIFIED` rows: 13; unique complete groups after aliasing: 11.
-- Remaining non-external incomplete rows: 159; T184-T186 are complete and T187-T345 remain in the generated remediation backlog.
+- Raw `COMPLETE_VERIFIED` rows: 14; unique complete groups after aliasing: 12.
+- Remaining non-external incomplete rows: 158; T184-T187 are complete and T188-T345 remain in the generated remediation backlog.
 - External-blocker rows requiring safe adapter/configuration work: 7.
 - T148 traceability is maintained in `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md`.
 - Production payment, production SMTP/social credentials, real-money execution and destructive cleanup remain prohibited.

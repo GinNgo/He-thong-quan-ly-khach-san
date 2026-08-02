@@ -1,5 +1,6 @@
 package com.hotel.integration;
 
+import com.hotel.BackendApplication;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.Location;
 import com.hotel.repositories.HotelRepository;
@@ -14,8 +15,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
@@ -23,7 +22,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(
+        classes = BackendApplication.class,
+        properties = "payment.property.encryption-key=test-property-payment-encryption-key")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
@@ -34,13 +35,20 @@ class PublicDiscoveryControllerIntegrationTest {
     @Autowired private HotelRepository hotelRepository;
 
     private Location province;
+    private Location currentProvince;
     private Location ward;
+    private Location secondProvince;
 
     @BeforeEach
     void setUp() {
-        String suffix = UUID.randomUUID().toString().substring(0, 8);
-        province = location("TEST-P-" + suffix, "Tiền Giang", "PROVINCE", null);
+        String suffix = "PUB030";
+        province = location("TEST-P-" + suffix, "82", "Tiền Giang", "PROVINCE", null);
+        currentProvince = location("TEST-CP-" + suffix, "VN34-82", "Tỉnh Đồng Tháp", "PROVINCE", null);
         ward = location("TEST-W-" + suffix, "Phường Mỹ Tho", "WARD", province);
+        secondProvince = location("TEST-P2-" + suffix, "VN34-48", "Thành phố Đà Nẵng", "PROVINCE", null);
+        landmark("TEST-LM-" + suffix, "Cầu Rồng", "CULTURE", currentProvince, 10.3505, 106.3505, "ACTIVE");
+        landmark("TEST-LM2-" + suffix, "Cầu Rồng", "CULTURE", secondProvince, 16.0611, 108.2277, "ACTIVE");
+        landmark("TEST-LM3-" + suffix, "Điểm thử", "NATURE", province, null, null, "INACTIVE");
 
         Hotel hotel = new Hotel();
         hotel.setName("LuxeStay Riverside Mỹ Tho");
@@ -67,7 +75,7 @@ class PublicDiscoveryControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.wards", hasSize(greaterThanOrEqualTo(1))))
                 .andExpect(jsonPath("$.wards[0].type").value("WARD"))
-                .andExpect(jsonPath("$.wards[0].provinceName").value("Tiền Giang"));
+                .andExpect(jsonPath("$.wards[0].provinceName").value("Tỉnh Đồng Tháp"));
 
         mockMvc.perform(get("/api/public/search/suggestions").param("keyword", "Mỹ Tho"))
                 .andExpect(status().isOk())
@@ -99,6 +107,25 @@ class PublicDiscoveryControllerIntegrationTest {
     }
 
     @Test
+    void groupedSuggestions_ReturnsActiveLandmarksAndDisambiguatesProvince() throws Exception {
+        mockMvc.perform(get("/api/public/search/suggestions")
+                        .param("keyword", "cau rong"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.landmarks", hasSize(2)))
+                .andExpect(jsonPath("$.landmarks[0].type").value("LANDMARK"))
+                .andExpect(jsonPath("$.landmarks[0].provinceName").exists())
+                .andExpect(jsonPath("$.landmarks[0].latitude").isNumber())
+                .andExpect(jsonPath("$.landmarks[0].defaultRadiusKm").value(5.0));
+
+        mockMvc.perform(get("/api/public/search/suggestions")
+                        .param("keyword", "cau rong")
+                        .param("provinceId", currentProvince.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.landmarks", hasSize(1)))
+                .andExpect(jsonPath("$.landmarks[0].provinceId").value(currentProvince.getId()));
+    }
+
+    @Test
     void popularDestinations_UsesRealApprovedPropertyCount() throws Exception {
         mockMvc.perform(get("/api/public/popular-destinations").param("limit", "8")
                         .contentType(MediaType.APPLICATION_JSON))
@@ -108,15 +135,41 @@ class PublicDiscoveryControllerIntegrationTest {
                 .andExpect(jsonPath("$[0].propertyCount", greaterThanOrEqualTo(1)));
     }
 
+    @Test
+    void currentProvinceList_HidesLegacyProvinceRows() throws Exception {
+        mockMvc.perform(get("/api/public/locations/provinces"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].sourceCode").value(org.hamcrest.Matchers.everyItem(
+                        org.hamcrest.Matchers.startsWith("VN34-"))))
+                .andExpect(jsonPath("$[?(@.sourceCode == '82')]").isEmpty());
+    }
+
     private Location location(String code, String name, String type, Location parent) {
+        return location(code, code, name, type, parent);
+    }
+
+    private Location location(String code, String sourceCode, String name, String type, Location parent) {
         Location location = new Location();
         location.setCode(code);
-        location.setSourceCode(code);
+        location.setSourceCode(sourceCode);
         location.setNameVi(name);
         location.setLocationType(type);
         location.setParent(parent);
         location.setFullPath(parent == null ? name : name + ", " + parent.getNameVi());
         location.setStatus("ACTIVE");
+        return locationRepository.saveAndFlush(location);
+    }
+
+    private Location landmark(String code, String name, String category, Location parent,
+                              Double latitude, Double longitude, String status) {
+        Location location = location(code, name, "LANDMARK", parent);
+        location.setCategory(category);
+        location.setLatitude(latitude);
+        location.setLongitude(longitude);
+        location.setDefaultRadiusKm(5d);
+        location.setPopularityScore(10);
+        location.setNameEn("Landmark " + code);
+        location.setStatus(status);
         return locationRepository.saveAndFlush(location);
     }
 }

@@ -1,10 +1,14 @@
 package com.hotel.integration;
 
+import com.hotel.BackendApplication;
 import com.hotel.entities.Hotel;
+import com.hotel.entities.Location;
 import com.hotel.entities.RoomType;
 import com.hotel.repositories.HotelRepository;
+import com.hotel.repositories.LocationRepository;
 import com.hotel.repositories.RoomTypeRepository;
 import com.hotel.repositories.RoomRepository;
+import com.jayway.jsonpath.JsonPath;
 import com.hotel.entities.Room;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,10 +23,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
+@SpringBootTest(
+        classes = BackendApplication.class,
+        properties = "payment.property.encryption-key=test-property-payment-encryption-key")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
@@ -40,17 +47,37 @@ public class PropertySearchControllerIntegrationTest {
     @Autowired
     private RoomRepository roomRepository;
 
+    @Autowired
+    private LocationRepository locationRepository;
+
+    private Location primaryProvince;
+    private Location legacyPrimaryProvince;
+    private Location landmark;
+
     @BeforeEach
     void setUp() {
+        primaryProvince = saveLocation("TEST-P-SEARCH", "VN34-48", "Thành phố Đà Nẵng", "PROVINCE", null);
+        legacyPrimaryProvince = saveLocation("TEST-P-SEARCH-LEGACY", "48", "Đà Nẵng", "PROVINCE", null);
+        Location secondaryProvince = saveLocation("TEST-P-SEARCH-2", "Da Lat", "PROVINCE", null);
+        landmark = saveLocation("TEST-LM-SEARCH", "Cau Rong", "LANDMARK", primaryProvince);
+        landmark.setCategory("CULTURE");
+        landmark.setLatitude(16.0611);
+        landmark.setLongitude(108.2277);
+        landmark.setDefaultRadiusKm(5d);
+        landmark.setPopularityScore(100);
+        landmark = locationRepository.saveAndFlush(landmark);
+
         Hotel hotel = new Hotel();
         hotel.setName("Ocean View Hotel");
-        hotel.setProvinceId(1L);
+        hotel.setProvinceId(legacyPrimaryProvince.getId());
         hotel.setAddressLine("123 Beach Road");
         hotel.setCity("Đà Nẵng");
         hotel.setCountry("Việt Nam");
         hotel.setStatus("ACTIVE");
         hotel.setApprovalStatus("APPROVED");
         hotel.setOperationStatus("ACTIVE");
+        hotel.setLatitude(16.0612);
+        hotel.setLongitude(108.2278);
         hotelRepository.saveAndFlush(hotel);
 
         RoomType roomType = new RoomType();
@@ -66,13 +93,15 @@ public class PropertySearchControllerIntegrationTest {
 
         Hotel hotel2 = new Hotel();
         hotel2.setName("Mountain Retreat");
-        hotel2.setProvinceId(2L);
+        hotel2.setProvinceId(secondaryProvince.getId());
         hotel2.setAddressLine("456 Hill Road");
         hotel2.setCity("Đà Lạt");
         hotel2.setCountry("Việt Nam");
         hotel2.setStatus("ACTIVE");
         hotel2.setApprovalStatus("APPROVED");
         hotel2.setOperationStatus("ACTIVE");
+        hotel2.setLatitude(11.9404);
+        hotel2.setLongitude(108.4583);
         hotel2 = hotelRepository.saveAndFlush(hotel2);
 
         RoomType roomType2 = new RoomType();
@@ -101,11 +130,12 @@ public class PropertySearchControllerIntegrationTest {
     @Test
     void searchProperties_ByCity_ShouldReturnResults() throws Exception {
         mockMvc.perform(get("/api/public/properties/search")
-                        .param("provinceId", "1")
+                        .param("provinceId", primaryProvince.getId().toString())
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(greaterThanOrEqualTo(1))))
-                .andExpect(jsonPath("$.content[0].name", is("Ocean View Hotel")));
+                .andExpect(jsonPath("$.content[0].name", is("Ocean View Hotel")))
+                .andExpect(jsonPath("$.content[0].provinceName", is("Thành phố Đà Nẵng")));
     }
 
     @Test
@@ -119,7 +149,7 @@ public class PropertySearchControllerIntegrationTest {
     @Test
     void searchProperties_WithRoomQuantity_ShouldCalculateStayPricing() throws Exception {
         mockMvc.perform(get("/api/public/properties/search")
-                        .param("provinceId", "1")
+                        .param("provinceId", primaryProvince.getId().toString())
                         .param("checkInDate", "2026-08-01")
                         .param("checkOutDate", "2026-08-03")
                         .param("adultCount", "2")
@@ -135,5 +165,53 @@ public class PropertySearchControllerIntegrationTest {
                 .andExpect(jsonPath("$.content[0].pricing.subtotal", is(2000000)))
                 .andExpect(jsonPath("$.content[0].pricing.taxAmount", is(300000.00)))
                 .andExpect(jsonPath("$.content[0].pricing.totalAmount", is(2300000.00)));
+    }
+
+    @Test
+    void searchProperties_ByLandmarkResolvesCoordinatesAndOrdersByDistance() throws Exception {
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("landmarkId", landmark.getId().toString())
+                        .param("radiusKm", "5")
+                        .param("sortBy", "NEAREST")
+                        .param("adultCount", "2")
+                        .param("roomCount", "1")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].name", is("Ocean View Hotel")))
+                .andExpect(jsonPath("$.content[0].distanceKm", notNullValue()))
+                .andExpect(result -> {
+                    Number distanceKm = JsonPath.read(result.getResponse().getContentAsString(),
+                            "$.content[0].distanceKm");
+                    assertTrue(distanceKm.doubleValue() < 1.0,
+                            "landmark result should be within one kilometre");
+                });
+    }
+
+    @Test
+    void searchProperties_RejectsInactiveOrCoordinateLessLandmark() throws Exception {
+        Location invalid = saveLocation("TEST-LM-INVALID", "Invalid Landmark", "LANDMARK", primaryProvince);
+        invalid.setStatus("INACTIVE");
+        invalid = locationRepository.saveAndFlush(invalid);
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("landmarkId", invalid.getId().toString()))
+                .andExpect(status().isBadRequest());
+    }
+
+    private Location saveLocation(String code, String name, String type, Location parent) {
+        return saveLocation(code, code, name, type, parent);
+    }
+
+    private Location saveLocation(String code, String sourceCode, String name, String type, Location parent) {
+        Location location = new Location();
+        location.setCode(code);
+        location.setSourceCode(sourceCode);
+        location.setNameVi(name);
+        location.setLocationType(type);
+        location.setParent(parent);
+        location.setFullPath(parent == null ? name : name + ", " + parent.getNameVi());
+        location.setStatus("ACTIVE");
+        return locationRepository.saveAndFlush(location);
     }
 }
