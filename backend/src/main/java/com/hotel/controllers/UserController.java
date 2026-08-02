@@ -61,11 +61,20 @@ public class UserController {
         return ResponseEntity.ok(userService.updateUser(id, userDetails, request.getRoleIds(), request.getHotelId()));
     }
 
-    @DeleteMapping("/{id}")
+    @PostMapping("/{id}/deactivate")
     @Permission(function = FunctionCode.USER, action = ActionCode.DELETE)
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        userService.deleteUser(id);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<UserDto> deactivateStaff(
+            @PathVariable Long id,
+            @RequestBody com.hotel.dtos.StaffLifecycleRequest request) {
+        return ResponseEntity.ok(userService.deactivateStaff(id, request));
+    }
+
+    @PostMapping("/{id}/reactivate")
+    @Permission(function = FunctionCode.USER, action = ActionCode.UPDATE)
+    public ResponseEntity<UserDto> reactivateStaff(
+            @PathVariable Long id,
+            @RequestBody com.hotel.dtos.StaffLifecycleRequest request) {
+        return ResponseEntity.ok(userService.reactivateStaff(id, request));
     }
 
     @PreAuthorize("isAuthenticated()")

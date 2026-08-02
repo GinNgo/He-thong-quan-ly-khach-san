@@ -1,6 +1,7 @@
 package com.hotel.services;
 
 import com.hotel.entities.User;
+import com.hotel.dtos.StaffLifecycleRequest;
 import com.hotel.dtos.UserDto;
 import com.hotel.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,22 +33,35 @@ public class UserService {
 
     public List<UserDto> getAllUsers() {
         List<User> users;
+        java.util.Set<Long> visibleHotelIds = null;
         if (propertyAccessService.isSystemAdministrator()) {
             users = userRepository.findAll();
         } else {
-            java.util.Set<Long> hotelIds = propertyAccessService.accessibleHotelIds();
-            users = hotelIds.isEmpty() ? List.of() : userRepository.findAccessibleUsers(hotelIds);
+            visibleHotelIds = propertyAccessService.accessibleHotelIds();
+            if (visibleHotelIds.isEmpty()) {
+                users = List.of();
+            } else {
+                java.util.Map<Long, User> manageable = new java.util.LinkedHashMap<>();
+                userRepository.findAccessibleUsers(visibleHotelIds)
+                        .forEach(user -> manageable.put(user.getId(), user));
+                userPropertyRepository.findHistoricalStaffUsersByHotelIds(visibleHotelIds)
+                        .forEach(user -> manageable.put(user.getId(), user));
+                users = new java.util.ArrayList<>(manageable.values());
+            }
         }
+        java.util.Set<Long> assignmentScope = visibleHotelIds;
         return users.stream()
-                .map(this::convertToDto)
+                .map(user -> convertToDto(user, assignmentScope))
                 .collect(Collectors.toList());
     }
 
     public Optional<UserDto> getUserById(Long id) {
-        if (!propertyAccessService.isSystemAdministrator() && !isAccessibleUser(id)) {
+        boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
+        java.util.Set<Long> hotelIds = systemAdministrator ? null : propertyAccessService.accessibleHotelIds();
+        if (!systemAdministrator && !isManageableUser(id, hotelIds)) {
             return Optional.empty();
         }
-        return userRepository.findById(id).map(this::convertToDto);
+        return userRepository.findById(id).map(user -> convertToDto(user, hotelIds));
     }
 
     public Optional<User> getEntityById(Long id) {
@@ -103,14 +117,18 @@ public class UserService {
         user.setHotel(hotel);
         User saved = userRepository.save(user);
 
-        if (!systemAdministrator) {
+        if (hotel != null) {
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
             com.hotel.entities.UserProperty mapping = new com.hotel.entities.UserProperty();
             mapping.setUser(saved);
             mapping.setHotel(hotel);
             mapping.setRelationshipType("STAFF");
             mapping.setIsPrimaryOwner(false);
             mapping.setStatus("ACTIVE");
-            mapping.setStartDate(java.time.LocalDateTime.now());
+            mapping.setStartDate(now);
+            mapping.setStatusReason("Initial staff assignment");
+            mapping.setStatusChangedAt(now);
+            mapping.setStatusChangedBy(propertyAccessService.currentUser());
             userPropertyRepository.save(mapping);
         }
 
@@ -121,6 +139,9 @@ public class UserService {
     public UserDto updateUser(Long id, User userDetails, java.util.Set<Long> roleIds, Long hotelId) {
         boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
         User user = requireManageableUser(id, systemAdministrator);
+        if (!systemAdministrator) {
+            subscriptionFeatureService.requireFeature(propertyAccessService.currentUser().getId(), "MAX_STAFF");
+        }
 
         java.util.Set<com.hotel.entities.Role> roles = roleIds == null
                 ? user.getRoles()
@@ -144,6 +165,20 @@ public class UserService {
             throw new IllegalArgumentException("Vui lòng chọn cơ sở cho nhân viên.");
         }
 
+        List<com.hotel.entities.UserProperty> staffAssignments =
+                userPropertyRepository.findStaffAssignmentsForUpdate(id);
+        if (!staffAssignments.isEmpty()
+                && userDetails.getStatus() != null
+                && !userDetails.getStatus().equalsIgnoreCase(user.getStatus())) {
+            throw new IllegalStateException("Use the staff deactivate/reactivate action to change access status.");
+        }
+        if (!systemAdministrator && staffAssignments.stream().noneMatch(item ->
+                item.getHotel() != null
+                        && item.getHotel().getId().equals(hotelId)
+                        && "ACTIVE".equals(item.getStatus()))) {
+            throw new IllegalStateException("Deactivate and rehire the staff member to change property assignment.");
+        }
+
         user.setFullName(userDetails.getFullName());
         if (userDetails.getEmail() != null && !userDetails.getEmail().equalsIgnoreCase(user.getEmail())) {
             if (userRepository.existsByEmail(userDetails.getEmail())) {
@@ -155,7 +190,9 @@ public class UserService {
         if (userDetails.getAvatarUrl() != null) {
             user.setAvatarUrl(userDetails.getAvatarUrl());
         }
-        user.setStatus(userDetails.getStatus());
+        if (userDetails.getStatus() != null) {
+            user.setStatus(userDetails.getStatus());
+        }
 
         if (userDetails.getPasswordHash() != null && !userDetails.getPasswordHash().isEmpty()) {
             user.setPasswordHash(passwordEncoder.encode(userDetails.getPasswordHash()));
@@ -165,42 +202,97 @@ public class UserService {
         user.setHotel(hotel);
         User saved = userRepository.save(user);
 
-        if (!systemAdministrator) {
-            List<com.hotel.entities.UserProperty> mappings =
-                    userPropertyRepository.findByUserIdAndRelationshipType(id, "STAFF");
-            com.hotel.entities.UserProperty mapping = mappings.stream()
-                    .filter(item -> item.getHotel() != null && item.getHotel().getId().equals(hotelId))
-                    .findFirst()
-                    .orElseGet(com.hotel.entities.UserProperty::new);
-            java.time.LocalDateTime now = java.time.LocalDateTime.now();
-            mappings.stream()
-                    .filter(item -> item != mapping && "ACTIVE".equals(item.getStatus()))
-                    .forEach(item -> {
-                        item.setStatus("INACTIVE");
-                        item.setEndDate(now);
-                    });
-            mapping.setUser(saved);
-            mapping.setHotel(hotel);
-            mapping.setRelationshipType("STAFF");
-            mapping.setIsPrimaryOwner(false);
-            mapping.setStatus("ACTIVE");
-            mapping.setEndDate(null);
-            if (mapping.getStartDate() == null) {
-                mapping.setStartDate(now);
-            }
-            userPropertyRepository.saveAll(mappings);
-            userPropertyRepository.save(mapping);
-        }
-
         return convertToDto(saved);
     }
 
     @Transactional
-    public void deleteUser(Long id) {
+    public UserDto deactivateStaff(Long id, StaffLifecycleRequest request) {
         boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
-        User user = requireManageableUser(id, systemAdministrator);
-        userPropertyRepository.deleteAll(userPropertyRepository.findByUserId(id));
-        userRepository.delete(user);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        User actor = propertyAccessService.currentUser();
+        String reason = requireLifecycleReason(request);
+        com.hotel.entities.Hotel hotel = requireLifecycleHotel(request, systemAdministrator);
+        List<com.hotel.entities.UserProperty> assignments =
+                userPropertyRepository.findStaffAssignmentsForUpdate(id);
+        requireLifecycleAuthority(user, actor, assignments, hotel.getId(), systemAdministrator);
+
+        com.hotel.entities.UserProperty assignment = assignments.stream()
+                .filter(item -> item.getHotel() != null
+                        && hotel.getId().equals(item.getHotel().getId())
+                        && "ACTIVE".equals(item.getStatus()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("The staff assignment is not active."));
+
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        assignment.setStatus("INACTIVE");
+        assignment.setEndDate(now);
+        assignment.setStatusReason(reason);
+        assignment.setStatusChangedAt(now);
+        assignment.setStatusChangedBy(actor);
+        userPropertyRepository.save(assignment);
+
+        if (userPropertyRepository.countByUserIdAndStatus(id, "ACTIVE") == 0) {
+            user.setStatus("INACTIVE");
+            userRepository.save(user);
+        }
+        return convertToDto(user, systemAdministrator ? null : propertyAccessService.accessibleHotelIds());
+    }
+
+    @Transactional
+    public UserDto reactivateStaff(Long id, StaffLifecycleRequest request) {
+        boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        User actor = propertyAccessService.currentUser();
+        String reason = requireLifecycleReason(request);
+        com.hotel.entities.Hotel hotel = requireLifecycleHotel(request, systemAdministrator);
+        List<com.hotel.entities.UserProperty> assignments =
+                userPropertyRepository.findStaffAssignmentsForUpdate(id);
+        requireLifecycleAuthority(user, actor, assignments, hotel.getId(), systemAdministrator);
+
+        boolean hasHistory = assignments.stream().anyMatch(item -> item.getHotel() != null
+                && hotel.getId().equals(item.getHotel().getId()));
+        if (!hasHistory) {
+            throw new IllegalStateException("No historical staff assignment exists for this property.");
+        }
+        if (assignments.stream().anyMatch(item -> item.getHotel() != null
+                && hotel.getId().equals(item.getHotel().getId())
+                && "ACTIVE".equals(item.getStatus()))) {
+            throw new IllegalStateException("The staff assignment is already active.");
+        }
+        if (user.getStatus() != null
+                && !"ACTIVE".equalsIgnoreCase(user.getStatus())
+                && !"INACTIVE".equalsIgnoreCase(user.getStatus())) {
+            throw new IllegalStateException("A suspended or disabled account requires system account review.");
+        }
+
+        if (!systemAdministrator) {
+            java.util.Set<Long> accessibleHotelIds = propertyAccessService.accessibleHotelIds();
+            long currentStaff = accessibleHotelIds.isEmpty()
+                    ? 0
+                    : userPropertyRepository.countActiveStaffByHotelIds(accessibleHotelIds);
+            subscriptionFeatureService.checkFeatureLimit(
+                    actor.getId(), "MAX_STAFF", Math.toIntExact(currentStaff));
+        }
+
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        com.hotel.entities.UserProperty assignment = new com.hotel.entities.UserProperty();
+        assignment.setUser(user);
+        assignment.setHotel(hotel);
+        assignment.setRelationshipType("STAFF");
+        assignment.setIsPrimaryOwner(false);
+        assignment.setStatus("ACTIVE");
+        assignment.setStartDate(now);
+        assignment.setStatusReason(reason);
+        assignment.setStatusChangedAt(now);
+        assignment.setStatusChangedBy(actor);
+        userPropertyRepository.save(assignment);
+
+        user.setStatus("ACTIVE");
+        user.setHotel(hotel);
+        User saved = userRepository.save(user);
+        return convertToDto(saved, systemAdministrator ? null : propertyAccessService.accessibleHotelIds());
     }
 
     public UserDto updateProfile(Long id, String fullName, String email, String phone, String avatarUrl) {
@@ -255,7 +347,65 @@ public class UserService {
         return !hotelIds.isEmpty() && userRepository.isUserAccessible(id, hotelIds);
     }
 
+    private boolean isManageableUser(Long id, java.util.Set<Long> hotelIds) {
+        if (hotelIds == null || hotelIds.isEmpty()) {
+            return false;
+        }
+        if (userRepository.isUserAccessible(id, hotelIds)) {
+            return true;
+        }
+        return userPropertyRepository.findByUserIdAndRelationshipType(id, "STAFF").stream()
+                .anyMatch(item -> item.getHotel() != null && hotelIds.contains(item.getHotel().getId()));
+    }
+
+    private String requireLifecycleReason(StaffLifecycleRequest request) {
+        if (request == null || request.getReason() == null || request.getReason().trim().length() < 3) {
+            throw new IllegalArgumentException("A lifecycle reason of at least 3 characters is required.");
+        }
+        String reason = request.getReason().trim();
+        if (reason.length() > 500) {
+            throw new IllegalArgumentException("The lifecycle reason must not exceed 500 characters.");
+        }
+        return reason;
+    }
+
+    private com.hotel.entities.Hotel requireLifecycleHotel(
+            StaffLifecycleRequest request,
+            boolean systemAdministrator) {
+        if (request == null || request.getHotelId() == null) {
+            throw new IllegalArgumentException("Property is required for staff lifecycle changes.");
+        }
+        return systemAdministrator
+                ? hotelRepository.findById(request.getHotelId())
+                        .orElseThrow(() -> new IllegalArgumentException("Property not found."))
+                : propertyAccessService.requireManagedHotel(request.getHotelId());
+    }
+
+    private void requireLifecycleAuthority(
+            User target,
+            User actor,
+            List<com.hotel.entities.UserProperty> assignments,
+            Long hotelId,
+            boolean systemAdministrator) {
+        if (actor != null && actor.getId() != null && actor.getId().equals(target.getId())) {
+            throw new SecurityException("You cannot change your own staff lifecycle.");
+        }
+        if (!systemAdministrator && target.getRoles() != null && target.getRoles().stream()
+                .map(com.hotel.entities.Role::getCode)
+                .anyMatch(java.util.Set.of("SUPER_ADMIN", "ADMIN", "PROPERTY_OWNER")::contains)) {
+            throw new SecurityException("You cannot manage a privileged account.");
+        }
+        if (!systemAdministrator && assignments.stream().noneMatch(item -> item.getHotel() != null
+                && hotelId.equals(item.getHotel().getId()))) {
+            throw new SecurityException("You cannot manage this staff assignment.");
+        }
+    }
+
     private UserDto convertToDto(User user) {
+        return convertToDto(user, null);
+    }
+
+    private UserDto convertToDto(User user, java.util.Set<Long> visibleHotelIds) {
         UserDto dto = new UserDto();
         dto.setId(user.getId());
         dto.setUsername(user.getUsername());
@@ -286,6 +436,25 @@ public class UserService {
             hotel.setName(user.getHotel().getName());
             dto.setHotel(hotel);
         }
+
+        List<UserDto.StaffAssignmentSummary> assignments =
+                userPropertyRepository.findByUserIdAndRelationshipTypeOrderByStartDateDesc(user.getId(), "STAFF")
+                        .stream()
+                        .filter(item -> visibleHotelIds == null
+                                || (item.getHotel() != null && visibleHotelIds.contains(item.getHotel().getId())))
+                        .map(item -> {
+                            UserDto.StaffAssignmentSummary summary = new UserDto.StaffAssignmentSummary();
+                            summary.setId(item.getId());
+                            summary.setHotelId(item.getHotel().getId());
+                            summary.setHotelName(item.getHotel().getName());
+                            summary.setStatus(item.getStatus());
+                            summary.setStatusReason(item.getStatusReason());
+                            summary.setStartDate(item.getStartDate());
+                            summary.setEndDate(item.getEndDate());
+                            return summary;
+                        })
+                        .toList();
+        dto.setStaffAssignments(assignments);
 
         return dto;
     }

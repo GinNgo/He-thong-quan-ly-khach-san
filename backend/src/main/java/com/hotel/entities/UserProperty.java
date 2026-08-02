@@ -40,4 +40,14 @@ public class UserProperty extends AuditableEntity {
 
     @Column(name = "end_date")
     private java.time.LocalDateTime endDate;
+
+    @Column(name = "status_reason", length = 500)
+    private String statusReason;
+
+    @Column(name = "status_changed_at")
+    private java.time.LocalDateTime statusChangedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "status_changed_by_user_id")
+    private User statusChangedBy;
 }

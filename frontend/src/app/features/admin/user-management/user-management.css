@@ -1,0 +1,32 @@
+.lifecycle-note {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  padding: 1rem;
+  border: 1px solid var(--hotel-border);
+  border-radius: var(--hotel-radius-lg);
+  background: linear-gradient(135deg, var(--hotel-primary-light) 0%, var(--hotel-bg) 100%);
+  color: var(--hotel-heading);
+}
+
+.lifecycle-note > .pi {
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  flex: 0 0 auto;
+  border-radius: var(--hotel-radius-md);
+  background: var(--hotel-primary);
+  color: var(--hotel-card-bg);
+}
+
+.lifecycle-note strong,
+.lifecycle-note span {
+  display: block;
+}
+
+.lifecycle-note span {
+  margin-top: 0.25rem;
+  color: var(--hotel-text-muted);
+  line-height: 1.45;
+}

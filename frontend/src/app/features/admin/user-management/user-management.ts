@@ -1,17 +1,17 @@
 import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { SharedModule } from '@app/shared/shared.module';
-import { UserService, User } from '@app/core/services/user';
+import { StaffAssignment, UserService, User } from '@app/core/services/user';
 import { RoleService, Role } from '@app/core/services/role.service';
 import { ClientApiService, Hotel } from '@app/core/services/client-api.service';
 import { ActivatedRoute } from '@angular/router';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { MessageService } from 'primeng/api';
 import { finalize, timeout } from 'rxjs/operators';
 
 @Component({
   selector: 'app-user-management',
   standalone: true,
   imports: [SharedModule],
-  providers: [ConfirmationService, MessageService],
+  providers: [MessageService],
   templateUrl: './user-management.html',
   styleUrl: './user-management.css',
 })
@@ -27,12 +27,16 @@ export class UserManagement implements OnInit {
   displayDialog = false;
   userDialogMode: 'create' | 'edit' = 'create';
   userForm: any = this.createEmptyForm();
+  lifecycleDialogVisible = false;
+  lifecycleMode: 'deactivate' | 'reactivate' = 'deactivate';
+  lifecycleUser: User | null = null;
+  lifecycleHotelId: number | null = null;
+  lifecycleReason = '';
 
   private userService = inject(UserService);
   private roleService = inject(RoleService);
   private hotelService = inject(ClientApiService);
   private route = inject(ActivatedRoute);
-  private confirmationService = inject(ConfirmationService);
   private messageService = inject(MessageService);
   private cdr = inject(ChangeDetectorRef);
 
@@ -109,6 +113,7 @@ export class UserManagement implements OnInit {
   }
 
   editUser(user: User): void {
+    const activeAssignment = user.staffAssignments?.find(item => item.status === 'ACTIVE');
     this.userForm = {
       id: user.id,
       username: user.username,
@@ -118,7 +123,7 @@ export class UserManagement implements OnInit {
       phone: (user as any).phone || '',
       status: user.status,
       roleIds: user.roles ? user.roles.map((r: any) => r.id) : [],
-      hotelId: (user as any).hotel ? (user as any).hotel.id : null
+      hotelId: activeAssignment?.hotelId ?? user.hotel?.id ?? null
     };
     this.userDialogMode = 'edit';
     this.displayDialog = true;
@@ -158,30 +163,80 @@ export class UserManagement implements OnInit {
     });
   }
 
-  deleteUser(user: User): void {
-    this.confirmationService.confirm({
-      message: `Bạn có chắc muốn xóa người dùng ${user.username}?`,
-      header: 'Xác nhận xóa',
-      icon: 'pi pi-exclamation-triangle',
-      accept: () => {
-        this.saving = true;
-        this.userService.deleteUser(user.id!).pipe(
-          timeout(10000),
-          finalize(() => {
-            this.saving = false;
-          })
-        ).subscribe({
-          next: () => {
-            this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã xóa người dùng.' });
-            this.loadUsers();
-          },
-          error: (error) => {
-            const detail = error?.error?.message || 'Không thể xóa người dùng.';
-            this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
-          }
+  openLifecycle(user: User, mode: 'deactivate' | 'reactivate'): void {
+    const assignments = this.lifecycleAssignments(user, mode);
+    if (!assignments.length) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Không có phân công phù hợp',
+        detail: mode === 'deactivate'
+          ? 'Nhân viên không còn phân công đang hoạt động.'
+          : 'Không tìm thấy lịch sử phân công để tuyển lại.'
+      });
+      return;
+    }
+    this.lifecycleUser = user;
+    this.lifecycleMode = mode;
+    this.lifecycleHotelId = assignments[0].hotelId;
+    this.lifecycleReason = '';
+    this.lifecycleDialogVisible = true;
+  }
+
+  submitLifecycle(): void {
+    if (this.saving || !this.lifecycleUser || !this.lifecycleHotelId) return;
+    const reason = this.lifecycleReason.trim();
+    if (reason.length < 3) {
+      this.messageService.add({
+        severity: 'warn', summary: 'Thiếu lý do', detail: 'Vui lòng nhập lý do ít nhất 3 ký tự.'
+      });
+      return;
+    }
+
+    const request = this.lifecycleMode === 'deactivate'
+      ? this.userService.deactivateStaff(this.lifecycleUser.id, { hotelId: this.lifecycleHotelId, reason })
+      : this.userService.reactivateStaff(this.lifecycleUser.id, { hotelId: this.lifecycleHotelId, reason });
+
+    this.saving = true;
+    request.pipe(
+      timeout(10000),
+      finalize(() => {
+        this.saving = false;
+        this.cdr.detectChanges();
+      })
+    ).subscribe({
+      next: () => {
+        this.lifecycleDialogVisible = false;
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Thành công',
+          detail: this.lifecycleMode === 'deactivate'
+            ? 'Đã ngừng quyền truy cập và giữ nguyên lịch sử nhân sự.'
+            : 'Đã tuyển lại nhân viên với một kỳ phân công mới.'
         });
+        this.loadUsers();
+      },
+      error: (error) => {
+        const detail = error?.error?.message || 'Không thể cập nhật vòng đời nhân viên.';
+        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
       }
     });
+  }
+
+  lifecycleAssignments(user: User | null, mode: 'deactivate' | 'reactivate'): StaffAssignment[] {
+    const expectedStatus = mode === 'deactivate' ? 'ACTIVE' : 'INACTIVE';
+    return (user?.staffAssignments || []).filter(item => item.status === expectedStatus);
+  }
+
+  hasAssignment(user: User, status: 'ACTIVE' | 'INACTIVE'): boolean {
+    return (user.staffAssignments || []).some(item => item.status === status);
+  }
+
+  assignmentLabel(user: User): string {
+    const assignments = user.staffAssignments || [];
+    if (!assignments.length) return user.hotel?.name || '-';
+    return assignments
+      .map(item => `${item.hotelName} · ${item.status === 'ACTIVE' ? 'Đang làm' : 'Đã nghỉ'}`)
+      .join(', ');
   }
 
   getRolesString(roles: any[]): string {

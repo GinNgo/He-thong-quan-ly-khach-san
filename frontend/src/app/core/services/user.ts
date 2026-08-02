@@ -13,6 +13,23 @@ export interface User {
   roles: any[];
   status: string;
   createdAt: string;
+  hotel?: { id: number; name: string };
+  staffAssignments?: StaffAssignment[];
+}
+
+export interface StaffAssignment {
+  id: number;
+  hotelId: number;
+  hotelName: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  statusReason?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface StaffLifecycleRequest {
+  hotelId: number;
+  reason: string;
 }
 
 @Injectable({
@@ -38,8 +55,12 @@ export class UserService {
     return this.http.put<User>(`${this.apiUrl}/${id}`, user);
   }
 
-  deleteUser(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  deactivateStaff(id: number, request: StaffLifecycleRequest): Observable<User> {
+    return this.http.post<User>(`${this.apiUrl}/${id}/deactivate`, request);
+  }
+
+  reactivateStaff(id: number, request: StaffLifecycleRequest): Observable<User> {
+    return this.http.post<User>(`${this.apiUrl}/${id}/reactivate`, request);
   }
 
   getProfile(): Observable<User> {

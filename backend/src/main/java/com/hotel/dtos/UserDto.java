@@ -15,6 +15,7 @@ public class UserDto {
     private LocalDateTime createdAt;
     private List<RoleSummary> roles;
     private HotelSummary hotel;
+    private List<StaffAssignmentSummary> staffAssignments;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -49,6 +50,9 @@ public class UserDto {
     public HotelSummary getHotel() { return hotel; }
     public void setHotel(HotelSummary hotel) { this.hotel = hotel; }
 
+    public List<StaffAssignmentSummary> getStaffAssignments() { return staffAssignments; }
+    public void setStaffAssignments(List<StaffAssignmentSummary> staffAssignments) { this.staffAssignments = staffAssignments; }
+
     public static class RoleSummary {
         private Long id;
         private String code;
@@ -73,6 +77,31 @@ public class UserDto {
 
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
+    }
+
+    public static class StaffAssignmentSummary {
+        private Long id;
+        private Long hotelId;
+        private String hotelName;
+        private String status;
+        private String statusReason;
+        private LocalDateTime startDate;
+        private LocalDateTime endDate;
+
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+        public Long getHotelId() { return hotelId; }
+        public void setHotelId(Long hotelId) { this.hotelId = hotelId; }
+        public String getHotelName() { return hotelName; }
+        public void setHotelName(String hotelName) { this.hotelName = hotelName; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
+        public String getStatusReason() { return statusReason; }
+        public void setStatusReason(String statusReason) { this.statusReason = statusReason; }
+        public LocalDateTime getStartDate() { return startDate; }
+        public void setStartDate(LocalDateTime startDate) { this.startDate = startDate; }
+        public LocalDateTime getEndDate() { return endDate; }
+        public void setEndDate(LocalDateTime endDate) { this.endDate = endDate; }
     }
 
     // SaaS Context Fields

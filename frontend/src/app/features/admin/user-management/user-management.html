@@ -1,5 +1,4 @@
 <p-toast></p-toast>
-<p-confirmDialog></p-confirmDialog>
 
 <div class="card border-0 shadow-sm m-3">
   <div class="card-header bg-white border-0 py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
@@ -37,6 +36,7 @@
           <th pSortableColumn="username" style="width: 20%">Tài khoản <p-sortIcon field="username"></p-sortIcon></th>
           <th pSortableColumn="email" style="width: 20%">Email <p-sortIcon field="email"></p-sortIcon></th>
           <th *ngIf="userType === 'STAFF'" style="width: 20%">Vai trò</th>
+          <th *ngIf="userType === 'STAFF'" style="min-width: 220px">Phân công cơ sở</th>
           <th pSortableColumn="status" style="width: 15%">Trạng thái <p-sortIcon field="status"></p-sortIcon></th>
           <th style="width: 15%" class="text-center">Thao tác</th>
         </tr>
@@ -52,6 +52,9 @@
               {{ role.name }}
             </span>
           </td>
+          <td *ngIf="userType === 'STAFF'" class="text-muted small">
+            {{ assignmentLabel(user) }}
+          </td>
           <td>
             <span class="badge"
                   [ngClass]="{
@@ -64,7 +67,8 @@
           <td class="text-center">
             <div class="d-flex justify-content-center gap-1">
               <button pButton icon="pi pi-pencil" class="p-button-text p-button-secondary p-button-sm" title="Sửa" (click)="editUser(user)" [disabled]="saving"></button>
-              <button pButton icon="pi pi-trash" class="p-button-text p-button-danger p-button-sm" title="Xóa" (click)="deleteUser(user)" [disabled]="saving"></button>
+              <button *ngIf="userType === 'STAFF' && hasAssignment(user, 'ACTIVE')" pButton icon="pi pi-ban" class="p-button-text p-button-danger p-button-sm" title="Ngừng quyền truy cập" (click)="openLifecycle(user, 'deactivate')" [disabled]="saving"></button>
+              <button *ngIf="userType === 'STAFF' && hasAssignment(user, 'INACTIVE')" pButton icon="pi pi-user-plus" class="p-button-text p-button-success p-button-sm" title="Tuyển lại" (click)="openLifecycle(user, 'reactivate')" [disabled]="saving"></button>
             </div>
           </td>
         </tr>
@@ -72,7 +76,7 @@
 
       <ng-template pTemplate="emptymessage">
         <tr>
-          <td [attr.colspan]="userType === 'STAFF' ? 6 : 5" class="text-center p-4 text-muted">Không tìm thấy dữ liệu người dùng.</td>
+          <td [attr.colspan]="userType === 'STAFF' ? 7 : 5" class="text-center p-4 text-muted">Không tìm thấy dữ liệu người dùng.</td>
         </tr>
       </ng-template>
     </p-table>
@@ -103,7 +107,8 @@
     </div>
     <div class="col-12 col-md-6 mb-3 field">
       <label class="fw-bold mb-1">Trạng thái</label>
-      <p-select [options]="[{label: 'Hoạt động (ACTIVE)', value: 'ACTIVE'}, {label: 'Khóa (INACTIVE)', value: 'INACTIVE'}]" [(ngModel)]="userForm.status" appendTo="body" styleClass="w-100" [disabled]="saving"></p-select>
+      <p-select [options]="[{label: 'Hoạt động (ACTIVE)', value: 'ACTIVE'}, {label: 'Khóa (INACTIVE)', value: 'INACTIVE'}]" [(ngModel)]="userForm.status" appendTo="body" styleClass="w-100" [disabled]="saving || (userType === 'STAFF' && userDialogMode === 'edit')"></p-select>
+      <small *ngIf="userType === 'STAFF' && userDialogMode === 'edit'" class="text-muted d-block mt-1">Dùng thao tác ngừng quyền truy cập hoặc tuyển lại để lưu đầy đủ lịch sử.</small>
     </div>
     <ng-container *ngIf="userType === 'STAFF'">
       <div class="col-12 col-md-6 mb-3 field">
@@ -120,5 +125,48 @@
   <ng-template pTemplate="footer">
     <button pButton label="Hủy" icon="pi pi-times" class="p-button-text" (click)="displayDialog = false" [disabled]="saving"></button>
     <button pButton [label]="saving ? 'Đang lưu...' : 'Lưu'" [icon]="saving ? 'pi pi-spin pi-spinner' : 'pi pi-check'" class="p-button-primary" (click)="saveUser()" [disabled]="saving"></button>
+  </ng-template>
+</p-dialog>
+
+<p-dialog
+  [(visible)]="lifecycleDialogVisible"
+  [modal]="true"
+  [style]="{width: '520px', maxWidth: 'calc(100vw - 2rem)'}"
+  [header]="lifecycleMode === 'deactivate' ? 'Ngừng quyền truy cập nhân viên' : 'Tuyển lại nhân viên'"
+  [draggable]="false"
+  [resizable]="false"
+  appendTo="body"
+>
+  <div class="lifecycle-note">
+    <i class="pi" [ngClass]="lifecycleMode === 'deactivate' ? 'pi-shield' : 'pi-history'"></i>
+    <div>
+      <strong>{{ lifecycleUser?.fullName || lifecycleUser?.username }}</strong>
+      <span>{{ lifecycleMode === 'deactivate' ? 'Tài khoản chỉ bị khóa khi không còn phân công hoạt động.' : 'Hệ thống tạo một kỳ phân công mới và giữ nguyên lịch sử cũ.' }}</span>
+    </div>
+  </div>
+
+  <div class="field mt-3">
+    <label class="fw-bold mb-1" for="lifecycle-property">Cơ sở lưu trú</label>
+    <p-select
+      inputId="lifecycle-property"
+      [options]="lifecycleAssignments(lifecycleUser, lifecycleMode)"
+      [(ngModel)]="lifecycleHotelId"
+      optionLabel="hotelName"
+      optionValue="hotelId"
+      appendTo="body"
+      styleClass="w-100"
+      [disabled]="saving"
+    ></p-select>
+  </div>
+
+  <div class="field mt-3">
+    <label class="fw-bold mb-1" for="lifecycle-reason">Lý do <span class="text-danger">*</span></label>
+    <textarea id="lifecycle-reason" pInputTextarea [(ngModel)]="lifecycleReason" rows="4" maxlength="500" class="w-100" [disabled]="saving" placeholder="Ví dụ: Kết thúc hợp đồng, nghỉ việc, tuyển lại theo hợp đồng mới..."></textarea>
+    <small class="text-muted">Lý do được lưu cùng người thực hiện và thời điểm thay đổi.</small>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button pButton label="Hủy" icon="pi pi-times" class="p-button-text" (click)="lifecycleDialogVisible = false" [disabled]="saving"></button>
+    <button pButton [label]="saving ? 'Đang xử lý...' : (lifecycleMode === 'deactivate' ? 'Ngừng truy cập' : 'Tuyển lại')" [icon]="saving ? 'pi pi-spin pi-spinner' : (lifecycleMode === 'deactivate' ? 'pi pi-ban' : 'pi pi-user-plus')" [class.p-button-danger]="lifecycleMode === 'deactivate'" [class.p-button-success]="lifecycleMode === 'reactivate'" (click)="submitLifecycle()" [disabled]="saving || lifecycleReason.trim().length < 3"></button>
   </ng-template>
 </p-dialog>
