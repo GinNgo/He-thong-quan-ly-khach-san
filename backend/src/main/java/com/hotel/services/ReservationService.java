@@ -1,5 +1,6 @@
 package com.hotel.services;
 
+import com.hotel.domain.lifecycle.ReservationStatus;
 import com.hotel.dtos.*;
 import com.hotel.entities.*;
 import com.hotel.paymentprovider.error.FinancialErrorCode;
@@ -41,6 +42,7 @@ public class ReservationService {
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
     private final PaymentService paymentService;
+    private final ReservationHoldService reservationHoldService;
     private final PropertyAccessService propertyAccessService;
     private final PropertyPaymentConfigurationRepository propertyPaymentConfigurationRepository;
     private final InvoiceFinalizationService invoiceFinalizationService;
@@ -99,7 +101,7 @@ public class ReservationService {
         reservation.setCheckInDate(request.getCheckInDate());
         reservation.setCheckOutDate(request.getCheckOutDate());
         reservation.setGuests(adults + children);
-        reservation.setStatus("PENDING");
+        reservation.setStatus(ReservationStatus.PENDING_PAYMENT.name());
         reservation.setPaymentMethod(request.getPaymentMethod());
         reservation.setSpecialRequests(request.getSpecialRequests());
         reservation.setTotalAmount(totalAmount);
@@ -119,6 +121,11 @@ public class ReservationService {
         detail.setUnitPrice(roomType.getBasePrice());
         detail.setSubtotal(roomType.getBasePrice().multiply(BigDecimal.valueOf(nights * quantity)));
         reservationDetailRepository.save(detail);
+        reservationHoldService.createHold(
+                savedReservation.getId(),
+                roomType.getId(),
+                quantity,
+                "RESERVATION-" + savedReservation.getId());
 
         notificationService.sendSystemNotification(
                 "BOOKING",
@@ -234,6 +241,7 @@ public class ReservationService {
         String normalizedStatus = status == null ? "" : status.trim().toUpperCase();
 
         if (normalizedStatus.equals(reservation.getStatus())) {
+            reconcileReservationHold(id, normalizedStatus, LocalDateTime.now());
             return mapToDTO(reservation);
         }
 
@@ -243,6 +251,7 @@ public class ReservationService {
 
         if ("CHECKED_OUT".equals(normalizedStatus)) {
             completeCheckoutLocked(reservation, null);
+            reconcileReservationHold(id, normalizedStatus, LocalDateTime.now());
             return mapToDTO(reservation);
         } else if ("CANCELLED".equals(normalizedStatus)) {
             cancelLockedReservation(reservation, assignments);
@@ -284,7 +293,9 @@ public class ReservationService {
         }
 
         reservation.setStatus(normalizedStatus);
-        return mapToDTO(reservationRepository.save(reservation));
+        Reservation saved = reservationRepository.save(reservation);
+        reconcileReservationHold(id, normalizedStatus, LocalDateTime.now());
+        return mapToDTO(saved);
     }
 
     @Transactional
@@ -297,6 +308,7 @@ public class ReservationService {
                     "Bạn không có quyền hủy booking này.");
         }
         if ("CANCELLED".equals(reservation.getStatus())) {
+            reservationHoldService.releaseActiveHold(id, LocalDateTime.now());
             return mapToDTO(reservation);
         }
 
@@ -304,7 +316,20 @@ public class ReservationService {
                 reservation,
                 reservationRoomRepository.findByReservationDetailReservationId(id));
         reservation.setStatus("CANCELLED");
-        return mapToDTO(reservationRepository.save(reservation));
+        Reservation saved = reservationRepository.save(reservation);
+        reservationHoldService.releaseActiveHold(id, LocalDateTime.now());
+        return mapToDTO(saved);
+    }
+
+    private void reconcileReservationHold(Long reservationId, String status, LocalDateTime now) {
+        switch (status) {
+            case "PENDING", "PENDING_PAYMENT" -> {
+                // Pending payment keeps the inventory hold active.
+            }
+            case "EXPIRED" -> reservationHoldService.expireActiveHold(reservationId, now);
+            case "CANCELLED", "REJECTED", "NO_SHOW" -> reservationHoldService.releaseActiveHold(reservationId, now);
+            default -> reservationHoldService.consumeActiveHold(reservationId, now);
+        }
     }
 
     private void cancelLockedReservation(Reservation reservation, List<ReservationRoom> assignments) {

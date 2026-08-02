@@ -77,6 +77,9 @@ public class ReservationServiceTest {
     private PaymentService paymentService;
 
     @Mock
+    private ReservationHoldService reservationHoldService;
+
+    @Mock
     private PropertyPaymentConfigurationRepository propertyPaymentConfigurationRepository;
 
     @Mock
@@ -106,7 +109,7 @@ public class ReservationServiceTest {
         mockReservation.setId(1L);
         mockReservation.setUser(mockUser);
         mockReservation.setHotel(mockHotel);
-        mockReservation.setStatus("PENDING");
+        mockReservation.setStatus("PENDING_PAYMENT");
         mockReservation.setCheckInDate(LocalDate.now());
         mockReservation.setCheckOutDate(LocalDate.now().plusDays(2));
     }
@@ -201,6 +204,7 @@ public class ReservationServiceTest {
         assertEquals(4L, saved.getDepositConfigurationVersion());
         assertEquals("testcustomer", saved.getBookingIdempotencyScope());
         assertEquals("booking-key", saved.getBookingIdempotencyKey());
+        verify(reservationHoldService).createHold(99L, 5L, 1, "RESERVATION-99");
     }
 
     @Test
@@ -221,6 +225,7 @@ public class ReservationServiceTest {
 
         assertEquals(FinancialErrorCode.POLICY_NOT_CONFIGURED, exception.code());
         verify(reservationRepository, never()).save(any());
+        verify(reservationHoldService, never()).createHold(any(), any(), anyInt(), any());
     }
 
     @Test
@@ -239,6 +244,7 @@ public class ReservationServiceTest {
         verify(publicInventoryEligibilityPolicy).requireSellableRoomTypeForBooking(roomType);
         verify(roomAvailabilityService, never()).countAvailableRooms(any(), any(), any());
         verify(reservationRepository, never()).save(any());
+        verify(reservationHoldService, never()).createHold(any(), any(), anyInt(), any());
     }
 
     @Test
@@ -260,6 +266,7 @@ public class ReservationServiceTest {
 
         assertEquals(FinancialErrorCode.PAYMENT_ENVIRONMENT_DISABLED, exception.code());
         verify(reservationRepository, never()).save(any());
+        verify(reservationHoldService, never()).createHold(any(), any(), anyInt(), any());
     }
     @Test
     void testCheckIn_Success() {
@@ -313,6 +320,7 @@ public class ReservationServiceTest {
         assertEquals("AVAILABLE", room.getStatus());
         assertEquals("RELEASED", assignment.getStatus());
         verify(paymentService).refundSuccessfulPayments(1L);
+        verify(reservationHoldService).releaseActiveHold(eq(1L), any(java.time.LocalDateTime.class));
         verify(reservationRepository).save(mockReservation);
     }
 
@@ -324,6 +332,7 @@ public class ReservationServiceTest {
                 () -> reservationService.cancelMyReservation(1L, "attacker"));
 
         verify(paymentService, never()).refundSuccessfulPayments(any());
+        verify(reservationHoldService, never()).releaseActiveHold(any(), any());
     }
 
     @Test
@@ -335,6 +344,7 @@ public class ReservationServiceTest {
                 () -> reservationService.cancelMyReservation(1L, "testcustomer"));
 
         verify(paymentService, never()).refundSuccessfulPayments(any());
+        verify(reservationHoldService, never()).releaseActiveHold(any(), any());
     }
 
     @Test
@@ -346,6 +356,7 @@ public class ReservationServiceTest {
 
         assertEquals("CANCELLED", result.getStatus());
         verify(paymentService, never()).refundSuccessfulPayments(any());
+        verify(reservationHoldService).releaseActiveHold(eq(1L), any(java.time.LocalDateTime.class));
         verify(reservationRepository, never()).save(any());
     }
     private ReservationRequest bookingRequest() {

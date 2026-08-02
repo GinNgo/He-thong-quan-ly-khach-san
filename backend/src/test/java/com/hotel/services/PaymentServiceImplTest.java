@@ -8,6 +8,8 @@ import com.hotel.repositories.PaymentRepository;
 import com.hotel.repositories.ReservationRepository;
 import com.hotel.repositories.UserRepository;
 import com.hotel.services.impl.PaymentServiceImpl;
+import com.hotel.domain.lifecycle.PaymentStatus;
+import com.hotel.domain.payment.PaymentCompletionResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +39,9 @@ class PaymentServiceImplTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private ReservationHoldService reservationHoldService;
+
     private PaymentServiceImpl paymentService;
 
     @BeforeEach
@@ -44,7 +49,8 @@ class PaymentServiceImplTest {
         paymentService = new PaymentServiceImpl(
                 paymentRepository,
                 reservationRepository,
-                userRepository
+                userRepository,
+                reservationHoldService
         );
     }
 
@@ -138,6 +144,35 @@ class PaymentServiceImplTest {
 
         verify(reservationRepository, never()).findByIdForUpdate(any());
         verify(paymentRepository, never()).save(any(Payment.class));
+    }
+
+    @Test
+    void handleSuccessfulPayment_AfterReservationExpiry_ShouldRecordChargeForReconciliationOnly() {
+        User user = new User();
+        user.setPoints(10);
+        Reservation reservation = new Reservation();
+        reservation.setId(42L);
+        reservation.setUser(user);
+        reservation.setTotalAmount(new BigDecimal("250000"));
+        reservation.setStatus("EXPIRED");
+
+        when(reservationRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(reservation));
+        when(paymentRepository.findByTransactionId("TX_LATE")).thenReturn(Optional.empty());
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        PaymentCompletionResult result = paymentService.handleSuccessfulPayment(
+                42L,
+                "VNPAY",
+                "TX_LATE",
+                PaymentStatus.EXPIRED);
+
+        assertEquals(PaymentCompletionResult.RECONCILIATION_REQUIRED, result);
+        assertEquals("EXPIRED", reservation.getStatus());
+        assertEquals(10, user.getPoints());
+        verify(paymentRepository).save(any(Payment.class));
+        verify(reservationRepository, never()).save(any(Reservation.class));
+        verify(reservationHoldService, never()).consumeActiveHold(any(), any());
+        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test

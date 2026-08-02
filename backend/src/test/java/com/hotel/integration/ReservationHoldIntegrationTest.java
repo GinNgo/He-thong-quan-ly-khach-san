@@ -1,6 +1,7 @@
 package com.hotel.integration;
 
 import com.hotel.BackendApplication;
+import com.hotel.domain.payment.PaymentCompletionResult;
 import com.hotel.domain.lifecycle.ReservationHoldStatus;
 import com.hotel.domain.lifecycle.ReservationStatus;
 import com.hotel.entities.Hotel;
@@ -14,11 +15,13 @@ import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.ReservationDetailRepository;
 import com.hotel.repositories.ReservationHoldRepository;
 import com.hotel.repositories.ReservationRepository;
+import com.hotel.repositories.PaymentRepository;
 import com.hotel.repositories.RoomRepository;
 import com.hotel.repositories.RoomTypeRepository;
 import com.hotel.repositories.UserRepository;
 import com.hotel.services.ReservationHoldExpiryScheduler;
 import com.hotel.services.ReservationHoldService;
+import com.hotel.services.PaymentService;
 import com.hotel.services.RoomAvailabilityService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,11 +63,15 @@ class ReservationHoldIntegrationTest {
     @Autowired
     private ReservationRepository reservationRepository;
     @Autowired
+    private PaymentRepository paymentRepository;
+    @Autowired
     private ReservationDetailRepository reservationDetailRepository;
     @Autowired
     private ReservationHoldRepository holdRepository;
     @Autowired
     private ReservationHoldService holdService;
+    @Autowired
+    private PaymentService paymentService;
     @Autowired
     private ReservationHoldExpiryScheduler scheduler;
     @Autowired
@@ -139,6 +146,63 @@ class ReservationHoldIntegrationTest {
         assertThat(holdRepository.findById(ids.holdId()).orElseThrow().getStatus())
                 .isEqualTo(ReservationHoldStatus.EXPIRED.name());
         assertThat(availabilityService.countAvailableRooms(ids.roomTypeId(), checkIn, checkOut)).isEqualTo(1);
+    }
+
+    @Test
+    void paymentAndExpiryRaceResolveToOneLockedReservationOutcome() throws Exception {
+        LocalDate checkIn = LocalDate.of(2028, 1, 25);
+        LocalDate checkOut = checkIn.plusDays(2);
+        FixtureIds ids = transactionTemplate.execute(
+                status -> createExpiredFixture(checkIn, checkOut, "PAYMENT-RACE"));
+        assertThat(ids).isNotNull();
+
+        LocalDateTime scanTime = LocalDateTime.now();
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        String transactionId = "PAYMENT-RACE-" + ids.reservationId();
+        try {
+            Future<Integer> expiry = executor.submit(() -> {
+                ready.countDown();
+                if (!start.await(5, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Expiry race start timed out.");
+                }
+                return holdService.expireDueHolds(scanTime);
+            });
+            Future<PaymentCompletionResult> payment = executor.submit(() -> {
+                ready.countDown();
+                if (!start.await(5, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Payment race start timed out.");
+                }
+                return paymentService.handleSuccessfulPayment(
+                        ids.reservationId(), "VNPAY", transactionId);
+            });
+
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+
+            int expiredCount = expiry.get(20, TimeUnit.SECONDS);
+            PaymentCompletionResult paymentResult = payment.get(20, TimeUnit.SECONDS);
+            Reservation reservation = reservationRepository.findById(ids.reservationId()).orElseThrow();
+            ReservationHold hold = holdRepository.findById(ids.holdId()).orElseThrow();
+
+            assertThat(paymentRepository.findByTransactionId(transactionId)).isPresent();
+            if (reservation.getStatus().equals(ReservationStatus.CONFIRMED.name())) {
+                assertThat(expiredCount).isZero();
+                assertThat(paymentResult).isEqualTo(PaymentCompletionResult.APPLIED);
+                assertThat(hold.getStatus()).isEqualTo(ReservationHoldStatus.CONSUMED.name());
+                assertThat(availabilityService.countAvailableRooms(ids.roomTypeId(), checkIn, checkOut)).isZero();
+            } else {
+                assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.EXPIRED.name());
+                assertThat(expiredCount).isEqualTo(1);
+                assertThat(paymentResult).isEqualTo(PaymentCompletionResult.RECONCILIATION_REQUIRED);
+                assertThat(hold.getStatus()).isEqualTo(ReservationHoldStatus.EXPIRED.name());
+                assertThat(availabilityService.countAvailableRooms(ids.roomTypeId(), checkIn, checkOut)).isEqualTo(1);
+            }
+        } finally {
+            start.countDown();
+            executor.shutdownNow();
+        }
     }
 
     private FixtureIds createExpiredFixture(LocalDate checkIn, LocalDate checkOut, String key) {

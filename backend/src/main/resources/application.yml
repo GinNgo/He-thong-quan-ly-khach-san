@@ -101,6 +101,9 @@ jwt:
   refresh-expiration: 604800000 # 7 days
 
 app:
+  reservation-hold:
+    ttl-minutes: ${RESERVATION_HOLD_TTL_MINUTES:15}
+    expiry-scan-ms: ${RESERVATION_HOLD_EXPIRY_SCAN_MS:60000}
   websocket:
     allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:4200}
   observability:
