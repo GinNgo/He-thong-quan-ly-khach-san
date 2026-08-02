@@ -1,6 +1,6 @@
 package com.hotel.security;
 
-import com.hotel.config.ChatHandshakeInterceptor;
+import com.hotel.config.NotificationHandshakeInterceptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class ChatChannelInterceptorTest {
+class NotificationChannelInterceptorTest {
 
     @Mock
     private JwtTokenProvider jwtTokenProvider;
@@ -38,30 +38,25 @@ class ChatChannelInterceptorTest {
     @Mock
     private MessageChannel channel;
 
-    private ChatChannelInterceptor interceptor;
+    private NotificationChannelInterceptor interceptor;
 
     @BeforeEach
     void setUp() {
-        interceptor = new ChatChannelInterceptor(
-                jwtTokenProvider,
-                userDetailsService,
-                new ChatAuthorizationService());
+        interceptor = new NotificationChannelInterceptor(jwtTokenProvider, userDetailsService);
     }
 
     @Test
-    void chatConnectWithoutBearerTokenIsRejected() {
-        Message<byte[]> message = message(SimpMessageType.CONNECT, null, null, null);
-
+    void notificationConnectWithoutBearerTokenIsRejected() {
         assertThrows(AuthenticationCredentialsNotFoundException.class,
-                () -> interceptor.preSend(message, channel));
+                () -> interceptor.preSend(message(SimpMessageType.CONNECT, null, null, null), channel));
     }
 
     @Test
-    void validChatConnectAttachesAuthenticatedPrincipal() {
-        CustomUserDetails customer = customer();
+    void validNotificationConnectAttachesAuthenticatedPrincipal() {
+        CustomUserDetails staff = staff(ActionCode.VIEW);
         when(jwtTokenProvider.validateToken("valid-token")).thenReturn(true);
-        when(jwtTokenProvider.getUsername("valid-token")).thenReturn("customer");
-        when(userDetailsService.loadUserByUsername("customer")).thenReturn(customer);
+        when(jwtTokenProvider.getUsername("valid-token")).thenReturn("staff");
+        when(userDetailsService.loadUserByUsername("staff")).thenReturn(staff);
 
         Message<?> result = interceptor.preSend(
                 message(SimpMessageType.CONNECT, null, "Bearer valid-token", null), channel);
@@ -70,10 +65,10 @@ class ChatChannelInterceptorTest {
     }
 
     @Test
-    void customerCannotSubscribeToSupportQueue() {
+    void actorWithoutReportPermissionCannotSubscribeToAdminTopic() {
         Message<byte[]> message = message(
                 SimpMessageType.SUBSCRIBE,
-                "/user/queue/support/messages",
+                "/topic/admin/notifications",
                 null,
                 authentication(customer()));
 
@@ -81,30 +76,26 @@ class ChatChannelInterceptorTest {
     }
 
     @Test
-    void supportWithViewPermissionCanSubscribeToSupportQueue() {
-        CustomUserDetails support = user(
-                7L,
-                Map.of(FunctionCode.AI_CHAT, ActionCode.VIEW),
-                "SUPPORT");
+    void staffWithReportViewCanSubscribeToAdminTopic() {
         Message<byte[]> message = message(
                 SimpMessageType.SUBSCRIBE,
-                "/user/queue/support/messages",
+                "/topic/admin/notifications",
                 null,
-                authentication(support));
+                authentication(staff(ActionCode.VIEW)));
 
         assertDoesNotThrow(() -> interceptor.preSend(message, channel));
     }
 
     @Test
-    void authenticatedCustomerCanOnlyUseStandardUserQueue() {
+    void authenticatedUserCanOnlySubscribeToStandardPersonalQueue() {
         Message<byte[]> allowed = message(
                 SimpMessageType.SUBSCRIBE,
-                "/user/queue/messages",
+                "/user/queue/notifications",
                 null,
                 authentication(customer()));
         Message<byte[]> forged = message(
                 SimpMessageType.SUBSCRIBE,
-                "/user/42/queue/messages",
+                "/user/42/queue/notifications",
                 null,
                 authentication(customer()));
 
@@ -113,14 +104,14 @@ class ChatChannelInterceptorTest {
     }
 
     @Test
-    void legacyNotificationSessionIsNotChangedByChatInterceptor() {
-        SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.create(SimpMessageType.SUBSCRIBE);
-        accessor.setDestination("/topic/notifications");
-        accessor.setSessionAttributes(new HashMap<>());
-        accessor.setLeaveMutable(true);
-        Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+    void clientsCannotPublishNotificationMessages() {
+        Message<byte[]> message = message(
+                SimpMessageType.MESSAGE,
+                "/app/notifications/send",
+                null,
+                authentication(staff(ActionCode.VIEW)));
 
-        assertDoesNotThrow(() -> interceptor.preSend(message, channel));
+        assertThrows(AccessDeniedException.class, () -> interceptor.preSend(message, channel));
     }
 
     private Message<byte[]> message(
@@ -130,7 +121,7 @@ class ChatChannelInterceptorTest {
             UsernamePasswordAuthenticationToken user) {
         SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.create(type);
         accessor.setSessionAttributes(new HashMap<>(Map.of(
-                ChatHandshakeInterceptor.CHAT_SESSION_ATTRIBUTE, true)));
+                NotificationHandshakeInterceptor.NOTIFICATION_SESSION_ATTRIBUTE, true)));
         if (destination != null) {
             accessor.setDestination(destination);
         }
@@ -149,16 +140,20 @@ class ChatChannelInterceptorTest {
     }
 
     private CustomUserDetails customer() {
-        return user(42L, Map.of(), "CUSTOMER");
+        return user(Map.of(), "CUSTOMER");
     }
 
-    private CustomUserDetails user(Long id, Map<FunctionCode, Integer> masks, String authority) {
+    private CustomUserDetails staff(int reportMask) {
+        return user(Map.of(FunctionCode.REPORT, reportMask), "STAFF");
+    }
+
+    private CustomUserDetails user(Map<FunctionCode, Integer> masks, String authority) {
         return new CustomUserDetails(
                 authority.toLowerCase(),
                 "hash",
                 Set.of(new SimpleGrantedAuthority(authority)),
                 masks,
-                id,
+                42L,
                 null,
                 Map.of());
     }

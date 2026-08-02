@@ -16,6 +16,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.util.Map;
+import java.util.List;
 import java.util.Set;
 
 import static org.mockito.Mockito.verify;
@@ -46,27 +47,28 @@ class ChatControllerTest {
         CustomerChatMessageRequest request = new CustomerChatMessageRequest();
         request.setContent("Can ho tro");
         ChatMessageDTO saved = message(42L, 0L, "Can ho tro");
-        when(chatService.sendToSupport(customer, "Can ho tro")).thenReturn(saved);
+        when(chatService.sendToSupport(customer, null, null, "Can ho tro")).thenReturn(saved);
+        when(chatService.getSupportRecipients(11L)).thenReturn(List.of("support"));
 
         controller.sendToSupport(request, authentication(customer));
 
         verify(messagingTemplate).convertAndSendToUser("customer", "/queue/messages", saved);
-        verify(messagingTemplate).convertAndSend("/topic/support/messages", saved);
+        verify(messagingTemplate).convertAndSendToUser("support", "/queue/support/messages", saved);
     }
 
     @Test
     void supportReplyUsesCustomerUsernameForUserDestination() {
         SupportChatReplyRequest request = new SupportChatReplyRequest();
-        request.setCustomerId(42L);
+        request.setConversationId(9L);
         request.setContent("Da tiep nhan");
         ChatMessageDTO saved = message(7L, 42L, "Da tiep nhan");
-        when(chatService.replyToCustomer(support, 42L, "Da tiep nhan")).thenReturn(saved);
+        when(chatService.replyToCustomer(support, 9L, "Da tiep nhan")).thenReturn(saved);
         when(chatService.getUsername(42L)).thenReturn("customer");
 
         controller.replyToCustomer(request, authentication(support));
 
         verify(messagingTemplate).convertAndSendToUser("customer", "/queue/messages", saved);
-        verify(messagingTemplate).convertAndSend("/topic/support/messages", saved);
+        verify(messagingTemplate).convertAndSendToUser("support", "/queue/support/messages", saved);
     }
 
     private UsernamePasswordAuthenticationToken authentication(CustomUserDetails user) {
@@ -87,6 +89,8 @@ class ChatControllerTest {
     private ChatMessageDTO message(Long senderId, Long receiverId, String content) {
         ChatMessageDTO dto = new ChatMessageDTO();
         dto.setId(1L);
+        dto.setConversationId(9L);
+        dto.setHotelId(11L);
         dto.setSenderId(senderId);
         dto.setReceiverId(receiverId);
         dto.setContent(content);
