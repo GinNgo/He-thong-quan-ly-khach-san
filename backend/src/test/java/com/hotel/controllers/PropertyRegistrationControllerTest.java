@@ -2,6 +2,7 @@ package com.hotel.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hotel.dtos.PartnerRegistrationResponse;
+import com.hotel.security.CustomUserDetails;
 import com.hotel.services.PropertyRegistrationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -100,6 +101,68 @@ class PropertyRegistrationControllerTest {
         verify(registrationService, never()).registerAnonymousPartner(any());
     }
 
+    @Test
+    void authenticatedConversionUsesOnlyAuthoritativePrincipalUserId() throws Exception {
+        when(registrationService.convertExistingCustomer(any(), any()))
+                .thenReturn(new PartnerRegistrationResponse(77L, 91L, "DRAFT"));
+
+        mockMvc.perform(post("/api/partner/convert")
+                        .principal(authoritativeAuthentication(77L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validConversionBody())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.userId").value(77))
+                .andExpect(jsonPath("$.propertyId").value(91))
+                .andExpect(jsonPath("$.status").value("DRAFT"));
+
+        ArgumentCaptor<Long> userId = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<com.hotel.dtos.PartnerConversionRequest> request =
+                ArgumentCaptor.forClass(com.hotel.dtos.PartnerConversionRequest.class);
+        verify(registrationService).convertExistingCustomer(userId.capture(), request.capture());
+        assertEquals(77L, userId.getValue());
+        assertEquals("Existing Customer Hotel", request.getValue().getPropertyName());
+    }
+
+    @Test
+    void anonymousConversionIsDenied() throws Exception {
+        mockMvc.perform(post("/api/partner/convert")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validConversionBody())))
+                .andExpect(status().isUnauthorized());
+
+        verify(registrationService, never()).convertExistingCustomer(any(), any());
+    }
+
+    @Test
+    void nonAuthoritativePrincipalIsDenied() throws Exception {
+        var authentication = UsernamePasswordAuthenticationToken.authenticated(
+                "customer@example.com", "n/a", java.util.List.of());
+
+        mockMvc.perform(post("/api/partner/convert")
+                        .principal(authentication)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validConversionBody())))
+                .andExpect(status().isForbidden());
+
+        verify(registrationService, never()).convertExistingCustomer(any(), any());
+    }
+
+    @Test
+    void accountAndCredentialFieldsAreRejectedInsteadOfIgnored() throws Exception {
+        var body = validConversionBody();
+        body.put("email", "victim@example.com");
+        body.put("password", "takeover-secret");
+        body.put("fullName", "Victim Account");
+
+        mockMvc.perform(post("/api/partner/convert")
+                        .principal(authoritativeAuthentication(77L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
+
+        verify(registrationService, never()).convertExistingCustomer(any(), any());
+    }
+
     private java.util.Map<String, Object> validBody() {
         java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
         body.put("email", "owner@example.com");
@@ -111,5 +174,22 @@ class PropertyRegistrationControllerTest {
         body.put("wardId", 11L);
         body.put("address", "12 Bach Dang");
         return body;
+    }
+
+    private java.util.Map<String, Object> validConversionBody() {
+        java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("propertyName", "Existing Customer Hotel");
+        body.put("provinceId", 10L);
+        body.put("wardId", 11L);
+        body.put("address", "34 Tran Phu");
+        return body;
+    }
+
+    private UsernamePasswordAuthenticationToken authoritativeAuthentication(Long userId) {
+        CustomUserDetails principal = new CustomUserDetails(
+                "customer@example.com", "hash", java.util.List.of(), java.util.Map.of(),
+                userId, null, java.util.Map.of());
+        return UsernamePasswordAuthenticationToken.authenticated(
+                principal, null, principal.getAuthorities());
     }
 }

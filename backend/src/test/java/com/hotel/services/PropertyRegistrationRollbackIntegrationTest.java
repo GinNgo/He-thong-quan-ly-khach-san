@@ -1,7 +1,9 @@
 package com.hotel.services;
 
 import com.hotel.dtos.PartnerRegistrationRequest;
+import com.hotel.dtos.PartnerConversionRequest;
 import com.hotel.entities.Location;
+import com.hotel.entities.User;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.LocationRepository;
 import com.hotel.repositories.UserRepository;
@@ -48,9 +50,12 @@ class PropertyRegistrationRollbackIntegrationTest {
     @BeforeEach
     void setUp() {
         transactionTemplate.executeWithoutResult(status -> {
-            Location province = location("T230-P", "PROVINCE", "Da Nang", null);
+            hotelRepository.deleteAll();
+            userRepository.deleteAll();
+            String fixtureSuffix = java.util.UUID.randomUUID().toString();
+            Location province = location("T231-P-" + fixtureSuffix, "PROVINCE", "Da Nang", null);
             province = locationRepository.saveAndFlush(province);
-            Location ward = location("T230-W", "WARD", "Hai Chau", province);
+            Location ward = location("T231-W-" + fixtureSuffix, "WARD", "Hai Chau", province);
             ward = locationRepository.saveAndFlush(ward);
             provinceId = province.getId();
             wardId = ward.getId();
@@ -72,6 +77,30 @@ class PropertyRegistrationRollbackIntegrationTest {
         });
     }
 
+    @Test
+    void conversionOwnerFailureRollsBackPropertyButPreservesAuthenticatedAccount() {
+        Long userId = transactionTemplate.execute(status -> {
+            User user = new User();
+            user.setUsername("existing-customer");
+            user.setEmail("existing@example.com");
+            user.setPasswordHash("existing-hash");
+            user.setPhone("0901234567");
+            user.setStatus("ACTIVE");
+            user.setCreatedAt(java.time.LocalDateTime.now());
+            return userRepository.saveAndFlush(user).getId();
+        });
+        doThrow(new ForcedPendingOwnerFailure())
+                .when(ownershipLifecycleService).createPendingOwner(any(), any());
+
+        assertThatThrownBy(() -> registrationService.convertExistingCustomer(userId, conversionRequest()))
+                .isInstanceOf(ForcedPendingOwnerFailure.class);
+
+        transactionTemplate.executeWithoutResult(status -> {
+            assertThat(userRepository.findById(userId)).isPresent();
+            assertThat(hotelRepository.findAll()).isEmpty();
+        });
+    }
+
     private PartnerRegistrationRequest request() {
         PartnerRegistrationRequest request = new PartnerRegistrationRequest();
         request.setEmail("rollback@example.com");
@@ -82,6 +111,15 @@ class PropertyRegistrationRollbackIntegrationTest {
         request.setProvinceId(provinceId);
         request.setWardId(wardId);
         request.setAddress("12 Bach Dang");
+        return request;
+    }
+
+    private PartnerConversionRequest conversionRequest() {
+        PartnerConversionRequest request = new PartnerConversionRequest();
+        request.setPropertyName("Existing Customer Hotel");
+        request.setProvinceId(provinceId);
+        request.setWardId(wardId);
+        request.setAddress("34 Tran Phu");
         return request;
     }
 

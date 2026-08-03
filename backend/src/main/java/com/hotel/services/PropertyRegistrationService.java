@@ -2,6 +2,7 @@ package com.hotel.services;
 
 import com.hotel.dtos.PartnerRegistrationRequest;
 import com.hotel.dtos.PartnerRegistrationResponse;
+import com.hotel.dtos.PartnerConversionRequest;
 import com.hotel.entities.*;
 import com.hotel.exceptions.RegistrationConflictException;
 import com.hotel.repositories.*;
@@ -9,6 +10,7 @@ import com.hotel.util.VietnameseTextNormalizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,12 +38,7 @@ public class PropertyRegistrationService {
         if (userRepository.existsByEmailIgnoreCase(email) || userRepository.existsByUsernameIgnoreCase(email)) {
             throw RegistrationConflictException.email();
         }
-
-        Location province = requireActiveLocation(request.getProvinceId(), "PROVINCE", "Province is invalid.");
-        Location ward = requireActiveLocation(request.getWardId(), "WARD", "Ward is invalid.");
-        if (ward.getParent() == null || !province.getId().equals(ward.getParent().getId())) {
-            throw new IllegalArgumentException("Ward does not belong to the selected province.");
-        }
+        requireValidLocationSelection(request.getProvinceId(), request.getWardId());
 
         User user = new User();
         user.setUsername(email);
@@ -57,7 +54,48 @@ public class PropertyRegistrationService {
             throw RegistrationConflictException.email();
         }
 
-        String propertyName = normalizeDisplayText(request.getPropertyName());
+        Hotel property = createDraftProperty(user, request.getPropertyName(), request.getProvinceId(),
+                request.getWardId(), request.getAddress());
+        ownershipLifecycleService.createPendingOwner(user, property);
+
+        return new PartnerRegistrationResponse(user.getId(), property.getId(), "DRAFT");
+    }
+
+    @Transactional
+    public PartnerRegistrationResponse convertExistingCustomer(
+            Long authenticatedUserId,
+            PartnerConversionRequest request) {
+        if (authenticatedUserId == null) {
+            throw new AccessDeniedException("Authenticated account id is required.");
+        }
+        User user = userRepository.findByIdForUpdate(authenticatedUserId)
+                .orElseThrow(() -> new AccessDeniedException("Authenticated account is unavailable."));
+        com.hotel.security.AccountStatusPolicy.requireActive(user);
+
+        String canonicalEmail = normalizeEmail(user.getEmail());
+        User emailOwner = userRepository.findByEmailIgnoreCase(canonicalEmail)
+                .orElseThrow(() -> new AccessDeniedException("Authenticated account identity is inconsistent."));
+        if (!authenticatedUserId.equals(emailOwner.getId())) {
+            throw new AccessDeniedException("Authenticated account identity does not match the email owner.");
+        }
+
+        Hotel property = createDraftProperty(user, request.getPropertyName(), request.getProvinceId(),
+                request.getWardId(), request.getAddress());
+        ownershipLifecycleService.createPendingOwner(user, property);
+        return new PartnerRegistrationResponse(user.getId(), property.getId(), "DRAFT");
+    }
+
+    private Hotel createDraftProperty(
+            User user,
+            String requestedPropertyName,
+            Long provinceId,
+            Long wardId,
+            String requestedAddress) {
+        LocationSelection locations = requireValidLocationSelection(provinceId, wardId);
+        Location province = locations.province();
+        Location ward = locations.ward();
+
+        String propertyName = normalizeDisplayText(requestedPropertyName);
         String uniqueSuffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         Hotel property = new Hotel();
         property.setName(propertyName);
@@ -70,22 +108,18 @@ public class PropertyRegistrationService {
                 + "-" + uniqueSuffix);
         property.setProvinceId(province.getId());
         property.setWardId(ward.getId());
-        property.setAddressLine(normalizeDisplayText(request.getAddress()));
+        property.setAddressLine(normalizeDisplayText(requestedAddress));
         property.setCity(province.getNameVi());
         property.setCountry("Việt Nam");
         property.setPropertyType("HOTEL");
         property.setPhone(user.getPhone());
-        property.setEmail(email);
+        property.setEmail(normalizeEmail(user.getEmail()));
         property.setStatus("DRAFT");
         property.setApprovalStatus("DRAFT");
         property.setOperationStatus("INACTIVE");
         property.setIsDemo(false);
         property.setDataSource("USER");
-        property = hotelRepository.saveAndFlush(property);
-
-        ownershipLifecycleService.createPendingOwner(user, property);
-
-        return new PartnerRegistrationResponse(user.getId(), property.getId(), "DRAFT");
+        return hotelRepository.saveAndFlush(property);
     }
 
     private Location requireActiveLocation(Long id, String type, String errorMessage) {
@@ -95,7 +129,21 @@ public class PropertyRegistrationService {
                 .orElseThrow(() -> new IllegalArgumentException(errorMessage));
     }
 
+    private LocationSelection requireValidLocationSelection(Long provinceId, Long wardId) {
+        Location province = requireActiveLocation(provinceId, "PROVINCE", "Province is invalid.");
+        Location ward = requireActiveLocation(wardId, "WARD", "Ward is invalid.");
+        if (ward.getParent() == null || !province.getId().equals(ward.getParent().getId())) {
+            throw new IllegalArgumentException("Ward does not belong to the selected province.");
+        }
+        return new LocationSelection(province, ward);
+    }
+
+    private record LocationSelection(Location province, Location ward) { }
+
     private String normalizeEmail(String value) {
+        if (value == null || value.isBlank()) {
+            throw new AccessDeniedException("Authenticated account email is unavailable.");
+        }
         return value.trim().toLowerCase(Locale.ROOT);
     }
 

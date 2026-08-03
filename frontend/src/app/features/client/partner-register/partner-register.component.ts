@@ -1,17 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { finalize } from 'rxjs';
+import { AuthService } from '../../../core/services/auth';
 import { PropertyLocation, PropertyService } from '../../../core/services/property.service';
-import { environment } from '../../../../environments/environment';
-
-interface PartnerRegistrationResponse {
-  userId: number;
-  propertyId: number;
-  status: 'DRAFT';
-}
+import { PartnerRegistrationService } from './partner-registration.service';
 
 interface ApiErrorResponse {
   message?: string;
@@ -27,9 +22,10 @@ interface ApiErrorResponse {
 })
 export class PartnerRegisterComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
-  private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
   private readonly propertyService = inject(PropertyService);
+  private readonly registrationService = inject(PartnerRegistrationService);
 
   readonly registerForm = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email, Validators.maxLength(320)]],
@@ -48,8 +44,11 @@ export class PartnerRegisterComponent implements OnInit {
   locationError = '';
   isLoading = false;
   errorMessage = '';
+  isSignedIn = false;
 
   ngOnInit(): void {
+    this.isSignedIn = this.authService.isLoggedIn();
+    this.configureAccountValidators();
     this.loadProvinces();
   }
 
@@ -77,23 +76,30 @@ export class PartnerRegisterComponent implements OnInit {
     }
 
     const value = this.registerForm.getRawValue();
-    const payload = {
-      email: value.email.trim(),
-      password: value.password,
-      fullName: value.fullName.trim(),
-      phone: value.phone.trim(),
+    const propertyPayload = {
       propertyName: value.propertyName.trim(),
-      provinceId: value.provinceId,
-      wardId: value.wardId,
+      provinceId: value.provinceId!,
+      wardId: value.wardId!,
       address: value.address.trim()
     };
+    const request$ = this.isSignedIn
+      ? this.registrationService.convertAuthenticated(propertyPayload)
+      : this.registrationService.registerAnonymous({
+          email: value.email.trim(),
+          password: value.password,
+          fullName: value.fullName.trim(),
+          phone: value.phone.trim(),
+          ...propertyPayload
+        });
 
     this.isLoading = true;
     this.errorMessage = '';
-    this.http.post<PartnerRegistrationResponse>(`${environment.apiUrl}/partner/register`, payload).pipe(
+    request$.pipe(
       finalize(() => this.isLoading = false)
     ).subscribe({
-      next: () => this.router.navigate(['/login'], { queryParams: { registration: 'partner-draft' } }),
+      next: () => this.isSignedIn
+        ? this.router.navigate(['/partner/registration-status'])
+        : this.router.navigate(['/login'], { queryParams: { registration: 'partner-draft' } }),
       error: (error: HttpErrorResponse) => this.errorMessage = this.resolveError(error)
     });
   }
@@ -131,5 +137,15 @@ export class PartnerRegisterComponent implements OnInit {
     controls.phone.setValue(controls.phone.value.trim(), { emitEvent: false });
     controls.propertyName.setValue(controls.propertyName.value.trim(), { emitEvent: false });
     controls.address.setValue(controls.address.value.trim(), { emitEvent: false });
+  }
+
+  private configureAccountValidators(): void {
+    if (!this.isSignedIn) return;
+
+    const controls = this.registerForm.controls;
+    [controls.email, controls.password, controls.fullName, controls.phone].forEach(control => {
+      control.clearValidators();
+      control.updateValueAndValidity({ emitEvent: false });
+    });
   }
 }

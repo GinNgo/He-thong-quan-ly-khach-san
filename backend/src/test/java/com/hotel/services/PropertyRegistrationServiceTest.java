@@ -1,6 +1,7 @@
 package com.hotel.services;
 
 import com.hotel.dtos.PartnerRegistrationRequest;
+import com.hotel.dtos.PartnerConversionRequest;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.Location;
 import com.hotel.entities.User;
@@ -17,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.Optional;
 
@@ -131,6 +133,49 @@ class PropertyRegistrationServiceTest {
         verify(hotelRepository, never()).saveAndFlush(any());
     }
 
+    @Test
+    void convertExistingCustomerCreatesDraftForAuthenticatedAccountWithoutCredentialMutation() {
+        User account = existingCustomer(77L, " Customer@Example.com ");
+        when(userRepository.findByIdForUpdate(77L)).thenReturn(Optional.of(account));
+        when(userRepository.findByEmailIgnoreCase("customer@example.com")).thenReturn(Optional.of(account));
+        when(locationRepository.findById(10L)).thenReturn(Optional.of(province));
+        when(locationRepository.findById(11L)).thenReturn(Optional.of(ward));
+        when(hotelRepository.saveAndFlush(any(Hotel.class))).thenAnswer(invocation -> {
+            Hotel hotel = invocation.getArgument(0);
+            hotel.setId(88L);
+            return hotel;
+        });
+
+        var result = registrationService.convertExistingCustomer(77L, conversionRequest());
+
+        assertEquals(77L, result.userId());
+        assertEquals(88L, result.propertyId());
+        assertEquals("DRAFT", result.status());
+        ArgumentCaptor<Hotel> property = ArgumentCaptor.forClass(Hotel.class);
+        verify(hotelRepository).saveAndFlush(property.capture());
+        assertEquals("customer@example.com", property.getValue().getEmail());
+        assertEquals("0901234567", property.getValue().getPhone());
+        assertEquals("DRAFT", property.getValue().getApprovalStatus());
+        assertEquals("INACTIVE", property.getValue().getOperationStatus());
+        verify(ownershipLifecycleService).createPendingOwner(account, property.getValue());
+        verify(passwordEncoder, never()).encode(any());
+        verify(userRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void conversionRejectsCrossAccountCanonicalEmailOwnership() {
+        User authenticated = existingCustomer(77L, "victim@example.com");
+        User emailOwner = existingCustomer(99L, "victim@example.com");
+        when(userRepository.findByIdForUpdate(77L)).thenReturn(Optional.of(authenticated));
+        when(userRepository.findByEmailIgnoreCase("victim@example.com")).thenReturn(Optional.of(emailOwner));
+
+        assertThrows(AccessDeniedException.class,
+                () -> registrationService.convertExistingCustomer(77L, conversionRequest()));
+
+        verify(hotelRepository, never()).saveAndFlush(any());
+        verify(ownershipLifecycleService, never()).createPendingOwner(any(), any());
+    }
+
     private PartnerRegistrationRequest request() {
         PartnerRegistrationRequest request = new PartnerRegistrationRequest();
         request.setEmail("  OWNER@Example.com ");
@@ -142,6 +187,25 @@ class PropertyRegistrationServiceTest {
         request.setWardId(11L);
         request.setAddress("  12   Bach Dang ");
         return request;
+    }
+
+    private PartnerConversionRequest conversionRequest() {
+        PartnerConversionRequest request = new PartnerConversionRequest();
+        request.setPropertyName(" Existing Customer Hotel ");
+        request.setProvinceId(10L);
+        request.setWardId(11L);
+        request.setAddress(" 34 Tran Phu ");
+        return request;
+    }
+
+    private User existingCustomer(Long id, String email) {
+        User user = new User();
+        user.setId(id);
+        user.setUsername("customer-" + id);
+        user.setEmail(email);
+        user.setPhone("0901234567");
+        user.setStatus("ACTIVE");
+        return user;
     }
 
     private Location location(Long id, String type, String name, Location parent) {

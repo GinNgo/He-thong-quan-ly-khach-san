@@ -6,7 +6,12 @@
     </div>
 
     <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form" novalidate>
-      <div class="form-section">
+      <div class="form-section signed-in-note" *ngIf="isSignedIn">
+        <h3>Dùng tài khoản hiện tại</h3>
+        <p>Hồ sơ cơ sở sẽ được liên kết với tài khoản đang đăng nhập. LuxeStay không yêu cầu lại email hoặc mật khẩu.</p>
+      </div>
+
+      <div class="form-section" *ngIf="!isSignedIn">
         <h3>Thông tin tài khoản mới</h3>
         <div class="form-group">
           <label for="fullName">Họ và tên *</label>
@@ -89,7 +94,7 @@
         <span *ngIf="isLoading" class="spinner" aria-label="Đang gửi hồ sơ"></span>
       </button>
 
-      <p class="login-link">
+      <p class="login-link" *ngIf="!isSignedIn">
         Đã có tài khoản? <a routerLink="/login">Đăng nhập</a>
       </p>
     </form>
