@@ -3,8 +3,11 @@ package com.hotel.services;
 import com.hotel.dtos.AuthResponse;
 import com.hotel.dtos.LoginRequest;
 import com.hotel.dtos.RegisterRequest;
+import com.hotel.dtos.SocialIdentityResponse;
+import com.hotel.entities.SocialProvider;
 import com.hotel.entities.Role;
 import com.hotel.entities.User;
+import com.hotel.exceptions.SocialAccountLinkException;
 import com.hotel.repositories.RoleRepository;
 import com.hotel.repositories.UserRepository;
 import com.hotel.security.AccountStatusPolicy;
@@ -18,6 +21,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.hotel.services.social.ExternalIdentityProfile;
+import com.hotel.services.social.FacebookIdentityVerifier;
+import com.hotel.services.social.GoogleIdentityVerifier;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -37,6 +43,9 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final com.hotel.repositories.AppModuleRepository appModuleRepository;
     private final com.hotel.repositories.AppFunctionRepository appFunctionRepository;
+    private final GoogleIdentityVerifier googleIdentityVerifier;
+    private final FacebookIdentityVerifier facebookIdentityVerifier;
+    private final SocialAccountLinkService socialAccountLinkService;
 
     @Value("${google.client.id:YOUR_GOOGLE_CLIENT_ID_HERE}")
     private String googleClientId;
@@ -45,7 +54,10 @@ public class AuthService {
                        RoleRepository roleRepository, PasswordEncoder passwordEncoder,
                        JwtTokenProvider jwtTokenProvider,
                        com.hotel.repositories.AppModuleRepository appModuleRepository,
-                       com.hotel.repositories.AppFunctionRepository appFunctionRepository) {
+                       com.hotel.repositories.AppFunctionRepository appFunctionRepository,
+                       GoogleIdentityVerifier googleIdentityVerifier,
+                       FacebookIdentityVerifier facebookIdentityVerifier,
+                       SocialAccountLinkService socialAccountLinkService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
@@ -53,6 +65,9 @@ public class AuthService {
         this.jwtTokenProvider = jwtTokenProvider;
         this.appModuleRepository = appModuleRepository;
         this.appFunctionRepository = appFunctionRepository;
+        this.googleIdentityVerifier = googleIdentityVerifier;
+        this.facebookIdentityVerifier = facebookIdentityVerifier;
+        this.socialAccountLinkService = socialAccountLinkService;
     }
 
     public AuthResponse login(LoginRequest loginRequest) {
@@ -115,51 +130,68 @@ public class AuthService {
     }
 
     public AuthResponse loginWithGoogle(String idTokenString) {
+        return createSocialAuthResponse(socialAccountLinkService.resolveOrLink(
+                googleIdentityVerifier.verify(idTokenString)));
+    }
+
+    public AuthResponse loginWithFacebook(String accessToken) {
+        return createSocialAuthResponse(socialAccountLinkService.resolveOrLink(
+                facebookIdentityVerifier.verify(accessToken)));
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<SocialIdentityResponse> listSocialIdentities(Long userId) {
+        return socialAccountLinkService.list(userId);
+    }
+
+    public SocialIdentityResponse linkSocialIdentity(Long userId, String providerName, String credential) {
+        SocialProvider provider = parseProvider(providerName);
+        ExternalIdentityProfile profile = provider == SocialProvider.GOOGLE
+                ? googleIdentityVerifier.verify(credential)
+                : facebookIdentityVerifier.verify(credential);
+        return socialAccountLinkService.link(userId, profile);
+    }
+
+    public boolean unlinkSocialIdentity(Long userId, String providerName, String currentPassword) {
+        return socialAccountLinkService.unlink(userId, parseProvider(providerName), currentPassword);
+    }
+
+    private SocialProvider parseProvider(String providerName) {
         try {
-            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
-                    .setAudience(Collections.singletonList(googleClientId))
-                    .build();
-
-            GoogleIdToken idToken = verifier.verify(idTokenString);
-            if (idToken != null) {
-                GoogleIdToken.Payload payload = idToken.getPayload();
-                String email = payload.getEmail();
-                String name = (String) payload.get("name");
-
-                User user = userRepository.findByUsername(email).orElse(null);
-                if (user == null) {
-                    user = new User();
-                    user.setUsername(email);
-                    user.setEmail(email);
-                    user.setFullName(name);
-                    user.setPasswordHash(passwordEncoder.encode(java.util.UUID.randomUUID().toString())); // Random password
-                    user.setStatus("ACTIVE");
-                    user.setCreatedAt(LocalDateTime.now());
-                    Role customerRole = roleRepository.findByCode("CUSTOMER")
-                            .orElseThrow(() -> new RuntimeException("Error: Role CUSTOMER is not found."));
-                    user.setRoles(Collections.singleton(customerRole));
-                    user = userRepository.save(user);
-                }
-
-                AccountStatusPolicy.requireActive(user);
-
-                Authentication authentication = new UsernamePasswordAuthenticationToken(
-                        user.getUsername(), null, user.getRoles().stream()
-                        .map(r -> new org.springframework.security.core.authority.SimpleGrantedAuthority(r.getCode()))
-                        .collect(java.util.stream.Collectors.toList()));
-                
-                String token = jwtTokenProvider.generateToken(authentication);
-                java.util.List<String> roles = user.getRoles().stream().map(Role::getCode).collect(java.util.stream.Collectors.toList());
-                java.util.List<com.hotel.dtos.PermissionDTO> permissions = new java.util.ArrayList<>();
-                return new AuthResponse(token, user.getUsername(), user.getId(), roles, permissions);
-            } else {
-                throw new RuntimeException("Invalid Google ID token.");
-            }
-        } catch (org.springframework.security.core.AuthenticationException exception) {
-            throw exception;
-        } catch (Exception e) {
-            throw new RuntimeException("Google authentication failed", e);
+            return SocialProvider.fromPath(providerName);
+        } catch (IllegalArgumentException exception) {
+            throw SocialAccountLinkException.unsupportedProvider();
         }
+    }
+
+    AuthResponse createSocialAuthResponse(User user) {
+        AccountStatusPolicy.requireActive(user);
+        java.util.List<org.springframework.security.core.authority.SimpleGrantedAuthority> authorities =
+                user.getRoles().stream()
+                        .map(role -> new org.springframework.security.core.authority.SimpleGrantedAuthority(role.getCode()))
+                        .collect(java.util.stream.Collectors.toList());
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                user.getUsername(), null, authorities);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String token = jwtTokenProvider.generateToken(authentication);
+        java.util.List<String> roles = user.getRoles().stream()
+                .map(Role::getCode)
+                .sorted()
+                .collect(java.util.stream.Collectors.toList());
+        java.util.Map<String, Integer> masks = new java.util.TreeMap<>();
+        user.getRoles().forEach(role -> {
+            if (role.getRolePermissions() == null) return;
+            role.getRolePermissions().forEach(permission -> {
+                if (permission.getFunction() == null) return;
+                masks.merge(permission.getFunction().getCode(),
+                        permission.getActionMask() == null ? 0 : permission.getActionMask(),
+                        (left, right) -> left | right);
+            });
+        });
+        java.util.List<com.hotel.dtos.PermissionDTO> permissions = masks.entrySet().stream()
+                .map(entry -> new com.hotel.dtos.PermissionDTO(entry.getKey(), entry.getValue()))
+                .collect(java.util.stream.Collectors.toList());
+        return new AuthResponse(token, user.getUsername(), user.getId(), roles, permissions);
     }
 
     @Transactional(readOnly = true)

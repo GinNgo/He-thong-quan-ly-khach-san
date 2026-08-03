@@ -3,16 +3,21 @@ package com.hotel.controllers;
 import com.hotel.dtos.AuthResponse;
 import com.hotel.dtos.LoginRequest;
 import com.hotel.dtos.GoogleLoginRequest;
+import com.hotel.dtos.FacebookLoginRequest;
 import com.hotel.dtos.PasswordResetCompletionRequest;
 import com.hotel.dtos.PasswordResetRequest;
 import com.hotel.dtos.PasswordResetResponse;
 import com.hotel.dtos.RegisterRequest;
 import com.hotel.dtos.RegistrationResponse;
+import com.hotel.dtos.SocialIdentityLinkRequest;
+import com.hotel.dtos.SocialIdentityResponse;
+import com.hotel.dtos.SocialIdentityUnlinkRequest;
 import com.hotel.exceptions.ApiErrorResponse;
 import com.hotel.exceptions.CorrelationIdSupport;
 import com.hotel.security.AccountDisabledAuthenticationException;
 import com.hotel.security.RefreshTokenException;
 import com.hotel.security.PasswordResetException;
+import com.hotel.exceptions.SocialAccountLinkException;
 import com.hotel.services.AuthService;
 import com.hotel.services.PasswordResetService;
 import com.hotel.services.RefreshTokenCookieService;
@@ -64,6 +69,39 @@ public class AuthController {
     public ResponseEntity<AuthResponse> loginWithGoogle(@RequestBody GoogleLoginRequest request) {
         AuthResponse response = authService.loginWithGoogle(request.getIdToken());
         return withRefreshCookie(response, refreshTokenService.issueForUser(response.getUserId()));
+    }
+
+    @PostMapping("/facebook")
+    public ResponseEntity<AuthResponse> loginWithFacebook(@Valid @RequestBody FacebookLoginRequest request) {
+        AuthResponse response = authService.loginWithFacebook(request.getAccessToken());
+        return withRefreshCookie(response, refreshTokenService.issueForUser(response.getUserId()));
+    }
+
+    @GetMapping("/social-identities")
+    public ResponseEntity<java.util.List<SocialIdentityResponse>> listSocialIdentities(
+            Authentication authentication) {
+        return ResponseEntity.ok(authService.listSocialIdentities(requireAuthenticatedUserId(authentication)));
+    }
+
+    @PostMapping("/social-identities/{provider}/link")
+    public ResponseEntity<SocialIdentityResponse> linkSocialIdentity(
+            @PathVariable String provider,
+            @Valid @RequestBody SocialIdentityLinkRequest request,
+            Authentication authentication) {
+        return ResponseEntity.ok(authService.linkSocialIdentity(
+                requireAuthenticatedUserId(authentication), provider, request.getCredential()));
+    }
+
+    @DeleteMapping("/social-identities/{provider}")
+    public ResponseEntity<Void> unlinkSocialIdentity(
+            @PathVariable String provider,
+            @RequestBody(required = false) SocialIdentityUnlinkRequest request,
+            Authentication authentication) {
+        authService.unlinkSocialIdentity(
+                requireAuthenticatedUserId(authentication),
+                provider,
+                request == null ? null : request.getCurrentPassword());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/refresh")
@@ -178,6 +216,13 @@ public class AuthController {
         return error(HttpStatus.UNAUTHORIZED, "INVALID_AUTH_TOKEN", exception.getMessage(), request);
     }
 
+    @ExceptionHandler(SocialAccountLinkException.class)
+    public ResponseEntity<ApiErrorResponse> handleSocialAccountLinkException(
+            SocialAccountLinkException exception,
+            HttpServletRequest request) {
+        return error(exception.status(), exception.code(), exception.getMessage(), exception.retryable(), request);
+    }
+
     @GetMapping("/my-menu")
     public ResponseEntity<java.util.List<com.hotel.dtos.AppModuleDto>> getMyMenu() {
         return ResponseEntity.ok(authService.getMyMenu());
@@ -203,14 +248,31 @@ public class AuthController {
         return authSessionRevocationService.findUserId(authentication.getName()).orElse(null);
     }
 
+    private Long requireAuthenticatedUserId(Authentication authentication) {
+        Long userId = authenticatedUserId(authentication);
+        if (userId == null) {
+            throw SocialAccountLinkException.authenticationRequired();
+        }
+        return userId;
+    }
+
     private ResponseEntity<ApiErrorResponse> error(
             HttpStatus status,
             String code,
             String message,
             HttpServletRequest request) {
+        return error(status, code, message, false, request);
+    }
+
+    private ResponseEntity<ApiErrorResponse> error(
+            HttpStatus status,
+            String code,
+            String message,
+            boolean retryable,
+            HttpServletRequest request) {
         String correlationId = CorrelationIdSupport.resolve(request);
         ApiErrorResponse body = new ApiErrorResponse(
-                status.value(), code, message, correlationId, Map.of(), false, null, request.getRequestURI());
+                status.value(), code, message, correlationId, Map.of(), retryable, null, request.getRequestURI());
         return ResponseEntity.status(status)
                 .header(CorrelationIdSupport.HEADER, correlationId)
                 .body(body);

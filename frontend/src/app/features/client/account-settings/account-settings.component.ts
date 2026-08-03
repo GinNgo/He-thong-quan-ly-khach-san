@@ -6,9 +6,10 @@ import { finalize } from 'rxjs';
 import { PASSWORD_POLICY, passwordValidators } from '../../../core/auth/password-policy';
 import { AuthService } from '../../../core/services/auth';
 import { UserService } from '../../../core/services/user';
+import { SocialAccountLinksComponent } from './social-account-links.component';
 
 @Component({
-  selector: 'app-account-settings', standalone: true, imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  selector: 'app-account-settings', standalone: true, imports: [CommonModule, ReactiveFormsModule, RouterModule, SocialAccountLinksComponent],
   template: `
     <main class="settings-page"><header><a routerLink="/profile"><i class="pi pi-arrow-left"></i> Tài khoản</a><h1>Cài đặt tài khoản</h1><p>Thay đổi mật khẩu đăng nhập của bạn.</p></header>
       <section><form [formGroup]="form" (ngSubmit)="submit()">
@@ -17,7 +18,7 @@ import { UserService } from '../../../core/services/user';
         <label>Nhập lại mật khẩu mới<input type="password" formControlName="confirmPassword" autocomplete="new-password" [attr.minlength]="passwordPolicy.minLength" [attr.maxlength]="passwordPolicy.maxLength"></label>
         <div *ngIf="error" class="alert error">{{ error }}</div><div *ngIf="success" class="alert success">{{ success }}</div>
         <button type="submit" [disabled]="form.invalid || saving">{{ saving ? 'Đang lưu...' : 'Đổi mật khẩu' }}</button>
-      </form></section>
+      </form></section><app-social-account-links></app-social-account-links>
     </main>`,
   styles: [`
     .settings-page{max-width:720px;margin:auto;padding:38px 18px 70px}header{margin-bottom:22px}header a{color:#1d4ed8;text-decoration:none;font-weight:700}h1{font-size:30px;margin:20px 0 6px;color:#0f172a}p{margin:0;color:#64748b}section{background:#fff;border:1px solid #e2e8f0;padding:28px}form{display:grid;gap:18px}label{display:flex;flex-direction:column;gap:7px;color:#334155;font-weight:700;font-size:13px}input{min-height:44px;border:1px solid #cbd5e1;padding:0 12px;font:inherit}small{color:#64748b;font-weight:400}button{justify-self:start;min-height:44px;padding:0 18px;border:0;background:#1d4ed8;color:#fff;font-weight:700;cursor:pointer}button:disabled{opacity:.55}.alert{padding:12px}.error{background:#fef2f2;color:#b91c1c}.success{background:#ecfdf5;color:#047857}

@@ -41,6 +41,16 @@ export interface PasswordResetResponse {
   message: string;
 }
 
+export type SocialProvider = 'GOOGLE' | 'FACEBOOK';
+
+export interface SocialIdentity {
+  provider: SocialProvider;
+  providerEmail: string;
+  linkedAt?: string;
+  lastLoginAt?: string;
+  passwordRequiredToUnlink: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -135,6 +145,26 @@ export class AuthService {
 
   googleLogin(idToken: string): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/google`, { idToken }, { withCredentials: true });
+  }
+
+  facebookLogin(accessToken: string): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.apiUrl}/facebook`, { accessToken }, { withCredentials: true });
+  }
+
+  listSocialIdentities(): Observable<SocialIdentity[]> {
+    return this.http.get<SocialIdentity[]>(`${this.apiUrl}/social-identities`);
+  }
+
+  linkSocialIdentity(provider: SocialProvider, credential: string): Observable<SocialIdentity> {
+    return this.http.post<SocialIdentity>(
+      `${this.apiUrl}/social-identities/${provider.toLowerCase()}/link`,
+      { credential },
+    );
+  }
+
+  unlinkSocialIdentity(provider: SocialProvider, currentPassword?: string): Observable<void> {
+    const body = currentPassword ? { currentPassword } : undefined;
+    return this.http.delete<void>(`${this.apiUrl}/social-identities/${provider.toLowerCase()}`, { body });
   }
 
   refreshAccessToken(): Observable<AuthResponse> {
