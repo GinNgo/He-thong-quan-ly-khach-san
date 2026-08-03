@@ -104,6 +104,14 @@ app:
   auth:
     # Must be true behind HTTPS in production; false supports local HTTP development only.
     refresh-cookie-secure: ${AUTH_REFRESH_COOKIE_SECURE:false}
+    password-reset:
+      ttl-minutes: ${PASSWORD_RESET_TTL_MINUTES:30}
+      rate-window-minutes: ${PASSWORD_RESET_RATE_WINDOW_MINUTES:15}
+      max-ip-requests: ${PASSWORD_RESET_MAX_IP_REQUESTS:5}
+      max-email-requests: ${PASSWORD_RESET_MAX_EMAIL_REQUESTS:3}
+  mail:
+    password-reset-enabled: ${PASSWORD_RESET_EMAIL_ENABLED:true}
+    password-reset-url: ${PASSWORD_RESET_URL:http://localhost:4200/reset-password}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
   reservation-hold:

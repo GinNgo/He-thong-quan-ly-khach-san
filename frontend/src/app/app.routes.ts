@@ -23,6 +23,8 @@ export const routes: Routes = [
   },
   { path: 'payment-simulator', loadComponent: () => import('./features/client/payment-simulator/payment-simulator').then(m => m.PaymentSimulatorComponent) },
   { path: 'payment-result', loadComponent: () => import('./features/client/payment-result/payment-result').then(m => m.PaymentResultComponent) },
+  { path: 'forgot-password', loadComponent: () => import('./features/auth/forgot-password/forgot-password.component').then(m => m.ForgotPasswordComponent) },
+  { path: 'reset-password', loadComponent: () => import('./features/auth/reset-password/reset-password.component').then(m => m.ResetPasswordComponent) },
   { path: 'login', loadComponent: () => import('./features/auth/login/login.component').then(m => m.LoginComponent) },
   { path: 'register', loadComponent: () => import('./features/auth/register/register.component').then(m => m.RegisterComponent) },
   { path: 'partner/register', loadComponent: () => import('./features/client/partner-register/partner-register.component').then(m => m.PartnerRegisterComponent) },

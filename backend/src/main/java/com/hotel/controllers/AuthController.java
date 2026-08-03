@@ -3,13 +3,18 @@ package com.hotel.controllers;
 import com.hotel.dtos.AuthResponse;
 import com.hotel.dtos.LoginRequest;
 import com.hotel.dtos.GoogleLoginRequest;
+import com.hotel.dtos.PasswordResetCompletionRequest;
+import com.hotel.dtos.PasswordResetRequest;
+import com.hotel.dtos.PasswordResetResponse;
 import com.hotel.dtos.RegisterRequest;
 import com.hotel.dtos.RegistrationResponse;
 import com.hotel.exceptions.ApiErrorResponse;
 import com.hotel.exceptions.CorrelationIdSupport;
 import com.hotel.security.AccountDisabledAuthenticationException;
 import com.hotel.security.RefreshTokenException;
+import com.hotel.security.PasswordResetException;
 import com.hotel.services.AuthService;
+import com.hotel.services.PasswordResetService;
 import com.hotel.services.RefreshTokenCookieService;
 import com.hotel.services.RefreshTokenService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,18 +37,21 @@ public class AuthController {
     private final RefreshTokenService refreshTokenService;
     private final RefreshTokenCookieService refreshTokenCookieService;
     private final com.hotel.services.AuthSessionRevocationService authSessionRevocationService;
+    private final PasswordResetService passwordResetService;
 
     public AuthController(
             AuthService authService,
             com.hotel.services.CredentialRegistrationService credentialRegistrationService,
             RefreshTokenService refreshTokenService,
             RefreshTokenCookieService refreshTokenCookieService,
-            com.hotel.services.AuthSessionRevocationService authSessionRevocationService) {
+            com.hotel.services.AuthSessionRevocationService authSessionRevocationService,
+            PasswordResetService passwordResetService) {
         this.authService = authService;
         this.credentialRegistrationService = credentialRegistrationService;
         this.refreshTokenService = refreshTokenService;
         this.refreshTokenCookieService = refreshTokenCookieService;
         this.authSessionRevocationService = authSessionRevocationService;
+        this.passwordResetService = passwordResetService;
     }
 
     @PostMapping("/login")
@@ -95,6 +103,28 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<RegistrationResponse> register(@Valid @RequestBody RegisterRequest registerRequest) {
         return new ResponseEntity<>(credentialRegistrationService.register(registerRequest), HttpStatus.CREATED);
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<PasswordResetResponse> forgotPassword(
+            @Valid @RequestBody PasswordResetRequest request,
+            HttpServletRequest servletRequest) {
+        passwordResetService.requestReset(request.getEmail(), servletRequest.getRemoteAddr());
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(new PasswordResetResponse(passwordResetService.genericResponseMessage()));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody PasswordResetCompletionRequest request) {
+        passwordResetService.resetPassword(request.getToken(), request.getNewPassword());
+        return ResponseEntity.noContent().build();
+    }
+
+    @ExceptionHandler(PasswordResetException.class)
+    public ResponseEntity<ApiErrorResponse> handlePasswordResetException(
+            PasswordResetException exception,
+            HttpServletRequest request) {
+        return error(exception.getStatus(), exception.getCode(), exception.getMessage(), request);
     }
 
     @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)

@@ -31,6 +31,10 @@ export interface AuthSessionUser {
   permissions?: string[];
 }
 
+export interface PasswordResetResponse {
+  message: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -109,6 +113,14 @@ export class AuthService {
 
   login(credentials: { username: string; password: string }): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials, { withCredentials: true });
+  }
+
+  requestPasswordReset(email: string): Observable<PasswordResetResponse> {
+    return this.http.post<PasswordResetResponse>(`${this.apiUrl}/forgot-password`, { email });
+  }
+
+  resetPassword(token: string, newPassword: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/reset-password`, { token, newPassword });
   }
 
   register(userData: any): Observable<any> {

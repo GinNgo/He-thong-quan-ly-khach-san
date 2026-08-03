@@ -20,5 +20,14 @@ server:
   port: 8080
 
 app:
+  auth:
+    password-reset:
+      ttl-minutes: 30
+      rate-window-minutes: 15
+      max-ip-requests: 5
+      max-email-requests: 3
+  mail:
+    password-reset-enabled: false
+    password-reset-url: http://localhost:4200/reset-password
   accommodation-import:
     enabled: false
