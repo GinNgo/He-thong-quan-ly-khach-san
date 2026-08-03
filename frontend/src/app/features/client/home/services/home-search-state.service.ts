@@ -1,7 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-export type StayType = 'OVERNIGHT' | 'DAY_USE';
+export type StayType = 'OVERNIGHT';
 export type SuggestionType = 'PROVINCE' | 'WARD' | 'PROPERTY' | 'LANDMARK';
 
 export interface HomeSearchState {
@@ -64,8 +64,6 @@ export class HomeSearchStateService {
     return `${summary} · ${state.roomCount} phòng`;
   });
 
-  readonly isDayUse = computed(() => this.state().stayType === 'DAY_USE');
-
   constructor(private router: Router) {}
 
   updateKeyword(value: string): void {
@@ -123,18 +121,6 @@ export class HomeSearchStateService {
     }));
   }
 
-  updateStayType(stayType: StayType): void {
-    this.state.update(state => {
-      const next = { ...state, stayType };
-      if (stayType === 'OVERNIGHT' && next.checkInDate &&
-          (!next.checkOutDate || next.checkOutDate <= next.checkInDate)) {
-        next.checkOutDate = this.addDays(next.checkInDate, 1);
-      }
-      return next;
-    });
-    this.validationError.set(null);
-  }
-
   updatePropertyTypes(propertyTypes: string[]): void {
     this.state.update(state => ({ ...state, propertyTypes }));
   }
@@ -142,7 +128,7 @@ export class HomeSearchStateService {
   updateDates(checkInDate: Date | null, checkOutDate: Date | null): void {
     this.state.update(state => {
       const next = { ...state, checkInDate, checkOutDate };
-      if (checkInDate && checkOutDate && checkOutDate <= checkInDate && state.stayType === 'OVERNIGHT') {
+      if (checkInDate && checkOutDate && checkOutDate <= checkInDate) {
         next.checkOutDate = this.addDays(checkInDate, 1);
       }
       return next;
@@ -207,7 +193,6 @@ export class HomeSearchStateService {
     }
 
     const queryParams: Record<string, string | number> = {
-      stayType: state.stayType,
       checkInDate: this.formatDate(checkInDate),
       adultCount: state.adultCount,
       childCount: state.childCount,
@@ -258,13 +243,11 @@ export class HomeSearchStateService {
     if (checkIn < this.startOfToday()) {
       return { code: 'CHECK_IN_PAST', message: 'Ngày nhận phòng không thể ở trong quá khứ.' };
     }
-    if (state.stayType === 'OVERNIGHT') {
-      if (!state.checkOutDate) {
-        return { code: 'CHECK_OUT_REQUIRED', message: 'Vui lòng chọn ngày trả phòng.' };
-      }
-      if (state.checkOutDate <= state.checkInDate) {
-        return { code: 'INVALID_DATE_RANGE', message: 'Ngày trả phòng phải sau ngày nhận phòng.' };
-      }
+    if (!state.checkOutDate) {
+      return { code: 'CHECK_OUT_REQUIRED', message: 'Vui lòng chọn ngày trả phòng.' };
+    }
+    if (state.checkOutDate <= state.checkInDate) {
+      return { code: 'INVALID_DATE_RANGE', message: 'Ngày trả phòng phải sau ngày nhận phòng.' };
     }
     return null;
   }

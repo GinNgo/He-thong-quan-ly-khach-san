@@ -10,7 +10,8 @@ This branch intentionally does not edit the shared task list, master inventory, 
 
 | Task | Commit | Focused validation | Coordinator updates |
 |---|---|---|---|
-| T269 / PUB-001 | Pending task commit (replace with pushed hash after commit) | State unit 4/4; API-backed Playwright 2/2; Angular development build PASS with temporary parallel-i18n overlay; E2E seed class isolated compile PASS | Mark T269 complete in shared `tasks.md`; mirror PUB-001 `COMPLETE_VERIFIED` and the T269 evidence link into both shared inventory matrices. |
+| T269 / PUB-001 | `e4c7dc1` | State unit 4/4; API-backed Playwright 2/2; Angular development build PASS with temporary parallel-i18n overlay; E2E seed class isolated compile PASS | Mark T269 complete in shared `tasks.md`; mirror PUB-001 `COMPLETE_VERIFIED` and the T269 evidence link into both shared inventory matrices. |
+| T270 / PUB-002 | Pending task commit (replace with pushed hash after commit) | State unit 5/5; API-backed Playwright 1/1; Angular development build PASS with temporary parallel-i18n overlay; branch-specific location/seed classes isolated compile PASS | Mark T270 complete in shared `tasks.md`; mirror PUB-002 `COMPLETE_VERIFIED` and the T270 evidence link into both shared inventory matrices. |
 
 ## Stop Gates
 

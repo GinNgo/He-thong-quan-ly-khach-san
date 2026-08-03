@@ -82,7 +82,7 @@ export class DateRangeSelectorComponent {
   }
 
   get isOvernight(): boolean {
-    return this.stateService.isDayUse() === false;
+    return this.stateService.state().stayType === 'OVERNIGHT';
   }
 
   get dateRange(): Date | Date[] | null {

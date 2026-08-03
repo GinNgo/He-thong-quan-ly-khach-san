@@ -62,6 +62,12 @@ describe('HomeSearchStateService', () => {
         roomCount: 2
       })
     });
+    expect(navigate.mock.calls[0][1].queryParams).not.toHaveProperty('stayType');
+  });
+
+  it('keeps the public search contract overnight-only', () => {
+    expect(service.state().stayType).toBe('OVERNIGHT');
+    expect(service.state().checkOutDate?.getTime()).toBeGreaterThan(service.state().checkInDate?.getTime() ?? 0);
   });
 
   it('clears stale validation as soon as the date selection changes', () => {

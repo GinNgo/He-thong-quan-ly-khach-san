@@ -75,6 +75,26 @@ test('searches seeded API inventory and preserves the trip through detail and ba
   expect(new URL(page.url()).searchParams.get('returnUrl')).toBe(requestedBookingUrl);
 });
 
+test('keeps day-use unavailable and omits stayType from public search requests', async ({ page }) => {
+  await page.goto('/');
+
+  await expect(page.locator('input[value="DAY_USE"]')).toHaveCount(0);
+  const responsePromise = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname.endsWith('/api/public/properties/search')
+      && url.searchParams.has('checkInDate')
+      && response.request().method() === 'GET';
+  });
+
+  await page.locator('app-hero-search button').filter({ hasText: 'TÌM' }).click();
+  const response = await responsePromise;
+
+  expect(response.status()).toBe(200);
+  expect(new URL(response.url()).searchParams.has('stayType')).toBe(false);
+  expect(new URL(page.url()).searchParams.has('stayType')).toBe(false);
+  await expect(page.locator('app-property-result-card').first()).toBeVisible();
+});
+
 test('announces missing dates and returns keyboard focus to the date trigger on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
