@@ -1,13 +1,20 @@
 package com.hotel.controllers;
 
 import com.hotel.entities.Hotel;
+import com.hotel.dtos.PropertyApprovalSubmissionResponse;
 import com.hotel.dtos.PublicHotelDetailDTO;
+import com.hotel.security.CustomUserDetails;
 import com.hotel.services.HotelManagementService;
+import com.hotel.services.PropertyApprovalWorkflowService;
 import com.hotel.services.RoomTypeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -24,10 +31,10 @@ public class HotelController {
     private RoomTypeService roomTypeService;
 
     @Autowired
-    private com.hotel.services.PropertyAccessService propertyAccessService;
+    private com.hotel.services.PropertyRegistrationService propertyRegistrationService;
 
     @Autowired
-    private com.hotel.services.PropertyRegistrationService propertyRegistrationService;
+    private PropertyApprovalWorkflowService propertyApprovalWorkflowService;
 
     @GetMapping("/public/search")
     public ResponseEntity<List<Hotel>> searchHotels(
@@ -102,16 +109,19 @@ public class HotelController {
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("hasAnyAuthority('PROPERTY_OWNER', 'SUPER_ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/{id}/submit")
-    public ResponseEntity<Hotel> submitHotel(@PathVariable Long id) {
-        Hotel hotel = hotelService.getHotelById(id)
-                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy cơ sở."));
-        propertyAccessService.requireAssignedHotel(id);
-        hotel.setStatus("PENDING");
-        hotel.setApprovalStatus("PENDING_APPROVAL");
-        hotel.setOperationStatus("INACTIVE");
-        return ResponseEntity.ok(hotelService.updateHotel(id, hotel));
+    public ResponseEntity<PropertyApprovalSubmissionResponse> submitHotel(
+            @PathVariable Long id,
+            Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            throw new AuthenticationCredentialsNotFoundException("Authentication is required.");
+        }
+        if (!(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
+            throw new AccessDeniedException("Authoritative authenticated account context is required.");
+        }
+        return ResponseEntity.ok(propertyApprovalWorkflowService.submitDraft(userDetails.getUserId(), id));
     }
 
     @PreAuthorize("hasAuthority('SUPER_ADMIN')")

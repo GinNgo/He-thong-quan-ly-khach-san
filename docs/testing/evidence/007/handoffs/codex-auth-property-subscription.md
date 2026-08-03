@@ -12,7 +12,8 @@ Base: `origin/codex/ui-functional-audit-polish`
 | T229 | SKIPPED_CLAIMED | Owned by `/root/t229_auth_legal` | Active Parallel Claims checked before T228/T230 | No duplicate changes from this branch. |
 | T230 | COMPLETE_VERIFIED | `a16a1bf` | Backend 7/7; frontend 4/4; `git diff --check` | Mark T230 complete in Feature 007 `tasks.md`; merge PROP-SUB-001 status/evidence into the two shared aggregate inventories. |
 | T231 | COMPLETE_VERIFIED | `ac92af4` | Backend 14/14; frontend 7/7; `git diff --check` | Mark T231 complete in Feature 007 `tasks.md`; merge PROP-SUB-002 status/evidence into the two shared aggregate inventories. |
-| T232 | COMPLETE_VERIFIED | Pending task commit | Backend 33/33; frontend 6/6; `git diff --check` | Mark T232 complete in Feature 007 `tasks.md`; merge PROP-SUB-004 status/evidence into the two shared aggregate inventories. |
+| T232 | COMPLETE_VERIFIED | `9c774a1` | Backend 33/33; frontend 6/6; `git diff --check` | Mark T232 complete in Feature 007 `tasks.md`; merge PROP-SUB-004 status/evidence into the two shared aggregate inventories. |
+| T233 | COMPLETE_VERIFIED | Pending task commit | Backend compile 432 sources and 46/46 focused tests; frontend 9/9; `git diff --check` | Mark T233 complete in Feature 007 `tasks.md`; merge PROP-SUB-005 status/evidence into the two shared aggregate inventories. |
 
 ## Shared files intentionally not edited
 

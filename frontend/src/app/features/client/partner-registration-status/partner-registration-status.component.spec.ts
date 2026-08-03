@@ -87,6 +87,79 @@ describe('PartnerRegistrationStatusComponent', () => {
     expect(link.getAttribute('href')).toBe('/partner/register');
   });
 
+  it('shows submit only for the raw DRAFT owner mapping, blocks duplicates and refreshes mixed status', () => {
+    const draftOwner = row(8, 'Draft Owner Hotel', 'PENDING', 'DRAFT', 'INACTIVE', 'PENDING');
+    loadWith({
+      overallStatus: 'MIXED',
+      propertyCount: 3,
+      properties: [
+        draftOwner,
+        row(9, 'Already Pending', 'PENDING', 'PENDING_APPROVAL', 'INACTIVE', 'PENDING'),
+        row(10, 'Approved Active', 'APPROVED', 'APPROVED', 'ACTIVE', 'ACTIVE')
+      ]
+    });
+
+    const submitButtons = fixture.nativeElement.querySelectorAll('.submit-review') as NodeListOf<HTMLButtonElement>;
+    expect(submitButtons).toHaveLength(1);
+    expect(submitButtons[0].closest('.property-card')?.textContent).toContain('Draft Owner Hotel');
+
+    submitButtons[0].click();
+    fixture.componentInstance.submitForReview(draftOwner);
+    fixture.detectChanges();
+
+    const submit = http.expectOne(`${environment.apiUrl}/partner/properties/8/submit`);
+    expect(submit.request.method).toBe('POST');
+    expect(submit.request.body).toEqual({});
+    expect((fixture.nativeElement.querySelector('.submit-review') as HTMLButtonElement).disabled).toBe(true);
+    submit.flush({
+      propertyId: 8,
+      status: 'PENDING_APPROVAL',
+      approvalStatus: 'PENDING_APPROVAL',
+      operationStatus: 'INACTIVE',
+      submittedByUserId: 42,
+      submittedAt: '2026-08-04T08:30:00Z'
+    });
+
+    http.expectOne(`${environment.apiUrl}/partner/registration-status`).flush({
+      overallStatus: 'MIXED',
+      propertyCount: 3,
+      properties: [
+        row(8, 'Draft Owner Hotel', 'PENDING', 'PENDING_APPROVAL', 'INACTIVE', 'PENDING'),
+        row(9, 'Already Pending', 'PENDING', 'PENDING_APPROVAL', 'INACTIVE', 'PENDING'),
+        row(10, 'Approved Active', 'APPROVED', 'APPROVED', 'ACTIVE', 'ACTIVE')
+      ]
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.property-card')).toHaveLength(3);
+    expect(fixture.nativeElement.querySelector('.submit-review')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Approved Active');
+  });
+
+  it('recovers from a failed submission and never exposes backend error details', () => {
+    const draftOwner = row(11, 'Retry Hotel', 'PENDING', 'DRAFT', 'INACTIVE', 'PENDING');
+    loadWith({ overallStatus: 'PENDING', propertyCount: 1, properties: [draftOwner] });
+
+    (fixture.nativeElement.querySelector('.submit-review') as HTMLButtonElement).click();
+    http.expectOne(`${environment.apiUrl}/partner/properties/11/submit`).flush(
+      { message: 'Internal tenant 99 rejected property 11.' },
+      { status: 409, statusText: 'Conflict' }
+    );
+    fixture.detectChanges();
+
+    const error = fixture.nativeElement.querySelector('.submission-error') as HTMLElement;
+    expect(error.textContent).toContain('Không thể gửi cơ sở này');
+    expect(error.textContent).not.toContain('tenant 99');
+    const retry = fixture.nativeElement.querySelector('.submit-review') as HTMLButtonElement;
+    expect(retry.disabled).toBe(false);
+
+    retry.click();
+    http.expectOne(`${environment.apiUrl}/partner/properties/11/submit`).flush(
+      { message: 'Still unavailable' },
+      { status: 503, statusText: 'Unavailable' }
+    );
+  });
+
   it('shows an error and retries the status request', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[role="status"]')).toBeTruthy();

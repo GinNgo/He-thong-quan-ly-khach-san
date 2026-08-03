@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
+import { finalize, switchMap, tap } from 'rxjs';
 
 import {
   PartnerOverallStatus,
@@ -91,13 +92,27 @@ const STATUS_GUIDANCE: Record<PartnerPropertyStatus, string> = {
             <a *ngIf="isManagementReady(property)" class="management-link" routerLink="/management/dashboard">
               Đi đến trang quản lý
             </a>
+
+            <button
+              *ngIf="canSubmitForReview(property)"
+              type="button"
+              class="submit-review"
+              [disabled]="isSubmitting(property.propertyId)"
+              (click)="submitForReview(property)">
+              <span *ngIf="!isSubmitting(property.propertyId)">Gửi xét duyệt</span>
+              <span *ngIf="isSubmitting(property.propertyId)">Đang gửi...</span>
+            </button>
+
+            <div *ngIf="submissionErrors[property.propertyId] as submissionError" class="submission-error" role="alert">
+              {{ submissionError }}
+            </div>
           </article>
         </div>
       </section>
     </main>
   `,
   styles: [`
-    :host{display:block}.status-page{min-height:calc(100vh - 72px);padding:42px 20px 64px;background:radial-gradient(circle at 10% 5%,#dbeafe 0,transparent 28%),linear-gradient(180deg,#f8fafc,#eef2f7);color:#172033}.state-panel{width:min(680px,100%);margin:8vh auto 0;padding:44px;text-align:center;background:#fff;border:1px solid #dbe4ef;border-radius:22px;box-shadow:0 22px 60px rgba(15,23,42,.09)}.state-icon{display:grid;place-items:center;width:64px;height:64px;margin:0 auto 18px;border-radius:20px;background:#eaf2ff;color:#175bb5;font-size:26px}.error-state .state-icon{background:#fff1f2;color:#be123c}.state-panel h1,.status-header h1{margin:0 0 10px;font-size:clamp(26px,4vw,38px);line-height:1.12}.state-panel p,.status-header p{color:#64748b;line-height:1.65}.state-panel a,.state-panel button,.management-link{display:inline-flex;min-height:44px;align-items:center;padding:0 18px;border:0;border-radius:12px;background:#123f73;color:#fff;text-decoration:none;font-weight:800;cursor:pointer}.status-content{width:min(1080px,100%);margin:0 auto}.status-header{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:24px}.status-header p{margin:0}.eyebrow{font-size:12px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#1764bd!important}.overall-badge,.status-badge{display:inline-flex;align-items:center;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:900;white-space:nowrap;background:#e2e8f0;color:#334155}.property-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}.property-card{display:flex;flex-direction:column;gap:18px;padding:24px;background:rgba(255,255,255,.96);border:1px solid #dbe4ef;border-radius:18px;box-shadow:0 14px 34px rgba(15,23,42,.07)}.property-card>header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.property-card h2{margin:3px 0 0;font-size:20px;line-height:1.3}.property-id{margin:0;color:#64748b;font-size:12px;font-weight:800}.guidance{margin:0;color:#475569;line-height:1.6}.property-card dl{display:grid;gap:8px;margin:0}.property-card dl div{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid #eef2f7}.property-card dt{color:#64748b}.property-card dd{margin:0;font-weight:800}.rejection-reason{display:grid;gap:5px;padding:14px;border-radius:12px;background:#fff1f2;color:#9f1239}.management-link{align-self:flex-start;margin-top:auto}.status-badge[data-status='APPROVED'],.overall-badge[data-status='APPROVED']{background:#dcfce7;color:#166534}.status-badge[data-status='PENDING']{background:#fef3c7;color:#92400e}.status-badge[data-status='DRAFT']{background:#e0f2fe;color:#075985}.status-badge[data-status='REJECTED']{background:#ffe4e6;color:#9f1239}.status-badge[data-status='SUSPENDED']{background:#ffedd5;color:#9a3412}.status-badge[data-status='CANCELLED']{background:#e2e8f0;color:#475569}.overall-badge[data-status='MIXED']{background:#ede9fe;color:#5b21b6}@media(max-width:680px){.status-page{padding:28px 14px 48px}.state-panel{padding:32px 20px}.status-header{align-items:flex-start;flex-direction:column}.property-grid{grid-template-columns:1fr}.property-card{padding:20px}}
+    :host{display:block}.status-page{min-height:calc(100vh - 72px);padding:42px 20px 64px;background:radial-gradient(circle at 10% 5%,#dbeafe 0,transparent 28%),linear-gradient(180deg,#f8fafc,#eef2f7);color:#172033}.state-panel{width:min(680px,100%);margin:8vh auto 0;padding:44px;text-align:center;background:#fff;border:1px solid #dbe4ef;border-radius:22px;box-shadow:0 22px 60px rgba(15,23,42,.09)}.state-icon{display:grid;place-items:center;width:64px;height:64px;margin:0 auto 18px;border-radius:20px;background:#eaf2ff;color:#175bb5;font-size:26px}.error-state .state-icon{background:#fff1f2;color:#be123c}.state-panel h1,.status-header h1{margin:0 0 10px;font-size:clamp(26px,4vw,38px);line-height:1.12}.state-panel p,.status-header p{color:#64748b;line-height:1.65}.state-panel a,.state-panel button,.management-link,.submit-review{display:inline-flex;min-height:44px;align-items:center;padding:0 18px;border:0;border-radius:12px;background:#123f73;color:#fff;text-decoration:none;font-weight:800;cursor:pointer}.submit-review{align-self:flex-start;margin-top:auto;background:#9a4d00}.submit-review:disabled{cursor:wait;opacity:.68}.submission-error{padding:12px 14px;border-radius:12px;background:#fff1f2;color:#9f1239;font-weight:700}.status-content{width:min(1080px,100%);margin:0 auto}.status-header{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:24px}.status-header p{margin:0}.eyebrow{font-size:12px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#1764bd!important}.overall-badge,.status-badge{display:inline-flex;align-items:center;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:900;white-space:nowrap;background:#e2e8f0;color:#334155}.property-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}.property-card{display:flex;flex-direction:column;gap:18px;padding:24px;background:rgba(255,255,255,.96);border:1px solid #dbe4ef;border-radius:18px;box-shadow:0 14px 34px rgba(15,23,42,.07)}.property-card>header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.property-card h2{margin:3px 0 0;font-size:20px;line-height:1.3}.property-id{margin:0;color:#64748b;font-size:12px;font-weight:800}.guidance{margin:0;color:#475569;line-height:1.6}.property-card dl{display:grid;gap:8px;margin:0}.property-card dl div{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid #eef2f7}.property-card dt{color:#64748b}.property-card dd{margin:0;font-weight:800}.rejection-reason{display:grid;gap:5px;padding:14px;border-radius:12px;background:#fff1f2;color:#9f1239}.management-link{align-self:flex-start;margin-top:auto}.status-badge[data-status='APPROVED'],.overall-badge[data-status='APPROVED']{background:#dcfce7;color:#166534}.status-badge[data-status='PENDING']{background:#fef3c7;color:#92400e}.status-badge[data-status='DRAFT']{background:#e0f2fe;color:#075985}.status-badge[data-status='REJECTED']{background:#ffe4e6;color:#9f1239}.status-badge[data-status='SUSPENDED']{background:#ffedd5;color:#9a3412}.status-badge[data-status='CANCELLED']{background:#e2e8f0;color:#475569}.overall-badge[data-status='MIXED']{background:#ede9fe;color:#5b21b6}@media(max-width:680px){.status-page{padding:28px 14px 48px}.state-panel{padding:32px 20px}.status-header{align-items:flex-start;flex-direction:column}.property-grid{grid-template-columns:1fr}.property-card{padding:20px}}
   `]
 })
 export class PartnerRegistrationStatusComponent implements OnInit {
@@ -107,6 +122,9 @@ export class PartnerRegistrationStatusComponent implements OnInit {
   loading = true;
   error = '';
   response: PartnerRegistrationStatusResponse | null = null;
+  readonly submittingPropertyIds = new Set<number>();
+  readonly submittedPropertyIds = new Set<number>();
+  readonly submissionErrors: Record<number, string> = {};
 
   ngOnInit(): void {
     this.load();
@@ -165,6 +183,48 @@ export class PartnerRegistrationStatusComponent implements OnInit {
     return property.status === 'APPROVED'
       && property.operationStatus === 'ACTIVE'
       && property.ownershipStatus === 'ACTIVE';
+  }
+
+  canSubmitForReview(property: PartnerPropertyStatusRow): boolean {
+    return property.approvalStatus === 'DRAFT'
+      && property.operationStatus === 'INACTIVE'
+      && property.ownershipStatus === 'PENDING'
+      && !this.submittedPropertyIds.has(property.propertyId);
+  }
+
+  isSubmitting(propertyId: number): boolean {
+    return this.submittingPropertyIds.has(propertyId);
+  }
+
+  submitForReview(property: PartnerPropertyStatusRow): void {
+    if (!this.canSubmitForReview(property) || this.isSubmitting(property.propertyId)) return;
+
+    const propertyId = property.propertyId;
+    let submissionCompleted = false;
+    this.submittingPropertyIds.add(propertyId);
+    delete this.submissionErrors[propertyId];
+
+    this.statusService.submitForReview(propertyId).pipe(
+      tap(() => {
+        submissionCompleted = true;
+        this.submittedPropertyIds.add(propertyId);
+      }),
+      switchMap(() => this.statusService.load()),
+      finalize(() => {
+        this.submittingPropertyIds.delete(propertyId);
+        this.changeDetector.detectChanges();
+      })
+    ).subscribe({
+      next: response => {
+        this.response = response;
+        this.submittedPropertyIds.delete(propertyId);
+      },
+      error: () => {
+        this.submissionErrors[propertyId] = submissionCompleted
+          ? 'Yêu cầu đã được gửi nhưng chưa thể làm mới trạng thái. Vui lòng tải lại trang.'
+          : 'Không thể gửi cơ sở này để xét duyệt. Vui lòng thử lại.';
+      }
+    });
   }
 
   trackProperty(_index: number, property: PartnerPropertyStatusRow): number {

@@ -75,7 +75,7 @@ public class AdminPartnerController {
                        u.id owner_id,u.full_name owner_name,u.email owner_email
                 FROM hotels h LEFT JOIN user_properties up ON up.hotel_id=h.id AND up.relationship_type='OWNER'
                 LEFT JOIN users u ON u.id=up.user_id
-                WHERE h.approval_status IN ('DRAFT','PENDING_APPROVAL','IMPORTED_PENDING_REVIEW')
+                WHERE h.approval_status IN ('PENDING_APPROVAL','IMPORTED_PENDING_REVIEW')
                 ORDER BY h.created_at DESC
                 """);
     }

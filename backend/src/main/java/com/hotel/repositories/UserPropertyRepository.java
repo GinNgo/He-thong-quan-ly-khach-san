@@ -39,6 +39,19 @@ public interface UserPropertyRepository extends JpaRepository<UserProperty, Long
             select up
             from UserProperty up
             where up.user.id = :userId
+              and up.hotel.id = :hotelId
+              and up.relationshipType = 'OWNER'
+              and up.status = 'PENDING'
+            """)
+    java.util.Optional<UserProperty> findPendingOwnerMappingForUpdate(
+            @Param("userId") Long userId,
+            @Param("hotelId") Long hotelId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select up
+            from UserProperty up
+            where up.user.id = :userId
               and up.relationshipType = 'STAFF'
             order by up.startDate desc, up.id desc
             """)

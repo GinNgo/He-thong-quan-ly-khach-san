@@ -30,6 +30,15 @@ export interface PartnerRegistrationStatusResponse {
   properties: PartnerPropertyStatusRow[];
 }
 
+export interface PartnerReviewSubmissionResponse {
+  propertyId: number;
+  status: 'PENDING_APPROVAL';
+  approvalStatus: 'PENDING_APPROVAL';
+  operationStatus: 'INACTIVE';
+  submittedByUserId: number;
+  submittedAt: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class PartnerRegistrationStatusService {
   private readonly http = inject(HttpClient);
@@ -37,6 +46,13 @@ export class PartnerRegistrationStatusService {
   load(): Observable<PartnerRegistrationStatusResponse> {
     return this.http.get<PartnerRegistrationStatusResponse>(
       `${environment.apiUrl}/partner/registration-status`
+    );
+  }
+
+  submitForReview(propertyId: number): Observable<PartnerReviewSubmissionResponse> {
+    return this.http.post<PartnerReviewSubmissionResponse>(
+      `${environment.apiUrl}/partner/properties/${propertyId}/submit`,
+      {}
     );
   }
 }

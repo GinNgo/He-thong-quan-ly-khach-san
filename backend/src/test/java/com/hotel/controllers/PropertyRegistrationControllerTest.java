@@ -1,9 +1,12 @@
 package com.hotel.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.hotel.dtos.PartnerRegistrationResponse;
 import com.hotel.dtos.PartnerRegistrationStatusResponse;
+import com.hotel.dtos.PropertyApprovalSubmissionResponse;
 import com.hotel.security.CustomUserDetails;
+import com.hotel.services.PropertyApprovalWorkflowService;
 import com.hotel.services.PropertyRegistrationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,9 +15,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -32,16 +38,23 @@ class PropertyRegistrationControllerTest {
     @Mock
     private PropertyRegistrationService registrationService;
 
+    @Mock
+    private PropertyApprovalWorkflowService propertyApprovalWorkflowService;
+
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
+        objectMapper = new ObjectMapper()
+                .findAndRegisterModules()
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new PropertyRegistrationController(registrationService))
+                .standaloneSetup(new PropertyRegistrationController(
+                        registrationService, propertyApprovalWorkflowService))
                 .setControllerAdvice(new GlobalExceptionHandler())
+                .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .build();
-        objectMapper = new ObjectMapper();
     }
 
     @Test
@@ -201,6 +214,45 @@ class PropertyRegistrationControllerTest {
                 .andExpect(status().isForbidden());
 
         verify(registrationService, never()).registrationStatus(any());
+    }
+
+    @Test
+    void submitPropertyUsesOnlyAuthoritativePrincipalUserId() throws Exception {
+        LocalDateTime submittedAt = LocalDateTime.of(2026, 8, 4, 3, 15);
+        when(propertyApprovalWorkflowService.submitDraft(77L, 91L))
+                .thenReturn(new PropertyApprovalSubmissionResponse(
+                        91L, "PENDING_APPROVAL", "PENDING_APPROVAL", "INACTIVE", 77L, submittedAt));
+
+        mockMvc.perform(post("/api/partner/properties/91/submit")
+                        .principal(authoritativeAuthentication(77L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.propertyId").value(91))
+                .andExpect(jsonPath("$.status").value("PENDING_APPROVAL"))
+                .andExpect(jsonPath("$.approvalStatus").value("PENDING_APPROVAL"))
+                .andExpect(jsonPath("$.operationStatus").value("INACTIVE"))
+                .andExpect(jsonPath("$.submittedByUserId").value(77))
+                .andExpect(jsonPath("$.submittedAt").value("2026-08-04T03:15:00"));
+
+        verify(propertyApprovalWorkflowService).submitDraft(77L, 91L);
+    }
+
+    @Test
+    void anonymousPropertySubmissionIsDenied() throws Exception {
+        mockMvc.perform(post("/api/partner/properties/91/submit"))
+                .andExpect(status().isUnauthorized());
+
+        verify(propertyApprovalWorkflowService, never()).submitDraft(any(), any());
+    }
+
+    @Test
+    void nonAuthoritativePropertySubmissionPrincipalIsDenied() throws Exception {
+        var authentication = UsernamePasswordAuthenticationToken.authenticated(
+                "customer@example.com", "n/a", java.util.List.of());
+
+        mockMvc.perform(post("/api/partner/properties/91/submit").principal(authentication))
+                .andExpect(status().isForbidden());
+
+        verify(propertyApprovalWorkflowService, never()).submitDraft(any(), any());
     }
 
     private java.util.Map<String, Object> validBody() {

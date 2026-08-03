@@ -4,7 +4,9 @@ import com.hotel.dtos.PartnerRegistrationRequest;
 import com.hotel.dtos.PartnerRegistrationResponse;
 import com.hotel.dtos.PartnerConversionRequest;
 import com.hotel.dtos.PartnerRegistrationStatusResponse;
+import com.hotel.dtos.PropertyApprovalSubmissionResponse;
 import com.hotel.security.CustomUserDetails;
+import com.hotel.services.PropertyApprovalWorkflowService;
 import com.hotel.services.PropertyRegistrationService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class PropertyRegistrationController {
 
     private final PropertyRegistrationService registrationService;
+    private final PropertyApprovalWorkflowService propertyApprovalWorkflowService;
 
     @PostMapping("/register")
     public ResponseEntity<PartnerRegistrationResponse> registerProperty(
@@ -39,20 +42,28 @@ public class PropertyRegistrationController {
     public ResponseEntity<PartnerRegistrationResponse> convertExistingCustomer(
             @Valid @RequestBody PartnerConversionRequest request,
             Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()
-                || authentication instanceof AnonymousAuthenticationToken) {
-            throw new AuthenticationCredentialsNotFoundException("Authentication is required.");
-        }
-        if (!(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
-            throw new AccessDeniedException("Authoritative authenticated account context is required.");
-        }
+        CustomUserDetails userDetails = requireAuthoritativePrincipal(authentication);
         return ResponseEntity.status(201)
                 .body(registrationService.convertExistingCustomer(userDetails.getUserId(), request));
     }
 
     @PreAuthorize("isAuthenticated()")
+    @PostMapping("/properties/{propertyId}/submit")
+    public ResponseEntity<PropertyApprovalSubmissionResponse> submitProperty(
+            @PathVariable Long propertyId,
+            Authentication authentication) {
+        CustomUserDetails userDetails = requireAuthoritativePrincipal(authentication);
+        return ResponseEntity.ok(propertyApprovalWorkflowService.submitDraft(userDetails.getUserId(), propertyId));
+    }
+
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/registration-status")
     public ResponseEntity<PartnerRegistrationStatusResponse> registrationStatus(Authentication authentication) {
+        CustomUserDetails userDetails = requireAuthoritativePrincipal(authentication);
+        return ResponseEntity.ok(registrationService.registrationStatus(userDetails.getUserId()));
+    }
+
+    private CustomUserDetails requireAuthoritativePrincipal(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()
                 || authentication instanceof AnonymousAuthenticationToken) {
             throw new AuthenticationCredentialsNotFoundException("Authentication is required.");
@@ -60,7 +71,7 @@ public class PropertyRegistrationController {
         if (!(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
             throw new AccessDeniedException("Authoritative authenticated account context is required.");
         }
-        return ResponseEntity.ok(registrationService.registrationStatus(userDetails.getUserId()));
+        return userDetails;
     }
 
 }

@@ -41,4 +41,23 @@ describe('PartnerRegistrationStatusService', () => {
 
     expect(overallStatus).toBe('PENDING');
   });
+
+  it('submits a property for review with an empty command body', () => {
+    let submittedStatus = '';
+    service.submitForReview(17).subscribe(response => submittedStatus = response.approvalStatus);
+
+    const request = http.expectOne(`${environment.apiUrl}/partner/properties/17/submit`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({});
+    request.flush({
+      propertyId: 17,
+      status: 'PENDING_APPROVAL',
+      approvalStatus: 'PENDING_APPROVAL',
+      operationStatus: 'INACTIVE',
+      submittedByUserId: 42,
+      submittedAt: '2026-08-04T08:30:00Z'
+    });
+
+    expect(submittedStatus).toBe('PENDING_APPROVAL');
+  });
 });

@@ -6,7 +6,7 @@ import com.hotel.entities.User;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.security.FunctionCode;
 import com.hotel.services.HotelManagementService;
-import com.hotel.services.PropertyAccessService;
+import com.hotel.services.PropertyApprovalWorkflowService;
 import com.hotel.services.PropertyRegistrationService;
 import com.hotel.observability.OperationalMetrics;
 import com.hotel.services.RoomTypeService;
@@ -49,10 +49,10 @@ class HotelControllerIntegrationTest {
     private RoomTypeService roomTypeService;
 
     @MockBean
-    private PropertyAccessService propertyAccessService;
+    private PropertyRegistrationService propertyRegistrationService;
 
     @MockBean
-    private PropertyRegistrationService propertyRegistrationService;
+    private PropertyApprovalWorkflowService propertyApprovalWorkflowService;
 
     @MockBean
     private OperationalMetrics operationalMetrics;
