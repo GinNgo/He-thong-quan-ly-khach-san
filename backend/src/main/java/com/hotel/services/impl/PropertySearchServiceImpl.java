@@ -2,8 +2,10 @@ package com.hotel.services.impl;
 
 import com.hotel.dto.PropertySearchRequestDTO;
 import com.hotel.dto.PropertySearchResponseDTO;
+import com.hotel.entities.Location;
 import com.hotel.entities.RoomType;
 import com.hotel.entities.PropertyImage;
+import com.hotel.repositories.LocationRepository;
 import com.hotel.repositories.PropertyImageRepository;
 import com.hotel.repositories.RoomTypeRepository;
 import com.hotel.services.PropertySearchService;
@@ -34,6 +36,7 @@ public class PropertySearchServiceImpl implements PropertySearchService {
     private static final String RELEASED_STATUSES = "'CANCELLED','REJECTED','EXPIRED','NO_SHOW','CHECKED_OUT','COMPLETED'";
 
     private final EntityManager entityManager;
+    private final LocationRepository locationRepository;
     private final RoomTypeRepository roomTypeRepository;
     private final PropertyImageRepository propertyImageRepository;
     private final RoomAvailabilityService roomAvailabilityService;
@@ -42,10 +45,12 @@ public class PropertySearchServiceImpl implements PropertySearchService {
     @Value("${app.demo-data.allow-public-demo:false}")
     private boolean allowPublicDemo;
 
-    public PropertySearchServiceImpl(EntityManager entityManager, RoomTypeRepository roomTypeRepository,
+    public PropertySearchServiceImpl(EntityManager entityManager, LocationRepository locationRepository,
+                                     RoomTypeRepository roomTypeRepository,
                                      PropertyImageRepository propertyImageRepository,
                                      RoomAvailabilityService roomAvailabilityService, Environment environment) {
         this.entityManager = entityManager;
+        this.locationRepository = locationRepository;
         this.roomTypeRepository = roomTypeRepository;
         this.propertyImageRepository = propertyImageRepository;
         this.roomAvailabilityService = roomAvailabilityService;
@@ -63,6 +68,8 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         if (checkIn != null && !checkOut.isAfter(checkIn)) {
             throw new IllegalArgumentException("Ngày trả phòng phải sau ngày nhận phòng.");
         }
+
+        resolveLandmark(request);
 
         int roomCount = Math.max(request.getRoomCount() == null ? 1 : request.getRoomCount(), 1);
         int adults = Math.max(request.getAdultCount() == null ? 0 : request.getAdultCount(), 0);
@@ -190,6 +197,48 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         }
         long total = ((Number) countQuery.getSingleResult()).longValue();
         return new PageImpl<>(content, PageRequest.of(pageNumber - 1, pageSize), total);
+    }
+
+    private void resolveLandmark(PropertySearchRequestDTO request) {
+        if (request.getLandmarkId() == null) return;
+        Location landmark = locationRepository.findById(request.getLandmarkId())
+                .filter(location -> "LANDMARK".equals(location.getLocationType()))
+                .filter(location -> "ACTIVE".equals(location.getStatus()))
+                .filter(location -> validCoordinates(location.getLatitude(), location.getLongitude()))
+                .orElseThrow(() -> new IllegalArgumentException("Địa danh không hợp lệ hoặc không còn khả dụng."));
+
+        Long landmarkProvinceId = provinceIdFor(landmark);
+        if (request.getProvinceId() != null && landmarkProvinceId != null
+                && !request.getProvinceId().equals(landmarkProvinceId)) {
+            throw new IllegalArgumentException("Địa danh không thuộc tỉnh/thành phố đã chọn.");
+        }
+
+        Double radius = request.getRadiusKm() == null ? defaultRadius(landmark.getDefaultRadiusKm()) : request.getRadiusKm();
+        if (radius <= 0 || radius > 50) {
+            throw new IllegalArgumentException("Bán kính địa danh phải lớn hơn 0 và không vượt quá 50 km.");
+        }
+        request.setLatitude(landmark.getLatitude());
+        request.setLongitude(landmark.getLongitude());
+        request.setRadiusKm(radius);
+    }
+
+    private Long provinceIdFor(Location location) {
+        Location cursor = location.getParent();
+        for (int depth = 0; cursor != null && depth < 3; depth++) {
+            if ("PROVINCE".equals(cursor.getLocationType())) return cursor.getId();
+            cursor = cursor.getParent();
+        }
+        return null;
+    }
+
+    private boolean validCoordinates(Double latitude, Double longitude) {
+        return latitude != null && longitude != null
+                && latitude >= -90 && latitude <= 90
+                && longitude >= -180 && longitude <= 180;
+    }
+
+    private double defaultRadius(Double radius) {
+        return radius == null || radius <= 0 ? 5d : Math.min(radius, 50d);
     }
 
     private PropertySearchResponseDTO mapRow(Object[] row, LocalDate checkIn, LocalDate checkOut,

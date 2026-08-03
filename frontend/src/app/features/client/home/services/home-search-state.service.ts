@@ -11,6 +11,8 @@ export interface HomeSearchState {
   provinceId: number | null;
   wardId: number | null;
   propertyId: number | null;
+  landmarkId: number | null;
+  radiusKm: number | null;
   propertyTypes: string[];
   stayType: StayType;
   checkInDate: Date | null;
@@ -28,12 +30,16 @@ export interface RecentSearch {
   provinceId: number | null;
   wardId: number | null;
   propertyId: number | null;
+  landmarkId?: number | null;
   selectedSuggestionType: SuggestionType | null;
   checkInDate: string | null;
   checkOutDate: string | null;
   adultCount: number;
   childCount: number;
   roomCount: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  radiusKm?: number | null;
   createdAt: string;
 }
 
@@ -44,6 +50,10 @@ export interface SearchSelection {
   name?: string;
   provinceId?: number;
   wardId?: number;
+  latitude?: number;
+  longitude?: number;
+  defaultRadiusKm?: number;
+  category?: string;
 }
 
 export interface HomeSearchValidationError {
@@ -74,25 +84,36 @@ export class HomeSearchStateService {
       selectedSuggestionType: null,
       provinceId: null,
       wardId: null,
-      propertyId: null
+      propertyId: null,
+      landmarkId: null,
+      radiusKm: null,
+      latitude: null,
+      longitude: null
     }));
   }
 
-  updateLocation(keyword: string, displayName: string, provinceId: number | null, wardId: number | null): void {
+  updateLocation(keyword: string, displayName: string, provinceId: number | null, wardId: number | null,
+                 landmarkId: number | null = null, latitude: number | null = null,
+                 longitude: number | null = null, radiusKm: number | null = null): void {
     this.state.update(state => ({
       ...state,
       keyword,
       locationDisplayName: displayName,
-      selectedSuggestionType: wardId ? 'WARD' : provinceId ? 'PROVINCE' : null,
+      selectedSuggestionType: landmarkId ? 'LANDMARK' : wardId ? 'WARD' : provinceId ? 'PROVINCE' : null,
       provinceId,
       wardId,
-      propertyId: null
+      propertyId: null,
+      landmarkId,
+      radiusKm: landmarkId ? radiusKm : null,
+      latitude: landmarkId ? latitude : null,
+      longitude: landmarkId ? longitude : null
     }));
   }
 
   selectSuggestion(selection: SearchSelection): void {
     const provinceId = selection.type === 'PROVINCE' ? selection.id : selection.provinceId ?? null;
     const wardId = selection.type === 'WARD' ? selection.id : selection.wardId ?? null;
+    const landmarkId = selection.type === 'LANDMARK' ? selection.id : null;
     this.state.update(state => ({
       ...state,
       keyword: selection.type === 'PROPERTY' ? selection.name || selection.displayName : '',
@@ -100,7 +121,11 @@ export class HomeSearchStateService {
       selectedSuggestionType: selection.type,
       provinceId,
       wardId: selection.type === 'PROVINCE' ? null : wardId,
-      propertyId: selection.type === 'PROPERTY' ? selection.id : null
+      propertyId: selection.type === 'PROPERTY' ? selection.id : null,
+      landmarkId,
+      radiusKm: landmarkId ? selection.defaultRadiusKm ?? 5 : null,
+      latitude: landmarkId ? selection.latitude ?? null : null,
+      longitude: landmarkId ? selection.longitude ?? null : null
     }));
 
     if (selection.type === 'PROPERTY') {
@@ -117,7 +142,11 @@ export class HomeSearchStateService {
       selectedSuggestionType: null,
       provinceId: null,
       wardId: null,
-      propertyId: null
+      propertyId: null,
+      landmarkId: null,
+      radiusKm: null,
+      latitude: null,
+      longitude: null
     }));
   }
 
@@ -163,6 +192,10 @@ export class HomeSearchStateService {
       provinceId: recent.provinceId,
       wardId: recent.wardId,
       propertyId: recent.propertyId,
+      landmarkId: recent.landmarkId ?? null,
+      radiusKm: recent.radiusKm ?? null,
+      latitude: recent.latitude ?? null,
+      longitude: recent.longitude ?? null,
       checkInDate: checkIn,
       checkOutDate: checkOut,
       adultCount: recent.adultCount || 1,
@@ -203,6 +236,9 @@ export class HomeSearchStateService {
     if (state.locationDisplayName) queryParams['displayLocation'] = state.locationDisplayName;
     if (state.provinceId) queryParams['provinceId'] = state.provinceId;
     if (state.wardId) queryParams['wardId'] = state.wardId;
+    if (state.landmarkId) queryParams['landmarkId'] = state.landmarkId;
+    if (state.radiusKm !== null) queryParams['radiusKm'] = state.radiusKm;
+    if (state.landmarkId) queryParams['sortBy'] = 'NEAREST';
     if (state.propertyTypes.length) queryParams['propertyTypes'] = state.propertyTypes.join(',');
     if (state.latitude !== null) queryParams['latitude'] = state.latitude;
     if (state.longitude !== null) queryParams['longitude'] = state.longitude;
@@ -228,7 +264,7 @@ export class HomeSearchStateService {
     const checkInDate = this.startOfToday();
     return {
       keyword: '', locationDisplayName: '', selectedSuggestionType: null,
-      provinceId: null, wardId: null, propertyId: null, propertyTypes: [],
+      provinceId: null, wardId: null, propertyId: null, landmarkId: null, radiusKm: null, propertyTypes: [],
       stayType: 'OVERNIGHT', checkInDate, checkOutDate: this.addDays(checkInDate, 1),
       adultCount: 2, childCount: 0, roomCount: 1, latitude: null, longitude: null
     };
@@ -260,12 +296,16 @@ export class HomeSearchStateService {
       provinceId: state.provinceId,
       wardId: state.wardId,
       propertyId: state.propertyId,
+      landmarkId: state.landmarkId,
       selectedSuggestionType: state.selectedSuggestionType,
       checkInDate: state.checkInDate ? this.formatDate(state.checkInDate) : null,
       checkOutDate: state.checkOutDate ? this.formatDate(state.checkOutDate) : null,
       adultCount: state.adultCount,
       childCount: state.childCount,
       roomCount: state.roomCount,
+      latitude: state.latitude,
+      longitude: state.longitude,
+      radiusKm: state.radiusKm,
       createdAt: new Date().toISOString()
     };
     const unique = this.recentSearches().filter(item => this.recentKey(item) !== this.recentKey(entry));
@@ -292,7 +332,7 @@ export class HomeSearchStateService {
   }
 
   private recentKey(item: RecentSearch): string {
-    return `${item.selectedSuggestionType || ''}:${item.propertyId || item.wardId || item.provinceId || item.displayLocation}`;
+    return `${item.selectedSuggestionType || ''}:${item.propertyId || item.landmarkId || item.wardId || item.provinceId || item.displayLocation}`;
   }
 
   private startOfToday(): Date {

@@ -14,7 +14,8 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "locations", indexes = {
         @Index(name = "IX_locations_type_parent_status", columnList = "location_type,parent_id,status"),
-        @Index(name = "IX_locations_normalized_name", columnList = "normalized_name")
+        @Index(name = "IX_locations_normalized_name", columnList = "normalized_name"),
+        @Index(name = "IX_locations_landmark_discovery", columnList = "location_type,status,parent_id,popularity_score")
 })
 public class Location extends AuditableEntity {
 
@@ -55,6 +56,21 @@ public class Location extends AuditableEntity {
 
     @Column(name = "longitude")
     private Double longitude;
+
+    @Column(name = "category", length = 50)
+    private String category;
+
+    @Column(name = "default_radius_km")
+    private Double defaultRadiusKm;
+
+    @Column(name = "popularity_score", nullable = false)
+    private Integer popularityScore = 0;
+
+    @Column(name = "description_vi", columnDefinition = "nvarchar(1000)")
+    private String descriptionVi;
+
+    @Column(name = "description_en", columnDefinition = "nvarchar(1000)")
+    private String descriptionEn;
 
     @Column(name = "status")
     private String status = "ACTIVE";

@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 @Service
@@ -41,32 +42,42 @@ public class PublicSearchSuggestionService {
             return emptyGroups();
         }
 
-        int safePropertyLimit = Math.min(Math.max(propertyLimit, 1), 10);
+        int safeLimit = Math.min(Math.max(propertyLimit, 1), 10);
+        int candidateLimit = Math.min(safeLimit * 3, 30);
         List<LocationSuggestionDTO> provinces = locationRepository
-                .searchLocations(normalizedKeyword, rawKeyword, "PROVINCE", PageRequest.of(0, 5))
+                .searchLocations(normalizedKeyword, rawKeyword, "PROVINCE", PageRequest.of(0, candidateLimit))
                 .stream()
                 .filter(location -> provinceId == null || provinceId.equals(location.getId()))
                 .map(this::toLocationSuggestion)
-                .toList();
+                .collect(java.util.stream.Collectors.collectingAndThen(
+                        java.util.stream.Collectors.toList(), items -> distinctAndLimit(items, safeLimit)));
         List<LocationSuggestionDTO> wards = locationRepository
-                .searchLocations(normalizedKeyword, rawKeyword, "WARD", PageRequest.of(0, 8))
+                .searchLocations(normalizedKeyword, rawKeyword, "WARD", PageRequest.of(0, candidateLimit))
                 .stream()
                 .filter(location -> provinceId == null || belongsToProvince(location, provinceId))
                 .map(this::toLocationSuggestion)
-                .toList();
+                .collect(java.util.stream.Collectors.collectingAndThen(
+                        java.util.stream.Collectors.toList(), items -> distinctAndLimit(items, safeLimit)));
         List<LocationSuggestionDTO> properties = hotelRepository
-                .searchAutocomplete(normalizedKeyword, rawKeyword, PageRequest.of(0, safePropertyLimit))
+                .searchAutocomplete(normalizedKeyword, rawKeyword, PageRequest.of(0, candidateLimit))
                 .stream()
                 .filter(hotel -> includeDemo() || !Boolean.TRUE.equals(hotel.getIsDemo()))
                 .filter(hotel -> provinceId == null || provinceId.equals(hotel.getProvinceId()))
                 .map(hotel -> toPropertySuggestion(hotel, latitude, longitude))
-                .toList();
+                .collect(java.util.stream.Collectors.collectingAndThen(
+                        java.util.stream.Collectors.toList(), items -> distinctAndLimit(items, safeLimit)));
+        List<LocationSuggestionDTO> landmarks = locationRepository
+                .searchActiveLandmarks(normalizedKeyword, rawKeyword, provinceId, PageRequest.of(0, candidateLimit))
+                .stream()
+                .map(this::toLandmarkSuggestion)
+                .collect(java.util.stream.Collectors.collectingAndThen(
+                        java.util.stream.Collectors.toList(), items -> distinctAndLimit(items, safeLimit)));
 
         return SearchSuggestionGroupsDTO.builder()
                 .provinces(provinces)
                 .wards(wards)
                 .properties(properties)
-                .landmarks(List.of())
+                .landmarks(landmarks)
                 .build();
     }
 
@@ -105,6 +116,14 @@ public class PublicSearchSuggestionService {
         return location.getParent() != null && provinceId.equals(location.getParent().getId());
     }
 
+    private List<LocationSuggestionDTO> distinctAndLimit(List<LocationSuggestionDTO> items, int limit) {
+        LinkedHashMap<String, LocationSuggestionDTO> distinct = new LinkedHashMap<>();
+        for (LocationSuggestionDTO item : items) {
+            distinct.putIfAbsent(item.getType() + ":" + item.getId(), item);
+        }
+        return distinct.values().stream().limit(limit).toList();
+    }
+
     private LocationSuggestionDTO toLocationSuggestion(Location location) {
         Location province = "PROVINCE".equals(location.getLocationType()) ? location : location.getParent();
         long propertyCount = countProperties(location);
@@ -126,6 +145,60 @@ public class PublicSearchSuggestionService {
                 .propertyCount(propertyCount)
                 .imageUrl("/assets/destinations/destination-" + String.format("%02d", Math.floorMod(location.getId(), 8) + 1) + ".webp")
                 .build();
+    }
+
+    private LocationSuggestionDTO toLandmarkSuggestion(Location landmark) {
+        Location province = provinceFor(landmark);
+        Location parent = landmark.getParent();
+        Location ward = parent != null && "WARD".equals(parent.getLocationType()) ? parent : null;
+        String provinceName = province == null ? null : province.getNameVi();
+        String displayName = provinceName == null
+                ? landmark.getNameVi()
+                : landmark.getNameVi() + ", " + provinceName;
+        String secondary = categoryLabel(landmark.getCategory());
+        if (ward != null) secondary += " · " + ward.getNameVi();
+        return LocationSuggestionDTO.builder()
+                .type("LANDMARK")
+                .id(landmark.getId())
+                .parentId(parent == null ? null : parent.getId())
+                .name(landmark.getNameVi())
+                .displayName(displayName)
+                .secondaryText(secondary)
+                .provinceId(province == null ? null : province.getId())
+                .provinceName(provinceName)
+                .wardId(ward == null ? null : ward.getId())
+                .wardName(ward == null ? null : ward.getNameVi())
+                .latitude(landmark.getLatitude())
+                .longitude(landmark.getLongitude())
+                .defaultRadiusKm(defaultRadius(landmark.getDefaultRadiusKm()))
+                .category(landmark.getCategory())
+                .descriptionVi(landmark.getDescriptionVi())
+                .descriptionEn(landmark.getDescriptionEn())
+                .build();
+    }
+
+    private Location provinceFor(Location location) {
+        Location cursor = location;
+        for (int depth = 0; cursor != null && depth < 3; depth++) {
+            if ("PROVINCE".equals(cursor.getLocationType())) return cursor;
+            cursor = cursor.getParent();
+        }
+        return null;
+    }
+
+    private Double defaultRadius(Double radius) {
+        if (radius == null || radius <= 0) return 5d;
+        return Math.min(radius, 50d);
+    }
+
+    private String categoryLabel(String category) {
+        return switch (category == null ? "" : category.toUpperCase()) {
+            case "CULTURE" -> "Văn hóa";
+            case "BEACH" -> "Biển";
+            case "NATURE" -> "Thiên nhiên";
+            case "BUSINESS" -> "Trung tâm";
+            default -> "Điểm tham quan";
+        };
     }
 
     private long countProperties(Location location) {

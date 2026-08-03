@@ -30,9 +30,10 @@ public class PublicDiscoveryController {
     public ResponseEntity<SearchSuggestionGroupsDTO> suggestions(
             @RequestParam String keyword,
             @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) Long provinceId,
             @RequestParam(required = false) Double latitude,
             @RequestParam(required = false) Double longitude) {
-        return ResponseEntity.ok(suggestionService.search(keyword, limit, null, latitude, longitude));
+        return ResponseEntity.ok(suggestionService.search(keyword, limit, provinceId, latitude, longitude));
     }
 
     @GetMapping("/popular-destinations")

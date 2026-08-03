@@ -102,6 +102,9 @@
               <small *ngIf="result.type === 'PROPERTY'">
                 {{ propertyTypeLabel(result.propertyType) }} · {{ result.wardName || result.provinceName }}<ng-container *ngIf="result.address"> · {{ result.address }}</ng-container>
               </small>
+              <small *ngIf="result.type === 'LANDMARK'">
+                {{ result.secondaryText || result.provinceName }}<ng-container *ngIf="result.defaultRadiusKm"> · {{ result.defaultRadiusKm }} km</ng-container>
+              </small>
             </span>
             <span *ngIf="result.reviewScore" class="review-score">{{ result.reviewScore | number:'1.1-1' }}</span>
             <span *ngIf="result.distanceKm !== undefined && result.distanceKm !== null" class="distance">{{ result.distanceKm }} km</span>

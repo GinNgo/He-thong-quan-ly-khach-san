@@ -128,6 +128,12 @@ export interface LocationSuggestion {
   imageUrl?: string;
   reviewScore?: number;
   distanceKm?: number;
+  latitude?: number;
+  longitude?: number;
+  defaultRadiusKm?: number;
+  category?: string;
+  descriptionVi?: string;
+  descriptionEn?: string;
 }
 
 export interface SearchSuggestionGroups {
@@ -239,10 +245,11 @@ export class ClientApiService {
     return this.searchLocations(keyword, 15);
   }
 
-  getSearchSuggestions(keyword: string, limit: number = 10, latitude?: number, longitude?: number): Observable<SearchSuggestionGroups> {
+  getSearchSuggestions(keyword: string, limit: number = 10, latitude?: number, longitude?: number, provinceId?: number): Observable<SearchSuggestionGroups> {
     let params = new HttpParams().set('keyword', keyword).set('limit', limit.toString());
     if (latitude !== undefined) params = params.set('latitude', latitude.toString());
     if (longitude !== undefined) params = params.set('longitude', longitude.toString());
+    if (provinceId !== undefined) params = params.set('provinceId', provinceId.toString());
     return this.http.get<SearchSuggestionGroups>(`${environment.apiUrl}/public/search/suggestions`, { params });
   }
 

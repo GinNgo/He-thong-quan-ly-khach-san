@@ -56,6 +56,8 @@ public class DemoDataInitializer {
                 new PropertySeed("DEMO-DT-03", "Biệt thự Sen Hồng Đồng Tháp", "Dong Thap Lotus Villa", "VILLA", "9 Nguyễn Huệ", 10.4581, 105.6332, 4, 2, 0)
         );
 
+        seedLandmark(provinces.get(2).province());
+
         for (int i = 0; i < properties.size(); i++) {
             PropertySeed seed = properties.get(i);
             ProvinceSeed province = provinces.get(seed.provinceIndex());
@@ -78,6 +80,26 @@ public class DemoDataInitializer {
                 .stream().limit(2).toList();
         if (wards.size() < 2) throw new IllegalStateException("Tỉnh demo phải có ít nhất 2 phường/xã: " + city);
         return new ProvinceSeed(province, wards, city);
+    }
+
+    private void seedLandmark(Location province) {
+        Location landmark = locationRepository.findByCode("DEMO-LM-DT-01").orElseGet(Location::new);
+        landmark.setCode("DEMO-LM-DT-01");
+        landmark.setSourceCode("DEMO-LM-DT-01");
+        landmark.setNameVi("Công viên Mỹ Tho");
+        landmark.setNameEn("My Tho Riverside Park");
+        landmark.setLocationType("LANDMARK");
+        landmark.setParent(province);
+        landmark.setFullPath("Công viên Mỹ Tho, " + province.getNameVi());
+        landmark.setLatitude(10.3605);
+        landmark.setLongitude(106.3605);
+        landmark.setCategory("CULTURE");
+        landmark.setDefaultRadiusKm(8d);
+        landmark.setPopularityScore(100);
+        landmark.setDescriptionVi("Điểm tham quan ven sông phục vụ kiểm thử tìm kiếm địa danh.");
+        landmark.setDescriptionEn("Riverside landmark used for deterministic public-search tests.");
+        landmark.setStatus("ACTIVE");
+        locationRepository.saveAndFlush(landmark);
     }
 
     private Hotel upsertHotel(PropertySeed seed, Location province, Location ward, int index) {

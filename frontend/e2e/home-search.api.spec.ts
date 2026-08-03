@@ -95,6 +95,62 @@ test('keeps day-use unavailable and omits stayType from public search requests',
   await expect(page.locator('app-property-result-card').first()).toBeVisible();
 });
 
+test('supports grouped accent, property, landmark and keyboard autocomplete journeys', async ({ page }) => {
+  await page.goto('/');
+  const input = page.locator('app-hero-search app-location-autocomplete input');
+
+  await input.fill('dong thap');
+  await expect(page.locator('[data-suggestion-type="PROVINCE"]').first()).toBeVisible();
+  await input.fill('Đồng Tháp');
+  await expect(page.locator('[data-suggestion-type="PROVINCE"]').first()).toBeVisible();
+
+  await input.fill('anh duong');
+  const property = page.locator('[data-suggestion-type="PROPERTY"]')
+    .filter({ hasText: 'Ánh Dương' }).first();
+  await expect(property).toBeVisible();
+  for (let index = 0; index < 10 && await property.getAttribute('aria-selected') !== 'true'; index++) {
+    await input.press('ArrowDown');
+  }
+  await expect(property).toHaveAttribute('aria-selected', 'true');
+  await input.press('Enter');
+  await expect(page).toHaveURL(/\/hotel\/\d+/);
+
+  await page.goto('/');
+  const landmarkInput = page.locator('app-hero-search app-location-autocomplete input');
+  await landmarkInput.fill('cong vien my tho');
+  const landmark = page.locator('[data-suggestion-type="LANDMARK"]').first();
+  await expect(landmark).toBeVisible();
+  await landmark.click();
+
+  const responsePromise = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname.endsWith('/api/public/properties/search')
+      && url.searchParams.has('landmarkId')
+      && response.request().method() === 'GET';
+  });
+  await page.locator('app-hero-search button').filter({ hasText: 'TÌM' }).click();
+  const response = await responsePromise;
+
+  expect(response.status()).toBe(200);
+  expect(new URL(response.url()).searchParams.get('sortBy')).toBe('NEAREST');
+  await expect(page).toHaveURL(/landmarkId=\d+/);
+  await expect(page.locator('app-property-result-card').first()).toBeVisible();
+
+  const stickyInput = page.locator('app-sticky-search-bar app-location-autocomplete input').first();
+  await expect(stickyInput).toHaveValue(/Công viên Mỹ Tho/);
+  await page.locator('app-sticky-search-bar app-guest-room-selector > div > button').click();
+  await page.getByRole('button', { name: 'Tăng số người lớn' }).click();
+  const repeatedResponsePromise = page.waitForResponse(candidate => {
+    const url = new URL(candidate.url());
+    return url.pathname.endsWith('/api/public/properties/search')
+      && url.searchParams.has('landmarkId')
+      && candidate.request().method() === 'GET';
+  });
+  await page.locator('app-sticky-search-bar .desktop-fields .search-button').click();
+  expect((await repeatedResponsePromise).status()).toBe(200);
+  await expect(page).toHaveURL(/landmarkId=\d+/);
+});
+
 test('announces missing dates and returns keyboard focus to the date trigger on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');

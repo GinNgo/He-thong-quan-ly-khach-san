@@ -27,7 +27,12 @@ public interface HotelRepository extends JpaRepository<Hotel, Long> {
                 OR LOWER(h.code) LIKE CONCAT('%', LOWER(:rawKeyword), '%')
                 OR LOWER(h.slug) LIKE CONCAT('%', LOWER(:rawKeyword), '%')
                 OR h.phone LIKE CONCAT('%', :rawKeyword, '%'))
-            ORDER BY h.nameVi, h.name
+            ORDER BY CASE
+                       WHEN h.normalizedName = :keyword THEN 0
+                       WHEN h.normalizedName LIKE CONCAT(:keyword, '%') THEN 1
+                       ELSE 2
+                     END,
+                     h.nameVi, h.name, h.id
             """)
     List<Hotel> searchAutocomplete(@org.springframework.data.repository.query.Param("keyword") String keyword,
                                    @org.springframework.data.repository.query.Param("rawKeyword") String rawKeyword,

@@ -70,6 +70,41 @@ describe('HomeSearchStateService', () => {
     expect(service.state().checkOutDate?.getTime()).toBeGreaterThan(service.state().checkInDate?.getTime() ?? 0);
   });
 
+  it('serializes a selected landmark with its authoritative radius and nearest sort', () => {
+    service.selectSuggestion({
+      type: 'LANDMARK',
+      id: 42,
+      name: 'Công viên Mỹ Tho',
+      displayName: 'Công viên Mỹ Tho, Tỉnh Đồng Tháp',
+      provinceId: 82,
+      latitude: 10.3605,
+      longitude: 106.3605,
+      defaultRadiusKm: 8
+    });
+
+    expect(service.submitSearch()).toBe(true);
+    expect(navigate).toHaveBeenCalledWith(['/search'], {
+      queryParams: expect.objectContaining({
+        landmarkId: 42,
+        provinceId: 82,
+        radiusKm: 8,
+        sortBy: 'NEAREST',
+        latitude: 10.3605,
+        longitude: 106.3605
+      })
+    });
+  });
+
+  it('hydrates a landmark from search URL state without degrading it to a province', () => {
+    service.updateLocation('', 'Công viên Mỹ Tho, Tỉnh Đồng Tháp', 82, null,
+      42, 10.3605, 106.3605, 8);
+
+    expect(service.state()).toEqual(expect.objectContaining({
+      selectedSuggestionType: 'LANDMARK', landmarkId: 42, provinceId: 82,
+      latitude: 10.3605, longitude: 106.3605, radiusKm: 8
+    }));
+  });
+
   it('clears stale validation as soon as the date selection changes', () => {
     service.state.update(state => ({ ...state, checkInDate: null, checkOutDate: null }));
     service.submitSearch();

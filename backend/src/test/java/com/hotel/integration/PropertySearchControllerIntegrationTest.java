@@ -171,6 +171,8 @@ public class PropertySearchControllerIntegrationTest {
     void searchProperties_ByLandmarkResolvesCoordinatesAndOrdersByDistance() throws Exception {
         mockMvc.perform(get("/api/public/properties/search")
                         .param("landmarkId", landmark.getId().toString())
+                        .param("latitude", "0")
+                        .param("longitude", "0")
                         .param("radiusKm", "5")
                         .param("sortBy", "NEAREST")
                         .param("adultCount", "2")
