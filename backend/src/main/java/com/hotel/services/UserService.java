@@ -2,11 +2,15 @@ package com.hotel.services;
 
 import com.hotel.entities.User;
 import com.hotel.dtos.PropertyOptionDto;
+import com.hotel.dtos.StaffCreateRequest;
 import com.hotel.dtos.StaffLifecycleRequest;
 import com.hotel.dtos.StaffListItemDto;
+import com.hotel.dtos.StaffRoleOptionDto;
 import com.hotel.dtos.UserDto;
+import com.hotel.exceptions.RegistrationConflictException;
 import com.hotel.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +20,7 @@ import java.util.Comparator;
 import java.util.stream.Collectors;
 import java.net.URI;
 import java.text.Normalizer;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 @Service
@@ -25,6 +30,9 @@ public class UserService {
     private static final Pattern PROFILE_PHONE = Pattern.compile("^[0-9+().\\-\\s]*$");
     private static final Pattern OWNED_AVATAR_PATH = Pattern.compile(
             "^/api/public/uploads/[A-Za-z0-9][A-Za-z0-9._-]{0,254}$");
+    private static final java.util.Set<String> ASSIGNABLE_STAFF_ROLE_CODES = java.util.Set.of(
+            "HOTEL_ADMIN", "HOTEL_MANAGER", "RECEPTIONIST", "ACCOUNTANT",
+            "HOUSEKEEPING", "STAFF", "PROPERTY_STAFF");
 
     @Autowired
     private UserRepository userRepository;
@@ -112,6 +120,18 @@ public class UserService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<StaffRoleOptionDto> getAssignableStaffRoles() {
+        return roleRepository.findAll().stream()
+                .filter(role -> role.getCode() != null
+                        && ASSIGNABLE_STAFF_ROLE_CODES.contains(role.getCode().trim().toUpperCase(Locale.ROOT)))
+                .filter(role -> "ACTIVE".equalsIgnoreCase(role.getStatus()))
+                .sorted(Comparator.comparing(role -> role.getName() == null ? "" : role.getName(),
+                        String.CASE_INSENSITIVE_ORDER))
+                .map(role -> new StaffRoleOptionDto(role.getId(), role.getCode(), role.getName()))
+                .toList();
+    }
+
     public Optional<UserDto> getUserById(Long id) {
         boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
         java.util.Set<Long> hotelIds = systemAdministrator ? null : propertyAccessService.accessibleHotelIds();
@@ -127,19 +147,50 @@ public class UserService {
 
     @Transactional
     public UserDto createUser(User user, java.util.Set<Long> roleIds, Long hotelId) {
-        if (userRepository.existsByUsername(user.getUsername())) {
-            throw new RuntimeException("Username is already taken!");
+        if (hotelId != null) {
+            throw new IllegalArgumentException("Use the dedicated staff endpoint for staff accounts.");
         }
-        if (userRepository.existsByEmail(user.getEmail())) {
-            throw new RuntimeException("Email is already taken!");
-        }
-
-        boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
         java.util.Set<com.hotel.entities.Role> roles = roleIds == null
                 ? java.util.Set.of()
                 : new java.util.HashSet<>(roleRepository.findAllById(roleIds));
         if (roleIds != null && roles.size() != roleIds.size()) {
+            throw new IllegalArgumentException("Invalid role selection.");
+        }
+        if (roles.stream().anyMatch(role -> !"CUSTOMER".equalsIgnoreCase(role.getCode()))) {
+            throw new IllegalArgumentException("Use the dedicated staff endpoint for staff accounts.");
+        }
+        normalizeAndValidateNewAccount(user);
+        user.setCreatedAt(java.time.LocalDateTime.now());
+        user.setRoles(roles);
+        user.setHotel(null);
+        return convertToDto(saveNewAccount(user));
+    }
+
+    @Transactional
+    public UserDto createStaff(StaffCreateRequest request) {
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setPasswordHash(request.getPassword());
+        user.setFullName(request.getFullName());
+        user.setPhone(request.getPhone());
+        user.setStatus("ACTIVE");
+        return createStaffAccount(user, request.getRoleIds(), request.getHotelId());
+    }
+
+    UserDto createStaffAccount(User user, java.util.Set<Long> roleIds, Long hotelId) {
+        boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
+        java.util.Set<com.hotel.entities.Role> roles = roleIds == null
+                ? java.util.Set.of()
+                : new java.util.HashSet<>(roleRepository.findAllById(roleIds));
+        if (roleIds == null || roleIds.isEmpty() || roles.size() != roleIds.size()) {
             throw new IllegalArgumentException("Vai trò không hợp lệ.");
+        }
+        boolean invalidRole = roles.stream().anyMatch(role -> role.getCode() == null
+                || !ASSIGNABLE_STAFF_ROLE_CODES.contains(role.getCode().trim().toUpperCase(Locale.ROOT))
+                || !"ACTIVE".equalsIgnoreCase(role.getStatus()));
+        if (invalidRole) {
+            throw new SecurityException("Selected role is not assignable to property staff.");
         }
         if (!systemAdministrator && roles.stream()
                 .map(com.hotel.entities.Role::getCode)
@@ -147,6 +198,9 @@ public class UserService {
             throw new SecurityException("Bạn không được cấp vai trò quản trị hệ thống hoặc chủ cơ sở.");
         }
 
+        if (hotelId == null) {
+            throw new IllegalArgumentException("Property is required for staff creation.");
+        }
         com.hotel.entities.Hotel hotel = null;
         if (hotelId != null) {
             hotel = systemAdministrator
@@ -159,11 +213,11 @@ public class UserService {
 
         checkStaffQuota(hotelId, systemAdministrator);
 
-        user.setPasswordHash(passwordEncoder.encode(user.getPasswordHash() != null ? user.getPasswordHash() : "123456"));
+        normalizeAndValidateNewAccount(user);
         user.setCreatedAt(java.time.LocalDateTime.now());
         user.setRoles(roles);
         user.setHotel(hotel);
-        User saved = userRepository.save(user);
+        User saved = saveNewAccount(user);
 
         if (hotel != null) {
             java.time.LocalDateTime now = java.time.LocalDateTime.now();
@@ -182,6 +236,51 @@ public class UserService {
 
         auditStaff("STAFF_CREATED", saved, hotel, null, staffSnapshot(saved, hotel), "Staff account created");
         return convertToDto(saved);
+    }
+
+    private void normalizeAndValidateNewAccount(User user) {
+        String username = normalizeAccountIdentifier(user.getUsername(), "Username");
+        String email = normalizeAccountIdentifier(user.getEmail(), "Email");
+        if (userRepository.existsByUsernameIgnoreCase(username) || userRepository.existsByUsername(username)) {
+            throw RegistrationConflictException.username();
+        }
+        if (userRepository.existsByEmailIgnoreCase(email) || userRepository.existsByEmail(email)) {
+            throw RegistrationConflictException.email();
+        }
+        com.hotel.security.PasswordPolicy.requireValid(user.getPasswordHash());
+        user.setUsername(username);
+        user.setEmail(email);
+        user.setFullName(normalizeRequiredProfileText(user.getFullName(), "Full name", 150));
+        user.setPhone(normalizePhone(user.getPhone()));
+        user.setPasswordHash(passwordEncoder.encode(user.getPasswordHash()));
+        user.setStatus("ACTIVE");
+    }
+
+    private User saveNewAccount(User user) {
+        try {
+            return userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException exception) {
+            if (userRepository.existsByUsernameIgnoreCase(user.getUsername())) {
+                throw RegistrationConflictException.username();
+            }
+            if (userRepository.existsByEmailIgnoreCase(user.getEmail())) {
+                throw RegistrationConflictException.email();
+            }
+            throw exception;
+        }
+    }
+
+    private String normalizeAccountIdentifier(String value, String fieldName) {
+        if (value == null) {
+            throw new IllegalArgumentException(fieldName + " is required.");
+        }
+        String normalized = Normalizer.normalize(value, Normalizer.Form.NFKC)
+                .strip()
+                .toLowerCase(Locale.ROOT);
+        if (normalized.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " is required.");
+        }
+        return normalized;
     }
 
     @Transactional

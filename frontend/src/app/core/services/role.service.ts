@@ -8,7 +8,7 @@ export interface Role {
   id: number;
   code: string;
   name: string;
-  description: string;
+  description?: string;
   status?: string;
   systemRole?: boolean;
   userCount?: number;

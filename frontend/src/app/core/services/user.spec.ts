@@ -33,4 +33,31 @@ describe('UserService staff reads', () => {
     expect(request.request.method).toBe('GET');
     request.flush([{ id: 10, name: 'LuxeStay Da Nang' }]);
   });
+
+  it('loads only assignable staff roles from the dedicated endpoint', () => {
+    service.getStaffRoles().subscribe();
+
+    const request = http.expectOne(`${environment.apiUrl}/users/staff/roles`);
+    expect(request.request.method).toBe('GET');
+    request.flush([{ id: 3, code: 'RECEPTIONIST', name: 'Le tan' }]);
+  });
+
+  it('creates staff through the dedicated endpoint', () => {
+    const payload = {
+      username: 'new-staff',
+      email: 'new-staff@example.test',
+      password: 'StrongPass1',
+      fullName: 'New Staff',
+      phone: null,
+      roleIds: [3],
+      hotelId: 10,
+    };
+
+    service.createStaff(payload).subscribe();
+
+    const request = http.expectOne(`${environment.apiUrl}/users/staff`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(payload);
+    request.flush({ id: 42, ...payload });
+  });
 });

@@ -96,6 +96,9 @@
     <div class="col-12 col-md-6 mb-3 field">
       <label class="fw-bold mb-1">Mật khẩu <span *ngIf="userDialogMode === 'create'" class="text-danger">*</span></label>
       <input type="password" pInputText [(ngModel)]="userForm.password" class="w-100" [placeholder]="userDialogMode === 'edit' ? 'Để trống nếu không đổi' : ''" [disabled]="saving" />
+      <small *ngIf="userType === 'STAFF' && userDialogMode === 'create'" class="text-muted d-block mt-1">
+        Mật khẩu khởi tạo phải có từ 8 đến 256 ký tự. Hệ thống không tạo mật khẩu mặc định.
+      </small>
     </div>
     <div class="col-12 col-md-6 mb-3 field">
       <label class="fw-bold mb-1">Họ và tên</label>
@@ -112,11 +115,11 @@
     </div>
     <ng-container *ngIf="userType === 'STAFF'">
       <div class="col-12 col-md-6 mb-3 field">
-        <label class="fw-bold mb-1">Vai trò (Roles)</label>
+        <label class="fw-bold mb-1">Vai trò (Roles) <span *ngIf="userDialogMode === 'create'" class="text-danger">*</span></label>
         <p-multiSelect [options]="roles" [(ngModel)]="userForm.roleIds" optionLabel="name" optionValue="id" defaultLabel="Chọn vai trò" display="chip" appendTo="body" styleClass="w-100" [disabled]="saving"></p-multiSelect>
       </div>
       <div class="col-12 col-md-6 mb-3 field">
-        <label class="fw-bold mb-1">Cơ sở lưu trú</label>
+        <label class="fw-bold mb-1">Cơ sở lưu trú <span *ngIf="userDialogMode === 'create'" class="text-danger">*</span></label>
         <p-select [options]="hotels" [(ngModel)]="userForm.hotelId" optionLabel="name" optionValue="id" [showClear]="true" placeholder="Chọn cơ sở quản lý" appendTo="body" styleClass="w-100" [disabled]="saving"></p-select>
       </div>
     </ng-container>

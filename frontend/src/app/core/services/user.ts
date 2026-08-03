@@ -22,6 +22,22 @@ export interface PropertyOption {
   name: string;
 }
 
+export interface StaffRoleOption {
+  id: number;
+  code: string;
+  name: string;
+}
+
+export interface StaffCreateRequest {
+  username: string;
+  email: string;
+  password: string;
+  fullName: string;
+  phone?: string | null;
+  roleIds: number[];
+  hotelId: number;
+}
+
 export interface StaffAssignment {
   id: number;
   hotelId: number;
@@ -75,12 +91,20 @@ export class UserService {
     return this.http.get<PropertyOption[]>(`${this.apiUrl}/staff/properties`);
   }
 
+  getStaffRoles(): Observable<StaffRoleOption[]> {
+    return this.http.get<StaffRoleOption[]>(`${this.apiUrl}/staff/roles`);
+  }
+
   getUserById(id: number): Observable<User> {
     return this.http.get<User>(`${this.apiUrl}/${id}`);
   }
 
   createUser(user: any): Observable<User> {
     return this.http.post<User>(this.apiUrl, user);
+  }
+
+  createStaff(request: StaffCreateRequest): Observable<User> {
+    return this.http.post<User>(`${this.apiUrl}/staff`, request);
   }
 
   updateUser(id: number, user: any): Observable<User> {

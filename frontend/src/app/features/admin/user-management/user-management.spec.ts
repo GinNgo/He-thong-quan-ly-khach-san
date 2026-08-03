@@ -30,7 +30,9 @@ describe('UserManagement staff lifecycle', () => {
     getUsers: ReturnType<typeof vi.fn>;
     getStaff: ReturnType<typeof vi.fn>;
     getStaffProperties: ReturnType<typeof vi.fn>;
+    getStaffRoles: ReturnType<typeof vi.fn>;
     createUser: ReturnType<typeof vi.fn>;
+    createStaff: ReturnType<typeof vi.fn>;
     updateUser: ReturnType<typeof vi.fn>;
     deactivateStaff: ReturnType<typeof vi.fn>;
     reactivateStaff: ReturnType<typeof vi.fn>;
@@ -44,7 +46,11 @@ describe('UserManagement staff lifecycle', () => {
         { id: 10, name: 'LuxeStay Da Nang' },
         { id: 11, name: 'LuxeStay Hue' },
       ])),
+      getStaffRoles: vi.fn(() => of([
+        { id: 3, code: 'RECEPTIONIST', name: 'Le tan' },
+      ])),
       createUser: vi.fn(() => of(staff)),
+      createStaff: vi.fn(() => of(staff)),
       updateUser: vi.fn(() => of(staff)),
       deactivateStaff: vi.fn(() => of(staff)),
       reactivateStaff: vi.fn(() => of(staff)),
@@ -99,7 +105,59 @@ describe('UserManagement staff lifecycle', () => {
 
     expect(userService.getStaff).toHaveBeenCalledTimes(1);
     expect(userService.getStaffProperties).toHaveBeenCalledTimes(1);
+    expect(userService.getStaffRoles).toHaveBeenCalledTimes(1);
     expect(userService.getUsers).not.toHaveBeenCalled();
     expect(fixture.componentInstance.hotels.map(hotel => hotel.id)).toEqual([10, 11]);
+  });
+
+  it('does not submit a staff account with an invalid initial password', () => {
+    const fixture = TestBed.createComponent(UserManagement);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    component.openNew();
+    component.userForm = {
+      ...component.userForm,
+      username: 'new-staff',
+      email: 'new-staff@example.test',
+      password: 'short',
+      fullName: 'New Staff',
+      roleIds: [3],
+      hotelId: 10,
+    };
+    component.saveUser();
+
+    expect(userService.createStaff).not.toHaveBeenCalled();
+    expect(component.saving).toBe(false);
+  });
+
+  it('submits staff creation through the dedicated validated endpoint', () => {
+    const fixture = TestBed.createComponent(UserManagement);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    component.openNew();
+    component.userForm = {
+      ...component.userForm,
+      username: '  new-staff  ',
+      email: '  NEW-STAFF@example.test  ',
+      password: 'StrongPass1',
+      fullName: '  New Staff  ',
+      phone: ' 0901000000 ',
+      roleIds: [3],
+      hotelId: 10,
+    };
+    component.saveUser();
+
+    expect(userService.createStaff).toHaveBeenCalledWith({
+      username: 'new-staff',
+      email: 'NEW-STAFF@example.test',
+      password: 'StrongPass1',
+      fullName: 'New Staff',
+      phone: '0901000000',
+      roleIds: [3],
+      hotelId: 10,
+    });
+    expect(userService.createUser).not.toHaveBeenCalled();
   });
 });

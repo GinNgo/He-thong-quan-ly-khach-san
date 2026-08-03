@@ -1,6 +1,6 @@
 import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { SharedModule } from '@app/shared/shared.module';
-import { PropertyOption, StaffAssignment, UserService, User } from '@app/core/services/user';
+import { PropertyOption, StaffAssignment, StaffCreateRequest, UserService, User } from '@app/core/services/user';
 import { RoleService, Role } from '@app/core/services/role.service';
 import { ActivatedRoute } from '@angular/router';
 import { MessageService } from 'primeng/api';
@@ -84,7 +84,10 @@ export class UserManagement implements OnInit {
   }
 
   loadRoles(): void {
-    this.roleService.getRoles().pipe(timeout(10000)).subscribe({
+    const request = this.userType === 'STAFF'
+      ? this.userService.getStaffRoles()
+      : this.roleService.getRoles();
+    request.pipe(timeout(10000)).subscribe({
       next: (data) => {
         this.roles = data;
       },
@@ -141,9 +144,28 @@ export class UserManagement implements OnInit {
       }
     }
 
-    const request = this.userDialogMode === 'create'
-      ? this.userService.createUser(payload)
-      : this.userService.updateUser(this.userForm.id, payload);
+    let request;
+    if (this.userDialogMode === 'create' && this.userType === 'STAFF') {
+      const validationMessage = this.staffCreateValidationMessage();
+      if (validationMessage) {
+        this.messageService.add({ severity: 'warn', summary: 'Invalid staff account', detail: validationMessage });
+        return;
+      }
+      const staffRequest: StaffCreateRequest = {
+        username: String(payload.username).trim(),
+        email: String(payload.email).trim(),
+        password: payload.password,
+        fullName: String(payload.fullName).trim(),
+        phone: String(payload.phone || '').trim() || null,
+        roleIds: payload.roleIds,
+        hotelId: payload.hotelId,
+      };
+      request = this.userService.createStaff(staffRequest);
+    } else {
+      request = this.userDialogMode === 'create'
+        ? this.userService.createUser(payload)
+        : this.userService.updateUser(this.userForm.id, payload);
+    }
 
     this.saving = true;
     request.pipe(
@@ -162,6 +184,21 @@ export class UserManagement implements OnInit {
         this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
       }
     });
+  }
+
+  private staffCreateValidationMessage(): string | null {
+    if (!String(this.userForm.username || '').trim()) return 'Username is required.';
+    if (!String(this.userForm.email || '').trim()) return 'Email is required.';
+    if (!String(this.userForm.fullName || '').trim()) return 'Full name is required.';
+    const password = String(this.userForm.password || '');
+    if (password.length < 8 || password.length > 256) {
+      return 'Initial password must be between 8 and 256 characters.';
+    }
+    if (!Array.isArray(this.userForm.roleIds) || this.userForm.roleIds.length === 0) {
+      return 'Select at least one staff role.';
+    }
+    if (!this.userForm.hotelId) return 'Select a property.';
+    return null;
   }
 
   openLifecycle(user: User, mode: 'deactivate' | 'reactivate'): void {
