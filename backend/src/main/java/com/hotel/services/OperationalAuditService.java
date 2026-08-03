@@ -11,6 +11,7 @@ import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.repositories.OperationalAuditEventRepository;
 import com.hotel.security.CustomUserDetails;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -37,6 +38,7 @@ public class OperationalAuditService {
     private final PropertyAccessService propertyAccessService;
     private final Clock clock;
 
+    @Autowired
     public OperationalAuditService(OperationalAuditEventRepository repository, ObjectMapper objectMapper,
                                    PropertyAccessService propertyAccessService) {
         this(repository, objectMapper, propertyAccessService, Clock.systemUTC());
