@@ -18,6 +18,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import com.hotel.security.AccountDisabledAuthenticationException;
+import com.hotel.security.PasswordChangeException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -148,6 +149,14 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
         return response(HttpStatus.CONFLICT, ex.code(), ex.getMessage(), request,
                 ex.fieldErrors(), false, null);
+    }
+
+    @ExceptionHandler(PasswordChangeException.class)
+    public ResponseEntity<ApiErrorResponse> handlePasswordChange(
+            PasswordChangeException ex,
+            HttpServletRequest request) {
+        return response(ex.getStatus(), ex.getCode(), ex.getMessage(), request,
+                Map.of(), false, null);
     }
 
     @ExceptionHandler({AccessDeniedException.class, SecurityException.class})

@@ -32,6 +32,11 @@ export interface StaffLifecycleRequest {
   reason: string;
 }
 
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -77,7 +82,7 @@ export class UserService {
     return this.http.post<{ url: string }>(`${environment.apiUrl}/uploads/image`, formData);
   }
 
-  changePassword(data: any): Observable<void> {
+  changePassword(data: ChangePasswordRequest): Observable<void> {
     return this.http.put<void>(`${this.apiUrl}/me/password`, data);
   }
 }

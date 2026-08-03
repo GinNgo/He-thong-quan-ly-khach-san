@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component, ChangeDetectorRef, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { finalize } from 'rxjs';
+import { PASSWORD_POLICY, passwordValidators } from '../../../core/auth/password-policy';
+import { AuthService } from '../../../core/services/auth';
 import { UserService } from '../../../core/services/user';
 
 @Component({
@@ -11,8 +13,8 @@ import { UserService } from '../../../core/services/user';
     <main class="settings-page"><header><a routerLink="/profile"><i class="pi pi-arrow-left"></i> Tài khoản</a><h1>Cài đặt tài khoản</h1><p>Thay đổi mật khẩu đăng nhập của bạn.</p></header>
       <section><form [formGroup]="form" (ngSubmit)="submit()">
         <label>Mật khẩu hiện tại<input type="password" formControlName="currentPassword" autocomplete="current-password"></label>
-        <label>Mật khẩu mới<input type="password" formControlName="newPassword" autocomplete="new-password"><small>Tối thiểu 8 ký tự.</small></label>
-        <label>Nhập lại mật khẩu mới<input type="password" formControlName="confirmPassword" autocomplete="new-password"></label>
+        <label>Mật khẩu mới<input type="password" formControlName="newPassword" autocomplete="new-password" [attr.minlength]="passwordPolicy.minLength" [attr.maxlength]="passwordPolicy.maxLength"><small>Tối thiểu 8 ký tự.</small></label>
+        <label>Nhập lại mật khẩu mới<input type="password" formControlName="confirmPassword" autocomplete="new-password" [attr.minlength]="passwordPolicy.minLength" [attr.maxlength]="passwordPolicy.maxLength"></label>
         <div *ngIf="error" class="alert error">{{ error }}</div><div *ngIf="success" class="alert success">{{ success }}</div>
         <button type="submit" [disabled]="form.invalid || saving">{{ saving ? 'Đang lưu...' : 'Đổi mật khẩu' }}</button>
       </form></section>
@@ -22,16 +24,23 @@ import { UserService } from '../../../core/services/user';
   `]
 })
 export class AccountSettingsComponent {
-  private readonly fb = inject(FormBuilder); private readonly users = inject(UserService); private readonly cdr = inject(ChangeDetectorRef);
+  private readonly fb = inject(FormBuilder); private readonly users = inject(UserService); private readonly auth = inject(AuthService); private readonly router = inject(Router); private readonly cdr = inject(ChangeDetectorRef);
+  readonly passwordPolicy = PASSWORD_POLICY;
   saving = false; error = ''; success = '';
-  readonly form = this.fb.nonNullable.group({ currentPassword: ['', Validators.required], newPassword: ['', [Validators.required, Validators.minLength(8)]], confirmPassword: ['', Validators.required] });
+  readonly form = this.fb.nonNullable.group({ currentPassword: ['', Validators.required], newPassword: ['', passwordValidators()], confirmPassword: ['', passwordValidators()] });
   submit(): void {
     if (this.form.invalid) return;
     const value = this.form.getRawValue();
     if (value.newPassword !== value.confirmPassword) { this.error = 'Mật khẩu nhập lại chưa khớp.'; return; }
     this.saving = true; this.error = ''; this.success = '';
     this.users.changePassword({ currentPassword: value.currentPassword, newPassword: value.newPassword }).pipe(finalize(() => this.saving = false)).subscribe({
-      next: () => { this.success = 'Mật khẩu đã được thay đổi.'; this.form.reset(); this.cdr.detectChanges(); },
+      next: () => {
+        this.success = 'Mật khẩu đã được thay đổi.';
+        this.form.reset();
+        this.auth.logout();
+        void this.router.navigate(['/login'], { queryParams: { reason: 'PASSWORD_CHANGED' } });
+        this.cdr.detectChanges();
+      },
       error: () => { this.error = 'Không thể đổi mật khẩu. Vui lòng kiểm tra mật khẩu hiện tại.'; this.cdr.detectChanges(); }
     });
   }

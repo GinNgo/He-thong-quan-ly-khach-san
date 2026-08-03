@@ -4,6 +4,7 @@ import com.hotel.entities.PasswordResetToken;
 import com.hotel.entities.User;
 import com.hotel.repositories.PasswordResetTokenRepository;
 import com.hotel.repositories.UserRepository;
+import com.hotel.security.PasswordPolicy;
 import com.hotel.security.PasswordResetException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -151,9 +152,7 @@ public class PasswordResetService {
         if (user == null) {
             throw PasswordResetException.invalidToken();
         }
-        if (newPassword == null || newPassword.length() < 8 || newPassword.length() > 256) {
-            throw new IllegalArgumentException("Password must be between 8 and 256 characters");
-        }
+        PasswordPolicy.requireValid(newPassword);
 
         resetToken.setUsedAt(now);
         user.setPasswordHash(passwordEncoder.encode(newPassword));

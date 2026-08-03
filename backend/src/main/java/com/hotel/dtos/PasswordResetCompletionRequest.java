@@ -1,5 +1,6 @@
 package com.hotel.dtos;
 
+import com.hotel.security.PasswordPolicy;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -10,7 +11,10 @@ public class PasswordResetCompletionRequest {
     private String token;
 
     @NotBlank(message = "New password is required")
-    @Size(min = 8, max = 256, message = "Password must be between 8 and 256 characters")
+    @Size(
+            min = PasswordPolicy.MIN_LENGTH,
+            max = PasswordPolicy.MAX_LENGTH,
+            message = PasswordPolicy.LENGTH_MESSAGE)
     private String newPassword;
 
     public String getToken() {

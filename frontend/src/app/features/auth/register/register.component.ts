@@ -6,6 +6,7 @@ import { RouterModule } from '@angular/router';
 import { ChangeDetectorRef, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@app/core/services/auth';
+import { isPasswordLengthValid, PASSWORD_POLICY } from '@app/core/auth/password-policy';
 
 @Component({
   selector: 'app-register',
@@ -19,6 +20,7 @@ export class RegisterComponent {
   private authService = inject(AuthService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
+  readonly passwordPolicy = PASSWORD_POLICY;
   registerObj = {
     fullName: '',
     email: '',
@@ -34,6 +36,11 @@ export class RegisterComponent {
   isLoading = false;
 
   onSubmit() {
+    if (!isPasswordLengthValid(this.registerObj.password)) {
+      this.errorMessage = `Mật khẩu phải có từ ${PASSWORD_POLICY.minLength} đến ${PASSWORD_POLICY.maxLength} ký tự.`;
+      return;
+    }
+
     if (this.registerObj.password !== this.registerObj.confirmPassword) {
       this.errorMessage = 'Mật khẩu xác nhận không khớp.';
       return;

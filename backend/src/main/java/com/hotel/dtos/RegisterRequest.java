@@ -1,5 +1,6 @@
 package com.hotel.dtos;
 
+import com.hotel.security.PasswordPolicy;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -13,7 +14,10 @@ public class RegisterRequest {
     private String username;
 
     @NotBlank(message = "Password is required")
-    @Size(min = 6, max = 100, message = "Password must contain between 6 and 100 characters")
+    @Size(
+            min = PasswordPolicy.MIN_LENGTH,
+            max = PasswordPolicy.MAX_LENGTH,
+            message = PasswordPolicy.LENGTH_MESSAGE)
     private String password;
 
     @NotBlank(message = "Email is required")

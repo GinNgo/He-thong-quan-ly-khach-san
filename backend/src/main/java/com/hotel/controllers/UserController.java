@@ -3,6 +3,7 @@ package com.hotel.controllers;
 import com.hotel.entities.User;
 import com.hotel.dtos.UserDto;
 import com.hotel.services.UserService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -100,9 +101,9 @@ public class UserController {
 
     @PreAuthorize("isAuthenticated()")
     @PutMapping("/me/password")
-    public ResponseEntity<Void> changePassword(@RequestBody com.hotel.dtos.ChangePasswordRequest request) {
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody com.hotel.dtos.ChangePasswordRequest request) {
         com.hotel.security.CustomUserDetails userDetails = (com.hotel.security.CustomUserDetails) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         userService.changePassword(userDetails.getUserId(), request.getCurrentPassword(), request.getNewPassword());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 }

@@ -9,6 +9,8 @@ import { ButtonModule } from 'primeng/button';
 import { finalize, switchMap } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '@app/core/services/auth';
+import { Router } from '@angular/router';
+import { isPasswordLengthValid, PASSWORD_POLICY } from '@app/core/auth/password-policy';
 
 @Component({
   selector: 'app-admin-profile',
@@ -34,9 +36,11 @@ export class AdminProfileComponent implements OnInit {
 
   private userService = inject(UserService);
   private authService = inject(AuthService);
+  private router = inject(Router);
   private messageService = inject(MessageService);
   private cdr = inject(ChangeDetectorRef);
   private apiOrigin = environment.apiUrl.replace(/\/api\/?$/, '');
+  readonly passwordPolicy = PASSWORD_POLICY;
 
   ngOnInit() {
     this.loadProfile();
@@ -142,6 +146,14 @@ export class AdminProfileComponent implements OnInit {
   }
 
   savePassword() {
+    if (!this.passwordData.currentPassword) {
+      this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Vui lòng nhập mật khẩu hiện tại.' });
+      return;
+    }
+    if (!isPasswordLengthValid(this.passwordData.newPassword)) {
+      this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: `Mật khẩu mới phải có từ ${PASSWORD_POLICY.minLength} đến ${PASSWORD_POLICY.maxLength} ký tự.` });
+      return;
+    }
     if (this.passwordData.newPassword !== this.passwordData.confirmPassword) {
       this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Mật khẩu xác nhận không khớp!' });
       return;
@@ -154,6 +166,8 @@ export class AdminProfileComponent implements OnInit {
       next: () => {
         this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã đổi mật khẩu thành công!' });
         this.displayPasswordDialog = false;
+        this.authService.logout();
+        void this.router.navigate(['/login'], { queryParams: { reason: 'PASSWORD_CHANGED' } });
       },
       error: (error) => {
         this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: error.error?.message || 'Không thể đổi mật khẩu' });

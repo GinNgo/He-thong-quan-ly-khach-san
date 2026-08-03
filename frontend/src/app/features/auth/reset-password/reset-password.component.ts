@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject } from '@
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 
 import { AuthService } from '@app/core/services/auth';
+import { isPasswordLengthValid, PASSWORD_POLICY } from '@app/core/auth/password-policy';
 import { SharedModule } from '@app/shared/shared.module';
 
 @Component({
@@ -18,6 +19,8 @@ export class ResetPasswordComponent {
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
 
+  readonly passwordPolicy = PASSWORD_POLICY;
+
   readonly token = this.route.snapshot.queryParamMap.get('token') || '';
   newPassword = '';
   confirmPassword = '';
@@ -30,8 +33,8 @@ export class ResetPasswordComponent {
       this.errorMessage = 'This reset link is invalid or incomplete.';
       return;
     }
-    if (this.newPassword.length < 8) {
-      this.errorMessage = 'Password must be at least 8 characters.';
+    if (!isPasswordLengthValid(this.newPassword)) {
+      this.errorMessage = `Password must be between ${PASSWORD_POLICY.minLength} and ${PASSWORD_POLICY.maxLength} characters.`;
       return;
     }
     if (this.newPassword !== this.confirmPassword) {

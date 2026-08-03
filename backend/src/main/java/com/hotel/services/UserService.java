@@ -23,6 +23,9 @@ public class UserService {
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @Autowired
+    private AuthSessionRevocationService authSessionRevocationService;
+
+    @Autowired
     private com.hotel.repositories.RoleRepository roleRepository;
 
     @Autowired
@@ -299,16 +302,19 @@ public class UserService {
         return convertToDto(userRepository.save(user));
     }
 
+    @Transactional
     public void changePassword(Long id, String currentPassword, String newPassword) {
+        com.hotel.security.PasswordPolicy.requireValid(newPassword);
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-            throw new RuntimeException("Mật khẩu hiện tại không đúng!");
+            throw com.hotel.security.PasswordChangeException.currentPasswordInvalid();
         }
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+        authSessionRevocationService.revokeUserSession(user.getId(), "PASSWORD_CHANGE");
     }
 
     private User requireManageableUser(Long id, boolean systemAdministrator) {

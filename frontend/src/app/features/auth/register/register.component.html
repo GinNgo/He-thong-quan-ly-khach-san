@@ -66,7 +66,7 @@
                 <label class="font-label-md text-[10px] font-bold text-on-surface-variant block uppercase tracking-wider" for="password">Mật khẩu</label>
                 <div class="relative flex items-center">
                   <span class="material-symbols-outlined absolute left-2.5 text-outline text-[16px] pointer-events-none">lock</span>
-                  <input class="w-full pl-8 pr-3 py-2 bg-white border border-outline-variant rounded-md font-body-md text-[12px] text-on-surface form-input-focus transition-all duration-200 placeholder:text-gray-400" id="password" name="password" placeholder="••••••••" type="password" [(ngModel)]="registerObj.password">
+                  <input class="w-full pl-8 pr-3 py-2 bg-white border border-outline-variant rounded-md font-body-md text-[12px] text-on-surface form-input-focus transition-all duration-200 placeholder:text-gray-400" id="password" name="password" placeholder="••••••••" type="password" autocomplete="new-password" required [attr.minlength]="passwordPolicy.minLength" [attr.maxlength]="passwordPolicy.maxLength" [(ngModel)]="registerObj.password">
                 </div>
               </div>
               
@@ -75,7 +75,7 @@
                 <label class="font-label-md text-[10px] font-bold text-on-surface-variant block uppercase tracking-wider" for="confirmPassword">Xác nhận mật khẩu</label>
                 <div class="relative flex items-center">
                   <span class="material-symbols-outlined absolute left-2.5 text-outline text-[16px] pointer-events-none">lock_reset</span>
-                  <input class="w-full pl-8 pr-3 py-2 bg-white border border-outline-variant rounded-md font-body-md text-[12px] text-on-surface form-input-focus transition-all duration-200 placeholder:text-gray-400" id="confirmPassword" name="confirmPassword" placeholder="••••••••" type="password" [(ngModel)]="registerObj.confirmPassword">
+                  <input class="w-full pl-8 pr-3 py-2 bg-white border border-outline-variant rounded-md font-body-md text-[12px] text-on-surface form-input-focus transition-all duration-200 placeholder:text-gray-400" id="confirmPassword" name="confirmPassword" placeholder="••••••••" type="password" autocomplete="new-password" required [attr.minlength]="passwordPolicy.minLength" [attr.maxlength]="passwordPolicy.maxLength" [(ngModel)]="registerObj.confirmPassword">
                 </div>
               </div>
             </div>
