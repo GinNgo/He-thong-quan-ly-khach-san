@@ -117,4 +117,28 @@ describe('RoleManagementComponent', () => {
     expect(roleService.reactivateRole).not.toHaveBeenCalled();
     expect(messages.add).toHaveBeenCalledTimes(2);
   });
+
+  it('blocks seeded-role edit and lifecycle actions even when flags are stale', () => {
+    const staleSeed = {
+      id: 7,
+      code: 'RECEPTIONIST',
+      name: 'Receptionist',
+      status: 'INACTIVE' as const,
+      systemRole: false,
+      roleType: 'CUSTOM' as const
+    };
+
+    component.editRole(staleSeed);
+    component.deleteRole({ ...staleSeed, status: 'ACTIVE' });
+    component.reactivateRole(staleSeed);
+
+    expect(component.displayDialog).toBe(false);
+    expect(roleService.updateRole).not.toHaveBeenCalled();
+    expect(roleService.deleteRole).not.toHaveBeenCalled();
+    expect(roleService.reactivateRole).not.toHaveBeenCalled();
+    expect(messages.add).toHaveBeenCalledWith(expect.objectContaining({
+      severity: 'warn',
+      summary: 'Vai trò hệ thống'
+    }));
+  });
 });

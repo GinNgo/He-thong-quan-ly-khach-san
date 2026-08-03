@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { environment } from '../../../environments/environment';
-import { CreateRoleRequest, RoleService, UpdateRoleRequest } from './role.service';
+import { CreateRoleRequest, isGovernedSystemRole, RoleService, UpdateRoleRequest } from './role.service';
 
 describe('RoleService', () => {
   let service: RoleService;
@@ -60,5 +60,24 @@ describe('RoleService', () => {
     expect(reactivate.request.method).toBe('POST');
     expect(reactivate.request.body).toEqual({});
     reactivate.flush({ id: 20, code: 'NIGHT_AUDITOR', name: 'Night auditor', status: 'ACTIVE' });
+  });
+
+  it('recognizes seeded role codes even when persisted flags are stale', () => {
+    expect(isGovernedSystemRole({
+      id: 7,
+      code: ' receptionist ',
+      name: 'Receptionist',
+      status: 'INACTIVE',
+      systemRole: false,
+      roleType: 'CUSTOM'
+    })).toBe(true);
+    expect(isGovernedSystemRole({
+      id: 20,
+      code: 'NIGHT_AUDITOR',
+      name: 'Night auditor',
+      status: 'ACTIVE',
+      systemRole: false,
+      roleType: 'CUSTOM'
+    })).toBe(false);
   });
 });

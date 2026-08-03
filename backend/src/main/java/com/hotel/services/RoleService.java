@@ -14,14 +14,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 public class RoleService {
-    static final Set<String> SYSTEM_ROLE_CODES = Set.of(
-            "SUPER_ADMIN", "ADMIN", "CUSTOMER", "PROPERTY_OWNER", "HOTEL_ADMIN",
-            "HOTEL_MANAGER", "RECEPTIONIST", "ACCOUNTANT");
     @Autowired
     private RoleRepository roleRepository;
 
@@ -63,12 +59,10 @@ public class RoleService {
     public RoleDto updateRole(Long id, RoleUpdateRequest request) {
         Role role = roleRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found."));
+        rejectSystemRoleMutation(role);
         java.util.Map<String, Object> before = roleSnapshot(role);
         NormalizedRoleInput input = normalizeAndValidate(
                 request.getCode(), request.getName(), request.getDescription(), id);
-        if (Boolean.TRUE.equals(role.getSystemRole()) && !role.getCode().equals(input.code())) {
-            throw new IllegalArgumentException("Không thể thay đổi mã vai trò hệ thống.");
-        }
         role.setCode(input.code());
         role.setName(input.name());
         role.setDescription(input.description());
@@ -108,6 +102,7 @@ public class RoleService {
         if (code.isBlank() || name.isBlank()) {
             throw new IllegalArgumentException("Mã và tên vai trò là bắt buộc.");
         }
+        rejectReservedSystemCode(code);
         roleRepository.findByCodeIgnoreCase(code).filter(role -> !role.getId().equals(currentId)).ifPresent(role -> {
             throw new IllegalArgumentException("Mã vai trò đã tồn tại.");
         });
@@ -117,10 +112,22 @@ public class RoleService {
     private Role customRoleForUpdate(Long id) {
         Role role = roleRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found."));
-        if (Boolean.TRUE.equals(role.getSystemRole()) || SYSTEM_ROLE_CODES.contains(role.getCode())) {
+        if (role.isGovernedSystemRole()) {
             throw new IllegalStateException("Không thể thay đổi trạng thái vai trò hệ thống.");
         }
         return role;
+    }
+
+    private void rejectSystemRoleMutation(Role role) {
+        if (role.isGovernedSystemRole()) {
+            throw new IllegalStateException("Mã, tên, mô tả và trạng thái vai trò hệ thống là bất biến.");
+        }
+    }
+
+    private void rejectReservedSystemCode(String code) {
+        if (Role.isSystemCode(code)) {
+            throw new IllegalArgumentException("Mã vai trò hệ thống được dành riêng.");
+        }
     }
 
     private void ensureUnassigned(Role role) {
@@ -130,15 +137,16 @@ public class RoleService {
     }
 
     private RoleDto convertToDto(Role role) {
+        boolean systemRole = role.isGovernedSystemRole();
         RoleDto dto = new RoleDto();
         dto.setId(role.getId());
         dto.setCode(role.getCode());
         dto.setName(role.getName());
         dto.setDescription(role.getDescription());
-        dto.setStatus(role.getStatus());
-        dto.setSystemRole(role.getSystemRole());
+        dto.setStatus(systemRole ? Role.ACTIVE_STATUS : role.getStatus());
+        dto.setSystemRole(systemRole);
         dto.setUserCount(userRepository.countByRoleId(role.getId()));
-        dto.setRoleType(Boolean.TRUE.equals(role.getSystemRole()) ? "SYSTEM" : "CUSTOM");
+        dto.setRoleType(systemRole ? "SYSTEM" : "CUSTOM");
         dto.setUpdatedAt(role.getUpdatedAt());
         dto.setVersion(role.getVersion());
         return dto;

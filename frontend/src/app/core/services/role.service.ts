@@ -17,6 +17,17 @@ export interface Role {
   version?: number;
 }
 
+export const SYSTEM_ROLE_CODES = new Set([
+  'SUPER_ADMIN', 'ADMIN', 'CUSTOMER', 'PROPERTY_OWNER', 'HOTEL_ADMIN',
+  'HOTEL_MANAGER', 'RECEPTIONIST', 'ACCOUNTANT'
+]);
+
+export function isGovernedSystemRole(role: Role | null | undefined): boolean {
+  return Boolean(role?.systemRole)
+    || role?.roleType === 'SYSTEM'
+    || SYSTEM_ROLE_CODES.has((role?.code || '').trim().toUpperCase());
+}
+
 export interface CreateRoleRequest {
   code: string;
   name: string;

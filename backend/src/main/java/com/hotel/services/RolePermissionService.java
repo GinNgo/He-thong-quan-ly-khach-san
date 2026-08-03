@@ -207,8 +207,7 @@ public class RolePermissionService {
     }
 
     private boolean isGovernedSystemRole(Role role) {
-        return Boolean.TRUE.equals(role.getSystemRole())
-                || RoleService.SYSTEM_ROLE_CODES.contains(role.getCode());
+        return role.isGovernedSystemRole();
     }
 
     private String permissionSnapshot(List<RolePermission> permissions) {

@@ -102,6 +102,21 @@ class RoleControllerHttpTest {
     }
 
     @Test
+    void seededRoleMetadataTampering_Returns409() throws Exception {
+        org.mockito.Mockito.doThrow(new IllegalStateException(
+                        "Mã, tên, mô tả và trạng thái vai trò hệ thống là bất biến."))
+                .when(roleService).updateRole(org.mockito.ArgumentMatchers.eq(7L), any());
+
+        mockMvc.perform(put("/api/roles/7")
+                        .contentType("application/json")
+                        .content("{\"code\":\"RECEPTIONIST\",\"name\":\"Tampered\",\"description\":\"Tampered\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONFLICT"))
+                .andExpect(jsonPath("$.message").value(
+                        "Mã, tên, mô tả và trạng thái vai trò hệ thống là bất biến."));
+    }
+
+    @Test
     void lifecycleRoutes_UseDeleteForDeactivationAndUpdateForReactivation() throws Exception {
         Method deactivate = RoleController.class.getMethod("deleteRole", Long.class);
         Method reactivate = RoleController.class.getMethod("reactivateRole", Long.class);

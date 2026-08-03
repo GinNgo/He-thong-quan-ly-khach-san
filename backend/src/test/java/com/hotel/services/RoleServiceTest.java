@@ -14,11 +14,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -84,6 +86,19 @@ class RoleServiceTest {
     }
 
     @Test
+    void createRole_RejectsReservedSystemCodeWhenSeedRowIsMissing() {
+        RoleCreateRequest request = createRequest("receptionist", "Fake receptionist", "");
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> roleService.createRole(request));
+
+        assertEquals("Mã vai trò hệ thống được dành riêng.", error.getMessage());
+        verify(roleRepository, never()).findByCodeIgnoreCase(any());
+        verify(roleRepository, never()).save(any());
+    }
+
+    @Test
     void updateRole_LocksRowAndCannotChangeStatusThroughMetadataRequest() {
         customRole.setStatus("INACTIVE");
         RoleUpdateRequest request = updateRequest(" night_auditor ", "  Night operations  ", "  Updated  ");
@@ -137,6 +152,49 @@ class RoleServiceTest {
 
         verify(userRepository, never()).countByRoleId(any());
         verify(roleRepository, never()).save(any());
+    }
+
+    @Test
+    void updateRole_RejectsSeededRoleMetadataTamperingWhenFlagIsStale() {
+        customRole.setCode("RECEPTIONIST");
+        customRole.setSystemRole(false);
+        customRole.setStatus("INACTIVE");
+        RoleUpdateRequest request = updateRequest("RECEPTIONIST", "Tampered", "Tampered");
+        when(roleRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(customRole));
+
+        IllegalStateException error = assertThrows(
+                IllegalStateException.class,
+                () -> roleService.updateRole(20L, request));
+
+        assertEquals("Mã, tên, mô tả và trạng thái vai trò hệ thống là bất biến.", error.getMessage());
+        verify(roleRepository, never()).findByCodeIgnoreCase(any());
+        verify(roleRepository, never()).save(any());
+    }
+
+    @Test
+    void updateRole_RejectsFlaggedSystemRoleEvenWithUnknownCode() {
+        customRole.setCode("LEGACY_PLATFORM_OPERATOR");
+        customRole.setSystemRole(true);
+        RoleUpdateRequest request = updateRequest("LEGACY_PLATFORM_OPERATOR", "Tampered", "Tampered");
+        when(roleRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(customRole));
+
+        assertThrows(IllegalStateException.class, () -> roleService.updateRole(20L, request));
+
+        verify(roleRepository, never()).save(any());
+    }
+
+    @Test
+    void getAllRoles_ProjectsSeededCodeAsSystemAndActiveWhenStoredFlagsAreStale() {
+        customRole.setCode("ACCOUNTANT");
+        customRole.setSystemRole(false);
+        customRole.setStatus("INACTIVE");
+        when(roleRepository.findAll()).thenReturn(List.of(customRole));
+
+        RoleDto result = roleService.getAllRoles().getFirst();
+
+        assertTrue(result.getSystemRole());
+        assertEquals("SYSTEM", result.getRoleType());
+        assertEquals("ACTIVE", result.getStatus());
     }
 
     private RoleCreateRequest createRequest(String code, String name, String description) {

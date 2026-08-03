@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { SharedModule } from '@app/shared/shared.module';
-import { CreateRoleRequest, Role, RoleService, UpdateRoleRequest } from '@app/core/services/role.service';
+import { CreateRoleRequest, isGovernedSystemRole, Role, RoleService, UpdateRoleRequest } from '@app/core/services/role.service';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { PermissionService, ActionCode, FunctionCode } from '@app/core/services/permission.service';
 import { Subscription } from 'rxjs';
@@ -102,6 +102,10 @@ export class RoleManagementComponent implements OnInit, OnDestroy {
       this.messageService.add({ severity: 'warn', summary: 'Không đủ quyền', detail: 'Tài khoản chưa có quyền sửa vai trò.' });
       return;
     }
+    if (isGovernedSystemRole(role)) {
+      this.messageService.add({ severity: 'warn', summary: 'Vai trò hệ thống', detail: 'Không thể sửa thông tin hoặc trạng thái vai trò hệ thống.' });
+      return;
+    }
 
     this.roleForm = { ...role };
     this.roleDialogMode = 'edit';
@@ -163,7 +167,7 @@ export class RoleManagementComponent implements OnInit, OnDestroy {
       this.messageService.add({ severity: 'warn', summary: 'Không đủ quyền', detail: 'Tài khoản chưa có quyền xóa vai trò.' });
       return;
     }
-    if (role.systemRole) {
+    if (isGovernedSystemRole(role)) {
       this.messageService.add({ severity: 'warn', summary: 'Vai trò hệ thống', detail: 'Không thể ngừng sử dụng vai trò hệ thống.' });
       return;
     }
@@ -198,7 +202,7 @@ export class RoleManagementComponent implements OnInit, OnDestroy {
       this.messageService.add({ severity: 'warn', summary: 'Không đủ quyền', detail: 'Tài khoản chưa có quyền kích hoạt lại vai trò.' });
       return;
     }
-    if (role.systemRole || role.status !== 'INACTIVE' || this.saving) return;
+    if (isGovernedSystemRole(role) || role.status !== 'INACTIVE' || this.saving) return;
 
     this.saving = true;
     this.roleService.reactivateRole(role.id).pipe(
@@ -220,5 +224,9 @@ export class RoleManagementComponent implements OnInit, OnDestroy {
 
   openPermissions(role: Role): void {
     this.router.navigate(['/admin/role-permissions'], { queryParams: { roleId: role.id } });
+  }
+
+  isSystemRole(role: Role): boolean {
+    return isGovernedSystemRole(role);
   }
 }
