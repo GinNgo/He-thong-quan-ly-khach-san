@@ -18,6 +18,7 @@ export const routes: Routes = [
       { path: 'refunds', loadComponent: () => import('./features/client/profile/refund-history.component').then(m => m.RefundHistoryComponent), canActivate: [clientAuthGuard] },
       { path: 'booking-history', loadComponent: () => import('./features/client/profile/profile.component').then(m => m.ProfileComponent), canActivate: [clientAuthGuard], data: { tab: 'bookings' } },
       { path: 'my-invoices', loadComponent: () => import('./features/client/my-invoices/my-invoices.component').then(m => m.MyInvoicesComponent), canActivate: [clientAuthGuard] },
+      { path: 'notifications', loadComponent: () => import('./features/client/notifications/customer-notifications.component').then(m => m.CustomerNotificationsComponent), canActivate: [clientAuthGuard] },
       { path: 'settings', loadComponent: () => import('./features/client/account-settings/account-settings.component').then(m => m.AccountSettingsComponent), canActivate: [clientAuthGuard] }
     ]
   },
