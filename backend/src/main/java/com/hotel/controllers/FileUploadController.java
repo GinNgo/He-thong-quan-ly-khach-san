@@ -1,17 +1,24 @@
 package com.hotel.controllers;
 
+import com.hotel.dtos.AvatarUploadResponse;
+import com.hotel.security.CustomUserDetails;
 import com.hotel.services.FileUploadService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.time.Duration;
 
 @RestController
 @RequestMapping("/api")
@@ -21,30 +28,25 @@ public class FileUploadController {
     private final FileUploadService fileUploadService;
 
     @PreAuthorize("isAuthenticated()")
-    @PostMapping("/uploads/image")
-    public ResponseEntity<Map<String, String>> uploadImage(@RequestParam("file") MultipartFile file) {
-        String url = fileUploadService.storeFile(file);
-        Map<String, String> response = new HashMap<>();
-        response.put("url", url);
-        return ResponseEntity.ok(response);
+    @PostMapping(value = "/uploads/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<AvatarUploadResponse> uploadImage(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam("file") MultipartFile file) {
+        if (userDetails == null || userDetails.getUserId() == null) {
+            throw com.hotel.exceptions.AvatarUploadException.userNotFound();
+        }
+        FileUploadService.StoredAvatar avatar = fileUploadService.replaceAvatar(userDetails.getUserId(), file);
+        return ResponseEntity.ok(new AvatarUploadResponse(
+                avatar.url(), avatar.contentType(), avatar.width(), avatar.height()));
     }
 
     @GetMapping("/public/uploads/{filename:.+}")
-    @ResponseBody
-    public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
-        Resource file = fileUploadService.loadFileAsResource(filename);
-        
-        String contentType = "application/octet-stream";
-        if (filename.toLowerCase().endsWith(".png")) {
-            contentType = MediaType.IMAGE_PNG_VALUE;
-        } else if (filename.toLowerCase().endsWith(".jpg") || filename.toLowerCase().endsWith(".jpeg")) {
-            contentType = MediaType.IMAGE_JPEG_VALUE;
-        } else if (filename.toLowerCase().endsWith(".webp")) {
-            contentType = "image/webp";
-        }
-
+    public ResponseEntity<org.springframework.core.io.Resource> serveFile(@PathVariable String filename) {
+        FileUploadService.StoredImageResource image = fileUploadService.loadImageResource(filename);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_TYPE, contentType)
-                .body(file);
+                .contentType(MediaType.parseMediaType(image.contentType()))
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic().immutable())
+                .header("X-Content-Type-Options", "nosniff")
+                .body(image.resource());
     }
 }

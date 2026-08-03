@@ -1,4 +1,4 @@
-# Authentication And Account Inventory
+﻿# Authentication And Account Inventory
 
 Audit date: 2026-08-01
 Scope: public registration and login, session lifecycle, password recovery/change,
@@ -80,3 +80,7 @@ be activated with production credentials or production messages during Feature 0
 
 Inventory count: 7 `COMPLETE_VERIFIED`, 7 `PARTIAL`, 2 `PLACEHOLDER`, 0 `BROKEN`,
 3 `MISSING`, 3 `BLOCKED_EXTERNAL`, 0 `NOT_APPLICABLE`.
+
+## T225 remediation note (2026-08-04)
+
+POST /api/uploads/image now binds the upload to the authenticated user, verifies JPEG/PNG/WEBP signatures and dimensions, returns stable avatar error codes, and performs transaction-aware replacement cleanup. Public reads reject unsafe filenames and serve the detected media type with the X-Content-Type-Options nosniff header. Evidence: docs/testing/evidence/007/remediation/T225-avatar-upload.md. The Spring integration suite is checked in but awaits unrelated dirty-worktree module reconciliation.

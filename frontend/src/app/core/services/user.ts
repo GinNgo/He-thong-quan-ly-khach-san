@@ -44,6 +44,13 @@ export interface ProfileUpdateRequest {
   avatarUrl?: string | null;
 }
 
+export interface AvatarUploadResponse {
+  url: string;
+  contentType: 'image/jpeg' | 'image/png' | 'image/webp';
+  width: number;
+  height: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -83,10 +90,10 @@ export class UserService {
     return this.http.put<User>(`${this.apiUrl}/me`, user);
   }
 
-  uploadAvatar(file: File): Observable<{ url: string }> {
+  uploadAvatar(file: File): Observable<AvatarUploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post<{ url: string }>(`${environment.apiUrl}/uploads/image`, formData);
+    return this.http.post<AvatarUploadResponse>(`${environment.apiUrl}/uploads/image`, formData);
   }
 
   changePassword(data: ChangePasswordRequest): Observable<void> {

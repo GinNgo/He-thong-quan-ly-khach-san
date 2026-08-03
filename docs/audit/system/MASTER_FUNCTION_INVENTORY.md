@@ -1,4 +1,4 @@
-# Master Function Inventory
+﻿# Master Function Inventory
 
 Audit date: 2026-08-02
 Scope: consolidated evidence index for every capability row discovered by T141 through T146.
@@ -263,3 +263,7 @@ These are the only rows carried as `COMPLETE_VERIFIED`. Each has executable evid
 - External-blocker rows requiring safe adapter/configuration work: 7.
 - T148 traceability is maintained in `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md`.
 - Production payment, production SMTP/social credentials, real-money execution and destructive cleanup remain prohibited.
+
+## T225 remediation note (2026-08-04)
+
+AUTH-013 implementation now uses JWT-owned avatar replacement, magic-byte/dimension validation, bounded local storage, safe error envelopes and replacement/rollback cleanup. Production object-storage requirements are documented in docs/architecture/avatar-storage.md; evidence is in docs/testing/evidence/007/remediation/T225-avatar-upload.md.

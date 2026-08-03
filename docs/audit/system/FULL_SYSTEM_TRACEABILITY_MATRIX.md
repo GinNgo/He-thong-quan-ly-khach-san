@@ -1,4 +1,4 @@
-# Full-System Traceability Matrix
+﻿# Full-System Traceability Matrix
 
 Audit date: 2026-08-01
 Scope: route-to-UI-to-frontend-service-to-backend-API/service-to-database/external-to-permission-to-test mapping for every T141-T146 inventory row.
@@ -221,3 +221,7 @@ Scope: route-to-UI-to-frontend-service-to-backend-API/service-to-database/extern
 - Document 7 `EXTERNAL_GATE` rows as safe sandbox/configuration/contract tasks; do not require production credentials or real money.
 - Do not create duplicate capability work for the two explicit aliases; their source rows must reference the canonical remediation/evidence task where applicable.
 - Keep the 11 raw verified rows (9 unique capabilities after aliasing) as regression-preservation targets.
+
+## T225 remediation note (2026-08-04)
+
+AUTH-013 traces Profile -> UserService.uploadAvatar() -> FileUploadController -> FileUploadService -> users.avatar_url with authenticated-owner binding, signature/dimension validation, stable error codes and lifecycle cleanup. Focused backend and Angular evidence is recorded in docs/testing/evidence/007/remediation/T225-avatar-upload.md.
