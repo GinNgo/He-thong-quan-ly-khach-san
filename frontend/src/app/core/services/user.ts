@@ -12,9 +12,14 @@ export interface User {
   avatarUrl?: string;
   roles: any[];
   status: string;
-  createdAt: string;
+  createdAt?: string;
   hotel?: { id: number; name: string };
   staffAssignments?: StaffAssignment[];
+}
+
+export interface PropertyOption {
+  id: number;
+  name: string;
 }
 
 export interface StaffAssignment {
@@ -60,6 +65,14 @@ export class UserService {
 
   getUsers(): Observable<User[]> {
     return this.http.get<User[]>(this.apiUrl);
+  }
+
+  getStaff(): Observable<User[]> {
+    return this.http.get<User[]>(`${this.apiUrl}/staff`);
+  }
+
+  getStaffProperties(): Observable<PropertyOption[]> {
+    return this.http.get<PropertyOption[]>(`${this.apiUrl}/staff/properties`);
   }
 
   getUserById(id: number): Observable<User> {

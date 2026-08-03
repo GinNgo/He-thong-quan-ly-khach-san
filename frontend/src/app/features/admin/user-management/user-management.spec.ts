@@ -1,7 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
 import { of } from 'rxjs';
-import { ClientApiService } from '@app/core/services/client-api.service';
 import { RoleService } from '@app/core/services/role.service';
 import { User, UserService } from '@app/core/services/user';
 import { UserManagement } from './user-management';
@@ -29,6 +28,8 @@ describe('UserManagement staff lifecycle', () => {
 
   let userService: {
     getUsers: ReturnType<typeof vi.fn>;
+    getStaff: ReturnType<typeof vi.fn>;
+    getStaffProperties: ReturnType<typeof vi.fn>;
     createUser: ReturnType<typeof vi.fn>;
     updateUser: ReturnType<typeof vi.fn>;
     deactivateStaff: ReturnType<typeof vi.fn>;
@@ -38,6 +39,11 @@ describe('UserManagement staff lifecycle', () => {
   beforeEach(async () => {
     userService = {
       getUsers: vi.fn(() => of([staff])),
+      getStaff: vi.fn(() => of([staff])),
+      getStaffProperties: vi.fn(() => of([
+        { id: 10, name: 'LuxeStay Da Nang' },
+        { id: 11, name: 'LuxeStay Hue' },
+      ])),
       createUser: vi.fn(() => of(staff)),
       updateUser: vi.fn(() => of(staff)),
       deactivateStaff: vi.fn(() => of(staff)),
@@ -49,7 +55,6 @@ describe('UserManagement staff lifecycle', () => {
       providers: [
         { provide: UserService, useValue: userService },
         { provide: RoleService, useValue: { getRoles: () => of([]) } },
-        { provide: ClientApiService, useValue: { searchHotels: () => of({ content: [] }) } },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { data: { userType: 'STAFF' } }, data: of({ userType: 'STAFF' }) },
@@ -86,5 +91,15 @@ describe('UserManagement staff lifecycle', () => {
       hotelId: 11,
       reason: 'New seasonal contract',
     });
+  });
+
+  it('loads the tenant-scoped staff and property options instead of public hotel search data', () => {
+    const fixture = TestBed.createComponent(UserManagement);
+    fixture.detectChanges();
+
+    expect(userService.getStaff).toHaveBeenCalledTimes(1);
+    expect(userService.getStaffProperties).toHaveBeenCalledTimes(1);
+    expect(userService.getUsers).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.hotels.map(hotel => hotel.id)).toEqual([10, 11]);
   });
 });

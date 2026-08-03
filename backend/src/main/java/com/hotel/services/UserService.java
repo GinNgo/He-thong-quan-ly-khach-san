@@ -1,7 +1,9 @@
-﻿package com.hotel.services;
+package com.hotel.services;
 
 import com.hotel.entities.User;
+import com.hotel.dtos.PropertyOptionDto;
 import com.hotel.dtos.StaffLifecycleRequest;
+import com.hotel.dtos.StaffListItemDto;
 import com.hotel.dtos.UserDto;
 import com.hotel.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,6 +69,47 @@ public class UserService {
         return users.stream()
                 .map(user -> convertToDto(user, assignmentScope))
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<StaffListItemDto> getStaff() {
+        boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
+        java.util.Set<Long> visibleHotelIds = systemAdministrator
+                ? null
+                : propertyAccessService.accessibleHotelIds();
+        if (!systemAdministrator && visibleHotelIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<User> users = systemAdministrator
+                ? userPropertyRepository.findAllHistoricalStaffUsers()
+                : userPropertyRepository.findHistoricalStaffUsersByHotelIds(visibleHotelIds);
+        return users.stream()
+                .sorted(Comparator
+                        .comparing((User user) -> user.getFullName() == null ? "" : user.getFullName(),
+                                String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(User::getId))
+                .map(user -> convertToStaffListItem(user, visibleHotelIds))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PropertyOptionDto> getStaffPropertyOptions() {
+        List<com.hotel.entities.Hotel> hotels;
+        if (propertyAccessService.isSystemAdministrator()) {
+            hotels = hotelRepository.findAll();
+        } else {
+            java.util.Set<Long> visibleHotelIds = propertyAccessService.accessibleHotelIds();
+            hotels = visibleHotelIds.isEmpty() ? List.of() : hotelRepository.findAllById(visibleHotelIds);
+        }
+        return hotels.stream()
+                .sorted(Comparator
+                        .comparing((com.hotel.entities.Hotel hotel) ->
+                                        hotel.getName() == null ? "" : hotel.getName(),
+                                String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(com.hotel.entities.Hotel::getId))
+                .map(hotel -> new PropertyOptionDto(hotel.getId(), hotel.getName()))
+                .toList();
     }
 
     public Optional<UserDto> getUserById(Long id) {
@@ -519,6 +562,47 @@ public class UserService {
         dto.setStaffAssignments(assignments);
 
         return dto;
+    }
+
+    private StaffListItemDto convertToStaffListItem(
+            User user,
+            java.util.Set<Long> visibleHotelIds) {
+        List<StaffListItemDto.RoleSummary> roles = user.getRoles() == null
+                ? List.of()
+                : user.getRoles().stream()
+                        .sorted(Comparator.comparing(role -> role.getCode() == null ? "" : role.getCode()))
+                        .map(role -> new StaffListItemDto.RoleSummary(
+                                role.getId(), role.getCode(), role.getName()))
+                        .toList();
+        StaffListItemDto.PropertySummary hotel = user.getHotel() == null
+                || (visibleHotelIds != null && !visibleHotelIds.contains(user.getHotel().getId()))
+                ? null
+                : new StaffListItemDto.PropertySummary(user.getHotel().getId(), user.getHotel().getName());
+        List<StaffListItemDto.AssignmentSummary> assignments =
+                userPropertyRepository.findByUserIdAndRelationshipTypeOrderByStartDateDesc(
+                                user.getId(), "STAFF")
+                        .stream()
+                        .filter(item -> visibleHotelIds == null
+                                || (item.getHotel() != null && visibleHotelIds.contains(item.getHotel().getId())))
+                        .map(item -> new StaffListItemDto.AssignmentSummary(
+                                item.getId(),
+                                item.getHotel().getId(),
+                                item.getHotel().getName(),
+                                item.getStatus(),
+                                item.getStatusReason(),
+                                item.getStartDate(),
+                                item.getEndDate()))
+                        .toList();
+        return new StaffListItemDto(
+                user.getId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getPhone(),
+                user.getStatus(),
+                roles,
+                hotel,
+                assignments);
     }
 
     private java.util.Map<String, Object> staffSnapshot(User user, com.hotel.entities.Hotel hotel) {

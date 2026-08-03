@@ -1,8 +1,7 @@
 import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { SharedModule } from '@app/shared/shared.module';
-import { StaffAssignment, UserService, User } from '@app/core/services/user';
+import { PropertyOption, StaffAssignment, UserService, User } from '@app/core/services/user';
 import { RoleService, Role } from '@app/core/services/role.service';
-import { ClientApiService, Hotel } from '@app/core/services/client-api.service';
 import { ActivatedRoute } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { finalize, timeout } from 'rxjs/operators';
@@ -18,7 +17,7 @@ import { finalize, timeout } from 'rxjs/operators';
 export class UserManagement implements OnInit {
   users: User[] = [];
   roles: Role[] = [];
-  hotels: Hotel[] = [];
+  hotels: PropertyOption[] = [];
   loading = true;
   saving = false;
   errorMessage = '';
@@ -35,7 +34,6 @@ export class UserManagement implements OnInit {
 
   private userService = inject(UserService);
   private roleService = inject(RoleService);
-  private hotelService = inject(ClientApiService);
   private route = inject(ActivatedRoute);
   private messageService = inject(MessageService);
   private cdr = inject(ChangeDetectorRef);
@@ -53,7 +51,9 @@ export class UserManagement implements OnInit {
     });
 
     this.loadRoles();
-    this.loadHotels();
+    if (this.userType === 'STAFF') {
+      this.loadHotels();
+    }
   }
 
   loadUsers(): void {
@@ -61,7 +61,10 @@ export class UserManagement implements OnInit {
     this.errorMessage = '';
     this.users = [];
 
-    this.userService.getUsers().pipe(
+    const request = this.userType === 'STAFF'
+      ? this.userService.getStaff()
+      : this.userService.getUsers();
+    request.pipe(
       timeout(10000),
       finalize(() => {
         this.loading = false;
@@ -69,11 +72,9 @@ export class UserManagement implements OnInit {
       })
     ).subscribe({
       next: (data) => {
-        if (this.userType === 'CUSTOMER') {
-          this.users = data.filter(u => u.roles && u.roles.some((r: any) => r.code === 'CUSTOMER'));
-        } else {
-          this.users = data.filter(u => !u.roles || !u.roles.some((r: any) => r.code === 'CUSTOMER'));
-        }
+        this.users = this.userType === 'CUSTOMER'
+          ? data.filter(u => u.roles && u.roles.some((r: any) => r.code === 'CUSTOMER'))
+          : data;
       },
       error: (error) => {
         this.errorMessage = error?.error?.message || 'Không thể tải danh sách người dùng.';
@@ -95,9 +96,9 @@ export class UserManagement implements OnInit {
   }
 
   loadHotels(): void {
-    this.hotelService.searchHotels({}).pipe(timeout(10000)).subscribe({
-      next: (data: any) => {
-        this.hotels = data.content || [];
+    this.userService.getStaffProperties().pipe(timeout(10000)).subscribe({
+      next: (data) => {
+        this.hotels = data;
       },
       error: (error) => {
         const detail = error?.error?.message || 'Không thể tải danh sách cơ sở.';

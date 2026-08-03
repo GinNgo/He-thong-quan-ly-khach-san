@@ -1,7 +1,9 @@
-﻿package com.hotel.controllers;
+package com.hotel.controllers;
 
 import com.hotel.entities.User;
 import com.hotel.dtos.ProfileUpdateRequest;
+import com.hotel.dtos.PropertyOptionDto;
+import com.hotel.dtos.StaffListItemDto;
 import com.hotel.dtos.UserDto;
 import com.hotel.services.UserService;
 import jakarta.validation.Valid;
@@ -28,6 +30,18 @@ public class UserController {
     @Permission(function = FunctionCode.USER, action = ActionCode.VIEW)
     public ResponseEntity<List<UserDto>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
+    }
+
+    @GetMapping("/staff")
+    @Permission(function = FunctionCode.USER, action = ActionCode.VIEW)
+    public ResponseEntity<List<StaffListItemDto>> getStaff() {
+        return ResponseEntity.ok(userService.getStaff());
+    }
+
+    @GetMapping("/staff/properties")
+    @Permission(function = FunctionCode.USER, action = ActionCode.VIEW)
+    public ResponseEntity<List<PropertyOptionDto>> getStaffPropertyOptions() {
+        return ResponseEntity.ok(userService.getStaffPropertyOptions());
     }
 
     @GetMapping("/{id}")

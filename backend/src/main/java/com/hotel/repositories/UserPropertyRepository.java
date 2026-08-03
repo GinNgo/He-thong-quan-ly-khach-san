@@ -44,6 +44,13 @@ public interface UserPropertyRepository extends JpaRepository<UserProperty, Long
             @Param("hotelIds") Collection<Long> hotelIds);
 
     @Query("""
+            select distinct up.user
+            from UserProperty up
+            where up.relationshipType <> 'OWNER'
+            """)
+    List<com.hotel.entities.User> findAllHistoricalStaffUsers();
+
+    @Query("""
             select count(up)
             from UserProperty up
             where up.user.id = :userId
