@@ -31,6 +31,9 @@ public class UserService {
     @Autowired
     private PropertyAccessService propertyAccessService;
 
+    @Autowired(required = false)
+    private OperationalAuditService operationalAuditService;
+
     public List<UserDto> getAllUsers() {
         List<User> users;
         java.util.Set<Long> visibleHotelIds = null;
@@ -123,6 +126,7 @@ public class UserService {
             userPropertyRepository.save(mapping);
         }
 
+        auditStaff("STAFF_CREATED", saved, hotel, null, staffSnapshot(saved, hotel), "Staff account created");
         return convertToDto(saved);
     }
 
@@ -130,6 +134,7 @@ public class UserService {
     public UserDto updateUser(Long id, User userDetails, java.util.Set<Long> roleIds, Long hotelId) {
         boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
         User user = requireManageableUser(id, systemAdministrator);
+        java.util.Map<String, Object> before = staffSnapshot(user, user.getHotel());
         java.util.Set<com.hotel.entities.Role> roles = roleIds == null
                 ? user.getRoles()
                 : new java.util.HashSet<>(roleRepository.findAllById(roleIds));
@@ -188,7 +193,7 @@ public class UserService {
         user.setRoles(roles);
         user.setHotel(hotel);
         User saved = userRepository.save(user);
-
+        auditStaff("STAFF_UPDATED", saved, hotel, before, staffSnapshot(saved, hotel), "Staff account updated");
         return convertToDto(saved);
     }
 
@@ -197,6 +202,7 @@ public class UserService {
         boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        java.util.Map<String, Object> before = staffSnapshot(user, user.getHotel());
         User actor = propertyAccessService.currentUser();
         String reason = requireLifecycleReason(request);
         com.hotel.entities.Hotel hotel = requireLifecycleHotel(request, systemAdministrator);
@@ -223,6 +229,7 @@ public class UserService {
             user.setStatus("INACTIVE");
             userRepository.save(user);
         }
+        auditStaff("STAFF_DEACTIVATED", user, hotel, before, staffSnapshot(user, hotel), reason);
         return convertToDto(user, systemAdministrator ? null : propertyAccessService.accessibleHotelIds());
     }
 
@@ -231,6 +238,7 @@ public class UserService {
         boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        java.util.Map<String, Object> before = staffSnapshot(user, user.getHotel());
         User actor = propertyAccessService.currentUser();
         String reason = requireLifecycleReason(request);
         com.hotel.entities.Hotel hotel = requireLifecycleHotel(request, systemAdministrator);
@@ -272,6 +280,7 @@ public class UserService {
         user.setStatus("ACTIVE");
         user.setHotel(hotel);
         User saved = userRepository.save(user);
+        auditStaff("STAFF_REACTIVATED", saved, hotel, before, staffSnapshot(saved, hotel), reason);
         return convertToDto(saved, systemAdministrator ? null : propertyAccessService.accessibleHotelIds());
     }
 
@@ -447,6 +456,28 @@ public class UserService {
         dto.setStaffAssignments(assignments);
 
         return dto;
+    }
+
+    private java.util.Map<String, Object> staffSnapshot(User user, com.hotel.entities.Hotel hotel) {
+        java.util.Map<String, Object> snapshot = new java.util.LinkedHashMap<>();
+        snapshot.put("id", user.getId());
+        snapshot.put("username", user.getUsername());
+        snapshot.put("status", user.getStatus());
+        snapshot.put("roleCodes", user.getRoles() == null ? java.util.List.of() : user.getRoles().stream()
+                .map(com.hotel.entities.Role::getCode).sorted().toList());
+        snapshot.put("hotelId", hotel == null ? null : hotel.getId());
+        return snapshot;
+    }
+
+    private void auditStaff(String eventType, User user, com.hotel.entities.Hotel hotel,
+                            Object before, Object after, String reason) {
+        if (operationalAuditService == null) return;
+        String scope = hotel == null ? "SYSTEM" : "TENANT";
+        operationalAuditService.append(new OperationalAuditService.AuditCommand(
+                scope, hotel == null ? null : hotel.getId(), "STAFF", eventType, "USER",
+                String.valueOf(user.getId()), null, null,
+                reason == null || reason.isBlank() ? "Staff mutation completed" : reason,
+                before, after, null));
     }
 
     @Autowired

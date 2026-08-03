@@ -13,6 +13,7 @@ import com.hotel.repositories.RoomRepository;
 import com.hotel.repositories.RoomTypeImageRepository;
 import com.hotel.repositories.RoomTypeRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,9 @@ public class RoomServiceImpl implements RoomService {
     private final RoomTypeImageRepository roomTypeImageRepository;
     private final PropertyAccessService propertyAccessService;
     private final SubscriptionFeatureService subscriptionFeatureService;
+
+    @Autowired(required = false)
+    private OperationalAuditService operationalAuditService;
 
     @Override
     public List<RoomDTO> getAllRooms() {
@@ -84,6 +88,7 @@ public class RoomServiceImpl implements RoomService {
             }
         }
         
+        audit("ROOM", "ROOM_CREATED", room, null, roomSnapshot(room), "Room created");
         return mapToDTO(room);
     }
 
@@ -93,6 +98,7 @@ public class RoomServiceImpl implements RoomService {
         Room room = roomRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy phòng."));
         propertyAccessService.requireAccessibleOrNotFound(room.getHotel().getId(), "phòng");
+        java.util.Map<String, Object> before = roomSnapshot(room);
         RoomStatePolicy.requireMetadataOnlyUpdate(room, dto);
         requireFeature(room.getHotel().getId(), "MAX_ROOMS");
         RoomType roomType = roomTypeRepository.findById(dto.getRoomTypeId())
@@ -109,7 +115,7 @@ public class RoomServiceImpl implements RoomService {
         room = roomRepository.save(room);
         
         // Simplicity: we don't handle complex image updates here yet, we assume images are handled in a separate endpoint
-        
+        audit("ROOM", "ROOM_UPDATED", room, before, roomSnapshot(room), "Room metadata updated");
         return mapToDTO(room);
     }
 
@@ -118,8 +124,11 @@ public class RoomServiceImpl implements RoomService {
     public RoomDTO startMaintenance(Long id) {
         Room room = findLockedRoom(id);
         requireFeature(room.getHotel().getId(), "MAX_ROOMS");
+        java.util.Map<String, Object> before = roomSnapshot(room);
         RoomStatePolicy.startMaintenance(room);
-        return mapToDTO(roomRepository.save(room));
+        Room saved = roomRepository.save(room);
+        audit("MAINTENANCE", "ROOM_MAINTENANCE_STARTED", saved, before, roomSnapshot(saved), "Room maintenance started");
+        return mapToDTO(saved);
     }
 
     @Override
@@ -127,8 +136,11 @@ public class RoomServiceImpl implements RoomService {
     public RoomDTO completeMaintenance(Long id) {
         Room room = findLockedRoom(id);
         requireFeature(room.getHotel().getId(), "MAX_ROOMS");
+        java.util.Map<String, Object> before = roomSnapshot(room);
         RoomStatePolicy.completeMaintenance(room);
-        return mapToDTO(roomRepository.save(room));
+        Room saved = roomRepository.save(room);
+        audit("MAINTENANCE", "ROOM_MAINTENANCE_COMPLETED", saved, before, roomSnapshot(saved), "Room maintenance completed");
+        return mapToDTO(saved);
     }
 
     @Override
@@ -136,8 +148,10 @@ public class RoomServiceImpl implements RoomService {
     public void deleteRoom(Long id) {
         Room room = findLockedRoom(id);
         requireFeature(room.getHotel().getId(), "MAX_ROOMS");
+        java.util.Map<String, Object> before = roomSnapshot(room);
         RoomStatePolicy.deactivate(room);
-        roomRepository.save(room);
+        Room saved = roomRepository.save(room);
+        audit("ROOM", "ROOM_DEACTIVATED", saved, before, roomSnapshot(saved), "Room deactivated");
     }
 
     @Override
@@ -179,6 +193,12 @@ public class RoomServiceImpl implements RoomService {
             room.setMaxGuests(roomType.getMaxGuests());
             room.setIsDemo(false);
             created.add(mapToDTO(roomRepository.save(room)));
+        }
+        if (operationalAuditService != null && (!created.isEmpty() || !failed.isEmpty())) {
+            operationalAuditService.append(new OperationalAuditService.AuditCommand(
+                    "TENANT", hotelId, "ROOM", "ROOM_BULK_CREATE_COMPLETED", "ROOM_TYPE",
+                    String.valueOf(roomType.getId()), null, null, "Bulk room creation completed", null,
+                    java.util.Map.of("createdCount", created.size(), "failedRoomNumbers", failed), null));
         }
         return new BulkRoomResultDTO(created, failed);
     }
@@ -259,5 +279,26 @@ public class RoomServiceImpl implements RoomService {
         room.setDescriptionVi(dto.getDescriptionVi());
         room.setDescriptionEn(dto.getDescriptionEn());
         room.setNote(dto.getNote());
+    }
+
+    private java.util.Map<String, Object> roomSnapshot(Room room) {
+        java.util.Map<String, Object> snapshot = new java.util.LinkedHashMap<>();
+        snapshot.put("id", room.getId());
+        snapshot.put("roomNumber", room.getRoomNumber());
+        snapshot.put("roomTypeId", room.getRoomType() == null ? null : room.getRoomType().getId());
+        snapshot.put("status", room.getStatus());
+        snapshot.put("maintenanceStatus", room.getMaintenanceStatus());
+        snapshot.put("housekeepingStatus", room.getHousekeepingStatus());
+        snapshot.put("floor", room.getFloor());
+        snapshot.put("maxGuests", room.getMaxGuests());
+        return snapshot;
+    }
+
+    private void audit(String domain, String eventType, Room room, Object before, Object after, String reason) {
+        if (operationalAuditService == null || room.getHotel() == null) return;
+        String aggregateId = room.getId() == null ? "ROOM_NUMBER:" + room.getRoomNumber() : String.valueOf(room.getId());
+        operationalAuditService.append(new OperationalAuditService.AuditCommand(
+                "TENANT", room.getHotel().getId(), domain, eventType, "ROOM", aggregateId,
+                null, null, reason, before, after, null));
     }
 }

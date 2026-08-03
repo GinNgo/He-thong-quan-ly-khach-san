@@ -4,6 +4,7 @@ import com.hotel.dtos.*;
 import com.hotel.entities.*;
 import com.hotel.repositories.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,9 @@ public class ManagementPortalService {
     private final HousekeepingTaskRepository housekeepingTaskRepository;
     private final RoomTypeService roomTypeService;
     private final RoomService roomService;
+
+    @Autowired(required = false)
+    private OperationalAuditService operationalAuditService;
 
     @Transactional
     public Map<String, Object> context(Long activePropertyId) {
@@ -142,6 +146,7 @@ public class ManagementPortalService {
         mapping.setStatus("ACTIVE");
         mapping.setStartDate(LocalDateTime.now());
         userPropertyRepository.save(mapping);
+        audit("PROPERTY", "PROPERTY_CREATED", hotel.getId(), null, propertySummary(hotel), "Property profile created");
         return propertySummary(hotel);
     }
 
@@ -243,6 +248,11 @@ public class ManagementPortalService {
         RoomStatePolicy.completeHousekeeping(room);
         roomRepository.save(room);
         housekeepingTaskRepository.save(task);
+        audit("MAINTENANCE", "HOUSEKEEPING_COMPLETED", task.getHotel().getId(),
+                Map.of("taskId", task.getId(), "status", "IN_PROGRESS", "roomId", task.getRoom().getId()),
+                Map.of("taskId", task.getId(), "status", task.getStatus(), "roomId", room.getId(),
+                        "roomStatus", room.getStatus(), "housekeepingStatus", room.getHousekeepingStatus()),
+                "Housekeeping task completed");
         return Map.of("taskId", task.getId(), "status", task.getStatus(), "roomId", room.getId(),
                 "roomStatus", room.getStatus(), "housekeepingStatus", room.getHousekeepingStatus());
     }
@@ -328,5 +338,12 @@ public class ManagementPortalService {
         dto.setMaxGuests(entity.getMaxGuests()); dto.setDescriptionVi(entity.getDescriptionVi()); dto.setDescriptionEn(entity.getDescriptionEn());
         dto.setIsDemo(entity.getIsDemo());
         return dto;
+    }
+
+    private void audit(String domain, String eventType, Long hotelId, Object before, Object after, String reason) {
+        if (operationalAuditService == null || hotelId == null) return;
+        operationalAuditService.append(new OperationalAuditService.AuditCommand(
+                "TENANT", hotelId, domain, eventType, domain, String.valueOf(hotelId),
+                null, null, reason, before, after, null));
     }
 }

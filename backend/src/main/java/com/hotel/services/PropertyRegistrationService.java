@@ -4,6 +4,7 @@ import com.hotel.entities.*;
 import com.hotel.repositories.*;
 import com.hotel.dtos.RegisterRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,9 @@ public class PropertyRegistrationService {
     private final AccountSubscriptionRepository accountSubscriptionRepository;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final PropertyOwnershipLifecycleService ownershipLifecycleService;
+
+    @Autowired(required = false)
+    private OperationalAuditService operationalAuditService;
 
     @Transactional
     public User registerPropertyOwner(String email, String password, String fullName, String phone,
@@ -81,12 +85,18 @@ public class PropertyRegistrationService {
 
     @Transactional
     public Hotel approveProperty(Long propertyId) {
-        return ownershipLifecycleService.approveProperty(propertyId);
+        Hotel before = hotelRepository.findById(propertyId).orElse(null);
+        Hotel saved = ownershipLifecycleService.approveProperty(propertyId);
+        audit("PROPERTY_APPROVED", saved, before, "Property approval completed");
+        return saved;
     }
 
     @Transactional
     public Hotel rejectProperty(Long propertyId) {
-        return ownershipLifecycleService.rejectProperty(propertyId);
+        Hotel before = hotelRepository.findById(propertyId).orElse(null);
+        Hotel saved = ownershipLifecycleService.rejectProperty(propertyId);
+        audit("PROPERTY_REJECTED", saved, before, "Property approval rejected");
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -98,5 +108,19 @@ public class PropertyRegistrationService {
         String status = mappings.stream().anyMatch(item -> "PENDING_APPROVAL".equals(item.getHotel().getApprovalStatus()))
                 ? "PENDING" : mappings.isEmpty() ? "NONE" : "APPROVED";
         return java.util.Map.of("status", status, "propertyCount", mappings.size());
+    }
+
+    private void audit(String eventType, Hotel hotel, Hotel before, String reason) {
+        if (operationalAuditService == null || hotel == null) return;
+        operationalAuditService.append(new OperationalAuditService.AuditCommand(
+                "SYSTEM", null, "PROPERTY", eventType, "HOTEL", String.valueOf(hotel.getId()),
+                null, null, reason, propertySnapshot(before), propertySnapshot(hotel), null));
+    }
+
+    private java.util.Map<String, Object> propertySnapshot(Hotel hotel) {
+        if (hotel == null) return null;
+        return java.util.Map.of("id", hotel.getId(), "name", hotel.getName(),
+                "approvalStatus", hotel.getApprovalStatus(), "operationStatus", hotel.getOperationStatus(),
+                "status", hotel.getStatus());
     }
 }

@@ -62,6 +62,9 @@ public class RolePermissionService {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired(required = false)
+    private OperationalAuditService operationalAuditService;
+
     public List<AppModuleDto> getRolePermissionsAsTree(Long roleId) {
         roleRepository.findById(roleId).orElseThrow(() -> new RuntimeException("Role not found"));
 
@@ -160,14 +163,22 @@ public class RolePermissionService {
         role.setUpdatedAt(LocalDateTime.now());
         Role saved = roleRepository.saveAndFlush(role);
         Long resultingVersion = saved.getVersion() == null ? role.getVersion() + 1 : saved.getVersion();
+        String nextState = permissionSnapshot(requestedMasks);
         rolePermissionAuditRepository.save(new RolePermissionAudit(
                 roleId,
                 currentActorId(),
                 request.getExpectedVersion(),
                 resultingVersion,
                 previousState,
-                permissionSnapshot(requestedMasks),
+                nextState,
                 LocalDateTime.now()));
+        if (operationalAuditService != null) {
+            operationalAuditService.append(new OperationalAuditService.AuditCommand(
+                    "SYSTEM", null, "ROLE", "ROLE_PERMISSIONS_UPDATED", "ROLE", String.valueOf(roleId),
+                    null, null, "Role permission matrix updated",
+                    Map.of("version", request.getExpectedVersion(), "permissions", previousState),
+                    Map.of("version", resultingVersion, "permissions", nextState), null));
+        }
         return resultingVersion;
     }
 

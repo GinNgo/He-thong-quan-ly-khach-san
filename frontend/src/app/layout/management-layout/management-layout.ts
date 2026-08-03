@@ -75,6 +75,13 @@ export class ManagementLayout implements OnInit, OnDestroy {
           actionCode: ActionCode.VIEW,
           operationalOnly: true,
         },
+        {
+          label: 'Nhật ký vận hành',
+          url: '/management/audit-log',
+          icon: 'history',
+          functionCode: FunctionCode.AUDIT_LOG,
+          actionCode: ActionCode.VIEW,
+        },
       ],
     },
   ];
