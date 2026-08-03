@@ -11,12 +11,19 @@ import com.hotel.exceptions.SocialAccountLinkException;
 import com.hotel.repositories.RoleRepository;
 import com.hotel.repositories.UserRepository;
 import com.hotel.security.AccountStatusPolicy;
+import com.hotel.security.ActionCode;
+import com.hotel.security.CustomUserDetails;
+import com.hotel.security.CustomUserDetailsService;
+import com.hotel.security.FunctionCode;
 import com.hotel.security.RefreshTokenException;
 import com.hotel.security.JwtTokenProvider;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,11 +34,6 @@ import com.hotel.services.social.GoogleIdentityVerifier;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.gson.GsonFactory;
-import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class AuthService {
@@ -46,9 +48,7 @@ public class AuthService {
     private final GoogleIdentityVerifier googleIdentityVerifier;
     private final FacebookIdentityVerifier facebookIdentityVerifier;
     private final SocialAccountLinkService socialAccountLinkService;
-
-    @Value("${google.client.id:YOUR_GOOGLE_CLIENT_ID_HERE}")
-    private String googleClientId;
+    private final CustomUserDetailsService customUserDetailsService;
 
     public AuthService(AuthenticationManager authenticationManager, UserRepository userRepository,
                        RoleRepository roleRepository, PasswordEncoder passwordEncoder,
@@ -57,7 +57,8 @@ public class AuthService {
                        com.hotel.repositories.AppFunctionRepository appFunctionRepository,
                        GoogleIdentityVerifier googleIdentityVerifier,
                        FacebookIdentityVerifier facebookIdentityVerifier,
-                       SocialAccountLinkService socialAccountLinkService) {
+                       SocialAccountLinkService socialAccountLinkService,
+                       CustomUserDetailsService customUserDetailsService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
@@ -68,6 +69,7 @@ public class AuthService {
         this.googleIdentityVerifier = googleIdentityVerifier;
         this.facebookIdentityVerifier = facebookIdentityVerifier;
         this.socialAccountLinkService = socialAccountLinkService;
+        this.customUserDetailsService = customUserDetailsService;
     }
 
     public AuthResponse login(LoginRequest loginRequest) {
@@ -82,24 +84,7 @@ public class AuthService {
         AccountStatusPolicy.requireActive(authenticatedUser);
 
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        String token = jwtTokenProvider.generateToken(authentication);
-        java.util.List<String> roles = authentication.getAuthorities().stream()
-                .map(org.springframework.security.core.GrantedAuthority::getAuthority)
-                .collect(java.util.stream.Collectors.toList());
-
-        java.util.List<com.hotel.dtos.PermissionDTO> permissions = new java.util.ArrayList<>();
-        Long userId = null;
-        if (authentication.getPrincipal() instanceof com.hotel.security.CustomUserDetails) {
-            com.hotel.security.CustomUserDetails userDetails = (com.hotel.security.CustomUserDetails) authentication.getPrincipal();
-            userId = userDetails.getUserId();
-            userDetails.getPermissionMasks().forEach((func, mask) -> {
-                permissions.add(new com.hotel.dtos.PermissionDTO(func.name(), mask));
-            });
-        }
-
-        return new AuthResponse(token, authentication.getName(), userId, roles, permissions);
+        return activateAndBuildResponse(authoritativeAuthentication(authentication));
     }
 
     public String register(RegisterRequest registerRequest) {
@@ -166,32 +151,7 @@ public class AuthService {
 
     AuthResponse createSocialAuthResponse(User user) {
         AccountStatusPolicy.requireActive(user);
-        java.util.List<org.springframework.security.core.authority.SimpleGrantedAuthority> authorities =
-                user.getRoles().stream()
-                        .map(role -> new org.springframework.security.core.authority.SimpleGrantedAuthority(role.getCode()))
-                        .collect(java.util.stream.Collectors.toList());
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                user.getUsername(), null, authorities);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String token = jwtTokenProvider.generateToken(authentication);
-        java.util.List<String> roles = user.getRoles().stream()
-                .map(Role::getCode)
-                .sorted()
-                .collect(java.util.stream.Collectors.toList());
-        java.util.Map<String, Integer> masks = new java.util.TreeMap<>();
-        user.getRoles().forEach(role -> {
-            if (role.getRolePermissions() == null) return;
-            role.getRolePermissions().forEach(permission -> {
-                if (permission.getFunction() == null) return;
-                masks.merge(permission.getFunction().getCode(),
-                        permission.getActionMask() == null ? 0 : permission.getActionMask(),
-                        (left, right) -> left | right);
-            });
-        });
-        java.util.List<com.hotel.dtos.PermissionDTO> permissions = masks.entrySet().stream()
-                .map(entry -> new com.hotel.dtos.PermissionDTO(entry.getKey(), entry.getValue()))
-                .collect(java.util.stream.Collectors.toList());
-        return new AuthResponse(token, user.getUsername(), user.getId(), roles, permissions);
+        return activateAndBuildResponse(loadAuthoritativeAuthentication(user.getUsername()));
     }
 
     @Transactional(readOnly = true)
@@ -200,65 +160,33 @@ public class AuthService {
                 .orElseThrow(RefreshTokenException::invalid);
         AccountStatusPolicy.requireActive(user);
 
-        java.util.List<org.springframework.security.core.authority.SimpleGrantedAuthority> authorities =
-                user.getRoles().stream()
-                        .map(role -> new org.springframework.security.core.authority.SimpleGrantedAuthority(role.getCode()))
-                        .collect(java.util.stream.Collectors.toList());
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                user.getUsername(), null, authorities);
-        String token = jwtTokenProvider.generateToken(authentication);
-
-        java.util.Map<String, Integer> permissionMasks = new java.util.TreeMap<>();
-        user.getRoles().forEach(role -> {
-            if (role.getRolePermissions() == null) return;
-            role.getRolePermissions().forEach(rolePermission -> {
-                if (rolePermission.getFunction() == null) return;
-                int mask = rolePermission.getActionMask() == null ? 0 : rolePermission.getActionMask();
-                permissionMasks.merge(rolePermission.getFunction().getCode(), mask, (left, right) -> left | right);
-            });
-        });
-        java.util.List<com.hotel.dtos.PermissionDTO> permissions = permissionMasks.entrySet().stream()
-                .map(entry -> new com.hotel.dtos.PermissionDTO(entry.getKey(), entry.getValue()))
-                .collect(java.util.stream.Collectors.toList());
-        java.util.List<String> roles = user.getRoles().stream()
-                .map(Role::getCode)
-                .sorted()
-                .collect(java.util.stream.Collectors.toList());
-
-        return new AuthResponse(token, user.getUsername(), user.getId(), roles, permissions);
+        return activateAndBuildResponse(loadAuthoritativeAuthentication(user.getUsername()));
     }
 
     @Transactional(readOnly = true)
     public java.util.List<com.hotel.dtos.AppModuleDto> getMyMenu() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return Collections.emptyList();
+        if (authentication == null || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            throw new AuthenticationCredentialsNotFoundException("Authentication is required for the menu context.");
         }
 
-        boolean isAdminRole = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("SUPER_ADMIN") || a.getAuthority().equals("ADMIN"));
-        boolean isAdminUser = authentication.getName().equals("admin");
-        boolean isBypass = isAdminRole || isAdminUser;
-
-        java.util.Map<String, Integer> userMasks = new java.util.HashMap<>();
+        boolean isBypass = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("SUPER_ADMIN")
+                        || a.getAuthority().equals("ROLE_SUPER_ADMIN"));
+        java.util.Map<FunctionCode, Integer> userMasks = java.util.Map.of();
         if (!isBypass) {
-            userRepository.findByUsername(authentication.getName()).ifPresent(user -> {
-                if (user.getRoles() != null) {
-                    user.getRoles().forEach(role -> {
-                        if (role.getRolePermissions() != null) {
-                            role.getRolePermissions().forEach(rolePermission -> {
-                                String functionCode = rolePermission.getFunction().getCode();
-                                Integer actionMask = rolePermission.getActionMask();
-                                userMasks.merge(functionCode, actionMask != null ? actionMask : 0, (left, right) -> left | right);
-                            });
-                        }
-                    });
-                }
-            });
+            if (!(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Authoritative server permission context is required.");
+            }
+            userMasks = userDetails.getPermissionMasks();
         }
 
-        java.util.List<com.hotel.entities.AppModule> allModules = appModuleRepository.findAll();
-        java.util.List<com.hotel.entities.AppFunction> allFunctions = appFunctionRepository.findAll();
+        java.util.List<com.hotel.entities.AppModule> allModules =
+                new java.util.ArrayList<>(appModuleRepository.findAll());
+        java.util.List<com.hotel.entities.AppFunction> allFunctions =
+                new java.util.ArrayList<>(appFunctionRepository.findAll());
 
         // Sort modules and functions safely
         allModules.sort(java.util.Comparator.comparing(m -> m.getId()));
@@ -274,7 +202,7 @@ public class AuthService {
             java.util.List<com.hotel.dtos.AppFunctionDto> funcDtos = new java.util.ArrayList<>();
             for (com.hotel.entities.AppFunction func : allFunctions) {
                 if (func.getModule().getId().equals(module.getId())) {
-                    if (isBypass || (userMasks.containsKey(func.getCode()) && (userMasks.get(func.getCode()) & 1) == 1)) {
+                    if (isBypass || canView(userMasks, func.getCode())) {
                         com.hotel.dtos.AppFunctionDto dto = new com.hotel.dtos.AppFunctionDto();
                         dto.setId(func.getId());
                         dto.setModuleId(module.getId());
@@ -294,5 +222,47 @@ public class AuthService {
         }
 
         return result;
+    }
+
+    private Authentication authoritativeAuthentication(Authentication authentication) {
+        if (authentication.getPrincipal() instanceof CustomUserDetails) {
+            return authentication;
+        }
+        return loadAuthoritativeAuthentication(authentication.getName());
+    }
+
+    private Authentication loadAuthoritativeAuthentication(String username) {
+        UserDetails details = customUserDetailsService.loadUserByUsername(username);
+        if (!(details instanceof CustomUserDetails)) {
+            throw new IllegalStateException("Authoritative authentication principal is unavailable.");
+        }
+        return UsernamePasswordAuthenticationToken.authenticated(details, null, details.getAuthorities());
+    }
+
+    private AuthResponse activateAndBuildResponse(Authentication authentication) {
+        if (!(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
+            throw new IllegalStateException("Authoritative authentication principal is unavailable.");
+        }
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String token = jwtTokenProvider.generateToken(authentication);
+        java.util.List<String> roles = authentication.getAuthorities().stream()
+                .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                .distinct()
+                .sorted()
+                .toList();
+        java.util.List<com.hotel.dtos.PermissionDTO> permissions = userDetails.getPermissionMasks().entrySet().stream()
+                .sorted(java.util.Map.Entry.comparingByKey())
+                .map(entry -> new com.hotel.dtos.PermissionDTO(entry.getKey().name(), entry.getValue()))
+                .toList();
+        return new AuthResponse(token, userDetails.getUsername(), userDetails.getUserId(), roles, permissions);
+    }
+
+    private boolean canView(java.util.Map<FunctionCode, Integer> masks, String functionCode) {
+        try {
+            Integer mask = masks.get(FunctionCode.valueOf(functionCode));
+            return mask != null && (mask & ActionCode.VIEW) == ActionCode.VIEW;
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
     }
 }

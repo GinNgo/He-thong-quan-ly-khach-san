@@ -11,7 +11,12 @@ export interface AuthState {
   fullName: string;
   avatarUrl: string;
   roles: string[];
-  permissions: string[];
+  permissions: PermissionMask[];
+}
+
+export interface PermissionMask {
+  function: string;
+  actionMask: number;
 }
 
 export interface AuthResponse {
@@ -19,7 +24,7 @@ export interface AuthResponse {
   userId?: number;
   username: string;
   roles: string[];
-  permissions: string[];
+  permissions: PermissionMask[];
 }
 
 export interface AuthSessionUser {
@@ -28,7 +33,7 @@ export interface AuthSessionUser {
   fullName?: string;
   avatarUrl?: string;
   roles?: string[];
-  permissions?: string[];
+  permissions?: PermissionMask[];
 }
 
 export interface RegistrationResponse {
@@ -97,7 +102,7 @@ export class AuthService {
           fullName: user.fullName || '',
           avatarUrl: user.avatarUrl || '',
           roles: user.roles || [],
-          permissions: user.permissions || [],
+          permissions: this.normalizePermissions(user.permissions),
         });
         this.scheduleSessionExpiry(token);
       } catch {
@@ -230,7 +235,7 @@ export class AuthService {
       fullName: user.fullName || '',
       avatarUrl: user.avatarUrl || '',
       roles: user.roles || [],
-      permissions: user.permissions || []
+      permissions: this.normalizePermissions(user.permissions)
     });
     this.scheduleSessionExpiry(token);
   }
@@ -269,6 +274,10 @@ export class AuthService {
     return this.getAuthState().roles;
   }
 
+  getPermissions(): PermissionMask[] {
+    return this.getAuthState().permissions;
+  }
+
   getAccessToken(): string | null {
     const token = this.tokenStore.getValidToken();
     if (!token && this.authStateSubject.value.isAuthenticated) this.clearAuthState();
@@ -299,8 +308,20 @@ export class AuthService {
       id: response.userId ?? storedUser.id,
       username: response.username || storedUser.username,
       roles: response.roles || storedUser.roles || [],
-      permissions: response.permissions || storedUser.permissions || [],
+      permissions: this.normalizePermissions(response.permissions ?? storedUser.permissions),
     };
+  }
+
+  private normalizePermissions(value: unknown): PermissionMask[] {
+    if (!Array.isArray(value)) return [];
+    return value.filter((permission): permission is PermissionMask => {
+      if (!permission || typeof permission !== 'object') return false;
+      const candidate = permission as Partial<PermissionMask>;
+      return typeof candidate.function === 'string'
+        && candidate.function.length > 0
+        && Number.isInteger(candidate.actionMask)
+        && (candidate.actionMask ?? -1) >= 0;
+    });
   }
 
   private scheduleSessionExpiry(token: string): void {

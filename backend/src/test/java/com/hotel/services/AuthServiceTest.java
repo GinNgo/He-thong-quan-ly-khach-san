@@ -6,7 +6,15 @@ import com.hotel.dtos.RegisterRequest;
 import com.hotel.entities.User;
 import com.hotel.repositories.UserRepository;
 import com.hotel.repositories.RoleRepository;
+import com.hotel.repositories.AppFunctionRepository;
+import com.hotel.repositories.AppModuleRepository;
+import com.hotel.security.ActionCode;
+import com.hotel.security.CustomUserDetails;
+import com.hotel.security.CustomUserDetailsService;
+import com.hotel.security.FunctionCode;
 import com.hotel.security.JwtTokenProvider;
+import com.hotel.services.social.FacebookIdentityVerifier;
+import com.hotel.services.social.GoogleIdentityVerifier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,6 +51,24 @@ public class AuthServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private AppModuleRepository appModuleRepository;
+
+    @Mock
+    private AppFunctionRepository appFunctionRepository;
+
+    @Mock
+    private GoogleIdentityVerifier googleIdentityVerifier;
+
+    @Mock
+    private FacebookIdentityVerifier facebookIdentityVerifier;
+
+    @Mock
+    private SocialAccountLinkService socialAccountLinkService;
+
+    @Mock
+    private CustomUserDetailsService customUserDetailsService;
+
     @InjectMocks
     private AuthService authService;
 
@@ -63,9 +89,16 @@ public class AuthServiceTest {
         request.setUsername("testuser");
         request.setPassword("password123");
 
-        Authentication authentication = mock(Authentication.class);
-        when(authentication.getName()).thenReturn("testuser");
-        when(authentication.getAuthorities()).thenReturn(java.util.Collections.emptyList());
+        CustomUserDetails details = new CustomUserDetails(
+                "testuser",
+                "hashed_password",
+                java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("PROPERTY_OWNER")),
+                java.util.Map.of(FunctionCode.BOOKING, ActionCode.VIEW | ActionCode.CREATE),
+                1L,
+                10L,
+                java.util.Map.of());
+        Authentication authentication = UsernamePasswordAuthenticationToken.authenticated(
+                details, null, details.getAuthorities());
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(authentication);
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
         when(jwtUtil.generateToken(any(Authentication.class))).thenReturn("mocked-jwt-token");
@@ -75,6 +108,11 @@ public class AuthServiceTest {
         assertNotNull(response);
         assertEquals("mocked-jwt-token", response.getAccessToken());
         assertEquals("testuser", response.getUsername());
+        assertEquals(1L, response.getUserId());
+        assertEquals(java.util.List.of("PROPERTY_OWNER"), response.getRoles());
+        assertEquals(1, response.getPermissions().size());
+        assertEquals("BOOKING", response.getPermissions().get(0).getFunction());
+        assertEquals(3, response.getPermissions().get(0).getActionMask());
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
         verify(jwtUtil).generateToken(any(Authentication.class));
     }

@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { AuthService, PermissionMask } from './auth';
 
 export enum ActionCode {
   VIEW = 1,
@@ -48,10 +49,11 @@ export enum FunctionCode {
 })
 export class PermissionService {
 
-  constructor() { }
+  constructor(private readonly authService: AuthService) { }
 
-  getPermissions(): { function: string, actionMask: number }[] {
-    return this.readStoredUser()?.permissions || [];
+  // Client checks only shape presentation; every protected action is re-authorized by the backend.
+  getPermissions(): PermissionMask[] {
+    return this.authService.getPermissions();
   }
 
   hasPermission(functionCode: string, actionCode: number): boolean {
@@ -71,22 +73,8 @@ export class PermissionService {
   }
 
   isSuperAdmin(): boolean {
-    const user = this.readStoredUser();
-    if (user) {
-      const roles = user.roles || [];
-      return user.username === 'admin' || roles.includes('SUPER_ADMIN') || roles.includes('ADMIN');
-    }
-    return false;
-  }
-
-  private readStoredUser(): any | null {
-    try {
-      const storage = globalThis.localStorage;
-      const raw = storage?.getItem('user');
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
+    const roles = this.authService.getRoles();
+    return roles.includes('SUPER_ADMIN') || roles.includes('ROLE_SUPER_ADMIN');
   }
 
   canView(functionCode: string): boolean {

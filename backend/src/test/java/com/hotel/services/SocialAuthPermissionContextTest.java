@@ -1,15 +1,16 @@
 package com.hotel.services;
 
 import com.hotel.dtos.AuthResponse;
-import com.hotel.entities.AppFunction;
-import com.hotel.entities.Role;
-import com.hotel.entities.RolePermission;
 import com.hotel.entities.User;
 import com.hotel.repositories.AppFunctionRepository;
 import com.hotel.repositories.AppModuleRepository;
 import com.hotel.repositories.RoleRepository;
 import com.hotel.repositories.UserRepository;
 import com.hotel.security.JwtTokenProvider;
+import com.hotel.security.ActionCode;
+import com.hotel.security.CustomUserDetails;
+import com.hotel.security.CustomUserDetailsService;
+import com.hotel.security.FunctionCode;
 import com.hotel.services.social.FacebookIdentityVerifier;
 import com.hotel.services.social.GoogleIdentityVerifier;
 import org.junit.jupiter.api.Test;
@@ -19,9 +20,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.Set;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -38,38 +38,38 @@ class SocialAuthPermissionContextTest {
     @Mock GoogleIdentityVerifier google;
     @Mock FacebookIdentityVerifier facebook;
     @Mock SocialAccountLinkService links;
+    @Mock CustomUserDetailsService userDetailsService;
 
     @Test
     void socialAuthResponseAggregatesTheSameRolePermissionMasks() {
-        AppFunction function = new AppFunction();
-        function.setCode("BOOKING_VIEW");
-        Role role = new Role();
-        role.setCode("RECEPTIONIST");
-        RolePermission first = new RolePermission();
-        first.setFunction(function);
-        first.setActionMask(1);
-        RolePermission second = new RolePermission();
-        second.setFunction(function);
-        second.setActionMask(4);
-        role.setRolePermissions(Set.of(first, second));
-
         User user = new User();
         user.setId(77L);
         user.setUsername("receptionist@example.com");
         user.setStatus("ACTIVE");
-        user.setRoles(Set.of(role));
+        CustomUserDetails details = new CustomUserDetails(
+                user.getUsername(),
+                "social-password-placeholder",
+                java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("RECEPTIONIST")),
+                java.util.Map.of(FunctionCode.BOOKING, ActionCode.VIEW | ActionCode.UPDATE),
+                user.getId(),
+                5L,
+                java.util.Map.of());
+        when(userDetailsService.loadUserByUsername(user.getUsername())).thenReturn(details);
         when(tokenProvider.generateToken(any())).thenReturn("social-token");
 
         AuthService service = new AuthService(
                 authenticationManager, users, roles, passwordEncoder, tokenProvider,
-                modules, functions, google, facebook, links);
+                modules, functions, google, facebook, links, userDetailsService);
 
         AuthResponse response = service.createSocialAuthResponse(user);
 
         assertEquals("social-token", response.getAccessToken());
         assertEquals(77L, response.getUserId());
         assertEquals(1, response.getPermissions().size());
-        assertEquals("BOOKING_VIEW", response.getPermissions().get(0).getFunction());
+        assertEquals(java.util.List.of("RECEPTIONIST"), response.getRoles());
+        assertEquals("BOOKING", response.getPermissions().get(0).getFunction());
         assertEquals(5, response.getPermissions().get(0).getActionMask());
+        assertSame(details, org.springframework.security.core.context.SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal());
     }
 }
