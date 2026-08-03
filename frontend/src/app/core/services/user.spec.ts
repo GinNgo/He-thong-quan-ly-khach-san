@@ -60,4 +60,22 @@ describe('UserService staff reads', () => {
     expect(request.request.body).toEqual(payload);
     request.flush({ id: 42, ...payload });
   });
+
+  it('updates staff through the dedicated endpoint', () => {
+    const payload = {
+      fullName: 'Updated Staff',
+      phone: '0901000000',
+      password: null,
+      roleIds: [3],
+      hotelId: 11,
+      assignmentReason: 'Transfer to Hue',
+    };
+
+    service.updateStaff(42, payload).subscribe();
+
+    const request = http.expectOne(`${environment.apiUrl}/users/staff/42`);
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual(payload);
+    request.flush({ id: 42, ...payload });
+  });
 });

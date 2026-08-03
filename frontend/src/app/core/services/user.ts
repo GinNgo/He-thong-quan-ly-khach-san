@@ -38,6 +38,15 @@ export interface StaffCreateRequest {
   hotelId: number;
 }
 
+export interface StaffUpdateRequest {
+  fullName: string;
+  phone?: string | null;
+  password?: string | null;
+  roleIds: number[];
+  hotelId: number;
+  assignmentReason?: string | null;
+}
+
 export interface StaffAssignment {
   id: number;
   hotelId: number;
@@ -105,6 +114,10 @@ export class UserService {
 
   createStaff(request: StaffCreateRequest): Observable<User> {
     return this.http.post<User>(`${this.apiUrl}/staff`, request);
+  }
+
+  updateStaff(id: number, request: StaffUpdateRequest): Observable<User> {
+    return this.http.put<User>(`${this.apiUrl}/staff/${id}`, request);
   }
 
   updateUser(id: number, user: any): Observable<User> {

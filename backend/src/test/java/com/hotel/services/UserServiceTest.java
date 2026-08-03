@@ -5,6 +5,7 @@ import com.hotel.entities.Role;
 import com.hotel.entities.User;
 import com.hotel.entities.UserProperty;
 import com.hotel.dtos.StaffLifecycleRequest;
+import com.hotel.dtos.StaffUpdateRequest;
 import com.hotel.security.AccountDisabledAuthenticationException;
 import com.hotel.security.AccountStatusPolicy;
 import com.hotel.repositories.HotelRepository;
@@ -60,6 +61,9 @@ class UserServiceTest {
 
     @Mock
     private PropertySubscriptionEntitlementService propertyEntitlementService;
+
+    @Mock
+    private AuthSessionRevocationService authSessionRevocationService;
 
     @InjectMocks
     private UserService userService;
@@ -237,20 +241,20 @@ class UserServiceTest {
     }
 
     @Test
-    void updateUser_AsPropertyOwner_RejectsImplicitStaffTransfer() {
+    void updateStaff_AsPropertyOwner_MovesAssignmentAndPreservesHistory() {
         Hotel newHotel = new Hotel();
         newHotel.setId(11L);
+        newHotel.setName("Hotel B");
         UserProperty oldMapping = new UserProperty();
+        oldMapping.setId(20L);
         oldMapping.setUser(staff);
         oldMapping.setHotel(hotel);
         oldMapping.setRelationshipType("STAFF");
         oldMapping.setStatus("ACTIVE");
-        User details = new User();
-        details.setFullName("Nhân viên mới");
-        details.setStatus("ACTIVE");
+        StaffUpdateRequest request = staffUpdateRequest(11L, "Transfer to Hotel B");
 
         when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
-        when(userRepository.findById(2L)).thenReturn(java.util.Optional.of(staff));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(java.util.Optional.of(staff));
         when(propertyAccessService.currentUser()).thenReturn(owner);
         when(propertyAccessService.accessibleHotelIds()).thenReturn(Set.of(10L, 11L));
         when(userRepository.isUserAccessible(2L, Set.of(10L, 11L))).thenReturn(true);
@@ -258,11 +262,37 @@ class UserServiceTest {
         when(propertyAccessService.requireManagedHotel(11L)).thenReturn(newHotel);
         when(userPropertyRepository.findStaffAssignmentsForUpdate(2L))
                 .thenReturn(List.of(oldMapping));
+        when(propertyEntitlementService.getCurrentForUpdate(11L)).thenReturn(
+                PropertySubscriptionEntitlementService.EntitlementView.none(11L, "TEST"));
+        when(userPropertyRepository.countActiveStaffByHotelId(11L)).thenReturn(2L);
+        when(userRepository.saveAndFlush(staff)).thenReturn(staff);
 
-        assertThrows(IllegalStateException.class,
-                () -> userService.updateUser(2L, details, Set.of(3L), 11L));
+        userService.updateStaff(2L, request);
 
-        assertEquals("ACTIVE", oldMapping.getStatus());
+        assertEquals("INACTIVE", oldMapping.getStatus());
+        assertEquals("Transfer to Hotel B", oldMapping.getStatusReason());
+        assertSame(owner, oldMapping.getStatusChangedBy());
+        assertSame(newHotel, staff.getHotel());
+        ArgumentCaptor<UserProperty> mapping = ArgumentCaptor.forClass(UserProperty.class);
+        verify(userPropertyRepository).saveAndFlush(mapping.capture());
+        assertEquals("ACTIVE", mapping.getValue().getStatus());
+        assertSame(newHotel, mapping.getValue().getHotel());
+        assertEquals("Transfer to Hotel B", mapping.getValue().getStatusReason());
+        verify(subscriptionFeatureService).checkFeatureLimitForProperty(11L, "MAX_STAFF", 2L, 1L);
+        verify(userRepository).saveAndFlush(staff);
+    }
+
+    @Test
+    void updateUser_RejectsStaffBypassOfDedicatedEndpoint() {
+        when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
+        when(userRepository.findById(2L)).thenReturn(java.util.Optional.of(staff));
+        when(userPropertyRepository.findByUserIdAndRelationshipType(2L, "STAFF"))
+                .thenReturn(List.of(activeAssignment(hotel)));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> userService.updateUser(2L, new User(), Set.of(3L), 10L));
+
+        assertEquals("Use the dedicated staff endpoint for staff account updates.", exception.getMessage());
         verify(userRepository, never()).save(any());
     }
 
@@ -372,6 +402,16 @@ class UserServiceTest {
         StaffLifecycleRequest request = new StaffLifecycleRequest();
         request.setHotelId(hotelId);
         request.setReason(reason);
+        return request;
+    }
+
+    private StaffUpdateRequest staffUpdateRequest(Long hotelId, String reason) {
+        StaffUpdateRequest request = new StaffUpdateRequest();
+        request.setFullName("Updated Staff");
+        request.setPhone("0901000000");
+        request.setRoleIds(Set.of(3L));
+        request.setHotelId(hotelId);
+        request.setAssignmentReason(reason);
         return request;
     }
 }

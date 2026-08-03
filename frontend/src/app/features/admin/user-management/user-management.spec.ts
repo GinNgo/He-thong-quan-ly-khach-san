@@ -33,6 +33,7 @@ describe('UserManagement staff lifecycle', () => {
     getStaffRoles: ReturnType<typeof vi.fn>;
     createUser: ReturnType<typeof vi.fn>;
     createStaff: ReturnType<typeof vi.fn>;
+    updateStaff: ReturnType<typeof vi.fn>;
     updateUser: ReturnType<typeof vi.fn>;
     deactivateStaff: ReturnType<typeof vi.fn>;
     reactivateStaff: ReturnType<typeof vi.fn>;
@@ -51,6 +52,7 @@ describe('UserManagement staff lifecycle', () => {
       ])),
       createUser: vi.fn(() => of(staff)),
       createStaff: vi.fn(() => of(staff)),
+      updateStaff: vi.fn(() => of(staff)),
       updateUser: vi.fn(() => of(staff)),
       deactivateStaff: vi.fn(() => of(staff)),
       reactivateStaff: vi.fn(() => of(staff)),
@@ -159,5 +161,40 @@ describe('UserManagement staff lifecycle', () => {
       hotelId: 10,
     });
     expect(userService.createUser).not.toHaveBeenCalled();
+  });
+
+  it('requires a reason before moving staff to another property', () => {
+    const fixture = TestBed.createComponent(UserManagement);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    component.editUser(staff);
+    component.userForm.hotelId = 11;
+    component.userForm.assignmentReason = '';
+    component.saveUser();
+
+    expect(userService.updateStaff).not.toHaveBeenCalled();
+  });
+
+  it('submits a validated property move through the dedicated staff endpoint', () => {
+    const fixture = TestBed.createComponent(UserManagement);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    component.editUser(staff);
+    component.userForm.hotelId = 11;
+    component.userForm.assignmentReason = 'Transfer to Hue property';
+    component.userForm.password = '';
+    component.saveUser();
+
+    expect(userService.updateStaff).toHaveBeenCalledWith(42, {
+      fullName: 'Nguyen Staff',
+      phone: null,
+      password: null,
+      roleIds: [3],
+      hotelId: 11,
+      assignmentReason: 'Transfer to Hue property',
+    });
+    expect(userService.updateUser).not.toHaveBeenCalled();
   });
 });

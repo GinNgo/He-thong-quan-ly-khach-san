@@ -1,6 +1,6 @@
 import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { SharedModule } from '@app/shared/shared.module';
-import { PropertyOption, StaffAssignment, StaffCreateRequest, UserService, User } from '@app/core/services/user';
+import { PropertyOption, StaffAssignment, StaffCreateRequest, StaffUpdateRequest, UserService, User } from '@app/core/services/user';
 import { RoleService, Role } from '@app/core/services/role.service';
 import { ActivatedRoute } from '@angular/router';
 import { MessageService } from 'primeng/api';
@@ -127,7 +127,9 @@ export class UserManagement implements OnInit {
       phone: (user as any).phone || '',
       status: user.status,
       roleIds: user.roles ? user.roles.map((r: any) => r.id) : [],
-      hotelId: activeAssignment?.hotelId ?? user.hotel?.id ?? null
+      hotelId: activeAssignment?.hotelId ?? user.hotel?.id ?? null,
+      originalHotelId: activeAssignment?.hotelId ?? user.hotel?.id ?? null,
+      assignmentReason: '',
     };
     this.userDialogMode = 'edit';
     this.displayDialog = true;
@@ -161,6 +163,21 @@ export class UserManagement implements OnInit {
         hotelId: payload.hotelId,
       };
       request = this.userService.createStaff(staffRequest);
+    } else if (this.userDialogMode === 'edit' && this.userType === 'STAFF') {
+      const validationMessage = this.staffUpdateValidationMessage();
+      if (validationMessage) {
+        this.messageService.add({ severity: 'warn', summary: 'Invalid staff update', detail: validationMessage });
+        return;
+      }
+      const staffRequest: StaffUpdateRequest = {
+        fullName: String(payload.fullName).trim(),
+        phone: String(payload.phone || '').trim() || null,
+        password: String(payload.password || '') || null,
+        roleIds: payload.roleIds,
+        hotelId: payload.hotelId,
+        assignmentReason: String(payload.assignmentReason || '').trim() || null,
+      };
+      request = this.userService.updateStaff(this.userForm.id, staffRequest);
     } else {
       request = this.userDialogMode === 'create'
         ? this.userService.createUser(payload)
@@ -198,6 +215,23 @@ export class UserManagement implements OnInit {
       return 'Select at least one staff role.';
     }
     if (!this.userForm.hotelId) return 'Select a property.';
+    return null;
+  }
+
+  private staffUpdateValidationMessage(): string | null {
+    if (!String(this.userForm.fullName || '').trim()) return 'Full name is required.';
+    const password = String(this.userForm.password || '');
+    if (password && (password.length < 8 || password.length > 256)) {
+      return 'A replacement password must be between 8 and 256 characters.';
+    }
+    if (!Array.isArray(this.userForm.roleIds) || this.userForm.roleIds.length === 0) {
+      return 'Select at least one staff role.';
+    }
+    if (!this.userForm.hotelId) return 'Select a property.';
+    if (this.userForm.hotelId !== this.userForm.originalHotelId
+        && String(this.userForm.assignmentReason || '').trim().length < 3) {
+      return 'Enter a property move reason of at least 3 characters.';
+    }
     return null;
   }
 
@@ -292,7 +326,9 @@ export class UserManagement implements OnInit {
       phone: '',
       status: 'ACTIVE',
       roleIds: [],
-      hotelId: null
+      hotelId: null,
+      originalHotelId: null,
+      assignmentReason: '',
     };
   }
 }

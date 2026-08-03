@@ -122,6 +122,11 @@
         <label class="fw-bold mb-1">Cơ sở lưu trú <span *ngIf="userDialogMode === 'create'" class="text-danger">*</span></label>
         <p-select [options]="hotels" [(ngModel)]="userForm.hotelId" optionLabel="name" optionValue="id" [showClear]="true" placeholder="Chọn cơ sở quản lý" appendTo="body" styleClass="w-100" [disabled]="saving"></p-select>
       </div>
+      <div *ngIf="userDialogMode === 'edit' && userForm.hotelId !== userForm.originalHotelId" class="col-12 mb-3 field">
+        <label class="fw-bold mb-1" for="staff-move-reason">Lý do chuyển cơ sở <span class="text-danger">*</span></label>
+        <textarea id="staff-move-reason" pInputTextarea [(ngModel)]="userForm.assignmentReason" rows="3" maxlength="500" class="w-100" [disabled]="saving" placeholder="Ví dụ: Điều chuyển nhân sự theo quyết định quản lý"></textarea>
+        <small class="text-muted">Kỳ phân công cũ được đóng và giữ lại trong lịch sử; hệ thống tạo một kỳ phân công mới tại cơ sở đích.</small>
+      </div>
     </ng-container>
   </div>
 

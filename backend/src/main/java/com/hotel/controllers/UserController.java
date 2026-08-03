@@ -6,6 +6,7 @@ import com.hotel.dtos.PropertyOptionDto;
 import com.hotel.dtos.StaffCreateRequest;
 import com.hotel.dtos.StaffListItemDto;
 import com.hotel.dtos.StaffRoleOptionDto;
+import com.hotel.dtos.StaffUpdateRequest;
 import com.hotel.dtos.UserDto;
 import com.hotel.services.UserService;
 import jakarta.validation.Valid;
@@ -56,6 +57,14 @@ public class UserController {
     @Permission(function = FunctionCode.USER, action = ActionCode.CREATE)
     public ResponseEntity<UserDto> createStaff(@Valid @RequestBody StaffCreateRequest request) {
         return ResponseEntity.ok(userService.createStaff(request));
+    }
+
+    @PutMapping("/staff/{id}")
+    @Permission(function = FunctionCode.USER, action = ActionCode.UPDATE)
+    public ResponseEntity<UserDto> updateStaff(
+            @PathVariable Long id,
+            @Valid @RequestBody StaffUpdateRequest request) {
+        return ResponseEntity.ok(userService.updateStaff(id, request));
     }
 
     @GetMapping("/{id}")

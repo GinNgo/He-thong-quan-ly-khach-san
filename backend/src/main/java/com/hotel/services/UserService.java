@@ -6,8 +6,10 @@ import com.hotel.dtos.StaffCreateRequest;
 import com.hotel.dtos.StaffLifecycleRequest;
 import com.hotel.dtos.StaffListItemDto;
 import com.hotel.dtos.StaffRoleOptionDto;
+import com.hotel.dtos.StaffUpdateRequest;
 import com.hotel.dtos.UserDto;
 import com.hotel.exceptions.RegistrationConflictException;
+import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -180,23 +182,7 @@ public class UserService {
 
     UserDto createStaffAccount(User user, java.util.Set<Long> roleIds, Long hotelId) {
         boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
-        java.util.Set<com.hotel.entities.Role> roles = roleIds == null
-                ? java.util.Set.of()
-                : new java.util.HashSet<>(roleRepository.findAllById(roleIds));
-        if (roleIds == null || roleIds.isEmpty() || roles.size() != roleIds.size()) {
-            throw new IllegalArgumentException("Vai trò không hợp lệ.");
-        }
-        boolean invalidRole = roles.stream().anyMatch(role -> role.getCode() == null
-                || !ASSIGNABLE_STAFF_ROLE_CODES.contains(role.getCode().trim().toUpperCase(Locale.ROOT))
-                || !"ACTIVE".equalsIgnoreCase(role.getStatus()));
-        if (invalidRole) {
-            throw new SecurityException("Selected role is not assignable to property staff.");
-        }
-        if (!systemAdministrator && roles.stream()
-                .map(com.hotel.entities.Role::getCode)
-                .anyMatch(java.util.Set.of("SUPER_ADMIN", "ADMIN", "PROPERTY_OWNER")::contains)) {
-            throw new SecurityException("Bạn không được cấp vai trò quản trị hệ thống hoặc chủ cơ sở.");
-        }
+        java.util.Set<com.hotel.entities.Role> roles = loadAssignableStaffRoles(roleIds);
 
         if (hotelId == null) {
             throw new IllegalArgumentException("Property is required for staff creation.");
@@ -236,6 +222,112 @@ public class UserService {
 
         auditStaff("STAFF_CREATED", saved, hotel, null, staffSnapshot(saved, hotel), "Staff account created");
         return convertToDto(saved);
+    }
+
+    @Transactional
+    public UserDto updateStaff(Long id, StaffUpdateRequest request) {
+        boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
+        User user = userRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Staff account not found."));
+        requireStaffUpdateAuthority(user, systemAdministrator);
+
+        List<com.hotel.entities.UserProperty> assignments =
+                userPropertyRepository.findStaffAssignmentsForUpdate(id);
+        if (assignments.isEmpty()) {
+            throw new ResourceNotFoundException("Staff account not found.");
+        }
+        if (!"ACTIVE".equalsIgnoreCase(user.getStatus())) {
+            throw new IllegalStateException("Reactivate the staff account before updating it.");
+        }
+
+        java.util.Set<com.hotel.entities.Role> roles = loadAssignableStaffRoles(request.getRoleIds());
+        com.hotel.entities.Hotel targetHotel = systemAdministrator
+                ? hotelRepository.findById(request.getHotelId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Property not found."))
+                : propertyAccessService.requireManagedHotel(request.getHotelId());
+
+        List<com.hotel.entities.UserProperty> activeAssignments = assignments.stream()
+                .filter(item -> "ACTIVE".equalsIgnoreCase(item.getStatus()))
+                .toList();
+        if (activeAssignments.isEmpty()) {
+            throw new IllegalStateException("Reactivate the staff assignment before updating it.");
+        }
+        if (!systemAdministrator && activeAssignments.stream().anyMatch(item -> item.getHotel() == null
+                || !propertyAccessService.accessibleHotelIds().contains(item.getHotel().getId()))) {
+            throw new SecurityException("A shared staff account requires system administrator review.");
+        }
+
+        com.hotel.entities.UserProperty targetActiveAssignment = activeAssignments.stream()
+                .filter(item -> item.getHotel() != null
+                        && targetHotel.getId().equals(item.getHotel().getId()))
+                .findFirst()
+                .orElse(null);
+        boolean propertyMove = targetActiveAssignment == null;
+        String assignmentReason = null;
+        if (propertyMove) {
+            if (activeAssignments.size() != 1) {
+                throw new IllegalStateException("A staff account with multiple active assignments cannot be moved implicitly.");
+            }
+            assignmentReason = requireAssignmentMoveReason(request.getAssignmentReason());
+            checkStaffQuota(targetHotel.getId(), systemAdministrator);
+        }
+
+        java.util.Map<String, Object> before = staffSnapshot(user, user.getHotel());
+        User actor = propertyAccessService.currentUser();
+        user.setFullName(normalizeRequiredProfileText(request.getFullName(), "Full name", 150));
+        user.setPhone(normalizePhone(request.getPhone()));
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            com.hotel.security.PasswordPolicy.requireValid(request.getPassword());
+            user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+            authSessionRevocationService.revokeUserSession(user.getId(), "STAFF_PASSWORD_UPDATED");
+        }
+        user.setRoles(roles);
+        user.setHotel(targetHotel);
+
+        if (propertyMove) {
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            com.hotel.entities.UserProperty sourceAssignment = activeAssignments.get(0);
+            sourceAssignment.setStatus("INACTIVE");
+            sourceAssignment.setEndDate(now);
+            sourceAssignment.setStatusReason(assignmentReason);
+            sourceAssignment.setStatusChangedAt(now);
+            sourceAssignment.setStatusChangedBy(actor);
+            userPropertyRepository.save(sourceAssignment);
+
+            com.hotel.entities.UserProperty targetAssignment = new com.hotel.entities.UserProperty();
+            targetAssignment.setUser(user);
+            targetAssignment.setHotel(targetHotel);
+            targetAssignment.setRelationshipType("STAFF");
+            targetAssignment.setIsPrimaryOwner(false);
+            targetAssignment.setStatus("ACTIVE");
+            targetAssignment.setStartDate(now);
+            targetAssignment.setStatusReason(assignmentReason);
+            targetAssignment.setStatusChangedAt(now);
+            targetAssignment.setStatusChangedBy(actor);
+            userPropertyRepository.saveAndFlush(targetAssignment);
+        }
+
+        User saved = userRepository.saveAndFlush(user);
+        auditStaff(propertyMove ? "STAFF_PROPERTY_MOVED" : "STAFF_UPDATED", saved, targetHotel,
+                before, staffSnapshot(saved, targetHotel),
+                propertyMove ? assignmentReason : "Staff profile and roles updated");
+        return convertToDto(saved, systemAdministrator ? null : propertyAccessService.accessibleHotelIds());
+    }
+
+    private java.util.Set<com.hotel.entities.Role> loadAssignableStaffRoles(java.util.Set<Long> roleIds) {
+        java.util.Set<com.hotel.entities.Role> roles = roleIds == null
+                ? java.util.Set.of()
+                : new java.util.HashSet<>(roleRepository.findAllById(roleIds));
+        if (roleIds == null || roleIds.isEmpty() || roles.size() != roleIds.size()) {
+            throw new IllegalArgumentException("Invalid staff role selection.");
+        }
+        boolean invalidRole = roles.stream().anyMatch(role -> role.getCode() == null
+                || !ASSIGNABLE_STAFF_ROLE_CODES.contains(role.getCode().trim().toUpperCase(Locale.ROOT))
+                || !"ACTIVE".equalsIgnoreCase(role.getStatus()));
+        if (invalidRole) {
+            throw new SecurityException("Selected role is not assignable to property staff.");
+        }
+        return roles;
     }
 
     private void normalizeAndValidateNewAccount(User user) {
@@ -287,6 +379,9 @@ public class UserService {
     public UserDto updateUser(Long id, User userDetails, java.util.Set<Long> roleIds, Long hotelId) {
         boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
         User user = requireManageableUser(id, systemAdministrator);
+        if (!userPropertyRepository.findByUserIdAndRelationshipType(id, "STAFF").isEmpty()) {
+            throw new IllegalArgumentException("Use the dedicated staff endpoint for staff account updates.");
+        }
         java.util.Map<String, Object> before = staffSnapshot(user, user.getHotel());
         java.util.Set<com.hotel.entities.Role> roles = roleIds == null
                 ? user.getRoles()
@@ -532,6 +627,34 @@ public class UserService {
             throw new SecurityException("Bạn không có quyền quản lý tài khoản đặc quyền.");
         }
         return user;
+    }
+
+    private void requireStaffUpdateAuthority(User user, boolean systemAdministrator) {
+        if (systemAdministrator) return;
+        User actor = propertyAccessService.currentUser();
+        if (actor == null || actor.getId().equals(user.getId())) {
+            throw new SecurityException("You cannot update this staff account.");
+        }
+        java.util.Set<Long> hotelIds = propertyAccessService.accessibleHotelIds();
+        if (!isManageableUser(user.getId(), hotelIds)) {
+            throw new ResourceNotFoundException("Staff account not found.");
+        }
+        if (user.getRoles() != null && user.getRoles().stream()
+                .map(com.hotel.entities.Role::getCode)
+                .anyMatch(java.util.Set.of("SUPER_ADMIN", "ADMIN", "PROPERTY_OWNER")::contains)) {
+            throw new SecurityException("You cannot update a privileged account through the staff endpoint.");
+        }
+    }
+
+    private String requireAssignmentMoveReason(String value) {
+        if (value == null || value.trim().length() < 3) {
+            throw new IllegalArgumentException("A property move reason of at least 3 characters is required.");
+        }
+        String reason = value.trim();
+        if (reason.length() > 500) {
+            throw new IllegalArgumentException("The property move reason must not exceed 500 characters.");
+        }
+        return reason;
     }
 
     private boolean isAccessibleUser(Long id) {
