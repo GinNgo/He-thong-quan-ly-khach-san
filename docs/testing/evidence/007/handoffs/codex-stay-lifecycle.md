@@ -19,3 +19,9 @@ below after merging or cherry-picking the task commits.
   `docs/audit/system/MASTER_FUNCTION_INVENTORY.md`.
 - Add T295/STAY-001 executable evidence to
   `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md`.
+
+## Stop Gates
+
+| Task | Status | Evidence | Coordinator action |
+|---|---|---|---|
+| T296 | `BLOCKED_EXTERNAL` | `docs/testing/evidence/007/remediation/T296-reservation-change-policy-gate.md` | Keep unchecked; obtain an approved versioned reservation-change financial policy before implementation. |
