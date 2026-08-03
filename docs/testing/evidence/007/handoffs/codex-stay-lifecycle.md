@@ -10,7 +10,7 @@ below after merging or cherry-picking the task commits.
 
 | Task | Commit | Focused validation | Domain evidence |
 |---|---|---|---|
-| T295 | `PENDING_AFTER_COMMIT` | Backend 11/11; frontend 13/13 | `docs/testing/evidence/007/remediation/T295-reservation-read-journeys.md` |
+| T295 | `6788dbe` | Backend 11/11; frontend 13/13 | `docs/testing/evidence/007/remediation/T295-reservation-read-journeys.md` |
 
 ## Coordinator Updates
 

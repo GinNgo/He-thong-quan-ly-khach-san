@@ -1,5 +1,7 @@
 # T295 Reservation Read Journeys
 
+Task commit: `6788dbe`
+
 ## Scope
 
 - Adds bounded server-side reservation pages with deterministic
