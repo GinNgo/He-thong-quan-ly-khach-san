@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { SharedModule } from '@app/shared/shared.module';
-import { Role, RoleService } from '@app/core/services/role.service';
+import { CreateRoleRequest, Role, RoleService, UpdateRoleRequest } from '@app/core/services/role.service';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { PermissionService, ActionCode, FunctionCode } from '@app/core/services/permission.service';
 import { Subscription } from 'rxjs';
@@ -130,9 +130,14 @@ export class RoleManagementComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const payload: CreateRoleRequest | UpdateRoleRequest = {
+      code: this.roleForm.code,
+      name: this.roleForm.name,
+      description: this.roleForm.description
+    };
     const request = this.roleDialogMode === 'create'
-      ? this.roleService.createRole(this.roleForm)
-      : this.roleService.updateRole(this.roleForm.id, this.roleForm);
+      ? this.roleService.createRole(payload)
+      : this.roleService.updateRole(this.roleForm.id, payload);
 
     this.saving = true;
     request.pipe(
@@ -164,8 +169,8 @@ export class RoleManagementComponent implements OnInit, OnDestroy {
     }
 
     this.confirmationService.confirm({
-      message: `Bạn có chắc muốn xóa vai trò "${role.name}"?`,
-      header: 'Xác nhận xóa',
+      message: `Bạn có chắc muốn ngừng sử dụng vai trò "${role.name}"?`,
+      header: 'Xác nhận ngừng sử dụng',
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
         this.saving = true;
@@ -176,7 +181,7 @@ export class RoleManagementComponent implements OnInit, OnDestroy {
           })
         ).subscribe({
           next: () => {
-            this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã xóa vai trò.' });
+            this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã ngừng sử dụng vai trò.' });
             this.loadRoles();
           },
           error: (error) => {
@@ -184,6 +189,31 @@ export class RoleManagementComponent implements OnInit, OnDestroy {
             this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
           }
         });
+      }
+    });
+  }
+
+  reactivateRole(role: Role): void {
+    if (!this.canUpdate) {
+      this.messageService.add({ severity: 'warn', summary: 'Không đủ quyền', detail: 'Tài khoản chưa có quyền kích hoạt lại vai trò.' });
+      return;
+    }
+    if (role.systemRole || role.status !== 'INACTIVE' || this.saving) return;
+
+    this.saving = true;
+    this.roleService.reactivateRole(role.id).pipe(
+      finalize(() => {
+        this.saving = false;
+        this.cdr.detectChanges();
+      })
+    ).subscribe({
+      next: () => {
+        this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã kích hoạt lại vai trò.' });
+        this.loadRoles();
+      },
+      error: (error) => {
+        const detail = error?.error?.message || 'Không thể kích hoạt lại vai trò này.';
+        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
       }
     });
   }

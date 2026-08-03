@@ -9,13 +9,21 @@ export interface Role {
   code: string;
   name: string;
   description?: string;
-  status?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
   systemRole?: boolean;
   userCount?: number;
   roleType?: 'SYSTEM' | 'CUSTOM';
   updatedAt?: string;
   version?: number;
 }
+
+export interface CreateRoleRequest {
+  code: string;
+  name: string;
+  description?: string;
+}
+
+export interface UpdateRoleRequest extends CreateRoleRequest {}
 
 export interface AppModule {
   id: number;
@@ -63,13 +71,13 @@ export class RoleService {
     );
   }
 
-  createRole(role: any): Observable<Role> {
+  createRole(role: CreateRoleRequest): Observable<Role> {
     return this.http.post<any>(this.apiUrl, role).pipe(
       map(response => response?.data ?? response)
     );
   }
 
-  updateRole(id: number, role: any): Observable<Role> {
+  updateRole(id: number, role: UpdateRoleRequest): Observable<Role> {
     return this.http.put<any>(`${this.apiUrl}/${id}`, role).pipe(
       map(response => response?.data ?? response)
     );
@@ -77,6 +85,12 @@ export class RoleService {
 
   deleteRole(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
+
+  reactivateRole(id: number): Observable<Role> {
+    return this.http.post<any>(`${this.apiUrl}/${id}/reactivate`, {}).pipe(
+      map(response => response?.data ?? response)
+    );
   }
 
   getRolePermissionsTree(roleId: number): Observable<AppModule[]> {

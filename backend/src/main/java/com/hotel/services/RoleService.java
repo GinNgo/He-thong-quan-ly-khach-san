@@ -1,7 +1,10 @@
 package com.hotel.services;
 
+import com.hotel.dtos.RoleCreateRequest;
 import com.hotel.dtos.RoleDto;
+import com.hotel.dtos.RoleUpdateRequest;
 import com.hotel.entities.Role;
+import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.repositories.RolePermissionRepository;
 import com.hotel.repositories.RoleRepository;
 import com.hotel.repositories.UserRepository;
@@ -36,16 +39,19 @@ public class RoleService {
     }
 
     public RoleDto getRoleById(Long id) {
-        Role role = roleRepository.findById(id).orElseThrow(() -> new RuntimeException("Role not found"));
+        Role role = roleRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found."));
         return convertToDto(role);
     }
 
-    public RoleDto createRole(RoleDto dto) {
-        normalizeAndValidate(dto, null);
+    @Transactional
+    public RoleDto createRole(RoleCreateRequest request) {
+        NormalizedRoleInput input = normalizeAndValidate(
+                request.getCode(), request.getName(), request.getDescription(), null);
         Role role = new Role();
-        role.setCode(dto.getCode());
-        role.setName(dto.getName());
-        role.setDescription(dto.getDescription());
+        role.setCode(input.code());
+        role.setName(input.name());
+        role.setDescription(input.description());
         role.setStatus("ACTIVE");
         role.setSystemRole(false);
         Role saved = roleRepository.save(role);
@@ -53,45 +59,74 @@ public class RoleService {
         return convertToDto(saved);
     }
 
-    public RoleDto updateRole(Long id, RoleDto dto) {
-        Role role = roleRepository.findById(id).orElseThrow(() -> new RuntimeException("Role not found"));
+    @Transactional
+    public RoleDto updateRole(Long id, RoleUpdateRequest request) {
+        Role role = roleRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found."));
         java.util.Map<String, Object> before = roleSnapshot(role);
-        normalizeAndValidate(dto, id);
-        if (Boolean.TRUE.equals(role.getSystemRole()) && !role.getCode().equals(dto.getCode())) {
+        NormalizedRoleInput input = normalizeAndValidate(
+                request.getCode(), request.getName(), request.getDescription(), id);
+        if (Boolean.TRUE.equals(role.getSystemRole()) && !role.getCode().equals(input.code())) {
             throw new IllegalArgumentException("Không thể thay đổi mã vai trò hệ thống.");
         }
-        role.setCode(dto.getCode());
-        role.setName(dto.getName());
-        role.setDescription(dto.getDescription());
-        if (dto.getStatus() != null) role.setStatus(dto.getStatus());
+        role.setCode(input.code());
+        role.setName(input.name());
+        role.setDescription(input.description());
         Role saved = roleRepository.save(role);
         audit("ROLE_UPDATED", saved, before, roleSnapshot(saved), "Role metadata updated");
         return convertToDto(saved);
     }
 
     @Transactional
-    public void deleteRole(Long id) {
-        Role role = roleRepository.findById(id).orElseThrow(() -> new RuntimeException("Role not found"));
-        if (Boolean.TRUE.equals(role.getSystemRole()) || SYSTEM_ROLE_CODES.contains(role.getCode())) {
-            throw new IllegalStateException("Không thể ngừng sử dụng vai trò hệ thống.");
-        }
+    public void deactivateRole(Long id) {
+        Role role = customRoleForUpdate(id);
+        ensureUnassigned(role);
         java.util.Map<String, Object> before = roleSnapshot(role);
         role.setStatus("INACTIVE");
         Role saved = roleRepository.save(role);
         audit("ROLE_DEACTIVATED", saved, before, roleSnapshot(saved), "Custom role deactivated");
     }
 
-    private void normalizeAndValidate(RoleDto dto, Long currentId) {
-        if (dto == null) throw new IllegalArgumentException("Dữ liệu vai trò không hợp lệ.");
-        dto.setCode(dto.getCode() == null ? "" : dto.getCode().trim().toUpperCase(Locale.ROOT));
-        dto.setName(dto.getName() == null ? "" : dto.getName().trim());
-        dto.setDescription(dto.getDescription() == null ? "" : dto.getDescription().trim());
-        if (dto.getCode().isBlank() || dto.getName().isBlank()) {
+    @Transactional
+    public RoleDto reactivateRole(Long id) {
+        Role role = customRoleForUpdate(id);
+        java.util.Map<String, Object> before = roleSnapshot(role);
+        role.setStatus("ACTIVE");
+        Role saved = roleRepository.save(role);
+        audit("ROLE_REACTIVATED", saved, before, roleSnapshot(saved), "Custom role reactivated");
+        return convertToDto(saved);
+    }
+
+    private NormalizedRoleInput normalizeAndValidate(
+            String rawCode,
+            String rawName,
+            String rawDescription,
+            Long currentId) {
+        String code = rawCode == null ? "" : rawCode.trim().toUpperCase(Locale.ROOT);
+        String name = rawName == null ? "" : rawName.trim();
+        String description = rawDescription == null ? "" : rawDescription.trim();
+        if (code.isBlank() || name.isBlank()) {
             throw new IllegalArgumentException("Mã và tên vai trò là bắt buộc.");
         }
-        roleRepository.findByCode(dto.getCode()).filter(role -> !role.getId().equals(currentId)).ifPresent(role -> {
+        roleRepository.findByCodeIgnoreCase(code).filter(role -> !role.getId().equals(currentId)).ifPresent(role -> {
             throw new IllegalArgumentException("Mã vai trò đã tồn tại.");
         });
+        return new NormalizedRoleInput(code, name, description);
+    }
+
+    private Role customRoleForUpdate(Long id) {
+        Role role = roleRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found."));
+        if (Boolean.TRUE.equals(role.getSystemRole()) || SYSTEM_ROLE_CODES.contains(role.getCode())) {
+            throw new IllegalStateException("Không thể thay đổi trạng thái vai trò hệ thống.");
+        }
+        return role;
+    }
+
+    private void ensureUnassigned(Role role) {
+        if (userRepository.countByRoleId(role.getId()) > 0) {
+            throw new IllegalStateException("Không thể ngừng sử dụng vai trò đang được gán cho người dùng.");
+        }
     }
 
     private RoleDto convertToDto(Role role) {
@@ -125,5 +160,8 @@ public class RoleService {
         operationalAuditService.append(new OperationalAuditService.AuditCommand(
                 "SYSTEM", null, "ROLE", eventType, "ROLE", String.valueOf(role.getId()),
                 null, null, reason, before, after, null));
+    }
+
+    private record NormalizedRoleInput(String code, String name, String description) {
     }
 }

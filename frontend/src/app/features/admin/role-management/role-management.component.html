@@ -54,6 +54,7 @@
               <button pButton icon="pi pi-shield" class="p-button-text p-button-info p-button-sm" title="Phân quyền" (click)="openPermissions(role)"></button>
               <button *ngIf="canUpdate" pButton icon="pi pi-pencil" class="p-button-text p-button-secondary p-button-sm" title="Sửa" (click)="editRole(role)" [disabled]="saving"></button>
               <button *ngIf="canDelete && !role.systemRole && role.status !== 'INACTIVE'" pButton icon="pi pi-ban" class="p-button-text p-button-danger p-button-sm" title="Ngừng sử dụng" (click)="deleteRole(role)" [disabled]="saving"></button>
+              <button *ngIf="canUpdate && !role.systemRole && role.status === 'INACTIVE'" pButton icon="pi pi-replay" class="p-button-text p-button-success p-button-sm" title="Kích hoạt lại" (click)="reactivateRole(role)" [disabled]="saving"></button>
             </div>
           </td>
         </tr>
