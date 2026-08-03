@@ -16,8 +16,24 @@ HotelDB.bak
 /test_output.txt
 /indent
 /tmp-spa-server.js
+node_modules/
+dist/
+build/
+target/
+bin/
+obj/
+coverage/
+.angular/
+.venv/
+venv/
 __pycache__/
 *.py[cod]
+
+# Editor and temporary files
+.vscode/
+.idea/
+*.tmp
+*.swp
 
 # Operating system files
 .DS_Store
