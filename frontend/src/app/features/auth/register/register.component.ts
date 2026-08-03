@@ -48,11 +48,14 @@ export class RegisterComponent {
     this.errorMessage = '';
     this.successMessage = '';
 
+    const normalizedEmail = this.registerObj.email.trim().toLowerCase();
+    const normalizedFullName = this.registerObj.fullName.trim().replace(/\s+/g, ' ');
+
     const payload = {
-      username: this.registerObj.email, // Use email as username
-      email: this.registerObj.email,
+      username: normalizedEmail, // Registration identities are normalized server-side too.
+      email: normalizedEmail,
       password: this.registerObj.password,
-      fullName: this.registerObj.fullName,
+      fullName: normalizedFullName,
       phone: this.registerObj.countryCode + this.registerObj.phone,
       roles: ["CUSTOMER"]
     };
@@ -68,7 +71,11 @@ export class RegisterComponent {
       },
       error: (err) => {
         this.isLoading = false;
-        this.errorMessage = err?.error || 'Đăng ký thất bại. Vui lòng thử lại.';
+        const apiError = err?.error;
+        this.errorMessage = apiError?.fieldErrors?.username
+          || apiError?.fieldErrors?.email
+          || apiError?.message
+          || (typeof apiError === 'string' ? apiError : 'Đăng ký thất bại. Vui lòng thử lại.');
         this.cdr.markForCheck();
       }
     });

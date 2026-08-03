@@ -12,18 +12,27 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "users")
+@Table(
+        name = "users",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uq_users_username", columnNames = "username"),
+                @UniqueConstraint(name = "uq_users_email", columnNames = "email")
+        })
 public class User extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, length = 100)
     private String username;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, length = 320)
     private String email;
+
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(name = "password_hash", nullable = false)
@@ -47,7 +56,10 @@ public class User extends AuditableEntity {
     @JoinTable(
         name = "app_user_role",
         joinColumns = @JoinColumn(name = "user_id"),
-        inverseJoinColumns = @JoinColumn(name = "role_id")
+        inverseJoinColumns = @JoinColumn(name = "role_id"),
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_app_user_role_user_role",
+                columnNames = {"user_id", "role_id"})
     )
     private Set<Role> roles;
 
@@ -85,6 +97,14 @@ public class User extends AuditableEntity {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
     public String getPasswordHash() {

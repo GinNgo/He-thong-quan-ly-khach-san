@@ -4,6 +4,7 @@ import com.hotel.dtos.AuthResponse;
 import com.hotel.dtos.LoginRequest;
 import com.hotel.dtos.GoogleLoginRequest;
 import com.hotel.dtos.RegisterRequest;
+import com.hotel.dtos.RegistrationResponse;
 import com.hotel.exceptions.ApiErrorResponse;
 import com.hotel.exceptions.CorrelationIdSupport;
 import com.hotel.security.AccountDisabledAuthenticationException;
@@ -22,9 +23,13 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final com.hotel.services.CredentialRegistrationService credentialRegistrationService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(
+            AuthService authService,
+            com.hotel.services.CredentialRegistrationService credentialRegistrationService) {
         this.authService = authService;
+        this.credentialRegistrationService = credentialRegistrationService;
     }
 
     @PostMapping("/login")
@@ -40,9 +45,8 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest registerRequest) {
-        String response = authService.register(registerRequest);
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    public ResponseEntity<RegistrationResponse> register(@Valid @RequestBody RegisterRequest registerRequest) {
+        return new ResponseEntity<>(credentialRegistrationService.register(registerRequest), HttpStatus.CREATED);
     }
 
     @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)

@@ -3,6 +3,7 @@ package com.hotel.controllers;
 import com.hotel.exceptions.ApiErrorResponse;
 import com.hotel.exceptions.CorrelationIdSupport;
 import com.hotel.exceptions.PropertyNotOperationalException;
+import com.hotel.exceptions.RegistrationConflictException;
 import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.paymentprovider.error.FinancialException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -139,6 +140,14 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
         return response(HttpStatus.CONFLICT, "DATA_CONFLICT",
                 "The request conflicts with existing data.", request, Map.of(), false, null);
+    }
+
+    @ExceptionHandler(RegistrationConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleRegistrationConflict(
+            RegistrationConflictException ex,
+            HttpServletRequest request) {
+        return response(HttpStatus.CONFLICT, ex.code(), ex.getMessage(), request,
+                ex.fieldErrors(), false, null);
     }
 
     @ExceptionHandler({AccessDeniedException.class, SecurityException.class})
