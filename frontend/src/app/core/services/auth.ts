@@ -1,6 +1,6 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, finalize, shareReplay, tap } from 'rxjs';
+import { Observable, BehaviorSubject, Subject, finalize, shareReplay, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { isPlatformBrowser } from '@angular/common';
 import { AccessTokenSessionStore } from '../auth/access-token-session.store';
@@ -41,6 +41,7 @@ export class AuthService {
   private apiUrl = `${environment.apiUrl}/auth`;
   private expiryTimer?: ReturnType<typeof setTimeout>;
   private refreshRequest$?: Observable<AuthResponse>;
+  private readonly logoutSubject = new Subject<void>();
 
   private authStateSubject = new BehaviorSubject<AuthState>({
     isAuthenticated: false,
@@ -52,6 +53,7 @@ export class AuthService {
   });
 
   public currentUser$ = this.authStateSubject.asObservable();
+  public logout$ = this.logoutSubject.asObservable();
 
   constructor() {
     this.initAuthState();
@@ -92,6 +94,7 @@ export class AuthService {
     this.tokenStore.clearToken();
     if (isPlatformBrowser(this.platformId)) {
       localStorage.removeItem('user');
+      localStorage.removeItem('permissions');
     }
     this.authStateSubject.next({
       isAuthenticated: false,
@@ -101,6 +104,7 @@ export class AuthService {
       roles: [],
       permissions: []
     });
+    this.logoutSubject.next();
   }
 
   login(credentials: { username: string; password: string; rememberMe?: boolean }): Observable<AuthResponse> {
@@ -137,7 +141,17 @@ export class AuthService {
   }
 
   logout(): void {
+    const accessToken = this.tokenStore.getValidToken();
     this.clearAuthState();
+    if (isPlatformBrowser(this.platformId) && typeof fetch === 'function') {
+      const headers: Record<string, string> = { 'X-Logout-Request': '1' };
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+      void fetch(`${this.apiUrl}/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+      }).catch(() => undefined);
+    }
   }
 
   isLoggedIn(): boolean {

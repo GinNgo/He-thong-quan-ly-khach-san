@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.UUID;
+import java.util.Optional;
 
 @Service
 public class RefreshTokenService {
@@ -124,6 +125,23 @@ public class RefreshTokenService {
                 current.getExpiresAt()));
 
         return new RefreshGrant(current.getUser().getId(), replacement, current.getExpiresAt());
+    }
+
+    @Transactional
+    public Optional<Long> revokeByToken(String rawToken, Instant revokedAt, String reason) {
+        if (rawToken == null || rawToken.length() < 32 || rawToken.length() > 512) {
+            return Optional.empty();
+        }
+
+        Optional<RefreshTokenSession> stored = repository.findStoredByTokenHash(hashToken(rawToken));
+        if (stored.isEmpty()) return Optional.empty();
+
+        RefreshTokenSession current = repository.findByIdForUpdate(stored.get().getId())
+                .orElse(null);
+        if (current == null) return Optional.empty();
+
+        repository.revokeActiveFamily(current.getFamilyId(), revokedAt, reason);
+        return Optional.of(current.getUser().getId());
     }
 
     private String generateRawToken() {

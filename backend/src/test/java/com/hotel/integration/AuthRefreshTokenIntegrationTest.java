@@ -17,12 +17,14 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.Instant;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -122,6 +124,36 @@ class AuthRefreshTokenIntegrationTest {
                 .andExpect(jsonPath("$.code").value("REFRESH_TOKEN_EXPIRED"));
     }
 
+    @Test
+    void logoutRevokesRefreshFamilyAndAlreadyIssuedAccessToken() throws Exception {
+        MvcResult login = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest())))
+                .andExpect(status().isOk())
+                .andReturn();
+        String refresh = cookieValue(login.getResponse().getHeader("Set-Cookie"));
+        String accessToken = objectMapper.readTree(login.getResponse().getContentAsString())
+                .get("accessToken").asText();
+
+        mockMvc.perform(post("/api/auth/logout")
+                        .cookie(refreshCookie(refresh))
+                        .header("Authorization", "Bearer " + accessToken)
+                        .header("X-Logout-Request", "1"))
+                .andExpect(status().isNoContent())
+                .andExpect(cookie().maxAge("luxestay_refresh", 0));
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .cookie(refreshCookie(refresh))
+                        .header("X-Refresh-Request", "1"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("REFRESH_TOKEN_INVALID"));
+
+        mockMvc.perform(get("/api/users/me")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("SESSION_REVOKED"));
+    }
+
     private String loginAndReadCookie() throws Exception {
         LoginRequest login = new LoginRequest();
         login.setUsername(USERNAME);
@@ -134,6 +166,13 @@ class AuthRefreshTokenIntegrationTest {
                 .andReturn()
                 .getResponse()
                 .getHeader("Set-Cookie");
+    }
+
+    private LoginRequest loginRequest() {
+        LoginRequest login = new LoginRequest();
+        login.setUsername(USERNAME);
+        login.setPassword("Password@123");
+        return login;
     }
 
     private String cookieValue(String header) {

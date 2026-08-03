@@ -41,6 +41,13 @@ public class RefreshTokenException extends RuntimeException {
                 HttpStatus.BAD_REQUEST);
     }
 
+    public static RefreshTokenException invalidLogoutRequest() {
+        return new RefreshTokenException(
+                "LOGOUT_REQUEST_INVALID",
+                "The logout request is invalid.",
+                HttpStatus.BAD_REQUEST);
+    }
+
     public String getCode() { return code; }
     public HttpStatus getStatus() { return status; }
 }

@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Set;
 import java.util.List;
 
@@ -51,6 +52,9 @@ public class User extends AuditableEntity {
 
     @Column(name = "status")
     private String status = "ACTIVE";
+
+    @Column(name = "auth_revoked_at")
+    private Instant authRevokedAt;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -145,6 +149,14 @@ public class User extends AuditableEntity {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Instant getAuthRevokedAt() {
+        return authRevokedAt;
+    }
+
+    public void setAuthRevokedAt(Instant authRevokedAt) {
+        this.authRevokedAt = authRevokedAt;
     }
 
     public Set<Role> getRoles() {

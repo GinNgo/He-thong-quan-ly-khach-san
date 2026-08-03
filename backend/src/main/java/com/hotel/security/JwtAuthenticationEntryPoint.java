@@ -27,11 +27,13 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
         boolean accountDisabled = AccountDisabledAuthenticationException.causedByAccountDisabled(authException);
+        boolean sessionRevoked = authException instanceof SessionRevokedAuthenticationException;
         String code = accountDisabled
                 ? AccountDisabledAuthenticationException.ERROR_CODE
-                : "UNAUTHORIZED";
+                : sessionRevoked ? SessionRevokedAuthenticationException.ERROR_CODE : "UNAUTHORIZED";
         String message = accountDisabled
                 ? AccountDisabledAuthenticationException.DEFAULT_MESSAGE
+                : sessionRevoked ? SessionRevokedAuthenticationException.DEFAULT_MESSAGE
                 : "Full authentication is required to access this resource";
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpStatus.UNAUTHORIZED.value());

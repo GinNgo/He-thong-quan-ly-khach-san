@@ -33,5 +33,18 @@ public interface RefreshTokenSessionRepository extends JpaRepository<RefreshToke
                            @Param("revokedAt") Instant revokedAt,
                            @Param("reason") String reason);
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update RefreshTokenSession token
+               set token.status = 'REVOKED',
+                   token.revokedAt = :revokedAt,
+                   token.revocationReason = :reason
+             where token.user.id = :userId
+               and token.status = 'ACTIVE'
+            """)
+    int revokeActiveForUser(@Param("userId") Long userId,
+                            @Param("revokedAt") Instant revokedAt,
+                            @Param("reason") String reason);
+
     long countByFamilyIdAndStatus(String familyId, String status);
 }

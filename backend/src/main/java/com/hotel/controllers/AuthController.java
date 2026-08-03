@@ -17,6 +17,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -29,16 +31,19 @@ public class AuthController {
     private final com.hotel.services.CredentialRegistrationService credentialRegistrationService;
     private final RefreshTokenService refreshTokenService;
     private final RefreshTokenCookieService refreshTokenCookieService;
+    private final com.hotel.services.AuthSessionRevocationService authSessionRevocationService;
 
     public AuthController(
             AuthService authService,
             com.hotel.services.CredentialRegistrationService credentialRegistrationService,
             RefreshTokenService refreshTokenService,
-            RefreshTokenCookieService refreshTokenCookieService) {
+            RefreshTokenCookieService refreshTokenCookieService,
+            com.hotel.services.AuthSessionRevocationService authSessionRevocationService) {
         this.authService = authService;
         this.credentialRegistrationService = credentialRegistrationService;
         this.refreshTokenService = refreshTokenService;
         this.refreshTokenCookieService = refreshTokenCookieService;
+        this.authSessionRevocationService = authSessionRevocationService;
     }
 
     @PostMapping("/login")
@@ -63,6 +68,28 @@ public class AuthController {
         RefreshTokenService.RefreshGrant grant = refreshTokenService.rotate(
                 refreshTokenCookieService.extract(request));
         return withRefreshCookie(authService.refreshAccessToken(grant.userId()), grant);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(
+            HttpServletRequest request,
+            @RequestHeader(name = "X-Logout-Request", required = false) String logoutMarker,
+            Authentication authentication) {
+        if (!"1".equals(logoutMarker)) {
+            throw RefreshTokenException.invalidLogoutRequest();
+        }
+
+        Long userId = refreshTokenService
+                .revokeByToken(refreshTokenCookieService.extract(request),
+                        java.time.Instant.now(), "LOGOUT")
+                .orElseGet(() -> authenticatedUserId(authentication));
+        if (userId != null) {
+            authSessionRevocationService.revokeUserSession(userId, "LOGOUT");
+        }
+
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookieService.clear())
+                .build();
     }
 
     @PostMapping("/register")
@@ -133,6 +160,17 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE,
                         refreshTokenCookieService.issue(grant.rawToken(), grant.expiresAt()))
                 .body(response);
+    }
+
+    private Long authenticatedUserId(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) return null;
+        if (authentication.getPrincipal() instanceof com.hotel.security.CustomUserDetails details) {
+            return details.getUserId();
+        }
+        if (authentication.getPrincipal() instanceof UserDetails details) {
+            return authSessionRevocationService.findUserId(details.getUsername()).orElse(null);
+        }
+        return authSessionRevocationService.findUserId(authentication.getName()).orElse(null);
     }
 
     private ResponseEntity<ApiErrorResponse> error(

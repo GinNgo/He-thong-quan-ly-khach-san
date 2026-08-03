@@ -33,6 +33,7 @@ export class ChatService {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
   private readonly observability = inject(ClientObservabilityService);
+  private readonly logoutSubscription = this.authService.logout$.subscribe(() => this.disconnect());
   private readonly apiUrl = `${environment.apiUrl}/chat`;
   private stompClient: Client | null = null;
   private connectionMode: ChatMode | null = null;

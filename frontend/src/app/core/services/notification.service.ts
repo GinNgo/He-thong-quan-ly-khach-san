@@ -4,6 +4,7 @@ import { environment } from '../../../environments/environment';
 import { Observable, Subject } from 'rxjs';
 import { Client, IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { AuthService } from './auth';
 import { ClientObservabilityService } from './client-observability.service';
 
 export interface AppNotification {
@@ -30,8 +31,10 @@ export class NotificationService {
   constructor(
     private http: HttpClient,
     private ngZone: NgZone,
+    private authService: AuthService,
     private observability: ClientObservabilityService
   ) {
+    this.authService.logout$.subscribe(() => this.disconnect());
     this.stompClient = new Client({
       // Dùng SockJS để hỗ trợ tốt hơn
       webSocketFactory: () => new SockJS(`${environment.apiUrl.replace('/api', '')}/ws`),

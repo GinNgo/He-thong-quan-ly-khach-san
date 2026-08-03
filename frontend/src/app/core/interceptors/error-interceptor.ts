@@ -24,6 +24,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         .some(path => currentUrl.startsWith(path));
       const errorCode = isApiError(error.error) ? error.error.code : undefined;
       const accountDisabled = errorCode === ACCOUNT_DISABLED_CODE;
+      const isAuthRequest = req.url.includes('/api/auth/');
 
       if (error.status === 403) {
         const errCode = isApiError(error.error) ? error.error.code : 'ACCESS_DENIED';
@@ -31,7 +32,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           router.navigate(['/403'], { queryParams: { reason: errCode } });
         }
       } else if (error.status === 401) {
-        if (accountDisabled || !req.url.includes('/api/auth/login')) {
+        if (accountDisabled || !isAuthRequest) {
           authService.logout();
           localStorage.removeItem('permissions');
           if (accountDisabled) {

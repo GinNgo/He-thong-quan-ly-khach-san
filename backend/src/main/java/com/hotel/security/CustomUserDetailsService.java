@@ -62,7 +62,8 @@ public class CustomUserDetailsService implements UserDetailsService {
                 permissionMasks,
                 user.getId(),
                 hotelId,
-                featureLimits
+                featureLimits,
+                user.getAuthRevokedAt()
         );
     }
 

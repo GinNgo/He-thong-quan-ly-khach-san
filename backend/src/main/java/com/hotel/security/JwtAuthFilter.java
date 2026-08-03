@@ -44,6 +44,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             try {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
+                if (userDetails instanceof CustomUserDetails customUserDetails) {
+                    java.util.Date issuedAt = jwtTokenProvider.getIssuedAt(token);
+                    if (issuedAt != null && customUserDetails.hasRevokedTokenIssuedAt(issuedAt.toInstant())) {
+                        throw new SessionRevokedAuthenticationException();
+                    }
+                }
+
                 UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,

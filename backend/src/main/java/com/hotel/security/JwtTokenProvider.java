@@ -45,6 +45,15 @@ public class JwtTokenProvider {
                 .getSubject();
     }
 
+    public Date getIssuedAt(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key())
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getIssuedAt();
+    }
+
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder()
