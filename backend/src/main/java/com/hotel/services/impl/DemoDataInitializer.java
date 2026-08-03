@@ -23,7 +23,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Component
-@Profile({"development", "demo", "test"})
+@Profile({"development", "demo", "test", "e2e"})
 @ConditionalOnProperty(name = "app.demo-data.legacy-seed", havingValue = "true")
 @RequiredArgsConstructor
 public class DemoDataInitializer {

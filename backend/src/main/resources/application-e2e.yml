@@ -31,3 +31,12 @@ app:
     password-reset-url: http://localhost:4200/reset-password
   accommodation-import:
     enabled: false
+  location-import:
+    enabled: true
+    file-path: ../docs/34_tinh_huyen_xa.json
+    cleanup-obsolete: false
+  demo-data:
+    enabled: true
+    legacy-seed: true
+    nationwide-property-seed: false
+    allow-public-demo: true

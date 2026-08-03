@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SearchServiceTabsComponent } from '../search-service-tabs/search-service-tabs.component';
 import { StayTypeSelectorComponent } from '../stay-type-selector/stay-type-selector.component';
@@ -50,21 +50,25 @@ import { HomeSearchStateService } from '../../services/home-search-state.service
 
           <!-- Search Button -->
           <div class="flex-shrink-0 lg:w-[140px] h-[65px]">
-            <button class="w-full h-full border-0 bg-primary hover:bg-primary-hover text-white font-bold text-[18px] rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+            <button type="button" class="w-full h-full border-0 bg-primary hover:bg-primary-hover text-white font-bold text-[18px] rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
                     (click)="search()">
               <span>TÌM</span>
             </button>
           </div>
 
         </div>
+        <p *ngIf="stateService.validationError() as error" class="m-0 text-sm font-semibold text-red-700" role="alert">
+          {{ error.message }}
+        </p>
       </div>
     </div>
   `
 })
 export class HeroSearchComponent {
-  private stateService = inject(HomeSearchStateService);
+  readonly stateService = inject(HomeSearchStateService);
+  @ViewChild(DateRangeSelectorComponent) private dateSelector?: DateRangeSelectorComponent;
 
-  search() {
-    this.stateService.submitSearch();
+  search(): void {
+    if (!this.stateService.submitSearch()) this.dateSelector?.focusTrigger();
   }
 }

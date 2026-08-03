@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, ElementRef, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PopoverModule } from 'primeng/popover';
@@ -10,9 +10,11 @@ import { HomeSearchStateService } from '../../services/home-search-state.service
   standalone: true,
   imports: [CommonModule, FormsModule, PopoverModule, DatePickerModule],
   template: `
-    <div class="flex w-full h-full divide-x divide-gray-200">
-      <!-- Check-in -->
-      <div class="flex-1 min-w-0 h-full bg-transparent relative cursor-pointer group transition-colors" (click)="dateOp.toggle($event)">
+    <div class="relative w-full h-full">
+      <div class="flex w-full h-full divide-x divide-gray-200">
+      <button #checkInTrigger type="button" class="date-trigger flex-1 min-w-0 h-full bg-transparent relative cursor-pointer group transition-colors"
+              aria-haspopup="dialog" [attr.aria-invalid]="stateService.validationError() ? 'true' : null"
+              (click)="dateOp.toggle($event)">
         <div class="flex items-center h-full px-3">
           <i class="pi pi-calendar text-primary mr-2 text-xl flex-shrink-0"></i>
           <div class="flex flex-col justify-center min-w-0">
@@ -22,10 +24,11 @@ import { HomeSearchStateService } from '../../services/home-search-state.service
             <span class="text-[12px] text-gray-500 truncate">{{ formatDisplayDayOfWeek(checkInDate) }}</span>
           </div>
         </div>
-      </div>
+      </button>
 
-      <!-- Check-out -->
-      <div class="flex-1 min-w-0 h-full bg-transparent relative cursor-pointer group transition-colors" (click)="dateOp.toggle($event)">
+      <button type="button" class="date-trigger flex-1 min-w-0 h-full bg-transparent relative cursor-pointer group transition-colors"
+              aria-haspopup="dialog" [attr.aria-invalid]="stateService.validationError() ? 'true' : null"
+              (click)="dateOp.toggle($event)">
         <div class="flex items-center h-full px-3">
           <i class="pi pi-calendar text-primary mr-2 text-xl flex-shrink-0" [ngClass]="{'opacity-50': !isOvernight}"></i>
           <div class="flex flex-col justify-center min-w-0">
@@ -40,28 +43,33 @@ import { HomeSearchStateService } from '../../services/home-search-state.service
             </ng-container>
           </div>
         </div>
+      </button>
       </div>
-    </div>
 
-    <!-- Date Overlay Panel -->
-    <p-popover #dateOp [style]="{width: 'auto'}" styleClass="shadow-2xl rounded-xl border border-gray-200 mt-2 p-0">
-      <ng-template pTemplate="content">
-        <p-datepicker 
-          [ngModel]="dateRange" 
-          (ngModelChange)="onDateChange($event)"
-          [selectionMode]="isOvernight ? 'range' : 'single'" 
-          [numberOfMonths]="2" 
-          [inline]="true" 
-          [minDate]="minDate"
-          styleClass="w-full border-0" 
-          dateFormat="dd/mm/yy">
-        </p-datepicker>
-      </ng-template>
-    </p-popover>
-  `
+      <p-popover #dateOp [style]="{width: 'auto'}" styleClass="shadow-2xl rounded-xl border border-gray-200 mt-2 p-0">
+        <ng-template pTemplate="content">
+          <p-datepicker
+            [ngModel]="dateRange"
+            (ngModelChange)="onDateChange($event)"
+            [selectionMode]="isOvernight ? 'range' : 'single'"
+            [numberOfMonths]="2"
+            [inline]="true"
+            [minDate]="minDate"
+            [showButtonBar]="true"
+            styleClass="w-full border-0"
+            dateFormat="dd/mm/yy">
+          </p-datepicker>
+        </ng-template>
+      </p-popover>
+    </div>
+  `,
+  styles: [`
+    :host{display:block;height:100%}.date-trigger{appearance:none;border:0;font:inherit;text-align:left;color:inherit}.date-trigger:focus-visible{outline:2px solid #1769e0;outline-offset:-2px;z-index:1}
+  `]
 })
 export class DateRangeSelectorComponent {
-  private stateService = inject(HomeSearchStateService);
+  readonly stateService = inject(HomeSearchStateService);
+  @ViewChild('checkInTrigger') private checkInTrigger?: ElementRef<HTMLButtonElement>;
   
   minDate = new Date();
 
@@ -87,14 +95,20 @@ export class DateRangeSelectorComponent {
     }
   }
 
-  onDateChange(value: any) {
+  onDateChange(value: Date | Date[] | null): void {
     if (this.isOvernight) {
-      if (Array.isArray(value)) {
+      if (value === null) {
+        this.stateService.updateDates(null, null);
+      } else if (Array.isArray(value)) {
         this.stateService.updateDates(value[0] || null, value[1] || null);
       }
     } else {
-      this.stateService.updateDates(value, null);
+      this.stateService.updateDates(value instanceof Date ? value : null, null);
     }
+  }
+
+  focusTrigger(): void {
+    this.checkInTrigger?.nativeElement.focus();
   }
 
   formatDisplayDateFull(date: Date | null): string {

@@ -46,10 +46,16 @@ export interface SearchSelection {
   wardId?: number;
 }
 
+export interface HomeSearchValidationError {
+  code: 'CHECK_IN_REQUIRED' | 'CHECK_OUT_REQUIRED' | 'CHECK_IN_PAST' | 'INVALID_DATE_RANGE';
+  message: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class HomeSearchStateService {
   readonly state = signal<HomeSearchState>(this.createDefaultState());
   readonly recentSearches = signal<RecentSearch[]>(this.readRecentSearches());
+  readonly validationError = signal<HomeSearchValidationError | null>(null);
 
   readonly guestSummary = computed(() => {
     const state = this.state();
@@ -126,6 +132,7 @@ export class HomeSearchStateService {
       }
       return next;
     });
+    this.validationError.set(null);
   }
 
   updatePropertyTypes(propertyTypes: string[]): void {
@@ -140,6 +147,7 @@ export class HomeSearchStateService {
       }
       return next;
     });
+    this.validationError.set(null);
   }
 
   updateGuests(adultCount: number, childCount: number, roomCount: number): void {
@@ -188,7 +196,10 @@ export class HomeSearchStateService {
 
   submitSearch(): boolean {
     const state = this.state();
-    if (!state.checkInDate || (state.stayType === 'OVERNIGHT' && !state.checkOutDate)) return false;
+    const validationError = this.validateDates(state);
+    this.validationError.set(validationError);
+    if (validationError) return false;
+    const checkInDate = state.checkInDate as Date;
     if (state.propertyId) {
       this.saveRecentSearch(state);
       this.router.navigate(['/hotel', state.propertyId], { queryParams: this.bookingQueryParams() });
@@ -197,7 +208,7 @@ export class HomeSearchStateService {
 
     const queryParams: Record<string, string | number> = {
       stayType: state.stayType,
-      checkInDate: this.formatDate(state.checkInDate),
+      checkInDate: this.formatDate(checkInDate),
       adultCount: state.adultCount,
       childCount: state.childCount,
       roomCount: state.roomCount
@@ -236,6 +247,26 @@ export class HomeSearchStateService {
       stayType: 'OVERNIGHT', checkInDate, checkOutDate: this.addDays(checkInDate, 1),
       adultCount: 2, childCount: 0, roomCount: 1, latitude: null, longitude: null
     };
+  }
+
+  private validateDates(state: HomeSearchState): HomeSearchValidationError | null {
+    if (!state.checkInDate) {
+      return { code: 'CHECK_IN_REQUIRED', message: 'Vui lòng chọn ngày nhận phòng.' };
+    }
+    const checkIn = new Date(state.checkInDate);
+    checkIn.setHours(0, 0, 0, 0);
+    if (checkIn < this.startOfToday()) {
+      return { code: 'CHECK_IN_PAST', message: 'Ngày nhận phòng không thể ở trong quá khứ.' };
+    }
+    if (state.stayType === 'OVERNIGHT') {
+      if (!state.checkOutDate) {
+        return { code: 'CHECK_OUT_REQUIRED', message: 'Vui lòng chọn ngày trả phòng.' };
+      }
+      if (state.checkOutDate <= state.checkInDate) {
+        return { code: 'INVALID_DATE_RANGE', message: 'Ngày trả phòng phải sau ngày nhận phòng.' };
+      }
+    }
+    return null;
   }
 
   private saveRecentSearch(state: HomeSearchState): void {
