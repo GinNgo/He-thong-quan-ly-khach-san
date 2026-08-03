@@ -6,7 +6,7 @@ This file records branch-local completion evidence. Shared aggregate files are i
 
 | Task | Commit | Validation | Domain evidence |
 |---|---|---|---|
-| T319 | Pending commit | Backend 6/6; Angular 7/7; Playwright 1/1; production build PASS | `docs/testing/evidence/007/remediation/T319-customer-notification-inbox.md`; CROSS-003 in `docs/audit/system/inventory/cross-cutting.md` |
+| T319 | `85fa7693c6f48ffbeef3707790a32ca01f29401b` | Backend 6/6; Angular 7/7; Playwright 1/1; production build PASS | `docs/testing/evidence/007/remediation/T319-customer-notification-inbox.md`; CROSS-003 in `docs/audit/system/inventory/cross-cutting.md` |
 
 ## Coordinator updates required
 
