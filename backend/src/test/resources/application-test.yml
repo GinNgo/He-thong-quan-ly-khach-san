@@ -18,6 +18,7 @@ spring:
 jwt:
   secret: test_secret_for_unit_test_only_do_not_use_in_prod
   expiration: 86400000
+  refresh-expiration: 604800000
 
 payment:
   vnpay:
@@ -29,6 +30,8 @@ server:
   port: 8080
 
 app:
+  auth:
+    refresh-cookie-secure: false
   location-import:
     enabled: false
   demo-data:

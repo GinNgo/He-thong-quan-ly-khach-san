@@ -26,12 +26,10 @@ the previous long-lived local-storage artifact. It does not make a bearer token
 immune to script execution in an already compromised page. Content security,
 dependency hygiene and output encoding remain required XSS controls.
 
-The target design for AUTH-005/T217 is a short-lived in-memory/access-token flow
-renewed by a rotating refresh token held in a `Secure`, `HttpOnly`, `SameSite`
-cookie. Server-side refresh-family revocation and logout invalidation belong to
-AUTH-006/T218. Introducing that cookie before rotation, reuse detection and
-revocation exist would create a durable credential without its required safety
-controls, so it is intentionally deferred.
+AUTH-005/T217 now renews this access-token flow with a rotating refresh token in
+an `HttpOnly`, `SameSite=Strict` cookie. Hash-only persistence, reuse detection
+and family revocation are documented in `docs/architecture/refresh-token-rotation.md`.
+Explicit logout invalidation and realtime disconnect remain AUTH-006/T218.
 
 ## Client Invariants
 

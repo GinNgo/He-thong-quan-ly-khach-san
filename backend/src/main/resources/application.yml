@@ -98,9 +98,14 @@ server:
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000} # 24 hours
-  refresh-expiration: 604800000 # 7 days
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
 
 app:
+  auth:
+    # Must be true behind HTTPS in production; false supports local HTTP development only.
+    refresh-cookie-secure: ${AUTH_REFRESH_COOKIE_SECURE:false}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
   reservation-hold:
     ttl-minutes: ${RESERVATION_HOLD_TTL_MINUTES:15}
     expiry-scan-ms: ${RESERVATION_HOLD_EXPIRY_SCAN_MS:60000}

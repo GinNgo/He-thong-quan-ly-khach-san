@@ -3,6 +3,7 @@ import { provideRouter, withInMemoryScrolling, withRouterConfig } from '@angular
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { jwtInterceptor } from './core/interceptors/jwt-interceptor';
+import { authRefreshInterceptor } from './core/interceptors/auth-refresh.interceptor';
 import { errorInterceptor } from './core/interceptors/error-interceptor';
 import { financialRequestInterceptor } from './core/interceptors/financial-request.interceptor';
 import { providePrimeNG } from 'primeng/config';
@@ -26,7 +27,7 @@ export const appConfig: ApplicationConfig = {
         onSameUrlNavigation: 'reload',
       })
     ),
-    provideHttpClient(withInterceptors([financialRequestInterceptor, jwtInterceptor, errorInterceptor])),
+    provideHttpClient(withInterceptors([financialRequestInterceptor, jwtInterceptor, errorInterceptor, authRefreshInterceptor])),
     provideTranslateService({
       loader: provideTranslateHttpLoader({
         prefix: '/assets/i18n/',

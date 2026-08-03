@@ -60,8 +60,9 @@ protected customer route.
 
 ## Residual Scope
 
-- Rotating refresh tokens, single-flight silent renewal and secure HttpOnly
-  refresh cookies are AUTH-005/T217.
+- Rotating refresh tokens, single-flight silent renewal and HttpOnly refresh
+  cookies are completed by AUTH-005/T217; see
+  `docs/testing/evidence/007/remediation/T217-refresh-token-rotation.md`.
 - Server-side session-family revocation and realtime disconnect on logout are
   AUTH-006/T218.
 - No production credentials, provider traffic or real-money path was used.

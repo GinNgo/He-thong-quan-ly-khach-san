@@ -8,9 +8,13 @@ import com.hotel.dtos.RegistrationResponse;
 import com.hotel.exceptions.ApiErrorResponse;
 import com.hotel.exceptions.CorrelationIdSupport;
 import com.hotel.security.AccountDisabledAuthenticationException;
+import com.hotel.security.RefreshTokenException;
 import com.hotel.services.AuthService;
+import com.hotel.services.RefreshTokenCookieService;
+import com.hotel.services.RefreshTokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,29 +23,46 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class AuthController {
 
     private final AuthService authService;
     private final com.hotel.services.CredentialRegistrationService credentialRegistrationService;
+    private final RefreshTokenService refreshTokenService;
+    private final RefreshTokenCookieService refreshTokenCookieService;
 
     public AuthController(
             AuthService authService,
-            com.hotel.services.CredentialRegistrationService credentialRegistrationService) {
+            com.hotel.services.CredentialRegistrationService credentialRegistrationService,
+            RefreshTokenService refreshTokenService,
+            RefreshTokenCookieService refreshTokenCookieService) {
         this.authService = authService;
         this.credentialRegistrationService = credentialRegistrationService;
+        this.refreshTokenService = refreshTokenService;
+        this.refreshTokenCookieService = refreshTokenCookieService;
     }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
         AuthResponse response = authService.login(loginRequest);
-        return ResponseEntity.ok(response);
+        return withRefreshCookie(response, refreshTokenService.issueForUser(response.getUserId()));
     }
 
     @PostMapping("/google")
     public ResponseEntity<AuthResponse> loginWithGoogle(@RequestBody GoogleLoginRequest request) {
         AuthResponse response = authService.loginWithGoogle(request.getIdToken());
-        return ResponseEntity.ok(response);
+        return withRefreshCookie(response, refreshTokenService.issueForUser(response.getUserId()));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(
+            HttpServletRequest request,
+            @RequestHeader(name = "X-Refresh-Request", required = false) String refreshMarker) {
+        if (!"1".equals(refreshMarker)) {
+            throw RefreshTokenException.invalidRequest();
+        }
+        RefreshTokenService.RefreshGrant grant = refreshTokenService.rotate(
+                refreshTokenCookieService.extract(request));
+        return withRefreshCookie(authService.refreshAccessToken(grant.userId()), grant);
     }
 
     @PostMapping("/register")
@@ -74,6 +95,18 @@ public class AuthController {
                 request);
     }
 
+    @ExceptionHandler(RefreshTokenException.class)
+    public ResponseEntity<ApiErrorResponse> handleRefreshTokenException(
+            RefreshTokenException exception,
+            HttpServletRequest request) {
+        ResponseEntity<ApiErrorResponse> response = error(
+                exception.getStatus(), exception.getCode(), exception.getMessage(), request);
+        return ResponseEntity.status(response.getStatusCode())
+                .headers(response.getHeaders())
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookieService.clear())
+                .body(response.getBody());
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiErrorResponse> handleProviderConfigurationException(
             IllegalStateException exception,
@@ -91,6 +124,15 @@ public class AuthController {
     @GetMapping("/my-menu")
     public ResponseEntity<java.util.List<com.hotel.dtos.AppModuleDto>> getMyMenu() {
         return ResponseEntity.ok(authService.getMyMenu());
+    }
+
+    private ResponseEntity<AuthResponse> withRefreshCookie(
+            AuthResponse response,
+            RefreshTokenService.RefreshGrant grant) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE,
+                        refreshTokenCookieService.issue(grant.rawToken(), grant.expiresAt()))
+                .body(response);
     }
 
     private ResponseEntity<ApiErrorResponse> error(

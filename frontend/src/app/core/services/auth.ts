@@ -1,6 +1,6 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject } from 'rxjs';
+import { Observable, BehaviorSubject, finalize, shareReplay, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { isPlatformBrowser } from '@angular/common';
 import { AccessTokenSessionStore } from '../auth/access-token-session.store';
@@ -14,6 +14,23 @@ export interface AuthState {
   permissions: string[];
 }
 
+export interface AuthResponse {
+  accessToken: string;
+  userId?: number;
+  username: string;
+  roles: string[];
+  permissions: string[];
+}
+
+export interface AuthSessionUser {
+  id?: number;
+  username?: string;
+  fullName?: string;
+  avatarUrl?: string;
+  roles?: string[];
+  permissions?: string[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -23,6 +40,7 @@ export class AuthService {
   private tokenStore = inject(AccessTokenSessionStore);
   private apiUrl = `${environment.apiUrl}/auth`;
   private expiryTimer?: ReturnType<typeof setTimeout>;
+  private refreshRequest$?: Observable<AuthResponse>;
 
   private authStateSubject = new BehaviorSubject<AuthState>({
     isAuthenticated: false,
@@ -85,16 +103,37 @@ export class AuthService {
     });
   }
 
-  login(credentials: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/login`, credentials);
+  login(credentials: { username: string; password: string; rememberMe?: boolean }): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials, { withCredentials: true });
   }
 
   register(userData: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/register`, userData, { responseType: 'text' });
   }
 
-  googleLogin(idToken: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/google`, { idToken });
+  googleLogin(idToken: string): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.apiUrl}/google`, { idToken }, { withCredentials: true });
+  }
+
+  refreshAccessToken(): Observable<AuthResponse> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return new Observable<AuthResponse>(subscriber => subscriber.error(new Error('Refresh is browser-only.')));
+    }
+    if (!this.refreshRequest$) {
+      this.refreshRequest$ = this.http.post<AuthResponse>(`${this.apiUrl}/refresh`, {}, {
+        withCredentials: true,
+        headers: { 'X-Refresh-Request': '1' },
+      }).pipe(
+        tap(response => this.setSession(response.accessToken, this.sessionUserFor(response))),
+        finalize(() => { this.refreshRequest$ = undefined; }),
+        shareReplay({ bufferSize: 1, refCount: false }),
+      );
+    }
+    return this.refreshRequest$;
+  }
+
+  canRefreshSession(): boolean {
+    return this.authStateSubject.value.isAuthenticated;
   }
 
   logout(): void {
@@ -115,7 +154,7 @@ export class AuthService {
   
   // This method should be called right after successful login
   // to update the local state.
-  setSession(token: string, user: any): void {
+  setSession(token: string, user: AuthSessionUser): void {
     if (isPlatformBrowser(this.platformId)) {
       if (!this.tokenStore.saveToken(token)) {
         this.clearAuthState();
@@ -183,6 +222,23 @@ export class AuthService {
     } catch {
       return null;
     }
+  }
+
+  private sessionUserFor(response: AuthResponse): AuthSessionUser {
+    let storedUser: AuthSessionUser = {};
+    try {
+      const rawUser = localStorage.getItem('user');
+      storedUser = rawUser ? JSON.parse(rawUser) as AuthSessionUser : {};
+    } catch {
+      storedUser = {};
+    }
+    return {
+      ...storedUser,
+      id: response.userId ?? storedUser.id,
+      username: response.username || storedUser.username,
+      roles: response.roles || storedUser.roles || [],
+      permissions: response.permissions || storedUser.permissions || [],
+    };
   }
 
   private scheduleSessionExpiry(token: string): void {

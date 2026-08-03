@@ -5,6 +5,7 @@ import com.hotel.BackendApplication;
 import com.hotel.dtos.LoginRequest;
 import com.hotel.dtos.RegisterRequest;
 import com.hotel.entities.User;
+import com.hotel.repositories.RefreshTokenSessionRepository;
 import com.hotel.repositories.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,9 @@ public class AuthControllerIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private RefreshTokenSessionRepository refreshTokenRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -57,6 +61,7 @@ public class AuthControllerIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        refreshTokenRepository.deleteAll();
         List.of(
                 REGISTERED_USERNAME,
                 WRONG_PASSWORD_USERNAME,

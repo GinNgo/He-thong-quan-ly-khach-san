@@ -8,6 +8,7 @@ import com.hotel.entities.User;
 import com.hotel.repositories.RoleRepository;
 import com.hotel.repositories.UserRepository;
 import com.hotel.security.AccountStatusPolicy;
+import com.hotel.security.RefreshTokenException;
 import com.hotel.security.JwtTokenProvider;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -74,14 +75,16 @@ public class AuthService {
                 .collect(java.util.stream.Collectors.toList());
 
         java.util.List<com.hotel.dtos.PermissionDTO> permissions = new java.util.ArrayList<>();
+        Long userId = null;
         if (authentication.getPrincipal() instanceof com.hotel.security.CustomUserDetails) {
             com.hotel.security.CustomUserDetails userDetails = (com.hotel.security.CustomUserDetails) authentication.getPrincipal();
+            userId = userDetails.getUserId();
             userDetails.getPermissionMasks().forEach((func, mask) -> {
                 permissions.add(new com.hotel.dtos.PermissionDTO(func.name(), mask));
             });
         }
 
-        return new AuthResponse(token, authentication.getName(), roles, permissions);
+        return new AuthResponse(token, authentication.getName(), userId, roles, permissions);
     }
 
     public String register(RegisterRequest registerRequest) {
@@ -148,7 +151,7 @@ public class AuthService {
                 String token = jwtTokenProvider.generateToken(authentication);
                 java.util.List<String> roles = user.getRoles().stream().map(Role::getCode).collect(java.util.stream.Collectors.toList());
                 java.util.List<com.hotel.dtos.PermissionDTO> permissions = new java.util.ArrayList<>();
-                return new AuthResponse(token, user.getUsername(), roles, permissions);
+                return new AuthResponse(token, user.getUsername(), user.getId(), roles, permissions);
             } else {
                 throw new RuntimeException("Invalid Google ID token.");
             }
@@ -157,6 +160,40 @@ public class AuthService {
         } catch (Exception e) {
             throw new RuntimeException("Google authentication failed", e);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public AuthResponse refreshAccessToken(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(RefreshTokenException::invalid);
+        AccountStatusPolicy.requireActive(user);
+
+        java.util.List<org.springframework.security.core.authority.SimpleGrantedAuthority> authorities =
+                user.getRoles().stream()
+                        .map(role -> new org.springframework.security.core.authority.SimpleGrantedAuthority(role.getCode()))
+                        .collect(java.util.stream.Collectors.toList());
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                user.getUsername(), null, authorities);
+        String token = jwtTokenProvider.generateToken(authentication);
+
+        java.util.Map<String, Integer> permissionMasks = new java.util.TreeMap<>();
+        user.getRoles().forEach(role -> {
+            if (role.getRolePermissions() == null) return;
+            role.getRolePermissions().forEach(rolePermission -> {
+                if (rolePermission.getFunction() == null) return;
+                int mask = rolePermission.getActionMask() == null ? 0 : rolePermission.getActionMask();
+                permissionMasks.merge(rolePermission.getFunction().getCode(), mask, (left, right) -> left | right);
+            });
+        });
+        java.util.List<com.hotel.dtos.PermissionDTO> permissions = permissionMasks.entrySet().stream()
+                .map(entry -> new com.hotel.dtos.PermissionDTO(entry.getKey(), entry.getValue()))
+                .collect(java.util.stream.Collectors.toList());
+        java.util.List<String> roles = user.getRoles().stream()
+                .map(Role::getCode)
+                .sorted()
+                .collect(java.util.stream.Collectors.toList());
+
+        return new AuthResponse(token, user.getUsername(), user.getId(), roles, permissions);
     }
 
     @Transactional(readOnly = true)

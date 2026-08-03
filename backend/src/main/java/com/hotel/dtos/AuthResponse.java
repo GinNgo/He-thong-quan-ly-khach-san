@@ -5,12 +5,18 @@ public class AuthResponse {
     private String accessToken;
     private String tokenType = "Bearer";
     private String username;
+    private Long userId;
     private java.util.List<String> roles;
     private java.util.List<PermissionDTO> permissions;
 
     public AuthResponse(String accessToken, String username, java.util.List<String> roles, java.util.List<PermissionDTO> permissions) {
+        this(accessToken, username, null, roles, permissions);
+    }
+
+    public AuthResponse(String accessToken, String username, Long userId, java.util.List<String> roles, java.util.List<PermissionDTO> permissions) {
         this.accessToken = accessToken;
         this.username = username;
+        this.userId = userId;
         this.roles = roles;
         this.permissions = permissions;
     }
@@ -23,6 +29,9 @@ public class AuthResponse {
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
+
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 
     public java.util.List<String> getRoles() { return roles; }
     public void setRoles(java.util.List<String> roles) { this.roles = roles; }
