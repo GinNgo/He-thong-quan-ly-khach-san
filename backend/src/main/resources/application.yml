@@ -104,6 +104,12 @@ app:
   auth:
     # Must be true behind HTTPS in production; false supports local HTTP development only.
     refresh-cookie-secure: ${AUTH_REFRESH_COOKIE_SECURE:false}
+    login:
+      audit-secret: ${LOGIN_AUDIT_SECRET:${JWT_SECRET}}
+      window-minutes: ${LOGIN_RATE_WINDOW_MINUTES:15}
+      lock-minutes: ${LOGIN_LOCK_MINUTES:15}
+      max-account-failures: ${LOGIN_MAX_ACCOUNT_FAILURES:5}
+      max-ip-failures: ${LOGIN_MAX_IP_FAILURES:20}
     password-reset:
       ttl-minutes: ${PASSWORD_RESET_TTL_MINUTES:30}
       rate-window-minutes: ${PASSWORD_RESET_RATE_WINDOW_MINUTES:15}

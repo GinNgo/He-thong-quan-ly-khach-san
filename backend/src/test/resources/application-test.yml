@@ -32,6 +32,8 @@ server:
 app:
   auth:
     refresh-cookie-secure: false
+    login:
+      audit-secret: test-login-audit-secret-only
   mail:
     email-verification-enabled: false
   location-import:

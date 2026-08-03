@@ -2,6 +2,11 @@ import { Component, ChangeDetectionStrategy, inject, ChangeDetectorRef, OnInit }
 import { SharedModule } from '@app/shared/shared.module';
 import { AuthService } from '@app/core/services/auth';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
+import {
+  ACCOUNT_DISABLED_CODE,
+  ACCOUNT_DISABLED_MESSAGE,
+  authenticationErrorMessage,
+} from '@app/core/auth/account-status-error';
 
 @Component({
   standalone: true,
@@ -28,8 +33,8 @@ export class LoginComponent implements OnInit {
 
   ngOnInit() {
     this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
-    if (this.route.snapshot.queryParams['reason'] === 'ACCOUNT_DISABLED') {
-      this.errorMessage = 'Tài khoản đã bị tạm ngưng hoặc vô hiệu hóa. Vui lòng liên hệ bộ phận hỗ trợ. / This account is suspended or disabled.';
+    if (this.route.snapshot.queryParams['reason'] === ACCOUNT_DISABLED_CODE) {
+      this.errorMessage = ACCOUNT_DISABLED_MESSAGE;
     }
 
     if (this.authService.isLoggedIn()) {
@@ -75,9 +80,7 @@ export class LoginComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: (error) => {
-        this.errorMessage = error?.error?.code === 'ACCOUNT_DISABLED'
-          ? 'Tài khoản đã bị tạm ngưng hoặc vô hiệu hóa. Vui lòng liên hệ bộ phận hỗ trợ. / This account is suspended or disabled.'
-          : 'Sai tài khoản hoặc mật khẩu.';
+        this.errorMessage = authenticationErrorMessage(error, 'Sai tài khoản hoặc mật khẩu.');
         this.isLoading = false;
         this.cdr.markForCheck();
       }
