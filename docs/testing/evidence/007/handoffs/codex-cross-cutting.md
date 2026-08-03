@@ -8,7 +8,7 @@ This file records branch-local completion evidence. Shared aggregate files are i
 |---|---|---|---|
 | T319 | `85fa7693c6f48ffbeef3707790a32ca01f29401b` | Backend 6/6; Angular 7/7; Playwright 1/1; production build PASS | `docs/testing/evidence/007/remediation/T319-customer-notification-inbox.md`; CROSS-003 in `docs/audit/system/inventory/cross-cutting.md` |
 | T320 | `fff38aee85fac41837f1ca4954c5749904db5d5f` | Backend reliability/concurrency 8/8; Angular 8/8; Playwright 1/1; production build PASS | `docs/testing/evidence/007/remediation/T320-notification-delivery-reliability.md`; CROSS-004 in `docs/audit/system/inventory/cross-cutting.md` |
-| T321 | Pending commit | Backend 22/22; Angular 11/11; Playwright 1/1; production build PASS | `docs/testing/evidence/007/remediation/T321-notification-preferences-lifecycle.md`; CROSS-005 in `docs/audit/system/inventory/cross-cutting.md` |
+| T321 | `cf5082e896a0f58de7b988c0aec64a5fd629d343` | Backend 22/22; Angular 11/11; Playwright 1/1; production build PASS | `docs/testing/evidence/007/remediation/T321-notification-preferences-lifecycle.md`; CROSS-005 in `docs/audit/system/inventory/cross-cutting.md` |
 
 ## Coordinator updates required
 
