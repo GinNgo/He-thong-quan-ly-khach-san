@@ -32,6 +32,8 @@ server:
 app:
   auth:
     refresh-cookie-secure: false
+  mail:
+    email-verification-enabled: false
   location-import:
     enabled: false
   demo-data:

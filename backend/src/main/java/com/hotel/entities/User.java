@@ -56,6 +56,12 @@ public class User extends AuditableEntity {
     @Column(name = "auth_revoked_at")
     private Instant authRevokedAt;
 
+    @Column(name = "email_verified_at")
+    private Instant emailVerifiedAt = Instant.now();
+
+    @Column(name = "pending_email", length = 320)
+    private String pendingEmail;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
         name = "app_user_role",
@@ -157,6 +163,22 @@ public class User extends AuditableEntity {
 
     public void setAuthRevokedAt(Instant authRevokedAt) {
         this.authRevokedAt = authRevokedAt;
+    }
+
+    public Instant getEmailVerifiedAt() {
+        return emailVerifiedAt;
+    }
+
+    public void setEmailVerifiedAt(Instant emailVerifiedAt) {
+        this.emailVerifiedAt = emailVerifiedAt;
+    }
+
+    public String getPendingEmail() {
+        return pendingEmail;
+    }
+
+    public void setPendingEmail(String pendingEmail) {
+        this.pendingEmail = pendingEmail;
     }
 
     public Set<Role> getRoles() {

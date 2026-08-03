@@ -70,7 +70,9 @@ export class RegisterComponent {
     this.authService.register(payload).subscribe({
       next: (res) => {
         this.isLoading = false;
-        this.successMessage = 'Đăng ký thành công! Vui lòng đăng nhập.';
+        this.successMessage = res?.verificationEmailSent
+          ? 'Đăng ký thành công! Vui lòng kiểm tra hộp thư để xác minh email. / Registration successful! Check your inbox to verify your email.'
+          : 'Đăng ký thành công! Hãy đăng nhập để gửi lại liên kết xác minh email. / Registration successful! Sign in to resend the verification link.';
         this.cdr.markForCheck();
         setTimeout(() => {
           this.router.navigate(['/login']);

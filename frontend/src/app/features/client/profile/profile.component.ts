@@ -2,12 +2,13 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { finalize } from 'rxjs';
+import { finalize, map, of, switchMap } from 'rxjs';
 import { AuthService } from '@app/core/services/auth';
 import { ClientApiService, ReservationSummary, UserContext } from '@app/core/services/client-api.service';
 import { ReservationService } from '@app/core/services/reservation.service';
 import { AsyncActionCoordinatorService } from '@app/core/services/async-action-coordinator.service';
 import { UserService } from '@app/core/services/user';
+import { EmailVerificationService } from '@app/core/services/email-verification.service';
 
 @Component({
   selector: 'app-profile', standalone: true,
@@ -18,6 +19,7 @@ export class ProfileComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly clientApi = inject(ClientApiService);
   private readonly userService = inject(UserService);
+  private readonly emailVerification = inject(EmailVerificationService);
   private readonly reservationService = inject(ReservationService);
   private readonly actionCoordinator = inject(AsyncActionCoordinatorService);
   private readonly route = inject(ActivatedRoute);
@@ -29,8 +31,20 @@ export class ProfileComponent implements OnInit {
   activeTab: 'profile' | 'bookings' = 'profile';
   bookings: ReservationSummary[] = [];
   loading = true; bookingsLoading = false; saving = false; uploading = false;
+  emailActionBusy = false;
   cancellingId: number | null = null;
   error = ''; bookingsError = ''; success = '';
+  readonly emailVerificationText = {
+    verified: 'Email đã xác minh / Email verified',
+    unverified: 'Email chưa xác minh / Email not verified',
+    pending: 'Email mới đang chờ xác minh / New email awaiting verification',
+    resend: 'Gửi lại liên kết / Resend link',
+    sending: 'Đang gửi... / Sending...',
+    sent: 'Liên kết xác minh đã được tạo. Vui lòng kiểm tra hộp thư. / A verification link was created. Check your inbox.',
+    sendError: 'Không thể gửi liên kết xác minh lúc này. / A verification link cannot be sent right now.',
+    alreadyVerified: 'Email hiện tại đã được xác minh. / The current email is already verified.',
+    changePending: 'Thông tin đã lưu. Email mới chỉ có hiệu lực sau khi xác minh. / Profile saved. The new email takes effect only after verification.',
+  } as const;
 
   readonly profileForm = this.fb.nonNullable.group({
     fullName: ['', [Validators.required, Validators.maxLength(150)]],
@@ -60,14 +74,49 @@ export class ProfileComponent implements OnInit {
 
   saveProfile(): void {
     if (this.profileForm.invalid) { this.profileForm.markAllAsTouched(); return; }
+    const value = this.profileForm.getRawValue();
+    const currentEmail = this.user?.email || value.email;
+    const requestedEmail = value.email.trim().toLowerCase();
+    const emailChanged = requestedEmail !== currentEmail.toLowerCase();
     this.saving = true; this.error = ''; this.success = '';
-    this.userService.updateProfile(this.profileForm.getRawValue()).pipe(finalize(() => this.saving = false)).subscribe({
-      next: profile => {
-        this.user = { ...this.user!, ...profile };
+    this.userService.updateProfile({ ...value, email: currentEmail }).pipe(
+      switchMap(profile => {
+        if (!emailChanged) return of({ profile, pendingEmail: this.user?.pendingEmail });
+        return this.emailVerification.requestEmailChange(requestedEmail).pipe(
+          map(dispatch => ({ profile, pendingEmail: dispatch.pendingEmail || requestedEmail }))
+        );
+      }),
+      finalize(() => this.saving = false)
+    ).subscribe({
+      next: ({ profile, pendingEmail }) => {
+        this.user = { ...this.user!, ...profile, pendingEmail };
+        this.profileForm.patchValue({ email: profile.email });
         this.authService.updateCurrentUser(profile);
-        this.success = 'Thông tin cá nhân đã được cập nhật.'; this.changeDetector.detectChanges();
+        this.success = emailChanged
+          ? this.emailVerificationText.changePending
+          : 'Thông tin cá nhân đã được cập nhật.';
+        this.changeDetector.detectChanges();
       },
       error: () => { this.error = 'Không thể cập nhật thông tin. Vui lòng thử lại.'; this.changeDetector.detectChanges(); }
+    });
+  }
+
+  resendEmailVerification(): void {
+    if (this.emailActionBusy) return;
+    this.emailActionBusy = true; this.error = ''; this.success = '';
+    this.emailVerification.resend().pipe(finalize(() => {
+      this.emailActionBusy = false;
+      this.changeDetector.detectChanges();
+    })).subscribe({
+      next: dispatch => {
+        if (this.user && dispatch.pendingEmail) {
+          this.user = { ...this.user, pendingEmail: dispatch.pendingEmail };
+        }
+        this.success = dispatch.alreadyVerified
+          ? this.emailVerificationText.alreadyVerified
+          : this.emailVerificationText.sent;
+      },
+      error: () => { this.error = this.emailVerificationText.sendError; }
     });
   }
 

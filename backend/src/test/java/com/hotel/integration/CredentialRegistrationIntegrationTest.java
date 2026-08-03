@@ -5,6 +5,7 @@ import com.hotel.BackendApplication;
 import com.hotel.dtos.RegisterRequest;
 import com.hotel.entities.User;
 import com.hotel.repositories.UserRepository;
+import com.hotel.repositories.EmailVerificationTokenRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,8 +47,12 @@ class CredentialRegistrationIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private EmailVerificationTokenRepository emailVerificationTokenRepository;
+
     @BeforeEach
     void cleanUsers() {
+        emailVerificationTokenRepository.deleteAll();
         userRepository.deleteAll(userRepository.findAll().stream()
                 .filter(user -> user.getUsername() != null && user.getUsername().startsWith("t214-"))
                 .toList());

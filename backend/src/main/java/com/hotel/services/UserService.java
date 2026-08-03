@@ -291,12 +291,8 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (email != null && !email.equalsIgnoreCase(user.getEmail()) && userRepository.existsByEmail(email)) {
-            throw new RuntimeException("Email is already taken!");
-        }
-
         user.setFullName(fullName);
-        user.setEmail(email);
+        // Email changes are applied only after the separate verification flow completes.
         user.setPhone(phone);
         user.setAvatarUrl(avatarUrl);
         return convertToDto(userRepository.save(user));
@@ -415,6 +411,8 @@ public class UserService {
         dto.setId(user.getId());
         dto.setUsername(user.getUsername());
         dto.setEmail(user.getEmail());
+        dto.setEmailVerifiedAt(user.getEmailVerifiedAt());
+        dto.setPendingEmail(user.getPendingEmail());
         dto.setFullName(user.getFullName());
         dto.setPhone(user.getPhone());
         dto.setAvatarUrl(user.getAvatarUrl());

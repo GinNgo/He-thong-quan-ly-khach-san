@@ -1,6 +1,7 @@
 package com.hotel.dtos;
 
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 public class UserDto {
@@ -11,6 +12,8 @@ public class UserDto {
     private String phone;
     private String avatarUrl;
     private String status;
+    private Instant emailVerifiedAt;
+    private String pendingEmail;
     private Integer points;
     private LocalDateTime createdAt;
     private List<RoleSummary> roles;
@@ -37,6 +40,14 @@ public class UserDto {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public Instant getEmailVerifiedAt() { return emailVerifiedAt; }
+    public void setEmailVerifiedAt(Instant emailVerifiedAt) { this.emailVerifiedAt = emailVerifiedAt; }
+
+    public boolean isEmailVerified() { return emailVerifiedAt != null; }
+
+    public String getPendingEmail() { return pendingEmail; }
+    public void setPendingEmail(String pendingEmail) { this.pendingEmail = pendingEmail; }
 
     public Integer getPoints() { return points; }
     public void setPoints(Integer points) { this.points = points; }

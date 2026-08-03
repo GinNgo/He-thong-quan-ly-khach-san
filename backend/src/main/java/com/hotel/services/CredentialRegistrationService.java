@@ -21,14 +21,17 @@ public class CredentialRegistrationService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailVerificationService emailVerificationService;
 
     public CredentialRegistrationService(
             UserRepository userRepository,
             RoleRepository roleRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            EmailVerificationService emailVerificationService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.emailVerificationService = emailVerificationService;
     }
 
     public RegistrationResponse register(RegisterRequest request) {
@@ -49,6 +52,7 @@ public class CredentialRegistrationService {
         user.setFullName(normalizeDisplayText(request.getFullName()));
         user.setPhone(normalizeOptionalText(request.getPhone()));
         user.setStatus("ACTIVE");
+        user.setEmailVerifiedAt(null);
         user.setCreatedAt(LocalDateTime.now());
 
         Role customerRole = roleRepository.findByCode("CUSTOMER")
@@ -67,7 +71,8 @@ public class CredentialRegistrationService {
             throw exception;
         }
 
-        return new RegistrationResponse("User registered successfully!", false);
+        boolean verificationEmailSent = emailVerificationService.requestInitialVerification(user);
+        return new RegistrationResponse("User registered successfully!", false, verificationEmailSent);
     }
 
     private boolean existsUsername(String username) {

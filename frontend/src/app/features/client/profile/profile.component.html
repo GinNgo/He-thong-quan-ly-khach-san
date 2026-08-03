@@ -21,7 +21,20 @@
       <header><h1>Thông tin cá nhân</h1><p>Cập nhật thông tin dùng cho tài khoản và đặt phòng.</p></header>
       <form [formGroup]="profileForm" (ngSubmit)="saveProfile()">
         <label>Họ và tên<input formControlName="fullName" type="text"></label>
-        <label>Email<input formControlName="email" type="email"></label>
+        <div class="email-field">
+          <label>Email<input formControlName="email" type="email" autocomplete="email"></label>
+          <div class="email-status" [class.email-status--verified]="user?.emailVerified">
+            <strong>{{ user?.emailVerified ? emailVerificationText.verified : emailVerificationText.unverified }}</strong>
+            <span *ngIf="user?.pendingEmail">{{ emailVerificationText.pending }}: {{ user.pendingEmail }}</span>
+            <button
+              *ngIf="user && (!user.emailVerified || user.pendingEmail)"
+              type="button"
+              [disabled]="emailActionBusy"
+              (click)="resendEmailVerification()">
+              {{ emailActionBusy ? emailVerificationText.sending : emailVerificationText.resend }}
+            </button>
+          </div>
+        </div>
         <label>Số điện thoại<input formControlName="phone" type="tel"></label>
         <button type="submit" [disabled]="saving || profileForm.invalid">{{ saving ? 'Đang lưu...' : 'Lưu thay đổi' }}</button>
       </form>

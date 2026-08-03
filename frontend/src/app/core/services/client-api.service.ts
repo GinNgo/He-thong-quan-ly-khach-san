@@ -141,6 +141,9 @@ export interface UserContext {
   id: number;
   username: string;
   email: string;
+  emailVerified?: boolean;
+  emailVerifiedAt?: string;
+  pendingEmail?: string;
   fullName?: string;
   phone?: string;
   avatarUrl?: string;

@@ -31,6 +31,12 @@ export interface AuthSessionUser {
   permissions?: string[];
 }
 
+export interface RegistrationResponse {
+  message: string;
+  welcomeEmailSent: boolean;
+  verificationEmailSent?: boolean;
+}
+
 export interface PasswordResetResponse {
   message: string;
 }
@@ -123,8 +129,8 @@ export class AuthService {
     return this.http.post<void>(`${this.apiUrl}/reset-password`, { token, newPassword });
   }
 
-  register(userData: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/register`, userData, { responseType: 'text' });
+  register(userData: any): Observable<RegistrationResponse> {
+    return this.http.post<RegistrationResponse>(`${this.apiUrl}/register`, userData);
   }
 
   googleLogin(idToken: string): Observable<AuthResponse> {
