@@ -72,7 +72,7 @@ try {
 
     Push-Location $backendRoot
     try {
-        & .\mvnw.cmd -q '-Dtest=StayLifecycleSqlServerIT' test
+        & .\mvnw.cmd -q '-Dtest=StayLifecycleSqlServerIT,CheckoutAggregateSqlServerIT' test
         if ($LASTEXITCODE -ne 0) {
             throw 'Stay lifecycle SQL Server integration test failed.'
         }
@@ -80,7 +80,7 @@ try {
         Pop-Location
     }
 
-    Write-Output 'Stay lifecycle SQL Server assignment/check-in/checkout/replay and rollback validation passed.'
+    Write-Output 'Stay lifecycle SQL Server assignment/check-in/checkout, aggregate rollback and replay validation passed.'
 } finally {
     $PSNativeCommandUseErrorActionPreference = $previousNativeErrorPreference
     foreach ($name in $previousEnvironment.Keys) {
