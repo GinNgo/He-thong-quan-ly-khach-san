@@ -17,6 +17,7 @@ export interface CustomerNotification {
   message: string;
   isRead: boolean;
   createdAt: string;
+  archivedAt?: string | null;
   deepLink: string;
 }
 
@@ -29,6 +30,25 @@ export interface CustomerNotificationPage {
   first: boolean;
   last: boolean;
   unreadCount: number;
+  archived?: boolean;
+  retentionDays?: number;
+}
+
+export type NotificationEventClass =
+  | 'ACCOUNT_SECURITY' | 'BOOKING' | 'PAYMENT' | 'REFUND' | 'INVOICE' | 'SUPPORT' | 'MARKETING';
+export type NotificationChannel = 'IN_APP' | 'EMAIL';
+
+export interface NotificationChannelPreference {
+  channel: NotificationChannel;
+  enabled: boolean;
+  locked: boolean;
+}
+
+export interface NotificationPreferenceGroup {
+  eventClass: NotificationEventClass;
+  label: string;
+  mandatory: boolean;
+  channels: NotificationChannelPreference[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -54,8 +74,8 @@ export class CustomerNotificationService implements OnDestroy {
     this.subscriptions.add(this.authService.logout$.subscribe(() => this.disconnect()));
   }
 
-  getInbox(page = 0, size = 20): Observable<CustomerNotificationPage> {
-    return this.http.get<CustomerNotificationPage>(this.apiUrl, { params: { page, size } });
+  getInbox(page = 0, size = 20, archived = false): Observable<CustomerNotificationPage> {
+    return this.http.get<CustomerNotificationPage>(this.apiUrl, { params: { page, size, archived } });
   }
 
   getUnreadCount(): Observable<{ unreadCount: number }> {
@@ -64,6 +84,27 @@ export class CustomerNotificationService implements OnDestroy {
 
   markAsRead(notificationId: number): Observable<CustomerNotification> {
     return this.http.post<CustomerNotification>(`${this.apiUrl}/${notificationId}/read`, {});
+  }
+
+  archive(notificationId: number): Observable<CustomerNotification> {
+    return this.http.post<CustomerNotification>(`${this.apiUrl}/${notificationId}/archive`, {});
+  }
+
+  restore(notificationId: number): Observable<CustomerNotification> {
+    return this.http.put<CustomerNotification>(`${this.apiUrl}/${notificationId}/restore`, {});
+  }
+
+  getPreferences(): Observable<NotificationPreferenceGroup[]> {
+    return this.http.get<NotificationPreferenceGroup[]>(`${this.apiUrl}/preferences`);
+  }
+
+  updatePreferences(preferences: Array<{
+    eventClass: NotificationEventClass;
+    channel: NotificationChannel;
+    enabled: boolean;
+  }>): Observable<NotificationPreferenceGroup[]> {
+    return this.http.put<NotificationPreferenceGroup[]>(
+      `${this.apiUrl}/preferences`, { preferences });
   }
 
   connect(): void {

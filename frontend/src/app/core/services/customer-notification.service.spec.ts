@@ -38,10 +38,11 @@ describe('CustomerNotificationService', () => {
   });
 
   it('loads the own inbox and unread count from customer-only endpoints', () => {
-    service.getInbox(1, 10).subscribe();
+    service.getInbox(1, 10, true).subscribe();
     const inbox = http.expectOne(request => request.url.endsWith('/customer/notifications'));
     expect(inbox.request.params.get('page')).toBe('1');
     expect(inbox.request.params.get('size')).toBe('10');
+    expect(inbox.request.params.get('archived')).toBe('true');
     inbox.flush({ content: [], totalElements: 0, totalPages: 0, number: 1, size: 10, first: false, last: true, unreadCount: 0 });
 
     service.getUnreadCount().subscribe(result => expect(result.unreadCount).toBe(3));
@@ -62,5 +63,23 @@ describe('CustomerNotificationService', () => {
       createdAt: '2026-08-04T12:00:00',
       deepLink: '/refunds',
     });
+  });
+
+  it('archives, restores and updates own-channel preferences', () => {
+    service.archive(42).subscribe();
+    const archive = http.expectOne(req => req.url.endsWith('/customer/notifications/42/archive'));
+    expect(archive.request.method).toBe('POST');
+    archive.flush({});
+
+    service.restore(42).subscribe();
+    const restore = http.expectOne(req => req.url.endsWith('/customer/notifications/42/restore'));
+    expect(restore.request.method).toBe('PUT');
+    restore.flush({});
+
+    service.updatePreferences([{ eventClass: 'MARKETING', channel: 'EMAIL', enabled: true }]).subscribe();
+    const preferences = http.expectOne(req => req.url.endsWith('/customer/notifications/preferences'));
+    expect(preferences.request.method).toBe('PUT');
+    expect(preferences.request.body.preferences[0].eventClass).toBe('MARKETING');
+    preferences.flush([]);
   });
 });

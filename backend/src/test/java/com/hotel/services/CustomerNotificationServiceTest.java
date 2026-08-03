@@ -4,8 +4,8 @@ import com.hotel.entities.Notification;
 import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.repositories.NotificationRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -30,18 +30,23 @@ class CustomerNotificationServiceTest {
     @Mock
     private NotificationRepository notificationRepository;
 
-    @InjectMocks
     private CustomerNotificationService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new CustomerNotificationService(notificationRepository, 365);
+    }
 
     @Test
     void mapsOwnInboxToPrivacySafeRowsWithDeepLinksAndUnreadCount() {
         Notification booking = notification(11L, 7L, "BOOKING", false);
         Notification invoice = notification(12L, 7L, "INVOICE", true);
-        when(notificationRepository.findByUserIdOrderByCreatedAtDesc(eq(7L), any(Pageable.class)))
+        when(notificationRepository.findCustomerHistory(
+                eq(7L), eq(false), any(LocalDateTime.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(booking, invoice)));
-        when(notificationRepository.countByUserIdAndIsReadFalse(7L)).thenReturn(1L);
+        when(notificationRepository.countActiveUnread(eq(7L), any(LocalDateTime.class))).thenReturn(1L);
 
-        CustomerNotificationService.CustomerNotificationPage result = service.getInbox(7L, 0, 20);
+        CustomerNotificationService.CustomerNotificationPage result = service.getInbox(7L, 0, 20, false);
 
         assertEquals(2, result.content().size());
         assertEquals("/booking-history", result.content().get(0).deepLink());
@@ -52,7 +57,8 @@ class CustomerNotificationServiceTest {
     @Test
     void marksOnlyAnOwnedNotificationAsRead() {
         Notification owned = notification(11L, 7L, "REFUND", false);
-        when(notificationRepository.findByIdAndUserId(11L, 7L)).thenReturn(Optional.of(owned));
+        when(notificationRepository.findByIdAndUserIdAndCreatedAtGreaterThanEqual(
+                eq(11L), eq(7L), any(LocalDateTime.class))).thenReturn(Optional.of(owned));
         when(notificationRepository.save(owned)).thenReturn(owned);
 
         var result = service.markAsRead(11L, 7L);
@@ -64,9 +70,34 @@ class CustomerNotificationServiceTest {
 
     @Test
     void returnsNotFoundWithoutSavingWhenTheRowIsNotOwned() {
-        when(notificationRepository.findByIdAndUserId(99L, 7L)).thenReturn(Optional.empty());
+        when(notificationRepository.findByIdAndUserIdAndCreatedAtGreaterThanEqual(
+                eq(99L), eq(7L), any(LocalDateTime.class))).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> service.markAsRead(99L, 7L));
+        verify(notificationRepository, never()).save(any());
+    }
+
+    @Test
+    void archivesAndRestoresOnlyAnOwnedRetainedNotification() {
+        Notification owned = notification(13L, 7L, "BOOKING", false);
+        when(notificationRepository.findByIdAndUserIdAndCreatedAtGreaterThanEqual(
+                eq(13L), eq(7L), any(LocalDateTime.class))).thenReturn(Optional.of(owned));
+        when(notificationRepository.save(owned)).thenReturn(owned);
+
+        var archived = service.archive(13L, 7L);
+        assertTrue(archived.archivedAt() != null);
+
+        var restored = service.restore(13L, 7L);
+        assertEquals(null, restored.archivedAt());
+        verify(notificationRepository, org.mockito.Mockito.times(2)).save(owned);
+    }
+
+    @Test
+    void foreignArchiveUsesTheSamePrivacySafeNotFound() {
+        when(notificationRepository.findByIdAndUserIdAndCreatedAtGreaterThanEqual(
+                eq(88L), eq(7L), any(LocalDateTime.class))).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.archive(88L, 7L));
         verify(notificationRepository, never()).save(any());
     }
 

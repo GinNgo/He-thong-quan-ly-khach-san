@@ -5,8 +5,47 @@
       <h1 id="notification-title">Thong bao cua ban</h1>
       <p>Theo doi booking, thanh toan, hoa don va ho tro trong mot noi.</p>
     </div>
-    <span class="unread-summary" aria-live="polite">{{ unreadCount }} chua doc</span>
+    <div class="heading-actions">
+      <span class="unread-summary" aria-live="polite">{{ unreadCount }} chua doc</span>
+      <button type="button" class="settings-button" (click)="toggleSettings()" [attr.aria-expanded]="settingsOpen">
+        Tuy chon
+      </button>
+    </div>
   </header>
+
+  <nav class="history-tabs" aria-label="Lich su thong bao">
+    <button type="button" [class.active]="!archivedView" [attr.aria-current]="!archivedView ? 'page' : null" (click)="showHistory(false)">Dang hoat dong</button>
+    <button type="button" [class.active]="archivedView" [attr.aria-current]="archivedView ? 'page' : null" (click)="showHistory(true)">Da luu tru</button>
+    <span>Hien thi trong {{ retentionDays }} ngay</span>
+  </nav>
+
+  <section *ngIf="settingsOpen" class="preference-panel" aria-labelledby="preference-title">
+    <div>
+      <p class="eyebrow">Kenh lien lac</p>
+      <h2 id="preference-title">Tuy chon thong bao</h2>
+      <p>Thong bao bat buoc luon duoc giu trong ung dung. Ban co the dieu chinh email va cac tin tuy chon.</p>
+    </div>
+    <div *ngIf="settingsLoading" role="status">Dang tai tuy chon...</div>
+    <div *ngIf="settingsError" role="alert">{{ settingsError }}</div>
+    <form *ngIf="!settingsLoading && preferences.length" (submit)="$event.preventDefault(); savePreferences()">
+      <fieldset *ngFor="let group of preferences">
+        <legend>{{ group.label }} <span *ngIf="group.mandatory">Bat buoc</span></legend>
+        <label *ngFor="let option of group.channels">
+          <input
+            type="checkbox"
+            [checked]="option.enabled"
+            [disabled]="option.locked || settingsSaving"
+            (change)="setPreference(group.eventClass, option.channel, $any($event.target).checked)">
+          <span>{{ option.channel === 'IN_APP' ? 'Trong ung dung' : 'Email' }}</span>
+          <small *ngIf="option.locked">Luon bat de bao ve giao dich va tai khoan.</small>
+        </label>
+      </fieldset>
+      <button type="submit" class="save-preferences" [disabled]="settingsSaving">
+        {{ settingsSaving ? 'Dang luu...' : 'Luu tuy chon' }}
+      </button>
+      <span class="settings-message" role="status" aria-live="polite">{{ settingsMessage }}</span>
+    </form>
+  </section>
 
   <div *ngIf="loading" class="state-card" role="status">Dang tai thong bao...</div>
 
@@ -17,8 +56,8 @@
 
   <div *ngIf="!loading && !errorMessage && notifications.length === 0" class="state-card empty">
     <i class="pi pi-bell-slash" aria-hidden="true"></i>
-    <strong>Chua co thong bao</strong>
-    <span>Cac cap nhat lien quan den tai khoan se xuat hien tai day.</span>
+    <strong>{{ archivedView ? 'Chua co thong bao luu tru' : 'Chua co thong bao' }}</strong>
+    <span>{{ archivedView ? 'Thong bao da luu tru se xuat hien tai day.' : 'Cac cap nhat lien quan den tai khoan se xuat hien tai day.' }}</span>
   </div>
 
   <ol *ngIf="!loading && !errorMessage && notifications.length" class="notification-list">
@@ -41,6 +80,8 @@
         [attr.aria-label]="'Danh dau da doc: ' + notification.title">
         Danh dau da doc
       </button>
+      <button *ngIf="!archivedView" type="button" class="archive-button" (click)="archive(notification)" [attr.aria-label]="'Luu tru: ' + notification.title">Luu tru</button>
+      <button *ngIf="archivedView" type="button" class="archive-button" (click)="restore(notification)" [attr.aria-label]="'Khoi phuc: ' + notification.title">Khoi phuc</button>
     </li>
   </ol>
 

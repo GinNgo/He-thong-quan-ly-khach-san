@@ -4,6 +4,7 @@ import com.hotel.dtos.CustomerNotificationDTO;
 import com.hotel.entities.Notification;
 import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.repositories.NotificationRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Locale;
+import java.time.LocalDateTime;
 
 @Service
 public class CustomerNotificationService {
@@ -18,17 +20,22 @@ public class CustomerNotificationService {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final NotificationRepository notificationRepository;
+    private final int retentionDays;
 
-    public CustomerNotificationService(NotificationRepository notificationRepository) {
+    public CustomerNotificationService(
+            NotificationRepository notificationRepository,
+            @Value("${app.notifications.customer-retention-days:365}") int retentionDays) {
         this.notificationRepository = notificationRepository;
+        this.retentionDays = Math.min(Math.max(retentionDays, 30), 3650);
     }
 
     @Transactional(readOnly = true)
-    public CustomerNotificationPage getInbox(Long userId, int page, int size) {
+    public CustomerNotificationPage getInbox(Long userId, int page, int size, boolean archived) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-        Page<Notification> notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(
-                userId,
+        LocalDateTime cutoff = retentionCutoff();
+        Page<Notification> notifications = notificationRepository.findCustomerHistory(
+                userId, archived, cutoff,
                 PageRequest.of(safePage, safeSize));
 
         List<CustomerNotificationDTO> content = notifications.getContent().stream()
@@ -42,23 +49,50 @@ public class CustomerNotificationService {
                 notifications.getSize(),
                 notifications.isFirst(),
                 notifications.isLast(),
-                notificationRepository.countByUserIdAndIsReadFalse(userId));
+                notificationRepository.countActiveUnread(userId, cutoff),
+                archived,
+                retentionDays);
     }
 
     @Transactional(readOnly = true)
     public UnreadCount getUnreadCount(Long userId) {
-        return new UnreadCount(notificationRepository.countByUserIdAndIsReadFalse(userId));
+        return new UnreadCount(notificationRepository.countActiveUnread(userId, retentionCutoff()));
     }
 
     @Transactional
     public CustomerNotificationDTO markAsRead(Long notificationId, Long userId) {
-        Notification notification = notificationRepository.findByIdAndUserId(notificationId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
+        Notification notification = retainedOwned(notificationId, userId);
         if (!notification.isRead()) {
             notification.setRead(true);
             notification = notificationRepository.save(notification);
         }
         return toDto(notification);
+    }
+
+    @Transactional
+    public CustomerNotificationDTO archive(Long notificationId, Long userId) {
+        Notification notification = retainedOwned(notificationId, userId);
+        if (notification.getArchivedAt() == null) {
+            notification.setArchivedAt(LocalDateTime.now());
+            notification = notificationRepository.save(notification);
+        }
+        return toDto(notification);
+    }
+
+    @Transactional
+    public CustomerNotificationDTO restore(Long notificationId, Long userId) {
+        Notification notification = retainedOwned(notificationId, userId);
+        if (notification.getArchivedAt() != null) {
+            notification.setArchivedAt(null);
+            notification = notificationRepository.save(notification);
+        }
+        return toDto(notification);
+    }
+
+    private Notification retainedOwned(Long notificationId, Long userId) {
+        return notificationRepository.findByIdAndUserIdAndCreatedAtGreaterThanEqual(
+                        notificationId, userId, retentionCutoff())
+                .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
     }
 
     public CustomerNotificationDTO toDto(Notification notification) {
@@ -69,6 +103,7 @@ public class CustomerNotificationService {
                 notification.getMessage(),
                 notification.isRead(),
                 notification.getCreatedAt(),
+                notification.getArchivedAt(),
                 deepLinkFor(notification.getType()));
     }
 
@@ -83,6 +118,10 @@ public class CustomerNotificationService {
         };
     }
 
+    private LocalDateTime retentionCutoff() {
+        return LocalDateTime.now().minusDays(retentionDays);
+    }
+
     public record CustomerNotificationPage(
             List<CustomerNotificationDTO> content,
             long totalElements,
@@ -91,7 +130,9 @@ public class CustomerNotificationService {
             int size,
             boolean first,
             boolean last,
-            long unreadCount) {
+            long unreadCount,
+            boolean archived,
+            int retentionDays) {
     }
 
     public record UnreadCount(long unreadCount) {

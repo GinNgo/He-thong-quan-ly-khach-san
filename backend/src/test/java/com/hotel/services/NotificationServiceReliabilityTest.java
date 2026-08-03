@@ -3,6 +3,7 @@ package com.hotel.services;
 import com.hotel.entities.Notification;
 import com.hotel.notifications.delivery.NotificationDeliveryOutbox;
 import com.hotel.notifications.delivery.NotificationDeliveryOutboxRepository;
+import com.hotel.notifications.preferences.NotificationPreferenceService;
 import com.hotel.repositories.NotificationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -32,12 +34,15 @@ class NotificationServiceReliabilityTest {
     @Mock
     private NotificationIdempotencyWriter idempotencyWriter;
 
+    @Mock
+    private NotificationPreferenceService preferenceService;
+
     private NotificationService service;
 
     @BeforeEach
     void setUp() {
         service = new NotificationService(
-                notificationRepository, outboxRepository, idempotencyWriter);
+                notificationRepository, outboxRepository, idempotencyWriter, preferenceService);
     }
 
     @Test
@@ -103,6 +108,20 @@ class NotificationServiceReliabilityTest {
                 "x".repeat(161), "customer", 7L, "SYSTEM", "Title", "Message"));
         verify(idempotencyWriter, never()).createOrLoad(
                 any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void optionalDisabledChannelDoesNotPersistOrQueueNotification() {
+        when(preferenceService.isEnabled(
+                7L, "MARKETING", com.hotel.notifications.preferences.NotificationChannel.IN_APP))
+                .thenReturn(false);
+
+        var result = service.sendUserNotificationOnceIfEnabled(
+                "marketing:campaign:1", "customer", 7L,
+                "MARKETING", "Offer", "Optional offer");
+
+        assertTrue(result.isEmpty());
+        verify(idempotencyWriter, never()).createOrLoad(any(), any(), any(), any(), any(), any());
     }
 
     private Notification notification(Long id, String eventKey) {

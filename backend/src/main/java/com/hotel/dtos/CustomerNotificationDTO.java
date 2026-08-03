@@ -9,5 +9,6 @@ public record CustomerNotificationDTO(
         String message,
         boolean isRead,
         LocalDateTime createdAt,
+        LocalDateTime archivedAt,
         String deepLink) {
 }

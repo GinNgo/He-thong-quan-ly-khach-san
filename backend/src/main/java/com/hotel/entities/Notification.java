@@ -41,6 +41,9 @@ public class Notification {
     @Column(name = "event_key", length = 160)
     private String eventKey;
 
+    @Column(name = "archived_at")
+    private LocalDateTime archivedAt;
+
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -66,4 +69,7 @@ public class Notification {
 
     public String getEventKey() { return eventKey; }
     public void setEventKey(String eventKey) { this.eventKey = eventKey; }
+
+    public LocalDateTime getArchivedAt() { return archivedAt; }
+    public void setArchivedAt(LocalDateTime archivedAt) { this.archivedAt = archivedAt; }
 }

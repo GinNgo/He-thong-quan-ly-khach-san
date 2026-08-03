@@ -8,6 +8,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,8 +27,10 @@ public class CustomerNotificationController {
     public ResponseEntity<CustomerNotificationService.CustomerNotificationPage> getInbox(
             @AuthenticationPrincipal CustomUserDetails currentUser,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(customerNotificationService.getInbox(currentUser.getUserId(), page, size));
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "false") boolean archived) {
+        return ResponseEntity.ok(customerNotificationService.getInbox(
+                currentUser.getUserId(), page, size, archived));
     }
 
     @GetMapping("/unread-count")
@@ -41,5 +44,19 @@ public class CustomerNotificationController {
             @PathVariable Long notificationId,
             @AuthenticationPrincipal CustomUserDetails currentUser) {
         return ResponseEntity.ok(customerNotificationService.markAsRead(notificationId, currentUser.getUserId()));
+    }
+
+    @PostMapping("/{notificationId}/archive")
+    public ResponseEntity<CustomerNotificationDTO> archive(
+            @PathVariable Long notificationId,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        return ResponseEntity.ok(customerNotificationService.archive(notificationId, currentUser.getUserId()));
+    }
+
+    @PutMapping("/{notificationId}/restore")
+    public ResponseEntity<CustomerNotificationDTO> restore(
+            @PathVariable Long notificationId,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        return ResponseEntity.ok(customerNotificationService.restore(notificationId, currentUser.getUserId()));
     }
 }

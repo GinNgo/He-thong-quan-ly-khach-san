@@ -25,6 +25,10 @@ describe('CustomerNotificationsComponent', () => {
     connect: ReturnType<typeof vi.fn>;
     getInbox: ReturnType<typeof vi.fn>;
     markAsRead: ReturnType<typeof vi.fn>;
+    archive: ReturnType<typeof vi.fn>;
+    restore: ReturnType<typeof vi.fn>;
+    getPreferences: ReturnType<typeof vi.fn>;
+    updatePreferences: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -43,6 +47,26 @@ describe('CustomerNotificationsComponent', () => {
         unreadCount: 1,
       })),
       markAsRead: vi.fn(() => of({ ...notification, isRead: true })),
+      archive: vi.fn(() => of({ ...notification, archivedAt: '2026-08-04T11:00:00' })),
+      restore: vi.fn(() => of({ ...notification, archivedAt: null })),
+      getPreferences: vi.fn(() => of([{
+        eventClass: 'BOOKING',
+        label: 'Dat phong',
+        mandatory: true,
+        channels: [
+          { channel: 'IN_APP', enabled: true, locked: true },
+          { channel: 'EMAIL', enabled: true, locked: false },
+        ],
+      }, {
+        eventClass: 'MARKETING',
+        label: 'Uu dai va tin tuc',
+        mandatory: false,
+        channels: [
+          { channel: 'IN_APP', enabled: false, locked: false },
+          { channel: 'EMAIL', enabled: false, locked: false },
+        ],
+      }])),
+      updatePreferences: vi.fn(preferences => of(preferences)),
     };
     await TestBed.configureTestingModule({
       imports: [CustomerNotificationsComponent],
@@ -111,6 +135,45 @@ describe('CustomerNotificationsComponent', () => {
 
     expect(fixture.componentInstance.notifications.map(item => item.id)).toEqual([11, 10]);
     expect(fixture.componentInstance.unreadCount).toBe(2);
-    expect(api.getInbox).toHaveBeenLastCalledWith(0, 20);
+    expect(api.getInbox).toHaveBeenLastCalledWith(0, 20, false);
+  });
+
+  it('loads accessible settings and keeps mandatory in-app events locked', () => {
+    const fixture = TestBed.createComponent(CustomerNotificationsComponent);
+    fixture.detectChanges();
+
+    fixture.componentInstance.toggleSettings();
+    fixture.detectChanges();
+
+    const element: HTMLElement = fixture.nativeElement;
+    expect(api.getPreferences).toHaveBeenCalled();
+    expect(element.querySelector('fieldset')).not.toBeNull();
+    const locked = element.querySelector('input[disabled]') as HTMLInputElement;
+    expect(locked.checked).toBe(true);
+    expect(element.textContent).toContain('Luon bat');
+  });
+
+  it('switches to archived history and restores an owned row', () => {
+    api.getInbox.mockReturnValue(of({
+      content: [{ ...notification, archivedAt: '2026-08-04T11:00:00' }],
+      totalElements: 1,
+      totalPages: 1,
+      number: 0,
+      size: 20,
+      first: true,
+      last: true,
+      unreadCount: 0,
+      archived: true,
+      retentionDays: 365,
+    }));
+    const fixture = TestBed.createComponent(CustomerNotificationsComponent);
+    fixture.detectChanges();
+
+    fixture.componentInstance.showHistory(true);
+    fixture.detectChanges();
+    fixture.componentInstance.restore(notification);
+
+    expect(api.getInbox).toHaveBeenCalledWith(0, 20, true);
+    expect(api.restore).toHaveBeenCalledWith(10);
   });
 });

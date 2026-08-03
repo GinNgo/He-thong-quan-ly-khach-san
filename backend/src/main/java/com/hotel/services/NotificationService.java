@@ -3,12 +3,15 @@ package com.hotel.services;
 import com.hotel.entities.Notification;
 import com.hotel.notifications.delivery.NotificationDeliveryOutbox;
 import com.hotel.notifications.delivery.NotificationDeliveryOutboxRepository;
+import com.hotel.notifications.preferences.NotificationChannel;
+import com.hotel.notifications.preferences.NotificationPreferenceService;
 import com.hotel.repositories.NotificationRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class NotificationService {
@@ -16,14 +19,17 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final NotificationDeliveryOutboxRepository deliveryOutboxRepository;
     private final NotificationIdempotencyWriter idempotencyWriter;
+    private final NotificationPreferenceService preferenceService;
 
     public NotificationService(
             NotificationRepository notificationRepository,
             NotificationDeliveryOutboxRepository deliveryOutboxRepository,
-            NotificationIdempotencyWriter idempotencyWriter) {
+            NotificationIdempotencyWriter idempotencyWriter,
+            NotificationPreferenceService preferenceService) {
         this.notificationRepository = notificationRepository;
         this.deliveryOutboxRepository = deliveryOutboxRepository;
         this.idempotencyWriter = idempotencyWriter;
+        this.preferenceService = preferenceService;
     }
 
     @Transactional
@@ -66,6 +72,21 @@ public class NotificationService {
         String recipient = requireRecipient(username);
         return idempotencyWriter.createOrLoad(
                 normalizedKey, recipient, userId, type, title, message);
+    }
+
+    @Transactional
+    public Optional<Notification> sendUserNotificationOnceIfEnabled(
+            String eventKey,
+            String username,
+            Long userId,
+            String type,
+            String title,
+            String message) {
+        if (!preferenceService.isEnabled(userId, type, NotificationChannel.IN_APP)) {
+            return Optional.empty();
+        }
+        return Optional.of(sendUserNotificationOnce(
+                eventKey, username, userId, type, title, message));
     }
 
     public List<Notification> getAdminNotifications() {

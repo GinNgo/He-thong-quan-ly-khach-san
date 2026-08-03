@@ -4,6 +4,7 @@ import com.hotel.notifications.delivery.NotificationDeliveryOutboxRepository;
 import com.hotel.repositories.NotificationRepository;
 import com.hotel.services.NotificationIdempotencyWriter;
 import com.hotel.services.NotificationService;
+import com.hotel.notifications.preferences.NotificationPreferenceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
         "spring.flyway.enabled=false",
         "spring.jpa.hibernate.ddl-auto=create-drop"
 })
-@Import({NotificationService.class, NotificationIdempotencyWriter.class})
+@Import({NotificationService.class, NotificationIdempotencyWriter.class, NotificationPreferenceService.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class NotificationIdempotencyIntegrationTest {
 

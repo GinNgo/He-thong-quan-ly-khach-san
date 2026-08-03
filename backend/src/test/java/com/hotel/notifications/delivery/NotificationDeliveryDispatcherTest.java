@@ -151,6 +151,7 @@ class NotificationDeliveryDispatcherTest {
                 "Your booking is ready.",
                 false,
                 LocalDateTime.now(),
+                null,
                 "/booking-history");
     }
 }
