@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -56,7 +56,7 @@ export class ProfileComponent implements OnInit {
   readonly profileForm = this.fb.nonNullable.group({
     fullName: ['', [Validators.required, Validators.maxLength(150)]],
     email: ['', [Validators.required, Validators.email]],
-    phone: ['', Validators.maxLength(30)],
+    phone: ['', [Validators.maxLength(30), Validators.pattern(/^[0-9+().\\-\\s]*$/)]],
     avatarUrl: ['']
   });
 

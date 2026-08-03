@@ -1,6 +1,7 @@
-package com.hotel.controllers;
+﻿package com.hotel.controllers;
 
 import com.hotel.entities.User;
+import com.hotel.dtos.ProfileUpdateRequest;
 import com.hotel.dtos.UserDto;
 import com.hotel.services.UserService;
 import jakarta.validation.Valid;
@@ -88,12 +89,11 @@ public class UserController {
 
     @PreAuthorize("isAuthenticated()")
     @PutMapping("/me")
-    public ResponseEntity<UserDto> updateCurrentUser(@RequestBody com.hotel.dtos.UserRequest request) {
+    public ResponseEntity<UserDto> updateCurrentUser(@Valid @RequestBody ProfileUpdateRequest request) {
         com.hotel.security.CustomUserDetails userDetails = (com.hotel.security.CustomUserDetails) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return ResponseEntity.ok(userService.updateProfile(
                 userDetails.getUserId(),
                 request.getFullName(),
-                request.getEmail(),
                 request.getPhone(),
                 request.getAvatarUrl()
         ));

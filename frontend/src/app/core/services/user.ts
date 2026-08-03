@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+﻿import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -37,6 +37,13 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
+export interface ProfileUpdateRequest {
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  avatarUrl?: string | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -72,7 +79,7 @@ export class UserService {
     return this.http.get<User>(`${this.apiUrl}/me`);
   }
 
-  updateProfile(user: any): Observable<User> {
+  updateProfile(user: ProfileUpdateRequest): Observable<User> {
     return this.http.put<User>(`${this.apiUrl}/me`, user);
   }
 

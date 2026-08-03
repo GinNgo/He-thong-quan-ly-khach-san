@@ -1,4 +1,4 @@
-package com.hotel.services;
+﻿package com.hotel.services;
 
 import com.hotel.entities.User;
 import com.hotel.dtos.StaffLifecycleRequest;
@@ -12,9 +12,17 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Comparator;
 import java.util.stream.Collectors;
+import java.net.URI;
+import java.text.Normalizer;
+import java.util.regex.Pattern;
 
 @Service
 public class UserService {
+
+    private static final Pattern PROFILE_WHITESPACE = Pattern.compile("\\s+");
+    private static final Pattern PROFILE_PHONE = Pattern.compile("^[0-9+().\\-\\s]*$");
+    private static final Pattern OWNED_AVATAR_PATH = Pattern.compile(
+            "^/api/public/uploads/[A-Za-z0-9][A-Za-z0-9._-]{0,254}$");
 
     @Autowired
     private UserRepository userRepository;
@@ -287,15 +295,66 @@ public class UserService {
         return convertToDto(saved, systemAdministrator ? null : propertyAccessService.accessibleHotelIds());
     }
 
-    public UserDto updateProfile(Long id, String fullName, String email, String phone, String avatarUrl) {
+    @Transactional
+    public UserDto updateProfile(Long id, String fullName, String phone, String avatarUrl) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        user.setFullName(fullName);
-        // Email changes are applied only after the separate verification flow completes.
-        user.setPhone(phone);
-        user.setAvatarUrl(avatarUrl);
+        String normalizedFullName = normalizeRequiredProfileText(fullName, "Full name", 150);
+        String normalizedPhone = normalizePhone(phone);
+        String normalizedAvatarUrl = normalizeAvatarUrl(avatarUrl);
+
+        user.setFullName(normalizedFullName);
+        user.setPhone(normalizedPhone);
+        user.setAvatarUrl(normalizedAvatarUrl);
         return convertToDto(userRepository.save(user));
+    }
+
+    private String normalizeRequiredProfileText(String value, String fieldName, int maxLength) {
+        if (value == null) {
+            throw new IllegalArgumentException(fieldName + " is required.");
+        }
+        String normalized = PROFILE_WHITESPACE.matcher(
+                Normalizer.normalize(value, Normalizer.Form.NFKC).strip()).replaceAll(" ");
+        if (normalized.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " is required.");
+        }
+        if (normalized.length() > maxLength) {
+            throw new IllegalArgumentException(fieldName + " is too long.");
+        }
+        return normalized;
+    }
+
+    private String normalizePhone(String value) {
+        if (value == null || value.isBlank()) return null;
+        String normalized = PROFILE_WHITESPACE.matcher(
+                Normalizer.normalize(value, Normalizer.Form.NFKC).strip()).replaceAll(" ");
+        if (normalized.length() > 30 || !PROFILE_PHONE.matcher(normalized).matches()) {
+            throw new IllegalArgumentException("Phone contains unsupported characters.");
+        }
+        return normalized;
+    }
+
+    private String normalizeAvatarUrl(String value) {
+        if (value == null || value.isBlank()) return null;
+        String normalized = Normalizer.normalize(value, Normalizer.Form.NFKC).strip();
+        if (OWNED_AVATAR_PATH.matcher(normalized).matches() && !normalized.contains("..")) {
+            return normalized;
+        }
+
+        try {
+            URI uri = URI.create(normalized);
+            if ("https".equalsIgnoreCase(uri.getScheme())
+                    && uri.getHost() != null
+                    && !uri.getHost().isBlank()
+                    && uri.getRawUserInfo() == null) {
+                return uri.toASCIIString();
+            }
+        } catch (IllegalArgumentException ignored) {
+            // Return the same stable validation error for malformed and unsafe URLs.
+        }
+        throw new IllegalArgumentException(
+                "Avatar URL must use HTTPS or an application-managed upload path.");
     }
 
     @Transactional
