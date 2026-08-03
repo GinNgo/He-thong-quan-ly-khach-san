@@ -505,6 +505,7 @@ public class UserService {
     @Autowired
     private com.hotel.repositories.PropertyClaimRequestRepository propertyClaimRequestRepository;
 
+    @Transactional(readOnly = true)
     public Optional<UserDto> getUserWithSaaSContext(Long id) {
         Optional<User> optionalUser = userRepository.findById(id);
         if (optionalUser.isEmpty()) return Optional.empty();

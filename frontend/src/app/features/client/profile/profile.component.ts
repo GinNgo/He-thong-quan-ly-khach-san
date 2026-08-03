@@ -31,6 +31,8 @@ export class ProfileComponent implements OnInit {
   activeTab: 'profile' | 'bookings' = 'profile';
   bookings: ReservationSummary[] = [];
   loading = true; bookingsLoading = false; saving = false; uploading = false;
+  profileEmpty = false;
+  profileLoadFailed = false;
   emailActionBusy = false;
   cancellingId: number | null = null;
   error = ''; bookingsError = ''; success = '';
@@ -44,6 +46,11 @@ export class ProfileComponent implements OnInit {
     sendError: 'Không thể gửi liên kết xác minh lúc này. / A verification link cannot be sent right now.',
     alreadyVerified: 'Email hiện tại đã được xác minh. / The current email is already verified.',
     changePending: 'Thông tin đã lưu. Email mới chỉ có hiệu lực sau khi xác minh. / Profile saved. The new email takes effect only after verification.',
+  } as const;
+  readonly profileReadText = {
+    emptyTitle: 'Chưa có dữ liệu hồ sơ / Profile data is unavailable',
+    emptyHelp: 'Hãy thử tải lại. Nếu lỗi tiếp diễn, vui lòng liên hệ hỗ trợ. / Retry now or contact support if the issue continues.',
+    retry: 'Tải lại hồ sơ / Retry profile',
   } as const;
 
   readonly profileForm = this.fb.nonNullable.group({
@@ -189,17 +196,32 @@ export class ProfileComponent implements OnInit {
   avatarError(): void { this.profileForm.patchValue({ avatarUrl: '' }); }
   getStatusLabel(status: string): string { return ({PENDING:'Chờ xác nhận',PENDING_PAYMENT:'Chờ thanh toán',CONFIRMED:'Đã xác nhận',CHECKED_IN:'Đã nhận phòng',CHECKED_OUT:'Đã trả phòng',CANCELLED:'Đã hủy'} as Record<string,string>)[status] || status; }
 
-  private loadProfile(): void {
+  loadProfile(): void {
+    this.loading = true;
+    this.profileEmpty = false;
+    this.profileLoadFailed = false;
+    this.error = '';
     this.clientApi.getProfile().pipe(finalize(() => {
       this.loading = false;
       this.changeDetector.detectChanges();
     })).subscribe({
       next: profile => {
+        if (!profile) {
+          this.user = null;
+          this.profileEmpty = true;
+          this.profileForm.reset();
+          this.changeDetector.detectChanges();
+          return;
+        }
         this.user = profile;
         this.profileForm.setValue({ fullName: profile.fullName || '', email: profile.email || '', phone: profile.phone || '', avatarUrl: profile.avatarUrl || '' });
         this.changeDetector.detectChanges();
       },
-      error: () => { this.error = 'Không thể tải thông tin tài khoản.'; this.changeDetector.detectChanges(); }
+      error: () => {
+        this.profileLoadFailed = true;
+        this.error = 'Không thể tải thông tin tài khoản.';
+        this.changeDetector.detectChanges();
+      }
     });
   }
 }

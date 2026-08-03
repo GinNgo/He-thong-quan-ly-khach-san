@@ -16,8 +16,17 @@
 
   <section class="profile-content">
     <div *ngIf="loading" class="message"><i class="pi pi-spin pi-spinner"></i>Đang tải thông tin</div>
-    <div *ngIf="error" class="alert error">{{ error }}</div><div *ngIf="success" class="alert success">{{ success }}</div>
-    <section *ngIf="!loading && activeTab === 'profile'" class="content-panel">
+    <div *ngIf="error" class="alert error">
+      <span>{{ error }}</span>
+      <button *ngIf="profileLoadFailed" type="button" class="profile-retry" (click)="loadProfile()">{{ profileReadText.retry }}</button>
+    </div><div *ngIf="success" class="alert success">{{ success }}</div>
+    <section *ngIf="!loading && !error && profileEmpty && activeTab === 'profile'" class="content-panel empty profile-empty">
+      <i class="pi pi-user-minus" aria-hidden="true"></i>
+      <strong>{{ profileReadText.emptyTitle }}</strong>
+      <span>{{ profileReadText.emptyHelp }}</span>
+      <button type="button" class="profile-retry" (click)="loadProfile()">{{ profileReadText.retry }}</button>
+    </section>
+    <section *ngIf="!loading && !profileEmpty && activeTab === 'profile'" class="content-panel">
       <header><h1>Thông tin cá nhân</h1><p>Cập nhật thông tin dùng cho tài khoản và đặt phòng.</p></header>
       <form [formGroup]="profileForm" (ngSubmit)="saveProfile()">
         <label>Họ và tên<input formControlName="fullName" type="text"></label>
