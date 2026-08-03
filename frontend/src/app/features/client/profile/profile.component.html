@@ -60,6 +60,7 @@
           <div><small>Tổng tiền</small><strong>{{ booking.totalAmount | currency:'VND':'symbol':'1.0-0' }}</strong></div>
           <div class="booking-actions">
             <span class="status">{{ getStatusLabel(booking.status) }}</span>
+            <button type="button" class="booking-detail-btn" (click)="viewBooking(booking.id)">Xem chi tiết</button>
             <button
               *ngIf="booking.status === 'PENDING' || booking.status === 'PENDING_PAYMENT' || booking.status === 'CONFIRMED'"
               type="button"
@@ -72,6 +73,24 @@
           </div>
         </article>
       </div>
+      <div *ngIf="bookingDetailLoading" class="message"><i class="pi pi-spin pi-spinner"></i>Đang tải chi tiết chuyến đi</div>
+      <div *ngIf="bookingDetailError" class="alert error">{{ bookingDetailError }}</div>
+      <article *ngIf="selectedBooking as booking" class="booking-detail-panel">
+        <header>
+          <div><small>Mã đặt phòng</small><strong>#{{ booking.id }}</strong></div>
+          <span class="status">{{ getStatusLabel(booking.status || '') }}</span>
+        </header>
+        <p>{{ booking.checkInDate | date:'dd/MM/yyyy' }} - {{ booking.checkOutDate | date:'dd/MM/yyyy' }}</p>
+        <h2>Lịch sử chuyến đi</h2>
+        <ol *ngIf="booking.events?.length; else noBookingEvents">
+          <li *ngFor="let event of booking.events">
+            <strong>{{ getEventLabel(event.eventType) }}</strong>
+            <time>{{ event.occurredAt | date:'dd/MM/yyyy HH:mm' }}</time>
+            <span>{{ event.reason }}</span>
+          </li>
+        </ol>
+        <ng-template #noBookingEvents><p>Chưa có sự kiện vận hành được ghi nhận.</p></ng-template>
+      </article>
     </section>
   </section>
 </main>

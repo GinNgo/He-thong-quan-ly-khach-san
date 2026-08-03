@@ -48,6 +48,16 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.getAllReservations());
     }
 
+    @GetMapping("/page")
+    @Permission(function = FunctionCode.RESERVATION, action = ActionCode.VIEW)
+    public ResponseEntity<ReservationPageDTO> searchReservations(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(reservationService.searchReservations(status, query, page, size));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('CUSTOMER','PROPERTY_OWNER','HOTEL_MANAGER','RECEPTIONIST','HOTEL_ADMIN','SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ReservationDTO> getReservationById(@PathVariable Long id) {
@@ -58,6 +68,17 @@ public class ReservationController {
     @PreAuthorize("hasAuthority('CUSTOMER')")
     public ResponseEntity<List<ReservationDTO>> getMyReservations(Authentication authentication) {
         return ResponseEntity.ok(reservationService.getMyReservations(authentication.getName()));
+    }
+
+    @GetMapping("/my-bookings/page")
+    @PreAuthorize("hasAuthority('CUSTOMER')")
+    public ResponseEntity<ReservationPageDTO> searchMyReservations(
+            Authentication authentication,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(reservationService.searchMyReservations(
+                authentication.getName(), status, page, size));
     }
 
     @PostMapping("/{id}/cancel")

@@ -13,6 +13,10 @@ import com.hotel.propertycommerce.invoice.InvoiceFinalizationService;
 import com.hotel.propertycommerce.invoice.PropertyInvoice;
 import com.hotel.repositories.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +24,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -46,6 +52,7 @@ public class ReservationService {
     private final InvoiceFinalizationService invoiceFinalizationService;
     private final CheckoutOperationsService checkoutOperationsService;
     private final PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
+    private final OperationalAuditService operationalAuditService;
 
     @Transactional
     public ReservationDTO createReservation(String username, ReservationRequest request) {
@@ -125,6 +132,13 @@ public class ReservationService {
                 quantity,
                 "RESERVATION-" + savedReservation.getId());
 
+        appendReservationEvent(
+                savedReservation,
+                "RESERVATION_CREATED",
+                "Đặt phòng được tạo từ báo giá xác thực của hệ thống.",
+                null,
+                reservationState(savedReservation));
+
         notificationService.sendSystemNotification(
                 "BOOKING",
                 "Có đặt phòng mới!",
@@ -147,10 +161,31 @@ public class ReservationService {
     }
 
     @Transactional(readOnly = true)
+    public ReservationPageDTO searchReservations(String status, String query, int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        Specification<Reservation> specification = Specification.where(null);
+        if (!propertyAccessService.isSystemAdministrator()) {
+            Set<Long> hotelIds = propertyAccessService.accessibleHotelIds();
+            if (hotelIds.isEmpty()) {
+                return new ReservationPageDTO(List.of(), safePage, safeSize, 0, 0);
+            }
+            specification = specification.and((root, ignored, cb) -> root.get("hotel").get("id").in(hotelIds));
+        }
+        specification = reservationFilters(specification, status, query);
+        Page<ReservationDTO> result = reservationRepository.findAll(
+                        specification,
+                        PageRequest.of(safePage, safeSize,
+                                Sort.by(Sort.Order.desc("checkInDate"), Sort.Order.desc("id"))))
+                .map(reservation -> mapToDTO(reservation, false));
+        return ReservationPageDTO.from(result);
+    }
+
+    @Transactional(readOnly = true)
     public ReservationDTO getReservationById(Long id) {
         Reservation reservation = findReservation(id);
         authorizeReservationView(reservation);
-        return mapToDTO(reservation);
+        return mapToDTO(reservation, true);
     }
 
     @Transactional(readOnly = true)
@@ -165,8 +200,26 @@ public class ReservationService {
     @Transactional(readOnly = true)
     public List<ReservationDTO> getMyReservations(String username) {
         if (username == null) return List.of();
-        return reservationRepository.findByUserUsername(username).stream()
+        return reservationRepository.findByUserUsernameOrderByIdDesc(username).stream()
                 .map(this::mapToDTO).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ReservationPageDTO searchMyReservations(String username, String status, int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        if (username == null || username.isBlank()) {
+            return new ReservationPageDTO(List.of(), safePage, safeSize, 0, 0);
+        }
+        Specification<Reservation> specification = (root, ignored, cb) ->
+                cb.equal(root.get("user").get("username"), username);
+        specification = reservationFilters(specification, status, null);
+        Page<ReservationDTO> result = reservationRepository.findAll(
+                        specification,
+                        PageRequest.of(safePage, safeSize,
+                                Sort.by(Sort.Order.desc("checkInDate"), Sort.Order.desc("id"))))
+                .map(reservation -> mapToDTO(reservation, false));
+        return ReservationPageDTO.from(result);
     }
 
     @Transactional
@@ -230,6 +283,12 @@ public class ReservationService {
         reservation.setRoom(rooms.get(0));
         reservationDetailRepository.save(detail);
         reservationRepository.save(reservation);
+        appendReservationEvent(
+                reservation,
+                "ROOMS_ASSIGNED",
+                "Đã xếp phòng cụ thể cho đặt phòng.",
+                Map.of("roomIds", List.of()),
+                Map.of("roomIds", roomIds));
         return mapToDTO(reservation);
     }
 
@@ -244,6 +303,8 @@ public class ReservationService {
             reconcileReservationHold(id, normalizedStatus, LocalDateTime.now());
             return mapToDTO(reservation);
         }
+
+        String previousStatus = reservation.getStatus();
 
         List<ReservationRoom> assignments = "CHECKED_IN".equals(normalizedStatus)
                 ? reservationRoomRepository.findAssignedByReservationIdForUpdate(id)
@@ -295,6 +356,7 @@ public class ReservationService {
         reservation.setStatus(normalizedStatus);
         Reservation saved = reservationRepository.save(reservation);
         reconcileReservationHold(id, normalizedStatus, LocalDateTime.now());
+        appendStatusChangedEvent(saved, previousStatus, normalizedStatus, "Trạng thái vận hành đã được cập nhật.");
         return mapToDTO(saved);
     }
 
@@ -330,9 +392,11 @@ public class ReservationService {
         cancelLockedReservation(
                 reservation,
                 reservationRoomRepository.findByReservationDetailReservationId(id));
+        String previousStatus = reservation.getStatus();
         reservation.setStatus("CANCELLED");
         Reservation saved = reservationRepository.save(reservation);
         reservationHoldService.releaseActiveHold(id, LocalDateTime.now());
+        appendStatusChangedEvent(saved, previousStatus, "CANCELLED", "Khách hàng đã hủy đặt phòng.");
         return mapToDTO(saved);
     }
 
@@ -426,8 +490,10 @@ public class ReservationService {
         PropertyInvoice invoice = finalized.invoice();
         CheckoutOperationsService.CheckoutOperationsResult operations = checkoutOperationsService.apply(reservation);
         if (!alreadyCheckedOut) {
+            String previousStatus = reservation.getStatus();
             reservation.setStatus("CHECKED_OUT");
             reservationRepository.saveAndFlush(reservation);
+            appendStatusChangedEvent(reservation, previousStatus, "CHECKED_OUT", "Đã hoàn tất trả phòng.");
         }
         return new CheckoutResultDTO(
                 reservation.getId(),
@@ -537,6 +603,10 @@ public class ReservationService {
     }
 
     private ReservationDTO mapToDTO(Reservation reservation) {
+        return mapToDTO(reservation, false);
+    }
+
+    private ReservationDTO mapToDTO(Reservation reservation, boolean includeEvents) {
         ReservationDTO dto = new ReservationDTO();
         dto.setId(reservation.getId());
         dto.setUserId(reservation.getUser().getId());
@@ -551,7 +621,86 @@ public class ReservationService {
         dto.setSpecialRequests(reservation.getSpecialRequests());
         dto.setDetails(reservationDetailRepository.findByReservationId(reservation.getId()).stream()
                 .map(this::mapDetailToDTO).toList());
+        if (includeEvents) {
+            dto.setEvents(operationalAuditService.findAuthorizedAggregateHistory(
+                            reservation.getHotel().getId(), "STAY", "RESERVATION",
+                            reservation.getId().toString(), 100).stream()
+                    .map(event -> new ReservationEventDTO(
+                            event.id(), event.eventType(), event.reason(), event.beforeState(), event.afterState(),
+                            event.actorType(), event.occurredAt()))
+                    .toList());
+        } else {
+            dto.setEvents(List.of());
+        }
         return dto;
+    }
+
+    private Specification<Reservation> reservationFilters(
+            Specification<Reservation> specification, String status, String query) {
+        if (status != null && !status.isBlank()) {
+            String normalizedStatus = status.trim().toUpperCase(Locale.ROOT);
+            specification = specification.and((root, ignored, cb) ->
+                    cb.equal(root.get("status"), normalizedStatus));
+        }
+        if (query != null && !query.isBlank()) {
+            String normalizedQuery = query.trim().toLowerCase(Locale.ROOT);
+            Long reservationId = parsePositiveLong(normalizedQuery.replaceFirst("^res-", ""));
+            specification = specification.and((root, ignored, cb) -> {
+                var user = root.join("user");
+                var textMatch = cb.or(
+                        cb.like(cb.lower(user.get("username")), "%" + normalizedQuery + "%"),
+                        cb.like(cb.lower(user.get("fullName")), "%" + normalizedQuery + "%"));
+                return reservationId == null
+                        ? textMatch
+                        : cb.or(textMatch, cb.equal(root.get("id"), reservationId));
+            });
+        }
+        return specification;
+    }
+
+    private Long parsePositiveLong(String value) {
+        try {
+            long parsed = Long.parseLong(value);
+            return parsed > 0 ? parsed : null;
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private void appendStatusChangedEvent(
+            Reservation reservation, String previousStatus, String currentStatus, String reason) {
+        appendReservationEvent(
+                reservation,
+                "RESERVATION_STATUS_CHANGED",
+                reason,
+                Map.of("status", previousStatus),
+                Map.of("status", currentStatus));
+    }
+
+    private void appendReservationEvent(
+            Reservation reservation, String eventType, String reason, Object beforeState, Object afterState) {
+        operationalAuditService.append(new OperationalAuditService.AuditCommand(
+                "TENANT",
+                reservation.getHotel().getId(),
+                "STAY",
+                eventType,
+                "RESERVATION",
+                reservation.getId().toString(),
+                null,
+                null,
+                reason,
+                beforeState,
+                afterState,
+                null));
+    }
+
+    private Map<String, Object> reservationState(Reservation reservation) {
+        return Map.of(
+                "status", reservation.getStatus(),
+                "checkInDate", reservation.getCheckInDate(),
+                "checkOutDate", reservation.getCheckOutDate(),
+                "guests", reservation.getGuests(),
+                "totalAmount", reservation.getTotalAmount());
     }
 
     private ReservationDetailDTO mapDetailToDTO(ReservationDetail detail) {

@@ -58,6 +58,7 @@ class ReservationLifecyclePropertyIdorTest {
     @Mock private InvoiceFinalizationService invoiceFinalizationService;
     @Mock private CheckoutOperationsService checkoutOperationsService;
     @Mock private PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
+    @Mock private OperationalAuditService operationalAuditService;
 
     @InjectMocks private ReservationService reservationService;
 

@@ -5,7 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { finalize, map, of, switchMap } from 'rxjs';
 import { AuthService } from '@app/core/services/auth';
 import { ClientApiService, ReservationSummary, UserContext } from '@app/core/services/client-api.service';
-import { ReservationService } from '@app/core/services/reservation.service';
+import { Reservation, ReservationService } from '@app/core/services/reservation.service';
 import { AsyncActionCoordinatorService } from '@app/core/services/async-action-coordinator.service';
 import { UserService } from '@app/core/services/user';
 import { EmailVerificationService } from '@app/core/services/email-verification.service';
@@ -35,6 +35,9 @@ export class ProfileComponent implements OnInit {
   profileLoadFailed = false;
   emailActionBusy = false;
   cancellingId: number | null = null;
+  selectedBooking: Reservation | null = null;
+  bookingDetailLoading = false;
+  bookingDetailError = '';
   error = ''; bookingsError = ''; success = '';
   readonly emailVerificationText = {
     verified: 'Email đã xác minh / Email verified',
@@ -182,6 +185,20 @@ export class ProfileComponent implements OnInit {
     });
   }
 
+  viewBooking(id: number): void {
+    if (this.bookingDetailLoading) return;
+    this.bookingDetailLoading = true;
+    this.bookingDetailError = '';
+    this.selectedBooking = null;
+    this.reservationService.getReservationById(id).pipe(finalize(() => {
+      this.bookingDetailLoading = false;
+      this.changeDetector.detectChanges();
+    })).subscribe({
+      next: booking => this.selectedBooking = booking,
+      error: () => this.bookingDetailError = 'Không thể tải chi tiết chuyến đi.',
+    });
+  }
+
   private getCancellationKey(id: number): string {
     const storageKey = `hotel:reservation-cancel:${id}`;
     const current = sessionStorage.getItem(storageKey);
@@ -195,6 +212,7 @@ export class ProfileComponent implements OnInit {
   logout(): void { this.authService.logout(); this.router.navigate(['/']); }
   avatarError(): void { this.profileForm.patchValue({ avatarUrl: '' }); }
   getStatusLabel(status: string): string { return ({PENDING:'Chờ xác nhận',PENDING_PAYMENT:'Chờ thanh toán',CONFIRMED:'Đã xác nhận',CHECKED_IN:'Đã nhận phòng',CHECKED_OUT:'Đã trả phòng',CANCELLED:'Đã hủy'} as Record<string,string>)[status] || status; }
+  getEventLabel(eventType: string): string { return ({RESERVATION_CREATED:'Đã tạo đặt phòng',RESERVATION_STATUS_CHANGED:'Đã đổi trạng thái',ROOMS_ASSIGNED:'Đã xếp phòng cụ thể'} as Record<string,string>)[eventType] || eventType; }
 
   loadProfile(): void {
     this.loading = true;

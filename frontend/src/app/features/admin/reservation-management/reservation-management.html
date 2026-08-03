@@ -12,7 +12,41 @@
   </div>
 
   <p-card styleClass="shadow-sm border-0 rounded-4" [style]="{'border-radius': '12px'}">
-    <p-table [value]="reservations" [paginator]="true" [rows]="10" responsiveLayout="scroll" [rowHover]="true" styleClass="p-datatable-striped p-datatable-sm border-top">
+    <form class="reservation-filters" (submit)="$event.preventDefault(); loadReservations(true)">
+      <label>
+        <span>Tìm đặt phòng</span>
+        <input
+          type="search"
+          name="reservationQuery"
+          [(ngModel)]="searchQuery"
+          placeholder="Mã đặt phòng hoặc khách hàng"
+        >
+      </label>
+      <label>
+        <span>Trạng thái</span>
+        <select name="reservationStatus" [(ngModel)]="statusFilter">
+          <option value="">Tất cả trạng thái</option>
+          <option value="PENDING">Chờ xác nhận</option>
+          <option value="PENDING_PAYMENT">Chờ thanh toán</option>
+          <option value="CONFIRMED">Đã xác nhận</option>
+          <option value="CHECKED_IN">Đã nhận phòng</option>
+          <option value="CHECKED_OUT">Đã trả phòng</option>
+          <option value="CANCELLED">Đã hủy</option>
+          <option value="NO_SHOW">Khách không đến</option>
+        </select>
+      </label>
+      <button pButton type="submit" icon="pi pi-search" label="Lọc"></button>
+    </form>
+
+    <div *ngIf="reservationsLoading" class="reservation-state" role="status">
+      <i class="pi pi-spin pi-spinner" aria-hidden="true"></i> Đang tải danh sách đặt phòng
+    </div>
+    <div *ngIf="reservationsError" class="reservation-state reservation-state--error" role="alert">
+      <span>{{ reservationsError }}</span>
+      <button type="button" (click)="loadReservations()">Thử lại</button>
+    </div>
+
+    <p-table *ngIf="!reservationsLoading && !reservationsError" [value]="reservations" responsiveLayout="scroll" [rowHover]="true" styleClass="p-datatable-striped p-datatable-sm border-top">
       <ng-template pTemplate="header">
         <tr>
           <th class="text-muted fw-bold border-bottom" style="font-size: 0.85rem; text-transform: uppercase;">Mã Booking</th>
@@ -39,11 +73,12 @@
                     'status-reserved': res.status === 'PENDING', 
                     'status-maintenance': res.status === 'CANCELLED'
                   }">
-              {{res.status}}
+              {{ getStatusLabel(res.status) }}
             </span>
           </td>
           <td class="text-center">
             <div class="d-flex gap-2 justify-content-center">
+              <button pButton icon="pi pi-eye" class="p-button-text p-button-secondary p-button-sm" data-action="view-reservation" pTooltip="Xem chi tiết" (click)="openReservationDetail(res.id)"></button>
               <button pButton icon="pi pi-check" class="p-button-text p-button-success p-button-sm" pTooltip="Xác nhận" *ngIf="canUpdateReservation && res.status === 'PENDING'" [loading]="isLifecycleBusy(res.id, 'STATUS_CONFIRMED')" [disabled]="lifecycleActionKey() !== null" (click)="updateStatus(res.id, 'CONFIRMED')"></button>
               <button pButton icon="pi pi-sign-in" class="p-button-text p-button-info p-button-sm" data-action="check-in" pTooltip="Check-in" *ngIf="canCheckIn && res.status === 'CONFIRMED'" [loading]="isLifecycleBusy(res.id, 'CHECK_IN')" [disabled]="lifecycleActionKey() !== null" (click)="checkIn(res.id)"></button>
               <button pButton icon="pi pi-user-minus" class="p-button-text p-button-warning p-button-sm" data-action="no-show" pTooltip="No-show" *ngIf="canMarkNoShow && res.status === 'CONFIRMED'" [loading]="isLifecycleBusy(res.id, 'NO_SHOW')" [disabled]="lifecycleActionKey() !== null" (click)="markNoShow(res.id)"></button>
@@ -61,7 +96,41 @@
         </tr>
       </ng-template>
     </p-table>
+
+    <nav *ngIf="!reservationsLoading && !reservationsError && totalPages > 1" class="reservation-pagination" aria-label="Phân trang đặt phòng">
+      <button type="button" [disabled]="page === 0" (click)="goToPage(page - 1)">Trang trước</button>
+      <span>Trang {{ page + 1 }} / {{ totalPages }} · {{ totalElements }} đặt phòng</span>
+      <button type="button" [disabled]="page + 1 >= totalPages" (click)="goToPage(page + 1)">Trang sau</button>
+    </nav>
   </p-card>
+
+  <p-dialog
+    [(visible)]="showDetailDialog"
+    header="Chi tiết đặt phòng"
+    [modal]="true"
+    [style]="{ width: 'min(760px, 96vw)' }"
+  >
+    <div *ngIf="detailLoading" class="reservation-state" role="status">
+      <i class="pi pi-spin pi-spinner" aria-hidden="true"></i> Đang tải chi tiết đặt phòng
+    </div>
+    <div *ngIf="detailError" class="reservation-state reservation-state--error" role="alert">{{ detailError }}</div>
+    <section *ngIf="selectedReservation as reservation" class="reservation-detail">
+      <div class="reservation-detail__summary">
+        <div><small>Mã đặt phòng</small><strong>RES-{{ reservation.id }}</strong></div>
+        <div><small>Khách hàng</small><strong>{{ reservation.userFullName || reservation.username }}</strong></div>
+        <div><small>Lưu trú</small><strong>{{ reservation.checkInDate | date:'dd/MM/yyyy' }} - {{ reservation.checkOutDate | date:'dd/MM/yyyy' }}</strong></div>
+        <div><small>Trạng thái</small><strong>{{ getStatusLabel(reservation.status) }}</strong></div>
+      </div>
+      <h3>Lịch sử sự kiện</h3>
+      <ol *ngIf="reservation.events?.length; else noEvents" class="reservation-events">
+        <li *ngFor="let event of reservation.events">
+          <div><strong>{{ getEventLabel(event.eventType) }}</strong><time>{{ event.occurredAt | date:'dd/MM/yyyy HH:mm' }}</time></div>
+          <p>{{ event.reason }}</p>
+        </li>
+      </ol>
+      <ng-template #noEvents><p class="reservation-state">Chưa có sự kiện vận hành được ghi nhận.</p></ng-template>
+    </section>
+  </p-dialog>
 
   <p-dialog
     [(visible)]="showCheckoutDialog"

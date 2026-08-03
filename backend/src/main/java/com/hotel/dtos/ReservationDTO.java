@@ -17,6 +17,7 @@ public class ReservationDTO {
     private String paymentMethod;
     private String specialRequests;
     private List<ReservationDetailDTO> details;
+    private List<ReservationEventDTO> events;
 
     public Long getId() {
         return id;
@@ -112,5 +113,13 @@ public class ReservationDTO {
 
     public void setDetails(List<ReservationDetailDTO> details) {
         this.details = details;
+    }
+
+    public List<ReservationEventDTO> getEvents() {
+        return events;
+    }
+
+    public void setEvents(List<ReservationEventDTO> events) {
+        this.events = events;
     }
 }

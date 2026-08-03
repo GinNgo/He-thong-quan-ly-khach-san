@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
@@ -22,6 +23,7 @@ import { Observable, finalize } from 'rxjs';
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     TableModule,
     ButtonModule,
     TagModule,
@@ -38,7 +40,19 @@ import { Observable, finalize } from 'rxjs';
 export class ReservationManagement implements OnInit {
   reservations: Reservation[] = [];
   services: HotelServiceDTO[] = [];
-  
+  reservationsLoading = false;
+  reservationsError = '';
+  searchQuery = '';
+  statusFilter = '';
+  page = 0;
+  readonly pageSize = 10;
+  totalElements = 0;
+  totalPages = 0;
+  selectedReservation: Reservation | null = null;
+  detailLoading = false;
+  detailError = '';
+  showDetailDialog = false;
+
   showCheckoutDialog = false;
   selectedReservationId: number | null = null;
   private permissionService = inject(PermissionService);
@@ -58,15 +72,55 @@ export class ReservationManagement implements OnInit {
 
   ngOnInit() {
     this.loadReservations();
+    this.hotelServiceService.getServices().subscribe({
+      next: data => this.services = data,
+      error: () => this.services = [],
+    });
   }
 
-  loadReservations() {
-    this.reservationService.getAllReservations().subscribe(data => {
-      this.reservations = data;
+  loadReservations(resetPage = false) {
+    if (resetPage) this.page = 0;
+    this.reservationsLoading = true;
+    this.reservationsError = '';
+    this.reservationService.searchReservations({
+      status: this.statusFilter || undefined,
+      query: this.searchQuery,
+      page: this.page,
+      size: this.pageSize,
+    }).pipe(finalize(() => this.reservationsLoading = false)).subscribe({
+      next: result => {
+        this.reservations = result.content;
+        this.page = result.page;
+        this.totalElements = result.totalElements;
+        this.totalPages = result.totalPages;
+      },
+      error: () => {
+        this.reservations = [];
+        this.totalElements = 0;
+        this.totalPages = 0;
+        this.reservationsError = 'Không thể tải danh sách đặt phòng. Vui lòng thử lại.';
+      },
     });
-    this.hotelServiceService.getServices().subscribe(data => {
-      this.services = data;
-    });
+  }
+
+  goToPage(nextPage: number) {
+    if (nextPage < 0 || nextPage >= this.totalPages || nextPage === this.page) return;
+    this.page = nextPage;
+    this.loadReservations();
+  }
+
+  openReservationDetail(reservationId: number | undefined) {
+    if (!reservationId) return;
+    this.showDetailDialog = true;
+    this.detailLoading = true;
+    this.detailError = '';
+    this.selectedReservation = null;
+    this.reservationService.getReservationById(reservationId)
+      .pipe(finalize(() => this.detailLoading = false))
+      .subscribe({
+        next: reservation => this.selectedReservation = reservation,
+        error: () => this.detailError = 'Không thể tải chi tiết đặt phòng.',
+      });
   }
 
   getSeverity(status: string | undefined): "success" | "secondary" | "info" | "warn" | "danger" | "contrast" | undefined {
@@ -79,6 +133,27 @@ export class ReservationManagement implements OnInit {
       case 'CANCELLED': return 'danger';
       default: return 'info';
     }
+  }
+
+  getStatusLabel(status: string | undefined): string {
+    if (!status) return 'Chưa xác định';
+    return ({
+      PENDING: 'Chờ xác nhận',
+      PENDING_PAYMENT: 'Chờ thanh toán',
+      CONFIRMED: 'Đã xác nhận',
+      CHECKED_IN: 'Đã nhận phòng',
+      CHECKED_OUT: 'Đã trả phòng',
+      CANCELLED: 'Đã hủy',
+      NO_SHOW: 'Khách không đến',
+    } as Record<string, string>)[status] || status;
+  }
+
+  getEventLabel(eventType: string): string {
+    return ({
+      RESERVATION_CREATED: 'Đã tạo đặt phòng',
+      RESERVATION_STATUS_CHANGED: 'Đã đổi trạng thái',
+      ROOMS_ASSIGNED: 'Đã xếp phòng cụ thể',
+    } as Record<string, string>)[eventType] || eventType;
   }
 
   updateStatus(id: number | undefined, status: string) {

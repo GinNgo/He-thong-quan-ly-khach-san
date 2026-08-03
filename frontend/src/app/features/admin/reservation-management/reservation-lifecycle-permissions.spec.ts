@@ -13,7 +13,8 @@ describe('ReservationManagement lifecycle permissions', () => {
   let fixture: ComponentFixture<ReservationManagement>;
   let component: ReservationManagement;
   let reservationService: {
-    getAllReservations: ReturnType<typeof vi.fn>;
+    searchReservations: ReturnType<typeof vi.fn>;
+    getReservationById: ReturnType<typeof vi.fn>;
     checkIn: ReturnType<typeof vi.fn>;
     cancelOperational: ReturnType<typeof vi.fn>;
     markNoShow: ReturnType<typeof vi.fn>;
@@ -35,7 +36,10 @@ describe('ReservationManagement lifecycle permissions', () => {
 
   beforeEach(async () => {
     reservationService = {
-      getAllReservations: vi.fn(() => of([reservation])),
+      searchReservations: vi.fn(() => of({
+        content: [reservation], page: 0, size: 10, totalElements: 1, totalPages: 1,
+      })),
+      getReservationById: vi.fn(() => of(reservation)),
       checkIn: vi.fn(() => of(reservation)),
       cancelOperational: vi.fn(() => of(reservation)),
       markNoShow: vi.fn(() => of(reservation)),

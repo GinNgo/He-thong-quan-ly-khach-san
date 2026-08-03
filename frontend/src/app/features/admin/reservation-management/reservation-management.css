@@ -4,7 +4,122 @@
   border-radius: var(--hotel-radius-lg);
 }
 
+.reservation-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 240px) auto;
+  gap: 0.85rem;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+
+.reservation-filters label {
+  display: grid;
+  gap: 0.35rem;
+  color: #4d463b;
+  font-weight: 700;
+}
+
+.reservation-filters input,
+.reservation-filters select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #d8d0c2;
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  background: #fffdf8;
+}
+
+.reservation-state {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  justify-content: center;
+  min-height: 96px;
+  padding: 1rem;
+  color: #675f53;
+}
+
+.reservation-state--error {
+  justify-content: space-between;
+  border: 1px solid #efc3bd;
+  border-radius: 10px;
+  background: #fff4f2;
+  color: #922f24;
+}
+
+.reservation-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 1rem;
+}
+
+.reservation-pagination button,
+.reservation-state--error button {
+  border: 1px solid #b99b5b;
+  border-radius: 999px;
+  padding: 0.5rem 0.9rem;
+  background: #fff;
+  color: #624b1d;
+}
+
+.reservation-detail__summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.reservation-detail__summary > div {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.85rem;
+  border-radius: 12px;
+  background: #f7f3ea;
+}
+
+.reservation-events {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reservation-events li {
+  border-left: 3px solid #b89245;
+  padding: 0.25rem 0 0.25rem 0.9rem;
+}
+
+.reservation-events li > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.reservation-events time {
+  color: #756d61;
+  font-size: 0.85rem;
+}
+
+.reservation-events p {
+  margin: 0.25rem 0 0;
+  color: #5f584e;
+}
+
 @media (max-width: 768px) {
+  .reservation-filters,
+  .reservation-detail__summary {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-pagination,
+  .reservation-events li > div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   :host ::ng-deep .checkout-dialog {
     max-height: 100dvh;
     margin: 0;

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
@@ -9,6 +9,16 @@ export interface ReservationDetail {
   roomId: number;
   roomNumber?: string;
   priceAtBooking?: number;
+}
+
+export interface ReservationEvent {
+  id: number;
+  eventType: string;
+  reason: string;
+  beforeState?: string;
+  afterState?: string;
+  actorType: string;
+  occurredAt: string;
 }
 
 export interface Reservation {
@@ -24,6 +34,15 @@ export interface Reservation {
   paymentMethod: string;
   specialRequests?: string;
   details: ReservationDetail[];
+  events?: ReservationEvent[];
+}
+
+export interface ReservationPage {
+  content: Reservation[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 }
 
 @Injectable({
@@ -37,6 +56,20 @@ export class ReservationService {
 
   getAllReservations(): Observable<Reservation[]> {
     return this.http.get<Reservation[]>(this.apiUrl);
+  }
+
+  searchReservations(options: {
+    status?: string;
+    query?: string;
+    page?: number;
+    size?: number;
+  } = {}): Observable<ReservationPage> {
+    let params = new HttpParams()
+      .set('page', String(options.page ?? 0))
+      .set('size', String(options.size ?? 20));
+    if (options.status) params = params.set('status', options.status);
+    if (options.query?.trim()) params = params.set('query', options.query.trim());
+    return this.http.get<ReservationPage>(`${this.apiUrl}/page`, { params });
   }
 
   getReservationById(id: number): Observable<Reservation> {
