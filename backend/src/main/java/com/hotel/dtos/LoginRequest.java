@@ -1,14 +1,16 @@
 package com.hotel.dtos;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 public class LoginRequest {
 
     @NotBlank(message = "Username is required")
+    @Size(max = 190, message = "Username or email must not exceed 190 characters")
     private String username;
 
     @NotBlank(message = "Password is required")
+    @Size(max = 256, message = "Password must not exceed 256 characters")
     private String password;
 
     // Getters and Setters

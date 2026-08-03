@@ -9,6 +9,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -24,9 +25,11 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+    public UserDetails loadUserByUsername(String usernameOrEmail) throws UsernameNotFoundException {
+        String normalizedIdentifier = normalizeIdentifier(usernameOrEmail);
+        User user = userRepository.findByUsername(normalizedIdentifier)
+                .or(() -> userRepository.findByEmail(normalizedIdentifier))
+                .orElseThrow(() -> new UsernameNotFoundException("Invalid login credentials."));
         AccountStatusPolicy.requireActive(user);
 
         java.util.Set<GrantedAuthority> authorities = user.getRoles().stream()
@@ -61,5 +64,12 @@ public class CustomUserDetailsService implements UserDetailsService {
                 hotelId,
                 featureLimits
         );
+    }
+
+    private String normalizeIdentifier(String value) {
+        if (value == null || value.isBlank()) {
+            throw new UsernameNotFoundException("Invalid login credentials.");
+        }
+        return value.strip().toLowerCase(Locale.ROOT);
     }
 }

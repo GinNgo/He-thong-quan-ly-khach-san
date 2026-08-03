@@ -36,6 +36,9 @@ public class AuthControllerIntegrationTest {
     private static final String INVALID_USERNAME = "abc";
     private static final String SUSPENDED_USERNAME = "auth_http_suspended_user";
     private static final String REVOKED_USERNAME = "auth_http_revoked_user";
+    private static final String NORMALIZED_USERNAME = "auth_http_normalized_user";
+    private static final String EMAIL_LOGIN_USERNAME = "auth_http_email_user";
+    private static final String EMAIL_LOGIN_EMAIL = "auth-http-email-login@example.com";
 
     @Autowired
     private MockMvc mockMvc;
@@ -59,7 +62,9 @@ public class AuthControllerIntegrationTest {
                 WRONG_PASSWORD_USERNAME,
                 INVALID_USERNAME,
                 SUSPENDED_USERNAME,
-                REVOKED_USERNAME).forEach(username ->
+                REVOKED_USERNAME,
+                NORMALIZED_USERNAME,
+                EMAIL_LOGIN_USERNAME).forEach(username ->
                 userRepository.findByUsername(username).ifPresent(userRepository::delete));
         userRepository.flush();
     }
@@ -114,6 +119,55 @@ public class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$.correlationId").isString())
                 .andExpect(jsonPath("$.retryable").value(false))
                 .andExpect(jsonPath("$.path").value("/api/auth/login"));
+    }
+
+    @Test
+    void testLogin_UnknownUserUsesSameEnumerationSafeContract() throws Exception {
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setUsername("missing-auth-http-user@example.com");
+        loginRequest.setPassword("Password@123");
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
+                .andExpect(jsonPath("$.message").value("Invalid username or password."))
+                .andExpect(jsonPath("$.retryable").value(false))
+                .andExpect(jsonPath("$.path").value("/api/auth/login"));
+    }
+
+    @Test
+    void testLogin_NormalizesUsernameWhitespaceAndCase() throws Exception {
+        createUser(NORMALIZED_USERNAME, "auth-http-normalized@example.com", "ACTIVE");
+
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setUsername("  AUTH_HTTP_NORMALIZED_USER  ");
+        loginRequest.setPassword("Password@123");
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isString())
+                .andExpect(jsonPath("$.username").value(NORMALIZED_USERNAME));
+    }
+
+    @Test
+    void testLogin_AcceptsNormalizedEmailAsThePublicIdentifier() throws Exception {
+        createUser(EMAIL_LOGIN_USERNAME, EMAIL_LOGIN_EMAIL, "ACTIVE");
+
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setUsername("  AUTH-HTTP-EMAIL-LOGIN@EXAMPLE.COM  ");
+        loginRequest.setPassword("Password@123");
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isString())
+                .andExpect(jsonPath("$.username").value(EMAIL_LOGIN_USERNAME));
     }
 
     @Test
