@@ -35,11 +35,14 @@ export interface CustomerNotificationPage {
 export class CustomerNotificationService implements OnDestroy {
   private readonly apiUrl = `${environment.apiUrl}/customer/notifications`;
   private readonly notificationSubject = new Subject<CustomerNotification>();
+  private readonly reconciliationSubject = new Subject<void>();
   private readonly subscriptions = new Subscription();
   private readonly browserPlatform: boolean;
   private stompClient: Client | null = null;
 
   readonly notifications$ = this.notificationSubject.asObservable();
+  readonly reconciliation$ = this.reconciliationSubject.asObservable();
+  private connectedOnce = false;
 
   constructor(
     private readonly http: HttpClient,
@@ -84,6 +87,10 @@ export class CustomerNotificationService implements OnDestroy {
       },
       onConnect: () => {
         client.subscribe(CUSTOMER_NOTIFICATION_DESTINATION, message => this.handleMessage(message));
+        if (this.connectedOnce) {
+          this.ngZone.run(() => this.reconciliationSubject.next());
+        }
+        this.connectedOnce = true;
       },
     });
     this.stompClient = client;

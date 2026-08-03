@@ -42,6 +42,7 @@ describe('ClientLayout', () => {
           provide: CustomerNotificationService,
           useValue: {
             notifications$: new Subject(),
+            reconciliation$: new Subject(),
             connect: vi.fn(),
             disconnect: vi.fn(),
             getUnreadCount: vi.fn(() => of({ unreadCount: 0 })),

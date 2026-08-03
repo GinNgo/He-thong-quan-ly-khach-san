@@ -61,7 +61,7 @@ public class CustomerNotificationService {
         return toDto(notification);
     }
 
-    private CustomerNotificationDTO toDto(Notification notification) {
+    public CustomerNotificationDTO toDto(Notification notification) {
         return new CustomerNotificationDTO(
                 notification.getId(),
                 notification.getType(),

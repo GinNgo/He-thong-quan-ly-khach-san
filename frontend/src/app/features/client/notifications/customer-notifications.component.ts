@@ -36,6 +36,9 @@ export class CustomerNotificationsComponent implements OnInit, OnDestroy {
         if (!notification.isRead) this.unreadCount += 1;
         this.changeDetector.markForCheck();
       });
+    this.notificationsApi.reconciliation$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.reconcilePersistedState());
     this.notificationsApi.connect();
     this.loadPage(0);
   }
@@ -47,10 +50,7 @@ export class CustomerNotificationsComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: result => {
-          this.notifications = result.content;
-          this.unreadCount = result.unreadCount;
-          this.page = result.number;
-          this.totalPages = result.totalPages;
+          this.applyPage(result);
           this.loading = false;
           this.changeDetector.markForCheck();
         },
@@ -76,5 +76,32 @@ export class CustomerNotificationsComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private reconcilePersistedState(): void {
+    this.notificationsApi.getInbox(this.page, 20)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: result => {
+          this.applyPage(result);
+          this.errorMessage = '';
+          this.changeDetector.markForCheck();
+        },
+        error: () => {
+          // Keep the last persisted view; the next reconnect retries reconciliation.
+        },
+      });
+  }
+
+  private applyPage(result: {
+    content: CustomerNotification[];
+    unreadCount: number;
+    number: number;
+    totalPages: number;
+  }): void {
+    this.notifications = result.content;
+    this.unreadCount = result.unreadCount;
+    this.page = result.number;
+    this.totalPages = result.totalPages;
   }
 }

@@ -37,6 +37,9 @@ export class ClientLayout implements OnInit, OnDestroy {
     this.customerNotifications.notifications$.pipe(takeUntil(this.destroy$)).subscribe(notification => {
       if (!notification.isRead) this.unreadNotificationCount += 1;
     });
+    this.customerNotifications.reconciliation$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.refreshUnreadCount());
     this.authService.currentUser$.pipe(
       distinctUntilChanged((previous, current) =>
         previous.isAuthenticated === current.isAuthenticated && previous.username === current.username),
@@ -121,6 +124,10 @@ export class ClientLayout implements OnInit, OnDestroy {
 
   private loadCustomerNotifications(): void {
     this.customerNotifications.connect();
+    this.refreshUnreadCount();
+  }
+
+  private refreshUnreadCount(): void {
     this.customerNotifications.getUnreadCount()
       .pipe(takeUntil(this.destroy$))
       .subscribe({

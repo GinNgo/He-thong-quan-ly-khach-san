@@ -21,6 +21,7 @@ describe('CustomerNotificationsComponent', () => {
   };
   let api: {
     notifications$: Subject<CustomerNotification>;
+    reconciliation$: Subject<void>;
     connect: ReturnType<typeof vi.fn>;
     getInbox: ReturnType<typeof vi.fn>;
     markAsRead: ReturnType<typeof vi.fn>;
@@ -29,6 +30,7 @@ describe('CustomerNotificationsComponent', () => {
   beforeEach(async () => {
     api = {
       notifications$: live$,
+      reconciliation$: new Subject<void>(),
       connect: vi.fn(),
       getInbox: vi.fn(() => of({
         content: [notification],
@@ -81,5 +83,34 @@ describe('CustomerNotificationsComponent', () => {
 
     expect((fixture.nativeElement as HTMLElement).querySelector('[role="alert"]')).not.toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Thu lai');
+  });
+
+  it('reconciles persisted rows and unread count after a realtime reconnect', () => {
+    const fixture = TestBed.createComponent(CustomerNotificationsComponent);
+    fixture.detectChanges();
+    const reconciled = {
+      ...notification,
+      id: 11,
+      title: 'Refund completed',
+      type: 'REFUND',
+      deepLink: '/refunds',
+    };
+    api.getInbox.mockReturnValue(of({
+      content: [reconciled, notification],
+      totalElements: 2,
+      totalPages: 1,
+      number: 0,
+      size: 20,
+      first: true,
+      last: true,
+      unreadCount: 2,
+    }));
+
+    api.reconciliation$.next();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.notifications.map(item => item.id)).toEqual([11, 10]);
+    expect(fixture.componentInstance.unreadCount).toBe(2);
+    expect(api.getInbox).toHaveBeenLastCalledWith(0, 20);
   });
 });
