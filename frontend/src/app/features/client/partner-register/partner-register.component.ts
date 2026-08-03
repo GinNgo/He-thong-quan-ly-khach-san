@@ -1,9 +1,22 @@
-import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Component, OnInit, inject } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { finalize } from 'rxjs';
+import { PropertyLocation, PropertyService } from '../../../core/services/property.service';
 import { environment } from '../../../../environments/environment';
+
+interface PartnerRegistrationResponse {
+  userId: number;
+  propertyId: number;
+  status: 'DRAFT';
+}
+
+interface ApiErrorResponse {
+  message?: string;
+  fieldErrors?: Record<string, string>;
+}
 
 @Component({
   selector: 'app-partner-register',
@@ -12,46 +25,111 @@ import { environment } from '../../../../environments/environment';
   templateUrl: './partner-register.component.html',
   styleUrls: ['./partner-register.component.css']
 })
-export class PartnerRegisterComponent {
-  private fb = inject(FormBuilder);
-  private http = inject(HttpClient);
-  private router = inject(Router);
+export class PartnerRegisterComponent implements OnInit {
+  private readonly fb = inject(FormBuilder);
+  private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
+  private readonly propertyService = inject(PropertyService);
 
-  registerForm: FormGroup = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(6)]],
-    fullName: ['', Validators.required],
-    phone: ['', Validators.required],
-    propertyName: ['', Validators.required],
-    propertyAddress: ['', Validators.required]
+  readonly registerForm = this.fb.nonNullable.group({
+    email: ['', [Validators.required, Validators.email, Validators.maxLength(320)]],
+    password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(256)]],
+    fullName: ['', [Validators.required, Validators.maxLength(150)]],
+    phone: ['', [Validators.required, Validators.pattern(/^[0-9+() .-]{8,30}$/)]],
+    propertyName: ['', [Validators.required, Validators.maxLength(255)]],
+    provinceId: [null as number | null, Validators.required],
+    wardId: [null as number | null, Validators.required],
+    address: ['', [Validators.required, Validators.maxLength(1000)]]
   });
 
+  provinces: PropertyLocation[] = [];
+  wards: PropertyLocation[] = [];
+  locationsLoading = false;
+  locationError = '';
   isLoading = false;
   errorMessage = '';
 
-  onSubmit() {
+  ngOnInit(): void {
+    this.loadProvinces();
+  }
+
+  onProvinceChange(): void {
+    const provinceId = this.registerForm.controls.provinceId.value;
+    this.registerForm.controls.wardId.setValue(null);
+    this.wards = [];
+    this.locationError = '';
+    if (provinceId === null) return;
+
+    this.locationsLoading = true;
+    this.propertyService.getWards(provinceId).pipe(
+      finalize(() => this.locationsLoading = false)
+    ).subscribe({
+      next: wards => this.wards = wards,
+      error: () => this.locationError = 'Không thể tải danh sách phường/xã. Vui lòng thử lại.'
+    });
+  }
+
+  onSubmit(): void {
+    this.normalizeTextControls();
     if (this.registerForm.invalid) {
-      Object.keys(this.registerForm.controls).forEach(key => {
-        this.registerForm.get(key)?.markAsTouched();
-      });
+      this.registerForm.markAllAsTouched();
       return;
     }
 
+    const value = this.registerForm.getRawValue();
+    const payload = {
+      email: value.email.trim(),
+      password: value.password,
+      fullName: value.fullName.trim(),
+      phone: value.phone.trim(),
+      propertyName: value.propertyName.trim(),
+      provinceId: value.provinceId,
+      wardId: value.wardId,
+      address: value.address.trim()
+    };
+
     this.isLoading = true;
     this.errorMessage = '';
+    this.http.post<PartnerRegistrationResponse>(`${environment.apiUrl}/partner/register`, payload).pipe(
+      finalize(() => this.isLoading = false)
+    ).subscribe({
+      next: () => this.router.navigate(['/login'], { queryParams: { registration: 'partner-draft' } }),
+      error: (error: HttpErrorResponse) => this.errorMessage = this.resolveError(error)
+    });
+  }
 
-    this.http.post(`${environment.apiUrl}/partner/register`, this.registerForm.value, { responseType: 'text' })
-      .subscribe({
-        next: (res) => {
-          this.isLoading = false;
-          alert('Đăng ký thành công! Đang chuyển hướng đến đăng nhập...');
-          this.router.navigate(['/login']);
-        },
-        error: (err) => {
-          this.isLoading = false;
-          this.errorMessage = err.error || 'Có lỗi xảy ra khi đăng ký';
-          console.error(err);
-        }
-      });
+  isInvalid(controlName: keyof typeof this.registerForm.controls): boolean {
+    const control = this.registerForm.controls[controlName];
+    return control.invalid && control.touched;
+  }
+
+  private loadProvinces(): void {
+    this.locationsLoading = true;
+    this.locationError = '';
+    this.propertyService.getProvinces().pipe(
+      finalize(() => this.locationsLoading = false)
+    ).subscribe({
+      next: provinces => this.provinces = provinces,
+      error: () => this.locationError = 'Không thể tải danh sách tỉnh/thành phố. Vui lòng thử lại.'
+    });
+  }
+
+  private resolveError(error: HttpErrorResponse): string {
+    const body = error.error as ApiErrorResponse | string | null;
+    if (typeof body === 'string' && body.trim()) return body;
+    if (body && typeof body === 'object') {
+      const firstFieldError = Object.values(body.fieldErrors ?? {})[0];
+      return firstFieldError || body.message || 'Không thể gửi hồ sơ đối tác.';
+    }
+    return 'Không thể gửi hồ sơ đối tác. Vui lòng thử lại.';
+  }
+
+  private normalizeTextControls(): void {
+    const controls = this.registerForm.controls;
+    controls.email.setValue(controls.email.value.trim(), { emitEvent: false });
+    controls.fullName.setValue(controls.fullName.value.trim(), { emitEvent: false });
+    controls.phone.setValue(controls.phone.value.trim(), { emitEvent: false });
+    controls.propertyName.setValue(controls.propertyName.value.trim(), { emitEvent: false });
+    controls.address.setValue(controls.address.value.trim(), { emitEvent: false });
   }
 }

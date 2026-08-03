@@ -1,14 +1,20 @@
 package com.hotel.services;
 
+import com.hotel.dtos.PartnerRegistrationRequest;
+import com.hotel.dtos.PartnerRegistrationResponse;
 import com.hotel.entities.*;
+import com.hotel.exceptions.RegistrationConflictException;
 import com.hotel.repositories.*;
-import com.hotel.dtos.RegisterRequest;
+import com.hotel.util.VietnameseTextNormalizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -16,9 +22,8 @@ public class PropertyRegistrationService {
 
     private final UserRepository userRepository;
     private final HotelRepository hotelRepository;
+    private final LocationRepository locationRepository;
     private final UserPropertyRepository userPropertyRepository;
-    private final SubscriptionPlanRepository planRepository;
-    private final AccountSubscriptionRepository accountSubscriptionRepository;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final PropertyOwnershipLifecycleService ownershipLifecycleService;
 
@@ -26,61 +31,76 @@ public class PropertyRegistrationService {
     private OperationalAuditService operationalAuditService;
 
     @Transactional
-    public User registerPropertyOwner(String email, String password, String fullName, String phone,
-                                      String propertyName, String propertyAddress, String authenticatedUsername) {
-
-        // 1. Create or get User
-        User user = userRepository.findByEmail(email).orElse(null);
-        if (user != null && (authenticatedUsername == null
-                || (!authenticatedUsername.equalsIgnoreCase(user.getUsername())
-                && !authenticatedUsername.equalsIgnoreCase(user.getEmail())))) {
-            throw new IllegalArgumentException("Email đã được sử dụng. Vui lòng đăng nhập đúng tài khoản để đăng ký đối tác.");
-        }
-        if (user == null) {
-            if (password == null || password.length() < 6) {
-                throw new IllegalArgumentException("Mật khẩu phải có ít nhất 6 ký tự.");
-            }
-            user = new User();
-            user.setUsername(email); // Use email as username
-            user.setEmail(email);
-            user.setFullName(fullName);
-            user.setPhone(phone);
-            user.setPasswordHash(passwordEncoder.encode(password));
-            user.setStatus("ACTIVE");
-            user.setCreatedAt(LocalDateTime.now());
-
-            user = userRepository.save(user);
+    public PartnerRegistrationResponse registerAnonymousPartner(PartnerRegistrationRequest request) {
+        String email = normalizeEmail(request.getEmail());
+        if (userRepository.existsByEmailIgnoreCase(email) || userRepository.existsByUsernameIgnoreCase(email)) {
+            throw RegistrationConflictException.email();
         }
 
-        if (userPropertyRepository.findByUserId(user.getId()).stream()
-                .anyMatch(mapping -> "PENDING_APPROVAL".equals(mapping.getHotel().getApprovalStatus()))) {
-            throw new IllegalStateException("Hồ sơ đối tác của tài khoản đang chờ duyệt.");
+        Location province = requireActiveLocation(request.getProvinceId(), "PROVINCE", "Province is invalid.");
+        Location ward = requireActiveLocation(request.getWardId(), "WARD", "Ward is invalid.");
+        if (ward.getParent() == null || !province.getId().equals(ward.getParent().getId())) {
+            throw new IllegalArgumentException("Ward does not belong to the selected province.");
         }
-        // 2. Create Property
+
+        User user = new User();
+        user.setUsername(email);
+        user.setEmail(email);
+        user.setFullName(normalizeDisplayText(request.getFullName()));
+        user.setPhone(request.getPhone().trim());
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setStatus("ACTIVE");
+        user.setCreatedAt(LocalDateTime.now());
+        try {
+            user = userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException duplicateIdentity) {
+            throw RegistrationConflictException.email();
+        }
+
+        String propertyName = normalizeDisplayText(request.getPropertyName());
+        String uniqueSuffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         Hotel property = new Hotel();
         property.setName(propertyName);
-        property.setAddressLine(propertyAddress);
+        property.setNameVi(propertyName);
+        property.setCode("PARTNER-" + uniqueSuffix.toUpperCase(Locale.ROOT));
+        String normalizedSlug = VietnameseTextNormalizer.normalize(propertyName);
+        String slugBase = normalizedSlug == null || normalizedSlug.isBlank()
+                ? "partner-property" : normalizedSlug.replace(' ', '-');
+        property.setSlug((slugBase)
+                + "-" + uniqueSuffix);
+        property.setProvinceId(province.getId());
+        property.setWardId(ward.getId());
+        property.setAddressLine(normalizeDisplayText(request.getAddress()));
+        property.setCity(province.getNameVi());
+        property.setCountry("Việt Nam");
+        property.setPropertyType("HOTEL");
+        property.setPhone(user.getPhone());
+        property.setEmail(email);
         property.setStatus("DRAFT");
-        property.setApprovalStatus("PENDING_APPROVAL");
+        property.setApprovalStatus("DRAFT");
         property.setOperationStatus("INACTIVE");
-        property = hotelRepository.save(property);
+        property.setIsDemo(false);
+        property.setDataSource("USER");
+        property = hotelRepository.saveAndFlush(property);
 
-        // 3. Map User to Property
         ownershipLifecycleService.createPendingOwner(user, property);
 
-        // 4. Assign Default Plan (e.g. BASIC)
-        SubscriptionPlan basicPlan = planRepository.findByCode("BASIC").orElse(null);
-        if (basicPlan != null) {
-            AccountSubscription sub = new AccountSubscription();
-            sub.setUser(user);
-            sub.setPlan(basicPlan);
-            sub.setStartAt(LocalDateTime.now());
-            sub.setIsLifetime(true);
-            sub.setStatus("ACTIVE");
-            accountSubscriptionRepository.save(sub);
-        }
+        return new PartnerRegistrationResponse(user.getId(), property.getId(), "DRAFT");
+    }
 
-        return user;
+    private Location requireActiveLocation(Long id, String type, String errorMessage) {
+        return locationRepository.findById(id)
+                .filter(location -> type.equals(location.getLocationType()))
+                .filter(location -> "ACTIVE".equals(location.getStatus()))
+                .orElseThrow(() -> new IllegalArgumentException(errorMessage));
+    }
+
+    private String normalizeEmail(String value) {
+        return value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeDisplayText(String value) {
+        return value.trim().replaceAll("\\s+", " ");
     }
 
     @Transactional
