@@ -2,6 +2,7 @@ package com.hotel.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hotel.dtos.PartnerRegistrationResponse;
+import com.hotel.dtos.PartnerRegistrationStatusResponse;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.services.PropertyRegistrationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +22,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -161,6 +163,44 @@ class PropertyRegistrationControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(registrationService, never()).convertExistingCustomer(any(), any());
+    }
+
+    @Test
+    void registrationStatusUsesAuthoritativeUserIdInsteadOfPrincipalName() throws Exception {
+        var response = new PartnerRegistrationStatusResponse(
+                "APPROVED",
+                1,
+                java.util.List.of(new PartnerRegistrationStatusResponse.PropertyStatus(
+                        91L, "Harbor Hotel", "APPROVED", "APPROVED", "ACTIVE", "ACTIVE", null)));
+        when(registrationService.registrationStatus(77L)).thenReturn(response);
+
+        mockMvc.perform(get("/api/partner/registration-status")
+                        .principal(authoritativeAuthentication(77L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.overallStatus").value("APPROVED"))
+                .andExpect(jsonPath("$.propertyCount").value(1))
+                .andExpect(jsonPath("$.properties[0].propertyId").value(91));
+
+        verify(registrationService).registrationStatus(77L);
+    }
+
+    @Test
+    void anonymousRegistrationStatusIsDenied() throws Exception {
+        mockMvc.perform(get("/api/partner/registration-status"))
+                .andExpect(status().isUnauthorized());
+
+        verify(registrationService, never()).registrationStatus(any());
+    }
+
+    @Test
+    void nonAuthoritativeRegistrationStatusPrincipalIsDenied() throws Exception {
+        var authentication = UsernamePasswordAuthenticationToken.authenticated(
+                "customer@example.com", "n/a", java.util.List.of());
+
+        mockMvc.perform(get("/api/partner/registration-status").principal(authentication))
+                .andExpect(status().isForbidden());
+
+        verify(registrationService, never()).registrationStatus(any());
     }
 
     private java.util.Map<String, Object> validBody() {

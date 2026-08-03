@@ -24,6 +24,16 @@ public interface UserPropertyRepository extends JpaRepository<UserProperty, Long
     long countByUserIdAndRelationshipTypeAndStatus(Long userId, String relationshipType, String status);
     long countByUserIdAndStatus(Long userId, String status);
 
+    @Query("""
+            select up
+            from UserProperty up
+            join fetch up.hotel
+            where up.user.id = :userId
+              and up.relationshipType = 'OWNER'
+            order by up.id desc
+            """)
+    List<UserProperty> findOwnerMappingsWithHotelByUserId(@Param("userId") Long userId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select up

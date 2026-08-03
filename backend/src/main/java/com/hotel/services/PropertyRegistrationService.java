@@ -3,6 +3,7 @@ package com.hotel.services;
 import com.hotel.dtos.PartnerRegistrationRequest;
 import com.hotel.dtos.PartnerRegistrationResponse;
 import com.hotel.dtos.PartnerConversionRequest;
+import com.hotel.dtos.PartnerRegistrationStatusResponse;
 import com.hotel.entities.*;
 import com.hotel.exceptions.RegistrationConflictException;
 import com.hotel.repositories.*;
@@ -15,7 +16,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -26,6 +31,7 @@ public class PropertyRegistrationService {
     private final HotelRepository hotelRepository;
     private final LocationRepository locationRepository;
     private final UserPropertyRepository userPropertyRepository;
+    private final PropertyClaimRequestRepository propertyClaimRequestRepository;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final PropertyOwnershipLifecycleService ownershipLifecycleService;
 
@@ -168,14 +174,128 @@ public class PropertyRegistrationService {
     }
 
     @Transactional(readOnly = true)
-    public java.util.Map<String, Object> registrationStatus(String username) {
-        User user = userRepository.findByUsername(username)
-                .or(() -> userRepository.findByEmail(username))
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản."));
-        var mappings = userPropertyRepository.findByUserId(user.getId());
-        String status = mappings.stream().anyMatch(item -> "PENDING_APPROVAL".equals(item.getHotel().getApprovalStatus()))
-                ? "PENDING" : mappings.isEmpty() ? "NONE" : "APPROVED";
-        return java.util.Map.of("status", status, "propertyCount", mappings.size());
+    public PartnerRegistrationStatusResponse registrationStatus(Long userId) {
+        if (userId == null) {
+            throw new AccessDeniedException("Authenticated account id is required.");
+        }
+
+        List<UserProperty> ownerMappings = userPropertyRepository.findOwnerMappingsWithHotelByUserId(userId);
+        if (ownerMappings.isEmpty()) {
+            return new PartnerRegistrationStatusResponse("NONE", 0, List.of());
+        }
+
+        Map<Long, UserProperty> mappingByProperty = new LinkedHashMap<>();
+        ownerMappings.forEach(mapping -> {
+            Hotel property = mapping.getHotel();
+            if (property != null && property.getId() != null) {
+                mappingByProperty.putIfAbsent(property.getId(), mapping);
+            }
+        });
+        List<UserProperty> mappings = List.copyOf(mappingByProperty.values());
+        if (mappings.isEmpty()) {
+            return new PartnerRegistrationStatusResponse("NONE", 0, List.of());
+        }
+
+        List<Long> propertyIds = mappings.stream()
+                .map(UserProperty::getHotel)
+                .filter(Objects::nonNull)
+                .map(Hotel::getId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, String> rejectedClaimReasons = rejectedClaimReasons(userId, propertyIds);
+
+        List<PartnerRegistrationStatusResponse.PropertyStatus> properties = mappings.stream()
+                .map(mapping -> toRegistrationStatus(mapping, rejectedClaimReasons))
+                .toList();
+        String overallStatus = properties.stream()
+                .map(PartnerRegistrationStatusResponse.PropertyStatus::status)
+                .distinct()
+                .limit(2)
+                .count() == 1
+                ? properties.getFirst().status()
+                : "MIXED";
+        return new PartnerRegistrationStatusResponse(overallStatus, properties.size(), properties);
+    }
+
+    private Map<Long, String> rejectedClaimReasons(Long userId, List<Long> propertyIds) {
+        if (propertyIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> reasons = new LinkedHashMap<>();
+        propertyClaimRequestRepository.findByRequesterAndPropertiesAndStatus(userId, propertyIds, "REJECTED")
+                .forEach(claim -> {
+                    Long propertyId = claim.getProperty() == null ? null : claim.getProperty().getId();
+                    Long requesterId = claim.getRequesterUser() == null ? null : claim.getRequesterUser().getId();
+                    String reason = normalizeOptionalReason(claim.getRejectionReason());
+                    if (userId.equals(requesterId) && propertyIds.contains(propertyId) && reason != null) {
+                        reasons.putIfAbsent(propertyId, reason);
+                    }
+                });
+        return reasons;
+    }
+
+    private PartnerRegistrationStatusResponse.PropertyStatus toRegistrationStatus(
+            UserProperty mapping,
+            Map<Long, String> rejectedClaimReasons) {
+        Hotel property = mapping.getHotel();
+        String status = classifyRegistrationStatus(property, mapping);
+        String reason = null;
+        if ("REJECTED".equals(status)) {
+            reason = normalizeOptionalReason(mapping.getStatusReason());
+            if (reason == null && property != null) {
+                reason = rejectedClaimReasons.get(property.getId());
+            }
+        }
+        return new PartnerRegistrationStatusResponse.PropertyStatus(
+                property == null ? null : property.getId(),
+                property == null ? null : property.getName(),
+                status,
+                property == null ? null : property.getApprovalStatus(),
+                property == null ? null : property.getOperationStatus(),
+                mapping.getStatus(),
+                reason);
+    }
+
+    private String classifyRegistrationStatus(Hotel property, UserProperty mapping) {
+        String approval = canonicalRawStatus(property == null ? null : property.getApprovalStatus());
+        String operation = canonicalRawStatus(property == null ? null : property.getOperationStatus());
+        String ownership = canonicalRawStatus(mapping.getStatus());
+
+        if ("REJECTED".equals(approval)) {
+            return "REJECTED";
+        }
+        if ("SUSPENDED".equals(approval) || "SUSPENDED".equals(operation) || "SUSPENDED".equals(ownership)) {
+            return "SUSPENDED";
+        }
+        if (isCancelledStatus(approval) || isCancelledStatus(operation) || isCancelledStatus(ownership)
+                || "INACTIVE".equals(ownership)) {
+            return "CANCELLED";
+        }
+        if ("APPROVED".equals(approval)
+                && "ACTIVE".equals(operation)
+                && "ACTIVE".equals(ownership)) {
+            return "APPROVED";
+        }
+        if ("PENDING_APPROVAL".equals(approval) || "PENDING".equals(ownership)) {
+            return "PENDING";
+        }
+        if ("DRAFT".equals(approval)) {
+            return "DRAFT";
+        }
+        return "CANCELLED";
+    }
+
+    private boolean isCancelledStatus(String status) {
+        return "CANCELLED".equals(status) || "CLOSED".equals(status);
+    }
+
+    private String canonicalRawStatus(String value) {
+        return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String normalizeOptionalReason(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private void audit(String eventType, Hotel hotel, Hotel before, String reason) {

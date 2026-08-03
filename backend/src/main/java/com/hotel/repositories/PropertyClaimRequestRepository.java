@@ -4,8 +4,11 @@ import com.hotel.entities.PropertyClaimRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,4 +18,19 @@ public interface PropertyClaimRequestRepository extends JpaRepository<PropertyCl
     Page<PropertyClaimRequest> findByStatus(String status, Pageable pageable);
     boolean existsByPropertyIdAndRequesterUserIdAndStatus(Long propertyId, Long requesterUserId, String status);
     Optional<PropertyClaimRequest> findFirstByRequesterUserIdOrderByCreatedAtDesc(Long requesterUserId);
+
+    @Query("""
+            select claim
+            from PropertyClaimRequest claim
+            join fetch claim.property
+            join fetch claim.requesterUser
+            where claim.requesterUser.id = :requesterUserId
+              and claim.property.id in :propertyIds
+              and claim.status = :status
+            order by claim.reviewedAt desc, claim.id desc
+            """)
+    List<PropertyClaimRequest> findByRequesterAndPropertiesAndStatus(
+            @Param("requesterUserId") Long requesterUserId,
+            @Param("propertyIds") Collection<Long> propertyIds,
+            @Param("status") String status);
 }

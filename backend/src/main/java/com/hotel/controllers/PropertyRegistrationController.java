@@ -3,6 +3,7 @@ package com.hotel.controllers;
 import com.hotel.dtos.PartnerRegistrationRequest;
 import com.hotel.dtos.PartnerRegistrationResponse;
 import com.hotel.dtos.PartnerConversionRequest;
+import com.hotel.dtos.PartnerRegistrationStatusResponse;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.services.PropertyRegistrationService;
 import jakarta.validation.Valid;
@@ -51,11 +52,15 @@ public class PropertyRegistrationController {
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/registration-status")
-    public ResponseEntity<?> registrationStatus(org.springframework.security.core.Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(401).build();
+    public ResponseEntity<PartnerRegistrationStatusResponse> registrationStatus(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            throw new AuthenticationCredentialsNotFoundException("Authentication is required.");
         }
-        return ResponseEntity.ok(registrationService.registrationStatus(authentication.getName()));
+        if (!(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
+            throw new AccessDeniedException("Authoritative authenticated account context is required.");
+        }
+        return ResponseEntity.ok(registrationService.registrationStatus(userDetails.getUserId()));
     }
 
 }
