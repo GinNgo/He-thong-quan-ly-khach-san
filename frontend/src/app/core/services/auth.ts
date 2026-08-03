@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { isPlatformBrowser } from '@angular/common';
+import { AccessTokenSessionStore } from '../auth/access-token-session.store';
 
 export interface AuthState {
   isAuthenticated: boolean;
@@ -19,7 +20,9 @@ export interface AuthState {
 export class AuthService {
   private http = inject(HttpClient);
   private platformId = inject(PLATFORM_ID);
+  private tokenStore = inject(AccessTokenSessionStore);
   private apiUrl = `${environment.apiUrl}/auth`;
+  private expiryTimer?: ReturnType<typeof setTimeout>;
 
   private authStateSubject = new BehaviorSubject<AuthState>({
     isAuthenticated: false,
@@ -38,30 +41,38 @@ export class AuthService {
 
   private initAuthState() {
     if (isPlatformBrowser(this.platformId)) {
-      const token = localStorage.getItem('token');
+      const token = this.tokenStore.getValidToken();
       const userStr = localStorage.getItem('user');
-      
-      if (token && userStr) {
-        try {
-          const user = JSON.parse(userStr);
-          this.authStateSubject.next({
-            isAuthenticated: true,
-            username: user.username || '',
-            fullName: user.fullName || '',
-            avatarUrl: user.avatarUrl || '',
-            roles: user.roles || [],
-            permissions: user.permissions || [],
-          });
-        } catch {
-          this.clearAuthState();
-        }
+
+      if (!token || !userStr) {
+        if (token || userStr) this.clearAuthState();
+        return;
+      }
+
+      try {
+        const user = JSON.parse(userStr);
+        this.authStateSubject.next({
+          isAuthenticated: true,
+          username: user.username || '',
+          fullName: user.fullName || '',
+          avatarUrl: user.avatarUrl || '',
+          roles: user.roles || [],
+          permissions: user.permissions || [],
+        });
+        this.scheduleSessionExpiry(token);
+      } catch {
+        this.clearAuthState();
       }
     }
   }
 
   private clearAuthState() {
+    if (this.expiryTimer) {
+      clearTimeout(this.expiryTimer);
+      this.expiryTimer = undefined;
+    }
+    this.tokenStore.clearToken();
     if (isPlatformBrowser(this.platformId)) {
-      localStorage.removeItem('token');
       localStorage.removeItem('user');
     }
     this.authStateSubject.next({
@@ -91,6 +102,10 @@ export class AuthService {
   }
 
   isLoggedIn(): boolean {
+    if (this.authStateSubject.value.isAuthenticated && !this.tokenStore.getValidToken()) {
+      this.clearAuthState();
+      return false;
+    }
     return this.authStateSubject.value.isAuthenticated;
   }
 
@@ -102,7 +117,10 @@ export class AuthService {
   // to update the local state.
   setSession(token: string, user: any): void {
     if (isPlatformBrowser(this.platformId)) {
-      localStorage.setItem('token', token);
+      if (!this.tokenStore.saveToken(token)) {
+        this.clearAuthState();
+        return;
+      }
       localStorage.setItem('user', JSON.stringify(user));
     }
     this.authStateSubject.next({
@@ -113,6 +131,7 @@ export class AuthService {
       roles: user.roles || [],
       permissions: user.permissions || []
     });
+    this.scheduleSessionExpiry(token);
   }
 
   updateCurrentUser(user: { username?: string; fullName?: string; avatarUrl?: string | null }): void {
@@ -150,8 +169,9 @@ export class AuthService {
   }
 
   getAccessToken(): string | null {
-    if (!isPlatformBrowser(this.platformId)) return null;
-    return localStorage.getItem('token');
+    const token = this.tokenStore.getValidToken();
+    if (!token && this.authStateSubject.value.isAuthenticated) this.clearAuthState();
+    return token;
   }
 
   getCurrentUserId(): number | null {
@@ -163,5 +183,17 @@ export class AuthService {
     } catch {
       return null;
     }
+  }
+
+  private scheduleSessionExpiry(token: string): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    if (this.expiryTimer) clearTimeout(this.expiryTimer);
+
+    const delay = this.tokenStore.millisecondsUntilExpiry(token);
+    if (delay <= 0) {
+      this.clearAuthState();
+      return;
+    }
+    this.expiryTimer = setTimeout(() => this.clearAuthState(), delay);
   }
 }

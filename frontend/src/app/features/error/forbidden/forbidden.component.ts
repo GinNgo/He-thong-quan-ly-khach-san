@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { AuthService } from '../../../core/services/auth';
 
 @Component({
   selector: 'app-forbidden',
@@ -11,7 +12,7 @@ import { CommonModule } from '@angular/common';
 })
 export class ForbiddenComponent {
 
-  constructor(private router: Router) {}
+  constructor(private router: Router, private authService: AuthService) {}
 
   returnToDashboard() {
     this.router.navigate(['/']);
@@ -22,7 +23,7 @@ export class ForbiddenComponent {
   }
 
   logout() {
-    localStorage.removeItem('token');
+    this.authService.logout();
     localStorage.removeItem('permissions');
     this.router.navigate(['/login']);
   }

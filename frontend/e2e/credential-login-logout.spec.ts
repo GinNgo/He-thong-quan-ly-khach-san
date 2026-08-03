@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test.describe('credential login and logout', () => {
   test('accepts a username, creates a browser session, and clears it on logout', async ({ page }) => {
+    const accessToken = browserToken(Date.now() + 60_000);
     await page.route('**/api/**', route => route.fulfill({ status: 200, json: [] }));
     await page.route('**/api/users/me', route => route.fulfill({
       status: 200,
@@ -23,7 +24,7 @@ test.describe('credential login and logout', () => {
       await route.fulfill({
         status: 200,
         json: {
-          accessToken: 't215-browser-token',
+          accessToken,
           userId: 215,
           username: 'fixture-customer',
           roles: ['CUSTOMER'],
@@ -41,8 +42,9 @@ test.describe('credential login and logout', () => {
 
     await expect(page).toHaveURL(/\/$/);
     await expect(page.locator('.account-trigger')).toBeVisible();
-    await expect.poll(() => page.evaluate(() => localStorage.getItem('token')))
-      .toBe('t215-browser-token');
+    await expect.poll(() => page.evaluate(() => sessionStorage.getItem('token')))
+      .toBe(accessToken);
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('token'))).toBeNull();
 
     await page.locator('.account-trigger').click();
     await page.locator('.logout-item').click();
@@ -50,7 +52,13 @@ test.describe('credential login and logout', () => {
     await expect(page.locator('.login-button')).toBeVisible();
     await expect.poll(() => page.evaluate(() => ({
       token: localStorage.getItem('token'),
+      sessionToken: sessionStorage.getItem('token'),
       user: localStorage.getItem('user'),
-    }))).toEqual({ token: null, user: null });
+    }))).toEqual({ token: null, sessionToken: null, user: null });
   });
 });
+
+function browserToken(expiresAt: number): string {
+  const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
+  return `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ exp: Math.floor(expiresAt / 1_000), sub: 'fixture-customer' })}.test-signature`;
+}
