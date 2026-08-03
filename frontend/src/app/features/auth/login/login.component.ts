@@ -14,8 +14,7 @@ import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 export class LoginComponent implements OnInit {
   loginObj = {
     username: '',
-    password: '',
-    rememberMe: false
+    password: ''
   };
   errorMessage = '';
   isLoading = false;

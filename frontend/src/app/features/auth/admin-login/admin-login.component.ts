@@ -19,8 +19,7 @@ import {
 export class AdminLoginComponent implements OnInit {
   loginObj = {
     username: '',
-    password: '',
-    rememberMe: false
+    password: ''
   };
   errorMessage = '';
   isLoading = false;

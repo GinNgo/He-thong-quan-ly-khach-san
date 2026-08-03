@@ -107,7 +107,7 @@ export class AuthService {
     this.logoutSubject.next();
   }
 
-  login(credentials: { username: string; password: string; rememberMe?: boolean }): Observable<AuthResponse> {
+  login(credentials: { username: string; password: string }): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials, { withCredentials: true });
   }
 
