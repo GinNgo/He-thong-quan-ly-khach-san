@@ -116,6 +116,18 @@ class PropertyAccessServiceTest {
     }
 
     @Test
+    void inconsistentLegacyStatusCannotReachOperationalApis() {
+        Hotel inconsistent = hotel(24L, "APPROVED", "ACTIVE");
+        inconsistent.setStatus("PENDING_APPROVAL");
+        when(hotelRepository.findById(24L)).thenReturn(Optional.of(inconsistent));
+        when(userPropertyRepository.findByUserId(10L))
+                .thenReturn(List.of(assignment(inconsistent, "ACTIVE")));
+
+        assertThrows(PropertyNotOperationalException.class,
+                () -> service.requireManagedHotel(24L));
+    }
+
+    @Test
     void crossTenantPropertyRemainsHidden() {
         Hotel otherTenant = hotel(99L, "APPROVED", "ACTIVE");
         when(hotelRepository.findById(99L)).thenReturn(Optional.of(otherTenant));
@@ -143,6 +155,8 @@ class PropertyAccessServiceTest {
     private Hotel hotel(Long id, String approvalStatus, String operationStatus) {
         Hotel hotel = new Hotel();
         hotel.setId(id);
+        hotel.setStatus("APPROVED".equalsIgnoreCase(approvalStatus.trim())
+                && "ACTIVE".equalsIgnoreCase(operationStatus.trim()) ? "ACTIVE" : approvalStatus.trim());
         hotel.setApprovalStatus(approvalStatus);
         hotel.setOperationStatus(operationStatus);
         return hotel;

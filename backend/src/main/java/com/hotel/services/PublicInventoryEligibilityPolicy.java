@@ -46,8 +46,9 @@ public class PublicInventoryEligibilityPolicy {
         }
     }
 
-    private boolean isPublicProperty(Hotel hotel) {
+    public boolean isPublicProperty(Hotel hotel) {
         if (hotel == null
+                || !"ACTIVE".equals(hotel.getStatus())
                 || !"APPROVED".equals(hotel.getApprovalStatus())
                 || !"ACTIVE".equals(hotel.getOperationStatus())) {
             return false;

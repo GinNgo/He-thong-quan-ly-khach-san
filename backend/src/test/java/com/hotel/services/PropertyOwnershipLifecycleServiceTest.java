@@ -4,7 +4,6 @@ import com.hotel.entities.Hotel;
 import com.hotel.entities.Role;
 import com.hotel.entities.User;
 import com.hotel.entities.UserProperty;
-import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.RoleRepository;
 import com.hotel.repositories.UserPropertyRepository;
 import com.hotel.repositories.UserRepository;
@@ -15,7 +14,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -33,7 +31,6 @@ class PropertyOwnershipLifecycleServiceTest {
     @Mock private UserPropertyRepository userPropertyRepository;
     @Mock private UserRepository userRepository;
     @Mock private RoleRepository roleRepository;
-    @Mock private HotelRepository hotelRepository;
 
     @InjectMocks
     private PropertyOwnershipLifecycleService service;
@@ -78,40 +75,38 @@ class PropertyOwnershipLifecycleServiceTest {
     }
 
     @Test
-    void rejectProperty_ExpiresPendingMappingWithoutLeavingOwnerRole() {
+    void deactivatePendingOwnerExpiresMappingWithoutLeavingOwnerRole() {
         User user = user(7L);
         Role ownerRole = new Role();
         ownerRole.setCode("PROPERTY_OWNER");
         user.getRoles().add(ownerRole);
         Hotel hotel = hotel(10L);
         UserProperty mapping = mapping(user, hotel, "PENDING");
-        when(hotelRepository.findById(10L)).thenReturn(Optional.of(hotel));
-        when(userPropertyRepository.findByHotelIdAndRelationshipTypeAndStatus(10L, "OWNER", "PENDING"))
-                .thenReturn(List.of(mapping));
+        when(userPropertyRepository.findByUserIdAndHotelIdAndRelationshipType(7L, 10L, "OWNER"))
+                .thenReturn(Optional.of(mapping));
         when(userPropertyRepository.findByUserIdAndRelationshipType(7L, "OWNER"))
-                .thenReturn(List.of(mapping));
-        when(hotelRepository.save(hotel)).thenReturn(hotel);
+                .thenReturn(java.util.List.of(mapping));
 
-        Hotel result = service.rejectProperty(10L);
+        boolean changed = service.deactivatePendingOwner(10L, 7L);
 
+        assertTrue(changed);
         assertEquals("INACTIVE", mapping.getStatus());
         assertNotNull(mapping.getEndDate());
         assertFalse(user.getRoles().stream().anyMatch(role -> "PROPERTY_OWNER".equals(role.getCode())));
-        assertEquals("REJECTED", result.getApprovalStatus());
-        assertEquals("INACTIVE", result.getOperationStatus());
     }
 
     @Test
-    void rejectProperty_DoesNotRelabelAnApprovedPropertyWithActiveOwnership() {
+    void deactivatePendingOwnerDoesNotChangeActiveOwnership() {
+        User user = user(7L);
         Hotel hotel = hotel(10L);
-        hotel.setApprovalStatus("APPROVED");
-        hotel.setOperationStatus("ACTIVE");
-        when(hotelRepository.findById(10L)).thenReturn(Optional.of(hotel));
+        UserProperty mapping = mapping(user, hotel, "ACTIVE");
+        when(userPropertyRepository.findByUserIdAndHotelIdAndRelationshipType(7L, 10L, "OWNER"))
+                .thenReturn(Optional.of(mapping));
 
-        assertThrows(IllegalStateException.class, () -> service.rejectProperty(10L));
+        boolean changed = service.deactivatePendingOwner(10L, 7L);
 
-        assertEquals("APPROVED", hotel.getApprovalStatus());
-        assertEquals("ACTIVE", hotel.getOperationStatus());
+        assertFalse(changed);
+        assertEquals("ACTIVE", mapping.getStatus());
     }
 
     private User user(Long id) {

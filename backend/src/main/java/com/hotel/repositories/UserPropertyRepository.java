@@ -47,6 +47,32 @@ public interface UserPropertyRepository extends JpaRepository<UserProperty, Long
             @Param("userId") Long userId,
             @Param("hotelId") Long hotelId);
 
+    @Query("""
+            select up
+            from UserProperty up
+            join fetch up.hotel hotel
+            join fetch up.user owner
+            where hotel.approvalStatus = 'PENDING_APPROVAL'
+              and hotel.status = 'PENDING_APPROVAL'
+              and hotel.operationStatus = 'INACTIVE'
+              and up.relationshipType = 'OWNER'
+              and up.status = 'PENDING'
+            order by hotel.submittedAt desc, hotel.createdAt desc, hotel.id desc, up.id desc
+            """)
+    List<UserProperty> findPropertyApprovalQueue();
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select up
+            from UserProperty up
+            join fetch up.user
+            where up.hotel.id = :hotelId
+              and up.relationshipType = 'OWNER'
+              and up.status = 'PENDING'
+            order by up.id
+            """)
+    List<UserProperty> findPendingOwnerMappingsForUpdate(@Param("hotelId") Long hotelId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select up

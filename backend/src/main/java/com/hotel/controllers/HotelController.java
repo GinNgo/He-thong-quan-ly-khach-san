@@ -1,12 +1,16 @@
 package com.hotel.controllers;
 
 import com.hotel.entities.Hotel;
+import com.hotel.dtos.PropertyApprovalDecisionResponse;
+import com.hotel.dtos.PropertyApprovalRejectionRequest;
 import com.hotel.dtos.PropertyApprovalSubmissionResponse;
 import com.hotel.dtos.PublicHotelDetailDTO;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.services.HotelManagementService;
 import com.hotel.services.PropertyApprovalWorkflowService;
+import com.hotel.services.PublicInventoryEligibilityPolicy;
 import com.hotel.services.RoomTypeService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -31,10 +35,10 @@ public class HotelController {
     private RoomTypeService roomTypeService;
 
     @Autowired
-    private com.hotel.services.PropertyRegistrationService propertyRegistrationService;
+    private PropertyApprovalWorkflowService propertyApprovalWorkflowService;
 
     @Autowired
-    private PropertyApprovalWorkflowService propertyApprovalWorkflowService;
+    private PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
 
     @GetMapping("/public/search")
     public ResponseEntity<List<Hotel>> searchHotels(
@@ -64,14 +68,14 @@ public class HotelController {
                     .toList();
         }
 
-        return ResponseEntity.ok(hotels);
+        return ResponseEntity.ok(hotels.stream()
+                .filter(publicInventoryEligibilityPolicy::isPublicProperty)
+                .toList());
     }
     @GetMapping("/public/{id}")
     public ResponseEntity<PublicHotelDetailDTO> getHotelById(@PathVariable Long id) {
-        return hotelService.getHotelById(id)
-                .map(PublicHotelDetailDTO::from)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(PublicHotelDetailDTO.from(
+                publicInventoryEligibilityPolicy.requirePublicProperty(id)));
     }
 
     @GetMapping("/my-hotels")
@@ -126,13 +130,31 @@ public class HotelController {
 
     @PreAuthorize("hasAuthority('SUPER_ADMIN')")
     @PostMapping("/{id}/approve")
-    public ResponseEntity<Hotel> approveHotel(@PathVariable Long id) {
-        return ResponseEntity.ok(propertyRegistrationService.approveProperty(id));
+    public ResponseEntity<PropertyApprovalDecisionResponse> approveHotel(
+            @PathVariable Long id,
+            Authentication authentication) {
+        return ResponseEntity.ok(propertyApprovalWorkflowService.approve(
+                requireAuthoritativePrincipal(authentication).getUserId(), id));
     }
 
     @PreAuthorize("hasAuthority('SUPER_ADMIN')")
     @PostMapping("/{id}/reject")
-    public ResponseEntity<Hotel> rejectHotel(@PathVariable Long id) {
-        return ResponseEntity.ok(propertyRegistrationService.rejectProperty(id));
+    public ResponseEntity<PropertyApprovalDecisionResponse> rejectHotel(
+            @PathVariable Long id,
+            @Valid @RequestBody PropertyApprovalRejectionRequest request,
+            Authentication authentication) {
+        return ResponseEntity.ok(propertyApprovalWorkflowService.reject(
+                requireAuthoritativePrincipal(authentication).getUserId(), id, request.reason()));
+    }
+
+    private CustomUserDetails requireAuthoritativePrincipal(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            throw new AuthenticationCredentialsNotFoundException("Authentication is required.");
+        }
+        if (!(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
+            throw new AccessDeniedException("Authoritative authenticated account context is required.");
+        }
+        return userDetails;
     }
 }

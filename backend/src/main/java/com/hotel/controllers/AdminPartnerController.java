@@ -1,8 +1,18 @@
 package com.hotel.controllers;
 
+import com.hotel.dtos.PropertyApprovalDecisionResponse;
+import com.hotel.dtos.PropertyApprovalQueueItem;
+import com.hotel.dtos.PropertyApprovalRejectionRequest;
+import com.hotel.security.CustomUserDetails;
+import com.hotel.services.PropertyApprovalWorkflowService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,6 +24,7 @@ import java.util.Map;
 @PreAuthorize("hasAnyAuthority('SUPER_ADMIN','ADMIN')")
 public class AdminPartnerController {
     private final JdbcTemplate jdbcTemplate;
+    private final PropertyApprovalWorkflowService propertyApprovalWorkflowService;
 
     @GetMapping("/properties")
     public List<Map<String, Object>> properties(@RequestParam(required = false) String source) {
@@ -69,15 +80,25 @@ public class AdminPartnerController {
     }
 
     @GetMapping("/property-approvals")
-    public List<Map<String, Object>> approvals() {
-        return jdbcTemplate.queryForList("""
-                SELECT h.id,h.code,h.name_vi,h.address,h.property_type,h.approval_status,h.operation_status,
-                       u.id owner_id,u.full_name owner_name,u.email owner_email
-                FROM hotels h LEFT JOIN user_properties up ON up.hotel_id=h.id AND up.relationship_type='OWNER'
-                LEFT JOIN users u ON u.id=up.user_id
-                WHERE h.approval_status IN ('PENDING_APPROVAL','IMPORTED_PENDING_REVIEW')
-                ORDER BY h.created_at DESC
-                """);
+    public List<PropertyApprovalQueueItem> approvals() {
+        return propertyApprovalWorkflowService.pendingApprovals();
+    }
+
+    @PostMapping("/property-approvals/{id}/approve")
+    public PropertyApprovalDecisionResponse approveProperty(
+            @PathVariable Long id,
+            Authentication authentication) {
+        return propertyApprovalWorkflowService.approve(
+                requireAuthoritativePrincipal(authentication).getUserId(), id);
+    }
+
+    @PostMapping("/property-approvals/{id}/reject")
+    public PropertyApprovalDecisionResponse rejectProperty(
+            @PathVariable Long id,
+            @Valid @RequestBody PropertyApprovalRejectionRequest request,
+            Authentication authentication) {
+        return propertyApprovalWorkflowService.reject(
+                requireAuthoritativePrincipal(authentication).getUserId(), id, request.reason());
     }
 
     @GetMapping("/property-staff")
@@ -139,5 +160,16 @@ public class AdminPartnerController {
                 FROM rooms r JOIN hotels h ON h.id=r.hotel_id JOIN room_types rt ON rt.id=r.room_type_id
                 WHERE (? IS NULL OR r.hotel_id=?) ORDER BY r.hotel_id,r.room_number
                 """, propertyId, propertyId);
+    }
+
+    private CustomUserDetails requireAuthoritativePrincipal(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            throw new AuthenticationCredentialsNotFoundException("Authentication is required.");
+        }
+        if (!(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
+            throw new AccessDeniedException("Authoritative authenticated account context is required.");
+        }
+        return userDetails;
     }
 }

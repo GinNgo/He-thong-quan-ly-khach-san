@@ -7,6 +7,8 @@ import lombok.Setter;
 
 import jakarta.persistence.*;
 
+import java.time.LocalDateTime;
+
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -87,6 +89,21 @@ public class Hotel extends AuditableEntity {
 
     @Column(name = "approval_status")
     private String approvalStatus = "DRAFT"; // DRAFT, PENDING_APPROVAL, APPROVED, REJECTED
+
+    @Column(name = "submitted_by_user_id")
+    private Long submittedByUserId;
+
+    @Column(name = "submitted_at")
+    private LocalDateTime submittedAt;
+
+    @Column(name = "reviewed_by_user_id")
+    private Long reviewedByUserId;
+
+    @Column(name = "reviewed_at")
+    private LocalDateTime reviewedAt;
+
+    @Column(name = "review_reason", length = 500, columnDefinition = "nvarchar(500)")
+    private String reviewReason;
 
     @Column(name = "external_provider")
     private String externalProvider;

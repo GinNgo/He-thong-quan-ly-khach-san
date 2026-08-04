@@ -94,6 +94,7 @@ public class PropertyAccessService {
 
     public boolean isOperational(Hotel hotel) {
         return hotel != null
+                && "ACTIVE".equals(normalizeStatus(hotel.getStatus()))
                 && "APPROVED".equals(normalizeStatus(hotel.getApprovalStatus()))
                 && "ACTIVE".equals(normalizeStatus(hotel.getOperationStatus()));
     }

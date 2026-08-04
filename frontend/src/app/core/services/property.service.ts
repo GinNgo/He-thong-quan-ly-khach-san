@@ -44,6 +44,37 @@ export interface CreatePropertyRequest {
   dataSource: 'ADMIN';
 }
 
+export interface PropertyApprovalQueueItem extends Record<string, unknown> {
+  propertyId: number;
+  code: string;
+  name: string;
+  address: string;
+  propertyType: string;
+  status: 'PENDING_APPROVAL';
+  approvalStatus: 'PENDING_APPROVAL';
+  operationStatus: 'INACTIVE';
+  ownershipStatus: 'PENDING';
+  ownerId: number;
+  ownerName: string;
+  ownerEmail: string;
+  submittedByUserId: number | null;
+  submittedAt: string | null;
+  reviewedByUserId: number | null;
+  reviewedAt: string | null;
+  reason: string | null;
+}
+
+export interface PropertyApprovalDecisionResponse {
+  propertyId: number;
+  status: 'ACTIVE' | 'REJECTED';
+  approvalStatus: 'APPROVED' | 'REJECTED';
+  operationStatus: 'ACTIVE' | 'INACTIVE';
+  ownershipStatus: 'ACTIVE' | 'INACTIVE';
+  reviewedByUserId: number;
+  reviewedAt: string;
+  reason?: string | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -81,5 +112,23 @@ export class PropertyService {
 
   rejectProperty(id: number): Observable<AdminProperty> {
     return this.http.post<AdminProperty>(`${this.apiUrl}/${id}/reject`, {});
+  }
+
+  getPropertyApprovalQueue(): Observable<PropertyApprovalQueueItem[]> {
+    return this.http.get<PropertyApprovalQueueItem[]>(`${environment.apiUrl}/admin/property-approvals`);
+  }
+
+  approvePropertyReview(id: number): Observable<PropertyApprovalDecisionResponse> {
+    return this.http.post<PropertyApprovalDecisionResponse>(
+      `${environment.apiUrl}/admin/property-approvals/${id}/approve`,
+      {}
+    );
+  }
+
+  rejectPropertyReview(id: number, reason: string): Observable<PropertyApprovalDecisionResponse> {
+    return this.http.post<PropertyApprovalDecisionResponse>(
+      `${environment.apiUrl}/admin/property-approvals/${id}/reject`,
+      { reason }
+    );
   }
 }

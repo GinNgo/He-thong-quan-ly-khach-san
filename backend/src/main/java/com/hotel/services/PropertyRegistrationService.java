@@ -9,7 +9,6 @@ import com.hotel.exceptions.RegistrationConflictException;
 import com.hotel.repositories.*;
 import com.hotel.util.VietnameseTextNormalizer;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -34,9 +33,6 @@ public class PropertyRegistrationService {
     private final PropertyClaimRequestRepository propertyClaimRequestRepository;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final PropertyOwnershipLifecycleService ownershipLifecycleService;
-
-    @Autowired(required = false)
-    private OperationalAuditService operationalAuditService;
 
     @Transactional
     public PartnerRegistrationResponse registerAnonymousPartner(PartnerRegistrationRequest request) {
@@ -155,22 +151,6 @@ public class PropertyRegistrationService {
 
     private String normalizeDisplayText(String value) {
         return value.trim().replaceAll("\\s+", " ");
-    }
-
-    @Transactional
-    public Hotel approveProperty(Long propertyId) {
-        Hotel before = hotelRepository.findById(propertyId).orElse(null);
-        Hotel saved = ownershipLifecycleService.approveProperty(propertyId);
-        audit("PROPERTY_APPROVED", saved, before, "Property approval completed");
-        return saved;
-    }
-
-    @Transactional
-    public Hotel rejectProperty(Long propertyId) {
-        Hotel before = hotelRepository.findById(propertyId).orElse(null);
-        Hotel saved = ownershipLifecycleService.rejectProperty(propertyId);
-        audit("PROPERTY_REJECTED", saved, before, "Property approval rejected");
-        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -298,17 +278,4 @@ public class PropertyRegistrationService {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
-    private void audit(String eventType, Hotel hotel, Hotel before, String reason) {
-        if (operationalAuditService == null || hotel == null) return;
-        operationalAuditService.append(new OperationalAuditService.AuditCommand(
-                "SYSTEM", null, "PROPERTY", eventType, "HOTEL", String.valueOf(hotel.getId()),
-                null, null, reason, propertySnapshot(before), propertySnapshot(hotel), null));
-    }
-
-    private java.util.Map<String, Object> propertySnapshot(Hotel hotel) {
-        if (hotel == null) return null;
-        return java.util.Map.of("id", hotel.getId(), "name", hotel.getName(),
-                "approvalStatus", hotel.getApprovalStatus(), "operationStatus", hotel.getOperationStatus(),
-                "status", hotel.getStatus());
-    }
 }
