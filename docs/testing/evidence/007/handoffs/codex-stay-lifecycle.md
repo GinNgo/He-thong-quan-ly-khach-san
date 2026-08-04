@@ -31,6 +31,7 @@ below after merging or cherry-picking the task commits.
 | Task | Evidence | Stop gate |
 |---|---|---|
 | T308 | `docs/testing/evidence/007/remediation/T308-debt-overpayment-policy-gate.md` | Missing owner-approved debt limits/approval rules and overpayment refund-versus-credit/accounting policy; current behavior remains fail-closed. |
+| T297 | `docs/testing/evidence/007/remediation/T297-customer-cancellation-policy-gate.md` | Customer cancellation/refund completion depends on the unapproved T298 policy and a disposable provider/browser fixture; policy-dependent stash remains untouched. |
 | T315 | `docs/testing/evidence/007/remediation/T315-promotion-policy-gate.md` | Missing owner-approved OQ-002 through OQ-005 promotion, membership, stacking, redemption and sponsored-placement policy; current presentation retains zero financial effect. |
 
 ## Coordinator Updates
@@ -64,6 +65,8 @@ below after merging or cherry-picking the task commits.
   `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md`.
 - Keep T308 open and classify STAY-018 as `BLOCKED_EXTERNAL` in the aggregate
   inventories until the versioned debt/overpayment policy described in the handoff is approved.
+- Keep T297/STAY-003 blocked until T298's versioned cancellation/refund policy and a
+  disposable provider/browser fixture are available; do not apply the existing WIP stash.
 - Keep T315 open and classify STAY-027 as `BLOCKED_EXTERNAL` in the aggregate
   inventories until the versioned OQ-002 through OQ-005 commercial policy is approved.
 - Keep T316/STAY-028 `PARTIAL` until one disposable SQL Server + real backend +
