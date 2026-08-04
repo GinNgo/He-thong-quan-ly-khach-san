@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { ActivatedRoute, Params, Router } from '@angular/router';
-import { BehaviorSubject, of } from 'rxjs';
+import { BehaviorSubject, of, Subject } from 'rxjs';
 
 import { ClientApiService, Hotel } from '../../../../core/services/client-api.service';
 import { StickySearchBarComponent } from '../../../client/home/components/sticky-search-bar/sticky-search-bar.component';
@@ -140,6 +141,52 @@ describe('PropertySearchPageComponent filter contract', () => {
     }));
     expect(component.pageNumber()).toBe(1);
     expect(component.pageSize()).toBe(100);
+  });
+
+  it('issues one search request for each settled route snapshot', () => {
+    expect(api.searchHotels).toHaveBeenCalledTimes(1);
+
+    queryParams.next({ pageNumber: '2', pageSize: '20', sortBy: 'PRICE_ASC' });
+
+    expect(api.searchHotels).toHaveBeenCalledTimes(2);
+    expect(api.searchHotels).toHaveBeenLastCalledWith(expect.objectContaining({
+      pageNumber: 2,
+      pageSize: 20,
+      sortBy: 'PRICE_ASC',
+    }));
+  });
+
+  it('cancels a stale search and ignores its late result', () => {
+    const stale = new Subject<ReturnType<typeof searchPage>>();
+    const latest = new Subject<ReturnType<typeof searchPage>>();
+    api.searchHotels
+      .mockReturnValueOnce(stale)
+      .mockReturnValueOnce(latest);
+
+    queryParams.next({ pageNumber: '1', pageSize: '20', sortBy: 'POPULAR' });
+    expect(stale.observed).toBe(true);
+    queryParams.next({ pageNumber: '1', pageSize: '20', sortBy: 'RATING' });
+    expect(stale.observed).toBe(false);
+
+    stale.next(searchPage([hotel(1)]));
+    latest.next(searchPage([hotel(2)]));
+    fixture.detectChanges();
+
+    expect(component.properties().map(property => property.id)).toEqual([2]);
+  });
+
+  it('clamps the paginator to 100 and renders the returned maximum page in exact order', () => {
+    const hotels = Array.from({ length: 100 }, (_, index) => hotel(1000 - index));
+    api.searchHotels.mockReturnValue(of(searchPage(hotels, 250, 3, 100)));
+
+    queryParams.next({ pageNumber: '1', pageSize: '100' });
+    fixture.detectChanges();
+
+    const cards = fixture.debugElement.queryAll(By.directive(PropertyResultCardStubComponent));
+    expect(component.pageSize()).toBe(100);
+    expect(component.totalItems()).toBe(250);
+    expect(cards).toHaveLength(100);
+    expect(cards.map(card => card.componentInstance.property.id)).toEqual(hotels.map(property => property.id));
   });
 
   it('resets sort to page one and preserves filters and sort across page changes', () => {
@@ -296,3 +343,23 @@ describe('PropertySearchPageComponent filter contract', () => {
     expect(document.activeElement).toBe(trigger);
   });
 });
+
+function hotel(id: number): Hotel {
+  return {
+    id,
+    name: `Hotel ${id}`,
+    addressLine: `Address ${id}`,
+    starRating: 5,
+    latitude: 10.4,
+    longitude: 106.4,
+  };
+}
+
+function searchPage(
+  content: Hotel[],
+  totalElements = content.length,
+  totalPages = content.length ? 1 : 0,
+  size = 20,
+) {
+  return { content, totalElements, totalPages, number: 0, size };
+}

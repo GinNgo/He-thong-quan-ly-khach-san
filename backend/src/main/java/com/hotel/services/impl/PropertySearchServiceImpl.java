@@ -213,11 +213,12 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         dataQuery.setFirstResult((pageNumber - 1) * pageSize);
         dataQuery.setMaxResults(pageSize);
 
-        List<PropertySearchResponseDTO> content = new ArrayList<>();
-        for (Object[] row : (List<Object[]>) dataQuery.getResultList()) {
-            content.add(mapRow(row, checkIn, checkOut, adults, children, roomCount,
-                    request.getMinPrice(), request.getMaxPrice()));
-        }
+        List<MappedRow> mappedRows = ((List<Object[]>) dataQuery.getResultList()).stream()
+                .map(this::mapBaseRow)
+                .toList();
+        List<PropertySearchResponseDTO> content = enrichRows(
+                mappedRows, checkIn, checkOut, adults, children, roomCount,
+                request.getMinPrice(), request.getMaxPrice());
         long total = ((Number) countQuery.getSingleResult()).longValue();
         return new PageImpl<>(content, PageRequest.of(pageNumber - 1, pageSize), total);
     }
@@ -284,9 +285,7 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         return radius == null || radius <= 0 ? 5d : Math.min(radius, 50d);
     }
 
-    private PropertySearchResponseDTO mapRow(Object[] row, LocalDate checkIn, LocalDate checkOut,
-                                             int adults, int children, int roomCount,
-                                             Double minPrice, Double maxPrice) {
+    private MappedRow mapBaseRow(Object[] row) {
         PropertySearchResponseDTO dto = new PropertySearchResponseDTO();
         dto.setId(number(row[0]).longValue());
         dto.setSlug((String) row[1]);
@@ -303,20 +302,59 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         dto.setReviewScore(reviewed ? storedReviewScore : null);
         dto.setReviewCount(reviewed ? storedReviewCount : 0);
         Long storedProvinceId = row[19] == null ? null : number(row[19]).longValue();
-        Location currentProvince = provinceCompatibilityService.currentProvinceForId(storedProvinceId);
-        dto.setProvinceName(currentProvince == null ? (String) row[11] : currentProvince.getNameVi());
+        dto.setProvinceName((String) row[11]);
         dto.setWardName((String) row[12]);
         dto.setDistanceKm(decimal(row[13]));
         if (dto.getDistanceKm() != null) dto.setDistanceText(String.format("Cách %.1f km", dto.getDistanceKm()));
 
-        List<RoomType> roomTypes = roomTypeRepository.findByHotelId(dto.getId()).stream()
-                .filter(rt -> "ACTIVE".equals(rt.getStatus()))
-                .filter(rt -> canHost(rt, adults, children, roomCount))
-                .filter(rt -> isWithinPriceBounds(rt, minPrice, maxPrice))
-                .toList();
-        Map<Long, Long> availability = new HashMap<>();
-        roomTypes.forEach(rt -> availability.put(rt.getId(), roomAvailabilityService.countAvailableRooms(rt.getId(), checkIn, checkOut)));
-        long available = availability.values().stream().mapToLong(Long::longValue).sum();
+        return new MappedRow(dto, storedProvinceId, (String) row[11]);
+    }
+
+    private List<PropertySearchResponseDTO> enrichRows(List<MappedRow> rows,
+                                                        LocalDate checkIn, LocalDate checkOut,
+                                                        int adults, int children, int roomCount,
+                                                        Double minPrice, Double maxPrice) {
+        if (rows.isEmpty()) return List.of();
+        Set<Long> hotelIds = rows.stream().map(row -> row.dto().getId())
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        Map<Long, List<RoomType>> roomTypesByHotel = roomTypeRepository.findByHotelIdIn(hotelIds).stream()
+                .filter(roomType -> "ACTIVE".equals(roomType.getStatus()))
+                .filter(roomType -> canHost(roomType, adults, children, roomCount))
+                .filter(roomType -> isWithinPriceBounds(roomType, minPrice, maxPrice))
+                .collect(java.util.stream.Collectors.groupingBy(
+                        roomType -> roomType.getHotel().getId(), java.util.LinkedHashMap::new,
+                        java.util.stream.Collectors.toList()));
+        Set<Long> roomTypeIds = roomTypesByHotel.values().stream().flatMap(List::stream)
+                .map(RoomType::getId)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        Map<Long, Long> availability = roomAvailabilityService.countAvailableRooms(roomTypeIds, checkIn, checkOut);
+        Map<Long, List<PropertyImage>> imagesByHotel = propertyImageRepository
+                .findByHotelIdInOrderByHotelIdAscSortOrderAscIdAsc(hotelIds).stream()
+                .filter(image -> image.getImageUrl() != null && !image.getImageUrl().isBlank())
+                .collect(java.util.stream.Collectors.groupingBy(
+                        image -> image.getHotel().getId(), java.util.LinkedHashMap::new,
+                        java.util.stream.Collectors.toList()));
+        Set<Long> provinceIds = rows.stream().map(MappedRow::storedProvinceId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        Map<Long, Location> currentProvinces = provinceCompatibilityService.currentProvincesForIds(provinceIds);
+
+        for (MappedRow row : rows) {
+            PropertySearchResponseDTO dto = row.dto();
+            Location currentProvince = row.storedProvinceId() == null
+                    ? null : currentProvinces.get(row.storedProvinceId());
+            dto.setProvinceName(currentProvince == null ? row.storedProvinceName() : currentProvince.getNameVi());
+            enrichRoomAndMedia(dto, roomTypesByHotel.getOrDefault(dto.getId(), List.of()), availability,
+                    imagesByHotel.getOrDefault(dto.getId(), List.of()), checkIn, checkOut, roomCount);
+        }
+        return rows.stream().map(MappedRow::dto).toList();
+    }
+
+    private void enrichRoomAndMedia(PropertySearchResponseDTO dto, List<RoomType> roomTypes,
+                                    Map<Long, Long> availability, List<PropertyImage> images,
+                                    LocalDate checkIn, LocalDate checkOut, int roomCount) {
+        long available = roomTypes.stream()
+                .mapToLong(roomType -> availability.getOrDefault(roomType.getId(), 0L)).sum();
         dto.setAvailableRoomCount((int) available);
 
         RoomType lowestAvailable = roomTypes.stream()
@@ -339,9 +377,6 @@ public class PropertySearchServiceImpl implements PropertySearchService {
                     tax, BigDecimal.ZERO, total, "VND"));
         }
 
-        List<PropertyImage> images = propertyImageRepository.findByHotelIdOrderBySortOrderAscIdAsc(dto.getId()).stream()
-                .filter(image -> image.getImageUrl() != null && !image.getImageUrl().isBlank())
-                .toList();
         PropertyImage primary = images.stream().filter(image -> Boolean.TRUE.equals(image.getIsPrimary())).findFirst()
                 .orElse(images.isEmpty() ? null : images.get(0));
         String catalogMainImage = dto.getMainImageUrl();
@@ -360,8 +395,9 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         dto.setFreeCancellation(false);
         dto.setPayAtProperty(false);
         dto.setBreakfastIncluded(false);
-        return dto;
     }
+
+    private record MappedRow(PropertySearchResponseDTO dto, Long storedProvinceId, String storedProvinceName) { }
 
     private String normalizeImageUrl(String imageUrl) {
         return imageUrl == null || imageUrl.isBlank() ? null : imageUrl.trim();

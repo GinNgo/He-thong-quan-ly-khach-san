@@ -12,6 +12,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +42,30 @@ public class RoomAvailabilityService {
                 roomTypeId, RELEASED_RESERVATION_STATUSES, checkIn, checkOut
         );
         return Math.max(0, roomsInPool - reservedRooms);
+    }
+
+    public Map<Long, Long> countAvailableRooms(Collection<Long> roomTypeIds,
+                                               LocalDate checkIn, LocalDate checkOut) {
+        if (roomTypeIds == null || roomTypeIds.isEmpty()) return Map.of();
+        boolean datedStay = hasStayDates(checkIn, checkOut);
+        if (datedStay) validateStayDates(checkIn, checkOut);
+        Map<Long, Long> available = new HashMap<>();
+        roomTypeIds.forEach(id -> available.put(id, 0L));
+        roomRepository.countRoomsInAvailabilityPoolByRoomTypeIds(
+                        roomTypeIds,
+                        roomAvailabilityPolicy.roomStatuses(datedStay),
+                        roomAvailabilityPolicy.housekeepingStatuses())
+                .forEach(row -> available.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue()));
+        if (!datedStay) return Map.copyOf(available);
+
+        reservationDetailRepository.sumReservedQuantityByRoomTypeIds(
+                        roomTypeIds, RELEASED_RESERVATION_STATUSES, checkIn, checkOut)
+                .forEach(row -> {
+                    Long roomTypeId = ((Number) row[0]).longValue();
+                    long reserved = ((Number) row[1]).longValue();
+                    available.computeIfPresent(roomTypeId, (id, physical) -> Math.max(0, physical - reserved));
+                });
+        return Map.copyOf(available);
     }
 
     public Room findFirstAvailableRoomForBooking(Long roomTypeId, LocalDate checkIn, LocalDate checkOut, Integer guests) {

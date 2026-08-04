@@ -36,6 +36,21 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     );
 
     @Query("""
+            select room.roomType.id, count(room)
+            from Room room
+            where room.roomType.id in :roomTypeIds
+              and room.status in :eligibleRoomStatuses
+              and room.housekeepingStatus in :eligibleHousekeepingStatuses
+              and room.maintenanceStatus = 'NONE'
+            group by room.roomType.id
+            """)
+    List<Object[]> countRoomsInAvailabilityPoolByRoomTypeIds(
+            @Param("roomTypeIds") java.util.Collection<Long> roomTypeIds,
+            @Param("eligibleRoomStatuses") List<String> eligibleRoomStatuses,
+            @Param("eligibleHousekeepingStatuses") List<String> eligibleHousekeepingStatuses
+    );
+
+    @Query("""
             select room
             from Room room
             where room.roomType.id = :roomTypeId

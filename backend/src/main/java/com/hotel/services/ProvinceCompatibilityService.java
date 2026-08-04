@@ -93,6 +93,29 @@ public class ProvinceCompatibilityService {
                 .orElse(null);
     }
 
+    public Map<Long, Location> currentProvincesForIds(Collection<Long> provinceIds) {
+        if (provinceIds == null || provinceIds.isEmpty()) return Map.of();
+        List<Location> stored = locationRepository.findAllById(provinceIds).stream()
+                .filter(location -> "PROVINCE".equals(location.getLocationType()))
+                .toList();
+        Set<String> currentCodes = new LinkedHashSet<>();
+        stored.forEach(province -> definitionFor(province.getSourceCode())
+                .map(ProvinceDefinition::sourceCode).ifPresent(currentCodes::add));
+        Map<String, Location> currentByCode = new LinkedHashMap<>();
+        if (!currentCodes.isEmpty()) {
+            locationRepository.findByLocationTypeAndSourceCodeIn("PROVINCE", currentCodes)
+                    .forEach(location -> currentByCode.put(location.getSourceCode(), location));
+        }
+        Map<Long, Location> result = new LinkedHashMap<>();
+        stored.forEach(province -> {
+            String currentCode = definitionFor(province.getSourceCode())
+                    .map(ProvinceDefinition::sourceCode).orElse(null);
+            result.put(province.getId(), currentCode == null
+                    ? province : currentByCode.getOrDefault(currentCode, province));
+        });
+        return Map.copyOf(result);
+    }
+
     public CatalogValidation validateCatalog() {
         Catalog loaded = catalog();
         return new CatalogValidation(loaded.byCurrentCode().size(), loaded.byLegacyCode().size());

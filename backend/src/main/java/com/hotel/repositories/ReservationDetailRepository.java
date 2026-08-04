@@ -26,4 +26,21 @@ public interface ReservationDetailRepository extends JpaRepository<ReservationDe
             @Param("checkIn") LocalDate checkIn,
             @Param("checkOut") LocalDate checkOut
     );
+
+    @Query("""
+            select detail.roomType.id, coalesce(sum(detail.quantity), 0)
+            from ReservationDetail detail
+            join detail.reservation reservation
+            where detail.roomType.id in :roomTypeIds
+              and reservation.status not in :excludedStatuses
+              and reservation.checkInDate < :checkOut
+              and reservation.checkOutDate > :checkIn
+            group by detail.roomType.id
+            """)
+    List<Object[]> sumReservedQuantityByRoomTypeIds(
+            @Param("roomTypeIds") java.util.Collection<Long> roomTypeIds,
+            @Param("excludedStatuses") List<String> excludedStatuses,
+            @Param("checkIn") LocalDate checkIn,
+            @Param("checkOut") LocalDate checkOut
+    );
 }
