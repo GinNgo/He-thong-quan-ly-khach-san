@@ -171,10 +171,27 @@ public class ReservationController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/{id}/check-in-readiness")
+    @Permission(function = FunctionCode.CHECKIN, action = ActionCode.VIEW)
+    public ResponseEntity<CheckInReadinessDTO> checkInReadiness(@PathVariable Long id) {
+        return ResponseEntity.ok(reservationService.getCheckInReadiness(id));
+    }
+
     @PostMapping("/{id}/check-in")
     @Permission(function = FunctionCode.CHECKIN, action = ActionCode.UPDATE)
-    public ResponseEntity<ReservationDTO> checkIn(@PathVariable Long id) {
-        return ResponseEntity.ok(reservationService.checkIn(id));
+    public ResponseEntity<ReservationDTO> checkIn(
+            Authentication authentication,
+            @PathVariable Long id,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            HttpServletRequest httpRequest) {
+        ReservationDTO response = mutationIdempotencyService.execute(
+                mutationCommand("RESERVATION_CHECK_IN", authentication.getName() + ":" + id,
+                        idempotencyKey, new CheckInPayload(id), httpRequest),
+                HttpStatus.OK.value(),
+                ReservationDTO.class,
+                () -> reservationService.checkIn(id),
+                () -> reservationService.findCheckInReplay(id).orElse(null));
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{id}/cancel-operational")
@@ -273,6 +290,9 @@ public class ReservationController {
     }
 
     private record CancellationPayload(Long reservationId) {
+    }
+
+    private record CheckInPayload(Long reservationId) {
     }
 
     private void requireGenericStatusEndpoint(String status) {

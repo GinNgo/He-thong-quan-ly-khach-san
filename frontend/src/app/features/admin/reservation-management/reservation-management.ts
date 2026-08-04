@@ -20,6 +20,7 @@ import { Observable, finalize } from 'rxjs';
 import { ReservationAmendmentWorkspaceComponent } from '../../../shared/reservation-amendment/reservation-amendment-workspace.component';
 import { PhysicalRoomPickerComponent } from '../../../shared/physical-room-picker/physical-room-picker.component';
 import { RoomAssignmentCopyService } from '../../../shared/physical-room-picker/room-assignment-copy.service';
+import { CheckInReadinessComponent } from '../../../shared/check-in-readiness/check-in-readiness.component';
 
 @Component({
   selector: 'app-reservation-management',
@@ -37,6 +38,7 @@ import { RoomAssignmentCopyService } from '../../../shared/physical-room-picker/
     ReservationCheckoutComponent,
     ReservationAmendmentWorkspaceComponent,
     PhysicalRoomPickerComponent,
+    CheckInReadinessComponent,
   ],
   providers: [MessageService],
   templateUrl: './reservation-management.html',
@@ -63,6 +65,8 @@ export class ReservationManagement implements OnInit {
   amendmentReservationId: number | null = null;
   showAmendmentDialog = false;
   showRoomPickerDialog = false;
+  showCheckInDialog = false;
+  checkInReservationId: number | null = null;
   roomPickerReservationId: number | null = null;
   roomPickerSelection: number[] = [];
   roomPickerAllowsMutation = false;
@@ -70,7 +74,9 @@ export class ReservationManagement implements OnInit {
   readonly roomAssignmentCopy = inject(RoomAssignmentCopyService);
   readonly canUpdateReservation = this.permissionService.hasPermission(FunctionCode.RESERVATION, ActionCode.UPDATE);
   readonly canAmendReservation = this.permissionService.hasPermission(FunctionCode.RESERVATION_AMEND, ActionCode.UPDATE);
-  readonly canCheckIn = this.permissionService.hasPermission(FunctionCode.CHECKIN, ActionCode.UPDATE);
+  readonly canViewCheckIn = this.permissionService.hasPermission(FunctionCode.CHECKIN, ActionCode.VIEW);
+  readonly canCheckIn = this.canViewCheckIn
+    && this.permissionService.hasPermission(FunctionCode.CHECKIN, ActionCode.UPDATE);
   readonly canCancelOperational = this.permissionService.hasPermission(FunctionCode.RESERVATION_CANCEL, ActionCode.UPDATE);
   readonly canMarkNoShow = this.permissionService.hasPermission(FunctionCode.RESERVATION_NO_SHOW, ActionCode.UPDATE);
   readonly canViewRoomAssignments = this.permissionService.hasPermission(
@@ -204,7 +210,22 @@ export class ReservationManagement implements OnInit {
 
   checkIn(id: number | undefined) {
     if (!id) return;
-    this.runLifecycleAction(id, 'CHECK_IN', this.reservationService.checkIn(id), 'Đã nhận phòng');
+    this.checkInReservationId = id;
+    this.showCheckInDialog = true;
+  }
+
+  handleCheckInCompleted(reservation: Reservation) {
+    this.showCheckInDialog = false;
+    this.checkInReservationId = null;
+    this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã nhận phòng' });
+    this.loadReservations();
+    if (reservation.id && this.showDetailDialog) this.openReservationDetail(reservation.id);
+  }
+
+  openAssignmentFromCheckIn() {
+    const reservation = this.reservations.find(item => item.id === this.checkInReservationId)
+      || (this.selectedReservation?.id === this.checkInReservationId ? this.selectedReservation : null);
+    if (reservation) this.openRoomPicker(reservation);
   }
 
   cancelOperational(id: number | undefined) {
@@ -271,6 +292,12 @@ export class ReservationManagement implements OnInit {
       detail: this.roomAssignmentCopy.text('updatedDetail', { id: reservation.id || '' }),
     });
     this.loadReservations();
+    this.showRoomPickerDialog = false;
+    if (reservation.id === this.checkInReservationId) {
+      const current = this.checkInReservationId;
+      this.checkInReservationId = null;
+      queueMicrotask(() => this.checkInReservationId = current);
+    }
     if (reservation.id && this.showDetailDialog) this.openReservationDetail(reservation.id);
   }
 

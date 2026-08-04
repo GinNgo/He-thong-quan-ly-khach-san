@@ -5,6 +5,7 @@
 }
 
 :host ::ng-deep .amendment-dialog .p-dialog-content{padding:0;background:transparent;border-radius:22px;overflow:visible}
+:host ::ng-deep .check-in-dialog .p-dialog-content{padding:0;overflow:auto;border-radius:18px}
 
 .reservation-filters {
   display: grid;
@@ -137,5 +138,6 @@
 
   :host ::ng-deep .amendment-dialog{margin:0;max-height:100dvh;border-radius:0}
   :host ::ng-deep .amendment-dialog .p-dialog-content{max-height:100dvh;overflow:auto;border-radius:0}
+  :host ::ng-deep .check-in-dialog{margin:0;max-height:100dvh;border-radius:0}:host ::ng-deep .check-in-dialog .p-dialog-content{max-height:100dvh;border-radius:0}
   .room-picker-entry,.room-picker-dialog__footer{align-items:stretch;flex-direction:column}.room-picker-entry button,.room-picker-dialog__footer button{width:100%}:host ::ng-deep .room-picker-dialog{margin:0;max-height:100dvh;border-radius:0}:host ::ng-deep .room-picker-dialog .p-dialog-content{padding:0;max-height:100dvh;overflow:auto;border-radius:0}
 }

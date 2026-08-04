@@ -19,10 +19,16 @@ describe('ReservationService lifecycle commands', () => {
   afterEach(() => http.verify());
 
   it('uses dedicated endpoints for check-in, operational cancellation and no-show', () => {
-    service.checkIn(41).subscribe();
+    service.getCheckInReadiness(41).subscribe();
+    const readiness = http.expectOne(`${environment.apiUrl}/reservations/41/check-in-readiness`);
+    expect(readiness.request.method).toBe('GET');
+    readiness.flush({ reservationId: 41, blockers: [] });
+
+    service.checkIn(41, 'check-in-key').subscribe();
     const checkIn = http.expectOne(`${environment.apiUrl}/reservations/41/check-in`);
     expect(checkIn.request.method).toBe('POST');
     expect(checkIn.request.body).toEqual({});
+    expect(checkIn.request.headers.get('Idempotency-Key')).toBe('check-in-key');
     checkIn.flush({ id: 41 });
 
     service.cancelOperational(42).subscribe();

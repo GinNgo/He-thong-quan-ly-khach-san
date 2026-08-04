@@ -122,6 +122,12 @@ app:
     quote-ttl-minutes: ${RESERVATION_AMENDMENT_QUOTE_TTL_MINUTES:15}
     default-arrival-time: ${RESERVATION_AMENDMENT_DEFAULT_ARRIVAL_TIME:14:00}
     property-zone-id: ${RESERVATION_AMENDMENT_PROPERTY_ZONE_ID:Asia/Ho_Chi_Minh}
+  stay-check-in:
+    property-zone-id: ${STAY_CHECK_IN_PROPERTY_ZONE_ID:Asia/Ho_Chi_Minh}
+    default-arrival-time: ${STAY_CHECK_IN_DEFAULT_ARRIVAL_TIME:14:00}
+    default-departure-time: ${STAY_CHECK_IN_DEFAULT_DEPARTURE_TIME:12:00}
+    early-window-minutes: ${STAY_CHECK_IN_EARLY_WINDOW_MINUTES:0}
+    demo-early-window-minutes: ${STAY_CHECK_IN_DEMO_EARLY_WINDOW_MINUTES:5}
   websocket:
     allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:4200}
   observability:

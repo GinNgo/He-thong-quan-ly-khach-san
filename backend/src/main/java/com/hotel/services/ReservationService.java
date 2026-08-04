@@ -11,6 +11,7 @@ import com.hotel.propertycommerce.config.PropertyPaymentConfigurationRepository;
 import com.hotel.propertycommerce.checkout.CheckoutOperationsService;
 import com.hotel.propertycommerce.invoice.InvoiceFinalizationService;
 import com.hotel.propertycommerce.invoice.PropertyInvoice;
+import com.hotel.propertycommerce.stay.CheckInPolicy;
 import com.hotel.repositories.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -53,6 +54,7 @@ public class ReservationService {
     private final CheckoutOperationsService checkoutOperationsService;
     private final PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
     private final OperationalAuditService operationalAuditService;
+    private final CheckInPolicy checkInPolicy;
 
     @Transactional
     public ReservationDTO createReservation(String username, ReservationRequest request) {
@@ -452,6 +454,10 @@ public class ReservationService {
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy booking."));
         requireOperationalAccess(reservation);
         String normalizedStatus = status == null ? "" : status.trim().toUpperCase();
+        if ("CHECKED_IN".equals(normalizedStatus)) {
+            throw new IllegalArgumentException(
+                    "Use the dedicated check-in endpoint so readiness and idempotency are enforced.");
+        }
 
         if (normalizedStatus.equals(reservation.getStatus())) {
             reconcileReservationHold(id, normalizedStatus, LocalDateTime.now());
@@ -460,9 +466,7 @@ public class ReservationService {
 
         String previousStatus = reservation.getStatus();
 
-        List<ReservationRoom> assignments = "CHECKED_IN".equals(normalizedStatus)
-                ? reservationRoomRepository.findAssignedByReservationIdForUpdate(id)
-                : reservationRoomRepository.findByReservationDetailReservationId(id);
+        List<ReservationRoom> assignments = reservationRoomRepository.findByReservationDetailReservationId(id);
 
         if ("CHECKED_OUT".equals(normalizedStatus)) {
             completeCheckoutLocked(reservation, null);
@@ -470,34 +474,6 @@ public class ReservationService {
             return mapToDTO(reservation);
         } else if ("CANCELLED".equals(normalizedStatus)) {
             cancelLockedReservation(reservation, assignments);
-        } else if ("CHECKED_IN".equals(normalizedStatus)) {
-            if (RoomAvailabilityService.RELEASED_RESERVATION_STATUSES.contains(reservation.getStatus())) {
-                throw new IllegalStateException("Không thể nhận phòng cho booking đã kết thúc hoặc bị hủy.");
-            }
-            int required = reservationDetailRepository.findByReservationId(id).stream()
-                    .mapToInt(detail -> detail.getQuantity() == null ? 1 : detail.getQuantity()).sum();
-            long assigned = assignments.stream().filter(item -> "ASSIGNED".equals(item.getStatus())).count();
-            if (assigned != required) {
-                throw new IllegalStateException("Phải gán đủ " + required + " phòng vật lý trước khi check-in.");
-            }
-            List<Long> assignedRoomIds = assignments.stream()
-                    .map(ReservationRoom::getRoom)
-                    .map(Room::getId)
-                    .distinct()
-                    .sorted()
-                    .toList();
-            java.util.Map<Long, Room> lockedRooms = roomRepository.findAllByIdForUpdate(assignedRoomIds).stream()
-                    .collect(Collectors.toMap(Room::getId, room -> room));
-            if (lockedRooms.size() != assignedRoomIds.size()) {
-                throw new FinancialException(
-                        FinancialErrorCode.CONCURRENT_MODIFICATION,
-                        "An assigned room changed during check-in; retry safely.");
-            }
-            assignments.forEach(item -> {
-                Room lockedRoom = lockedRooms.get(item.getRoom().getId());
-                RoomStatePolicy.checkIn(lockedRoom);
-                roomRepository.save(lockedRoom);
-            });
         } else if (RoomAvailabilityService.RELEASED_RESERVATION_STATUSES.contains(normalizedStatus)) {
             releaseAssignments(assignments);
         } else if ("CONFIRMED".equals(normalizedStatus) && reservation.getUser().getEmail() != null) {
@@ -514,9 +490,96 @@ public class ReservationService {
         return mapToDTO(saved);
     }
 
+    @Transactional(readOnly = true)
+    public CheckInReadinessDTO getCheckInReadiness(Long id) {
+        Reservation reservation = findReservation(id);
+        requireOperationalAccess(reservation);
+        List<ReservationDetail> details = reservationDetailRepository.findByReservationId(id);
+        List<ReservationRoom> assignments = reservationRoomRepository
+                .findByReservationDetailReservationId(id).stream()
+                .filter(item -> "ASSIGNED".equals(item.getStatus()))
+                .toList();
+        List<Room> rooms = assignments.stream()
+                .map(ReservationRoom::getRoom)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .sorted(java.util.Comparator.comparing(Room::getId))
+                .toList();
+        return checkInReadiness(reservation, details, assignments, rooms);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ReservationDTO> findCheckInReplay(Long id) {
+        Reservation reservation = findReservation(id);
+        requireOperationalAccess(reservation);
+        if (!"CHECKED_IN".equals(reservation.getStatus())) return Optional.empty();
+        int requiredRooms = reservationDetailRepository.findByReservationId(id).stream()
+                .mapToInt(detail -> detail.getQuantity() == null ? 1 : detail.getQuantity())
+                .sum();
+        List<ReservationRoom> assignments = reservationRoomRepository
+                .findByReservationDetailReservationId(id).stream()
+                .filter(item -> "ASSIGNED".equals(item.getStatus()))
+                .toList();
+        long occupiedRooms = assignments.stream()
+                .map(ReservationRoom::getRoom)
+                .filter(java.util.Objects::nonNull)
+                .filter(room -> RoomStatePolicy.OCCUPIED.equals(room.getStatus()))
+                .map(Room::getId)
+                .distinct()
+                .count();
+        return requiredRooms > 0 && assignments.size() == requiredRooms && occupiedRooms == requiredRooms
+                ? Optional.of(mapToDTO(reservation))
+                : Optional.empty();
+    }
+
     @Transactional
     public ReservationDTO checkIn(Long id) {
-        return updateReservationStatus(id, "CHECKED_IN");
+        Reservation reservation = reservationRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy booking."));
+        requireOperationalAccess(reservation);
+        if ("CHECKED_IN".equals(reservation.getStatus())) {
+            return findCheckInReplay(id).orElseThrow(() -> new FinancialException(
+                    FinancialErrorCode.INVALID_STATE_TRANSITION,
+                    "The checked-in reservation has an incomplete physical-room state.",
+                    Map.of("checkInReadiness", "CHECKED_IN_STATE_INCOMPLETE"),
+                    reservation.getStatus(),
+                    null));
+        }
+
+        List<ReservationDetail> details = reservationDetailRepository.findByReservationId(id);
+        List<ReservationRoom> assignments = reservationRoomRepository.findAssignedByReservationIdForUpdate(id);
+        List<Long> roomIds = assignments.stream()
+                .filter(item -> "ASSIGNED".equals(item.getStatus()))
+                .map(ReservationRoom::getRoom)
+                .filter(java.util.Objects::nonNull)
+                .map(Room::getId)
+                .distinct()
+                .sorted()
+                .toList();
+        Map<Long, Room> lockedRooms = lockAssignmentRooms(reservation, roomIds);
+        List<Room> rooms = roomIds.stream().map(lockedRooms::get).toList();
+        CheckInReadinessDTO readiness = checkInReadiness(reservation, details, assignments, rooms);
+        if (!readiness.ready()) {
+            CheckInReadinessIssueDTO blocker = readiness.blockers().get(0);
+            throw new FinancialException(
+                    FinancialErrorCode.INVALID_STATE_TRANSITION,
+                    blocker.message(),
+                    Map.of("checkInReadiness", blocker.code()),
+                    reservation.getStatus(),
+                    null);
+        }
+
+        rooms.forEach(RoomStatePolicy::checkIn);
+        roomRepository.saveAllAndFlush(rooms);
+        reservation.setStatus("CHECKED_IN");
+        Reservation saved = reservationRepository.save(reservation);
+        reconcileReservationHold(id, "CHECKED_IN", LocalDateTime.now());
+        appendStatusChangedEvent(
+                saved,
+                "CONFIRMED",
+                "CHECKED_IN",
+                "Đã xác nhận đủ điều kiện và nhận phòng.");
+        return mapToDTO(saved);
     }
 
     @Transactional
@@ -653,6 +716,91 @@ public class ReservationService {
                 assignedRooms,
                 assignedRoomIds,
                 candidates);
+    }
+
+    private CheckInReadinessDTO checkInReadiness(
+            Reservation reservation,
+            List<ReservationDetail> details,
+            List<ReservationRoom> assignments,
+            List<Room> rooms) {
+        CheckInPolicy.Window window = checkInPolicy.window(reservation);
+        List<CheckInReadinessIssueDTO> blockers = new java.util.ArrayList<>();
+        boolean alreadyCheckedIn = "CHECKED_IN".equals(reservation.getStatus());
+        if (!alreadyCheckedIn && !"CONFIRMED".equals(reservation.getStatus())) {
+            blockers.add(new CheckInReadinessIssueDTO(
+                    "INVALID_RESERVATION_STATUS",
+                    "Only a confirmed reservation can be checked in."));
+        }
+        if (!alreadyCheckedIn && window.evaluatedAt().isBefore(window.earliestCheckInAt())) {
+            blockers.add(new CheckInReadinessIssueDTO(
+                    "ARRIVAL_WINDOW_NOT_OPEN",
+                    "Check-in is not available before the approved arrival window."));
+        }
+        if (!alreadyCheckedIn && !window.evaluatedAt().isBefore(window.latestCheckInAt())) {
+            blockers.add(new CheckInReadinessIssueDTO(
+                    "STAY_WINDOW_CLOSED",
+                    "The reservation stay window has already closed."));
+        }
+
+        int requiredRooms = details.stream()
+                .mapToInt(detail -> detail.getQuantity() == null ? 1 : detail.getQuantity())
+                .sum();
+        long activeRows = assignments.stream().filter(item -> "ASSIGNED".equals(item.getStatus())).count();
+        long distinctRooms = rooms.stream().map(Room::getId).distinct().count();
+        if (!alreadyCheckedIn && (requiredRooms < 1 || activeRows != requiredRooms || distinctRooms != requiredRooms)) {
+            blockers.add(new CheckInReadinessIssueDTO(
+                    "MISSING_ROOM_ASSIGNMENT",
+                    "Assign exactly " + requiredRooms + " physical rooms before check-in."));
+        }
+
+        boolean propertyMismatch = rooms.stream().anyMatch(room -> room.getHotel() == null
+                || !java.util.Objects.equals(room.getHotel().getId(), reservation.getHotel().getId()));
+        if (!alreadyCheckedIn && propertyMismatch) {
+            blockers.add(new CheckInReadinessIssueDTO(
+                    "ASSIGNMENT_PROPERTY_MISMATCH",
+                    "An assigned room does not belong to this property."));
+        }
+
+        List<Room> unavailableRooms = rooms.stream()
+                .filter(room -> !isRoomReadyForCheckIn(room))
+                .toList();
+        if (!alreadyCheckedIn && !unavailableRooms.isEmpty()) {
+            String labels = unavailableRooms.stream()
+                    .map(Room::getRoomNumber)
+                    .sorted()
+                    .collect(Collectors.joining(", "));
+            blockers.add(new CheckInReadinessIssueDTO(
+                    "ROOM_NOT_READY",
+                    "Assigned rooms are not clean and operational: " + labels + "."));
+        }
+
+        List<RoomDTO> assignedRooms = rooms.stream()
+                .sorted(java.util.Comparator.comparing(Room::getId))
+                .map(this::availableRoomDto)
+                .toList();
+        return new CheckInReadinessDTO(
+                reservation.getId(),
+                reservation.getStatus(),
+                !alreadyCheckedIn && blockers.isEmpty(),
+                alreadyCheckedIn,
+                window.evaluatedAt(),
+                window.scheduledArrivalAt(),
+                window.earliestCheckInAt(),
+                window.latestCheckInAt(),
+                window.zoneId(),
+                window.earlyWindowMinutes(),
+                window.policyVersion(),
+                requiredRooms,
+                assignedRooms,
+                List.copyOf(blockers));
+    }
+
+    private boolean isRoomReadyForCheckIn(Room room) {
+        return room != null
+                && Set.of(RoomStatePolicy.AVAILABLE, RoomStatePolicy.RESERVED).contains(room.getStatus())
+                && RoomStatePolicy.NONE.equals(room.getMaintenanceStatus())
+                && Set.of(RoomStatePolicy.CLEAN, RoomStatePolicy.INSPECTED)
+                        .contains(room.getHousekeepingStatus());
     }
 
     @Transactional

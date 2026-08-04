@@ -15,6 +15,7 @@ describe('ReservationManagement lifecycle permissions', () => {
   let reservationService: {
     searchReservations: ReturnType<typeof vi.fn>;
     getReservationById: ReturnType<typeof vi.fn>;
+    getCheckInReadiness: ReturnType<typeof vi.fn>;
     checkIn: ReturnType<typeof vi.fn>;
     cancelOperational: ReturnType<typeof vi.fn>;
     markNoShow: ReturnType<typeof vi.fn>;
@@ -43,6 +44,13 @@ describe('ReservationManagement lifecycle permissions', () => {
         content: [reservation], page: 0, size: 10, totalElements: 1, totalPages: 1,
       })),
       getReservationById: vi.fn(() => of(reservation)),
+      getCheckInReadiness: vi.fn(() => of({
+        reservationId: 55, reservationStatus: 'CONFIRMED', ready: true, alreadyCheckedIn: false,
+        evaluatedAt: '2026-08-02T14:00:00+07:00', scheduledArrivalAt: '2026-08-02T14:00:00+07:00',
+        earliestCheckInAt: '2026-08-02T13:55:00+07:00', latestCheckInAt: '2026-08-03T12:00:00+07:00',
+        zoneId: 'Asia/Ho_Chi_Minh', earlyWindowMinutes: 5, policyVersion: 'CHECK_IN_POLICY_V1',
+        requiredRoomCount: 1, assignedRooms: [], blockers: [],
+      })),
       checkIn: vi.fn(() => of(reservation)),
       cancelOperational: vi.fn(() => of(reservation)),
       markNoShow: vi.fn(() => of(reservation)),
@@ -81,7 +89,8 @@ describe('ReservationManagement lifecycle permissions', () => {
               (functionCode === FunctionCode.RESERVATION_ASSIGNMENT &&
                 (actionCode === ActionCode.VIEW || actionCode === ActionCode.UPDATE)) ||
               (functionCode === FunctionCode.HOTEL_SERVICE && actionCode === ActionCode.VIEW) ||
-              (functionCode === FunctionCode.CHECKIN && actionCode === ActionCode.UPDATE) ||
+              (functionCode === FunctionCode.CHECKIN &&
+                (actionCode === ActionCode.VIEW || actionCode === ActionCode.UPDATE)) ||
               (functionCode === FunctionCode.RESERVATION_CANCEL && actionCode === ActionCode.UPDATE) ||
               (functionCode === FunctionCode.RESERVATION_NO_SHOW && actionCode === ActionCode.UPDATE)),
           },
@@ -104,7 +113,9 @@ describe('ReservationManagement lifecycle permissions', () => {
     component.markNoShow(55);
     component.cancelOperational(55);
 
-    expect(reservationService.checkIn).toHaveBeenCalledWith(55);
+    expect(component.showCheckInDialog).toBe(true);
+    expect(component.checkInReservationId).toBe(55);
+    expect(reservationService.checkIn).not.toHaveBeenCalled();
     expect(reservationService.markNoShow).toHaveBeenCalledWith(55);
     expect(reservationService.cancelOperational).toHaveBeenCalledWith(55);
   });

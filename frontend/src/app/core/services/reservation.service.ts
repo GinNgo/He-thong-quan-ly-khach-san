@@ -84,6 +84,30 @@ export interface RoomAssignmentMutationRequest {
   reason: string;
 }
 
+export interface CheckInReadinessIssue {
+  code: 'INVALID_RESERVATION_STATUS' | 'ARRIVAL_WINDOW_NOT_OPEN' | 'STAY_WINDOW_CLOSED'
+    | 'MISSING_ROOM_ASSIGNMENT' | 'ASSIGNMENT_PROPERTY_MISMATCH' | 'ROOM_NOT_READY'
+    | 'CHECKED_IN_STATE_INCOMPLETE' | string;
+  message: string;
+}
+
+export interface CheckInReadiness {
+  reservationId: number;
+  reservationStatus: string;
+  ready: boolean;
+  alreadyCheckedIn: boolean;
+  evaluatedAt: string;
+  scheduledArrivalAt: string;
+  earliestCheckInAt: string;
+  latestCheckInAt: string;
+  zoneId: string;
+  earlyWindowMinutes: number;
+  policyVersion: string;
+  requiredRoomCount: number;
+  assignedRooms: AvailablePhysicalRoom[];
+  blockers: CheckInReadinessIssue[];
+}
+
 export type ReservationAmendmentStatus =
   | 'QUOTED'
   | 'AWAITING_PAYMENT'
@@ -202,8 +226,14 @@ export class ReservationService {
     return this.http.put<Reservation>(`${this.apiUrl}/${id}/status?status=${status}`, {});
   }
 
-  checkIn(id: number): Observable<Reservation> {
-    return this.http.post<Reservation>(`${this.apiUrl}/${id}/check-in`, {});
+  getCheckInReadiness(id: number): Observable<CheckInReadiness> {
+    return this.http.get<CheckInReadiness>(`${this.apiUrl}/${id}/check-in-readiness`);
+  }
+
+  checkIn(id: number, idempotencyKey: string): Observable<Reservation> {
+    return this.http.post<Reservation>(`${this.apiUrl}/${id}/check-in`, {}, {
+      headers: new HttpHeaders({ 'Idempotency-Key': idempotencyKey }),
+    });
   }
 
   cancelOperational(id: number): Observable<Reservation> {

@@ -13,6 +13,8 @@ import com.hotel.entities.User;
 import com.hotel.propertycommerce.checkout.CheckoutOperationsService;
 import com.hotel.propertycommerce.config.PropertyPaymentConfigurationRepository;
 import com.hotel.propertycommerce.invoice.InvoiceFinalizationService;
+import com.hotel.paymentprovider.error.FinancialException;
+import com.hotel.propertycommerce.stay.CheckInPolicy;
 import com.hotel.repositories.HotelServiceRepository;
 import com.hotel.repositories.HousekeepingTaskRepository;
 import com.hotel.repositories.InvoiceRepository;
@@ -36,6 +38,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -72,6 +75,7 @@ class ReservationLifecycleLockingTest {
     @Mock private InvoiceFinalizationService invoiceFinalizationService;
     @Mock private CheckoutOperationsService checkoutOperationsService;
     @Mock private OperationalAuditService operationalAuditService;
+    @Mock private CheckInPolicy checkInPolicy;
 
     @InjectMocks private ReservationService reservationService;
 
@@ -118,6 +122,7 @@ class ReservationLifecycleLockingTest {
 
         when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
         lenient().when(reservationRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(reservation));
+        lenient().when(reservationRepository.findById(42L)).thenReturn(Optional.of(reservation));
         lenient().when(reservationDetailRepository.findByReservationId(42L)).thenReturn(List.of(detail));
     }
 
@@ -367,17 +372,20 @@ class ReservationLifecycleLockingTest {
         ReservationRoom assignment = assignment(detail, firstRoom);
         when(reservationRoomRepository.findAssignedByReservationIdForUpdate(42L))
                 .thenReturn(List.of(assignment));
-        when(roomRepository.findAllByIdForUpdate(List.of(11L))).thenReturn(List.of(firstRoom));
+        when(roomRepository.findAllByHotelIdAndIdInForUpdate(3L, List.of(11L)))
+                .thenReturn(List.of(firstRoom));
         when(reservationRepository.save(reservation)).thenReturn(reservation);
-        when(reservationRoomRepository.findByReservationDetailIdAndStatus(71L, "ASSIGNED"))
-                .thenReturn(List.of(assignment));
+        OffsetDateTime now = OffsetDateTime.parse("2028-02-10T14:00:00+07:00");
+        when(checkInPolicy.window(reservation)).thenReturn(new CheckInPolicy.Window(
+                now, now, now.minusMinutes(5), now.plusDays(2),
+                "Asia/Ho_Chi_Minh", 5, CheckInPolicy.VERSION));
 
-        reservationService.updateReservationStatus(42L, "CHECKED_IN");
+        reservationService.checkIn(42L);
 
         InOrder order = inOrder(reservationRepository, reservationRoomRepository, roomRepository);
         order.verify(reservationRepository).findByIdForUpdate(42L);
         order.verify(reservationRoomRepository).findAssignedByReservationIdForUpdate(42L);
-        order.verify(roomRepository).findAllByIdForUpdate(List.of(11L));
+        order.verify(roomRepository).findAllByHotelIdAndIdInForUpdate(3L, List.of(11L));
         assertThat(firstRoom.getStatus()).isEqualTo("OCCUPIED");
         assertThat(reservation.getStatus()).isEqualTo("CHECKED_IN");
     }
@@ -402,6 +410,97 @@ class ReservationLifecycleLockingTest {
                 .extracting(com.hotel.dtos.RoomDTO::getId)
                 .containsExactly(11L);
         assertThat(reservationService.getAvailableRoomContext(42L).requiredQuantity()).isEqualTo(2);
+    }
+
+    @Test
+    void readinessReportsMissingAssignmentWithoutMutatingReservation() {
+        when(reservationRoomRepository.findByReservationDetailReservationId(42L)).thenReturn(List.of());
+        when(checkInPolicy.window(reservation)).thenReturn(openWindow());
+
+        var readiness = reservationService.getCheckInReadiness(42L);
+
+        assertThat(readiness.ready()).isFalse();
+        assertThat(readiness.blockers()).extracting("code")
+                .containsExactly("MISSING_ROOM_ASSIGNMENT");
+        verify(reservationRepository, never()).save(any());
+        verify(roomRepository, never()).saveAllAndFlush(any());
+    }
+
+    @Test
+    void readinessHonorsExactOpeningBoundaryAndRejectsEarlierArrival() {
+        detail.setQuantity(1);
+        ReservationRoom assignment = assignment(detail, firstRoom);
+        when(reservationRoomRepository.findByReservationDetailReservationId(42L))
+                .thenReturn(List.of(assignment));
+        OffsetDateTime earliest = OffsetDateTime.parse("2028-02-10T13:55:00+07:00");
+        when(checkInPolicy.window(reservation))
+                .thenReturn(windowAt(earliest.minusNanos(1), earliest));
+        assertThat(reservationService.getCheckInReadiness(42L).blockers())
+                .extracting("code").contains("ARRIVAL_WINDOW_NOT_OPEN");
+
+        when(checkInPolicy.window(reservation)).thenReturn(windowAt(earliest, earliest));
+        assertThat(reservationService.getCheckInReadiness(42L).ready()).isTrue();
+    }
+
+    @Test
+    void readinessRejectsClosedWindowAndUnreadyPhysicalRoom() {
+        detail.setQuantity(1);
+        firstRoom.setHousekeepingStatus("DIRTY");
+        ReservationRoom assignment = assignment(detail, firstRoom);
+        when(reservationRoomRepository.findByReservationDetailReservationId(42L))
+                .thenReturn(List.of(assignment));
+        OffsetDateTime close = OffsetDateTime.parse("2028-02-12T12:00:00+07:00");
+        when(checkInPolicy.window(reservation)).thenReturn(new CheckInPolicy.Window(
+                close, close.minusDays(2), close.minusDays(2), close,
+                "Asia/Ho_Chi_Minh", 5, CheckInPolicy.VERSION));
+
+        assertThat(reservationService.getCheckInReadiness(42L).blockers())
+                .extracting("code")
+                .containsExactly("STAY_WINDOW_CLOSED", "ROOM_NOT_READY");
+    }
+
+    @Test
+    void failedCheckInExposesStableBlockerCodeAndLeavesStateUntouched() {
+        when(reservationRoomRepository.findAssignedByReservationIdForUpdate(42L))
+                .thenReturn(List.of());
+        when(checkInPolicy.window(reservation)).thenReturn(openWindow());
+
+        assertThatThrownBy(() -> reservationService.checkIn(42L))
+                .isInstanceOfSatisfying(FinancialException.class, exception ->
+                        assertThat(exception.fieldErrors())
+                                .containsEntry("checkInReadiness", "MISSING_ROOM_ASSIGNMENT"));
+
+        assertThat(reservation.getStatus()).isEqualTo("CONFIRMED");
+        verify(reservationRepository, never()).save(any());
+        verify(roomRepository, never()).saveAllAndFlush(any());
+    }
+
+    @Test
+    void replayRequiresExactAssignmentsAndOccupiedRooms() {
+        reservation.setStatus("CHECKED_IN");
+        detail.setQuantity(1);
+        ReservationRoom assignment = assignment(detail, firstRoom);
+        when(reservationRoomRepository.findByReservationDetailReservationId(42L))
+                .thenReturn(List.of(assignment));
+
+        assertThat(reservationService.findCheckInReplay(42L)).isEmpty();
+        assertThatThrownBy(() -> reservationService.checkIn(42L))
+                .isInstanceOfSatisfying(FinancialException.class, exception ->
+                        assertThat(exception.fieldErrors())
+                                .containsEntry("checkInReadiness", "CHECKED_IN_STATE_INCOMPLETE"));
+
+        firstRoom.setStatus("OCCUPIED");
+        assertThat(reservationService.findCheckInReplay(42L)).isPresent();
+    }
+
+    @Test
+    void genericStatusMutationCannotBypassDedicatedCheckInReadiness() {
+        assertThatThrownBy(() -> reservationService.updateReservationStatus(42L, "CHECKED_IN"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("dedicated check-in endpoint");
+
+        verify(reservationRoomRepository, never()).findAssignedByReservationIdForUpdate(any());
+        verify(roomRepository, never()).findAllByIdForUpdate(any());
     }
 
     @Test
@@ -483,5 +582,21 @@ class ReservationLifecycleLockingTest {
         room.setHousekeepingStatus("CLEAN");
         room.setMaintenanceStatus("NONE");
         return room;
+    }
+
+    private CheckInPolicy.Window openWindow() {
+        OffsetDateTime now = OffsetDateTime.parse("2028-02-10T14:00:00+07:00");
+        return windowAt(now, now.minusMinutes(5));
+    }
+
+    private CheckInPolicy.Window windowAt(OffsetDateTime evaluatedAt, OffsetDateTime earliest) {
+        return new CheckInPolicy.Window(
+                evaluatedAt,
+                earliest.plusMinutes(5),
+                earliest,
+                earliest.plusDays(2),
+                "Asia/Ho_Chi_Minh",
+                5,
+                CheckInPolicy.VERSION);
     }
 }

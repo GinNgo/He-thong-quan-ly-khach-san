@@ -144,6 +144,25 @@
   </p-dialog>
 
   <p-dialog
+    [(visible)]="showCheckInDialog"
+    [modal]="true"
+    [showHeader]="false"
+    [style]="{ width: 'min(720px, 96vw)' }"
+    [breakpoints]="{ '640px': '100vw' }"
+    styleClass="check-in-dialog"
+    (onHide)="checkInReservationId = null"
+  >
+    <app-check-in-readiness
+      *ngIf="checkInReservationId as reservationId"
+      [reservationId]="reservationId"
+      [canAssignRooms]="canManageRoomAssignments && canViewRoomAssignments"
+      (assignmentRequested)="openAssignmentFromCheckIn()"
+      (checkedIn)="handleCheckInCompleted($event)"
+      (closed)="showCheckInDialog = false"
+    ></app-check-in-readiness>
+  </p-dialog>
+
+  <p-dialog
     [(visible)]="showRoomPickerDialog"
     [modal]="true"
     [showHeader]="false"

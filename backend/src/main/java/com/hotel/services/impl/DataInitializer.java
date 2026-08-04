@@ -319,7 +319,7 @@ public class DataInitializer implements CommandLineRunner {
     private void seedReservationLifecyclePermissions(Role role) {
         ensurePermission(role, FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.VIEW | ActionCode.UPDATE);
         ensurePermission(role, FunctionCode.RESERVATION_AMEND, ActionCode.VIEW | ActionCode.UPDATE);
-        ensurePermission(role, FunctionCode.CHECKIN, ActionCode.UPDATE);
+        ensurePermission(role, FunctionCode.CHECKIN, ActionCode.VIEW | ActionCode.UPDATE);
         ensurePermission(role, FunctionCode.RESERVATION_CANCEL, ActionCode.UPDATE);
         ensurePermission(role, FunctionCode.RESERVATION_NO_SHOW, ActionCode.UPDATE);
     }

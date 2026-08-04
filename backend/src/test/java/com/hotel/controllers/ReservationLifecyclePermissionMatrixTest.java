@@ -33,6 +33,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -67,7 +68,9 @@ class ReservationLifecyclePermissionMatrixTest {
         assertPermission("releaseRoomAssignment", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.UPDATE,
                 Authentication.class, Long.class, RoomAssignmentReleaseRequest.class, String.class,
                 HttpServletRequest.class);
-        assertPermission("checkIn", FunctionCode.CHECKIN, ActionCode.UPDATE, Long.class);
+        assertPermission("checkInReadiness", FunctionCode.CHECKIN, ActionCode.VIEW, Long.class);
+        assertPermission("checkIn", FunctionCode.CHECKIN, ActionCode.UPDATE,
+                Authentication.class, Long.class, String.class, HttpServletRequest.class);
         assertPermission("cancelOperational", FunctionCode.RESERVATION_CANCEL, ActionCode.UPDATE, Long.class);
         assertPermission("markNoShow", FunctionCode.RESERVATION_NO_SHOW, ActionCode.UPDATE, Long.class);
     }
@@ -112,7 +115,18 @@ class ReservationLifecyclePermissionMatrixTest {
 
     @Test
     void dedicatedControllerCommandsDelegateWithoutGenericStatusMutation() {
-        controller.checkIn(11L);
+        Authentication authentication = org.mockito.Mockito.mock(Authentication.class);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        when(authentication.getName()).thenReturn("receptionist");
+        when(mutationIdempotencyService.execute(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq(200),
+                org.mockito.ArgumentMatchers.eq(com.hotel.dtos.ReservationDTO.class),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(invocation -> ((java.util.function.Supplier<?>) invocation.getArgument(3)).get());
+
+        controller.checkIn(authentication, 11L, "check-in-key", request);
         controller.cancelOperational(12L);
         controller.markNoShow(13L);
 
@@ -158,7 +172,9 @@ class ReservationLifecyclePermissionMatrixTest {
                 endpoint("releaseRoomAssignment", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.UPDATE,
                         Authentication.class, Long.class, RoomAssignmentReleaseRequest.class, String.class,
                         HttpServletRequest.class),
-                endpoint("checkIn", FunctionCode.CHECKIN, ActionCode.UPDATE, Long.class),
+                endpoint("checkInReadiness", FunctionCode.CHECKIN, ActionCode.VIEW, Long.class),
+                endpoint("checkIn", FunctionCode.CHECKIN, ActionCode.UPDATE,
+                        Authentication.class, Long.class, String.class, HttpServletRequest.class),
                 endpoint("cancelOperational", FunctionCode.RESERVATION_CANCEL, ActionCode.UPDATE, Long.class),
                 endpoint("markNoShow", FunctionCode.RESERVATION_NO_SHOW, ActionCode.UPDATE, Long.class));
     }
