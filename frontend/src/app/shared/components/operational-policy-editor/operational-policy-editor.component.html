@@ -1,0 +1,38 @@
+<section class="policy-shell" aria-labelledby="policy-title">
+  <header>
+    <div><h3 id="policy-title">Chính sách lưu trú và nội quy</h3><p>Mỗi lần công bố tạo một mốc bất biến để booking lưu đúng nội dung khách đã xem.</p></div>
+    <button *ngIf="editable" type="button" class="secondary" (click)="newVersion()">Tạo phiên bản mới</button>
+  </header>
+  <p *ngIf="loading">Đang tải chính sách...</p>
+  <p *ngIf="error" class="error" role="alert">{{ error }}</p>
+
+  <form *ngIf="editable && !loading" (ngSubmit)="save()">
+    <label class="wide">Hiệu lực từ<input type="datetime-local" name="effectiveFrom" [(ngModel)]="draft.effectiveFrom" required></label>
+    <label>Nhận phòng (VI)<textarea name="checkInVi" [(ngModel)]="draft.checkInVi" maxlength="2000" required></textarea></label>
+    <label>Check-in (EN)<textarea name="checkInEn" [(ngModel)]="draft.checkInEn" maxlength="2000"></textarea></label>
+    <label>Trả phòng (VI)<textarea name="checkOutVi" [(ngModel)]="draft.checkOutVi" maxlength="2000" required></textarea></label>
+    <label>Check-out (EN)<textarea name="checkOutEn" [(ngModel)]="draft.checkOutEn" maxlength="2000"></textarea></label>
+    <label>Hủy đặt phòng (VI)<textarea name="cancellationVi" [(ngModel)]="draft.cancellationVi" maxlength="3000" required></textarea></label>
+    <label>Cancellation (EN)<textarea name="cancellationEn" [(ngModel)]="draft.cancellationEn" maxlength="3000"></textarea></label>
+    <label>Trẻ em (VI)<textarea name="childPolicyVi" [(ngModel)]="draft.childPolicyVi" maxlength="2000" required></textarea></label>
+    <label>Children (EN)<textarea name="childPolicyEn" [(ngModel)]="draft.childPolicyEn" maxlength="2000"></textarea></label>
+    <label>Thú cưng (VI)<textarea name="petPolicyVi" [(ngModel)]="draft.petPolicyVi" maxlength="2000" required></textarea></label>
+    <label>Pets (EN)<textarea name="petPolicyEn" [(ngModel)]="draft.petPolicyEn" maxlength="2000"></textarea></label>
+    <label>Hút thuốc (VI)<textarea name="smokingPolicyVi" [(ngModel)]="draft.smokingPolicyVi" maxlength="2000" required></textarea></label>
+    <label>Smoking (EN)<textarea name="smokingPolicyEn" [(ngModel)]="draft.smokingPolicyEn" maxlength="2000"></textarea></label>
+    <label>Nội quy chung (VI)<textarea name="houseRulesVi" [(ngModel)]="draft.houseRulesVi" maxlength="4000" required></textarea></label>
+    <label>House rules (EN)<textarea name="houseRulesEn" [(ngModel)]="draft.houseRulesEn" maxlength="4000"></textarea></label>
+    <div class="actions"><button type="submit" [disabled]="saving">{{ saving ? 'Đang lưu...' : (editingId ? 'Cập nhật bản nháp' : 'Lưu bản nháp') }}</button></div>
+  </form>
+
+  <div class="versions" *ngIf="policies.length">
+    <article class="version" *ngFor="let policy of policies">
+      <div><strong>Phiên bản {{ policy.version }}</strong><div>Hiệu lực {{ policy.effectiveFrom | date:'dd/MM/yyyy HH:mm' }}</div></div>
+      <span class="status">{{ policy.status === 'PUBLISHED' ? 'Đã công bố' : 'Bản nháp' }}</span>
+      <div *ngIf="editable && policy.status === 'DRAFT'">
+        <button type="button" class="secondary" (click)="edit(policy)">Sửa</button>
+        <button type="button" (click)="publish(policy)" [disabled]="saving">Công bố</button>
+      </div>
+    </article>
+  </div>
+</section>

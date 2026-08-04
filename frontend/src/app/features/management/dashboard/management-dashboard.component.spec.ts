@@ -5,9 +5,11 @@ import { ManagementApiService, ManagementContext } from '../../../core/services/
 import { ManagementDashboardComponent } from './management-dashboard.component';
 import { PropertyGalleryService } from '../../../core/services/property-gallery.service';
 import { AmenityService } from '../../../core/services/amenity.service';
+import { OperationalPolicyService } from '../../../core/services/operational-policy.service';
 
 const galleryApi = { list: vi.fn(() => of([])) };
 const amenityApi = { publicCatalog: vi.fn(() => of([])), assignments: vi.fn(() => of([])), replaceAssignments: vi.fn(() => of([])) };
+const policyApi = { list: vi.fn(() => of([])), create: vi.fn(), update: vi.fn(), publish: vi.fn() };
 
 describe('ManagementDashboardComponent', () => {
   it('submits an owner-scoped profile edit with a reason', async () => {
@@ -34,7 +36,8 @@ describe('ManagementDashboardComponent', () => {
         provideRouter([]),
         { provide: ManagementApiService, useValue: api },
         { provide: PropertyGalleryService, useValue: galleryApi },
-        { provide: AmenityService, useValue: amenityApi }
+        { provide: AmenityService, useValue: amenityApi },
+        { provide: OperationalPolicyService, useValue: policyApi }
       ]
     }).compileComponents();
 
@@ -77,6 +80,7 @@ describe('ManagementDashboardComponent', () => {
         { provide: ManagementApiService, useValue: { context: () => context$ } },
         { provide: PropertyGalleryService, useValue: galleryApi },
         { provide: AmenityService, useValue: amenityApi },
+        { provide: OperationalPolicyService, useValue: policyApi },
       ],
     }).compileComponents();
 
@@ -113,6 +117,7 @@ describe('ManagementDashboardComponent', () => {
         { provide: ManagementApiService, useValue: { context: () => context$ } },
         { provide: PropertyGalleryService, useValue: galleryApi },
         { provide: AmenityService, useValue: amenityApi },
+        { provide: OperationalPolicyService, useValue: policyApi },
       ],
     }).compileComponents();
 

@@ -146,6 +146,11 @@
       [catalogEditable]="isAdmin"
       title="Tiện nghi của cơ sở">
     </app-amenity-assignment>
+    <app-operational-policy-editor
+      *ngIf="editingProperty?.id"
+      [propertyId]="editingProperty!.id!"
+      [editable]="isAdmin">
+    </app-operational-policy-editor>
 
   </form>
   <ng-template pTemplate="footer">

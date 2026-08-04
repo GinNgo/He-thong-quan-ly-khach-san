@@ -10,6 +10,7 @@ import {
 } from '../../../core/services/property-payment.service';
 import { PropertyPaymentPanelComponent } from './property-payment-panel.component';
 import { AsyncActionCoordinatorService } from '../../../core/services/async-action-coordinator.service';
+import { OperationalPolicyService, PublicOperationalPolicy } from '../../../core/services/operational-policy.service';
 
 @Component({
   selector: 'app-booking-checkout',
@@ -25,6 +26,7 @@ export class BookingCheckoutComponent implements OnInit {
   private propertyPaymentService = inject(PropertyPaymentService);
   private changeDetector = inject(ChangeDetectorRef);
   private actionCoordinator = inject(AsyncActionCoordinatorService);
+  private policyApi = inject(OperationalPolicyService);
 
   roomTypeId: number = 0;
   roomTypeName = '';
@@ -57,6 +59,8 @@ export class BookingCheckoutComponent implements OnInit {
   private paymentRequestIdentity = '';
   private reservedPaymentMethod = '';
   private bookingIdempotencyKey = '';
+  operationalPolicy: PublicOperationalPolicy | null = null;
+  policyAccepted = false;
 
   ngOnInit(): void {
     this.route.paramMap.subscribe(params => {
@@ -81,6 +85,7 @@ export class BookingCheckoutComponent implements OnInit {
       this.serverEstimate = Number(params['estimatedTotal']) || 0;
       this.hotelId = Number(params['hotelId']) || 0;
       this.validateBookingContext();
+      this.loadOperationalPolicy();
     });
 
     this.prefillUserInfo();
@@ -89,6 +94,10 @@ export class BookingCheckoutComponent implements OnInit {
   submitBooking(): void {
     if (this.isSubmitting || !this.bookingContextValid) return;
     this.errorMessage = '';
+    if (this.operationalPolicy && !this.policyAccepted) {
+      this.errorMessage = 'Vui lòng đọc và xác nhận chính sách lưu trú trước khi đặt phòng.';
+      return;
+    }
     if (this.reservationDetails?.id && !this.paymentAttempt) {
       this.isSubmitting = true;
       this.createPaymentAttempt(this.reservationDetails.id);
@@ -108,6 +117,7 @@ export class BookingCheckoutComponent implements OnInit {
     }
 
     this.isSubmitting = true;
+    this.bookingData.operationalPolicyVersion = this.operationalPolicy?.version;
     const bookingKey = this.getBookingIdempotencyKey();
     this.actionCoordinator.run('booking:create', () => this.clientApi.bookRoom(this.bookingData, bookingKey)).subscribe({
       next: (res) => {
@@ -281,5 +291,15 @@ export class BookingCheckoutComponent implements OnInit {
       expiresAt: Date.now() + 30 * 60 * 1000,
     }));
     return this.bookingIdempotencyKey;
+  }
+
+  private loadOperationalPolicy(): void {
+    if (!this.hotelId || !this.bookingData.checkInDate) return;
+    this.operationalPolicy = null;
+    this.policyAccepted = false;
+    this.policyApi.current(this.hotelId, 'vi', this.bookingData.checkInDate).subscribe({
+      next: policy => { this.operationalPolicy = policy; this.changeDetector.markForCheck(); },
+      error: () => { this.operationalPolicy = null; this.changeDetector.markForCheck(); }
+    });
   }
 }

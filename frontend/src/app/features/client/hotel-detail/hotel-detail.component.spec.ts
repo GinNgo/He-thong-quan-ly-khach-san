@@ -3,12 +3,14 @@ import { ActivatedRoute, ParamMap, convertToParamMap, provideRouter } from '@ang
 import { of, Subject, throwError } from 'rxjs';
 import { ClientApiService } from '../../../core/services/client-api.service';
 import { HotelDetailComponent } from './hotel-detail.component';
+import { OperationalPolicyService } from '../../../core/services/operational-policy.service';
 
 describe('HotelDetailComponent', () => {
   let fixture: ComponentFixture<HotelDetailComponent>;
   let component: HotelDetailComponent;
   let params$: Subject<ParamMap>;
   let api: { getHotelById: ReturnType<typeof vi.fn>; getRoomTypesByHotel: ReturnType<typeof vi.fn> };
+  const policyApi = { current: vi.fn(() => of({ version: 2, checkIn: 'Sau 14:00', checkOut: 'Trước 12:00', cancellation: 'Liên hệ cơ sở', childPolicy: 'Theo sức chứa', petPolicy: 'Không', smokingPolicy: 'Không', houseRules: 'Giữ yên lặng', effectiveFrom: '2026-08-01T00:00:00' })) };
 
   beforeEach(async () => {
     params$ = new Subject<ParamMap>();
@@ -22,6 +24,7 @@ describe('HotelDetailComponent', () => {
       providers: [
         provideRouter([]),
         { provide: ClientApiService, useValue: api },
+        { provide: OperationalPolicyService, useValue: policyApi },
         { provide: ActivatedRoute, useValue: { queryParams: of({}), paramMap: params$, snapshot: { fragment: null } } }
       ]
     }).compileComponents();
@@ -60,5 +63,16 @@ describe('HotelDetailComponent', () => {
     expect(component.hotel).toBeNull();
     expect(component.roomTypes).toEqual([]);
     expect(component.pageError).toContain('Không tìm thấy chỗ nghỉ này');
+  });
+
+  it('loads customer-visible policy details for the selected stay', () => {
+    api.getHotelById.mockReturnValue(of({ id: 44, name: 'Policy hotel' }));
+    api.getRoomTypesByHotel.mockReturnValue(of([]));
+    params$.next(convertToParamMap({ id: '44' }));
+    fixture.detectChanges();
+
+    expect(policyApi.current).toHaveBeenCalledWith(44, 'vi', undefined);
+    expect(fixture.nativeElement.textContent).toContain('Chính sách lưu trú');
+    expect(fixture.nativeElement.textContent).toContain('Giữ yên lặng');
   });
 });

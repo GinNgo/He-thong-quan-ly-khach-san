@@ -17,6 +17,8 @@ public class ReservationDTO {
     private String paymentMethod;
     private String specialRequests;
     private List<ReservationDetailDTO> details;
+    private Long operationalPolicyVersion;
+    private String operationalPolicySnapshot;
 
     public Long getId() {
         return id;
@@ -113,4 +115,9 @@ public class ReservationDTO {
     public void setDetails(List<ReservationDetailDTO> details) {
         this.details = details;
     }
+
+    public Long getOperationalPolicyVersion() { return operationalPolicyVersion; }
+    public void setOperationalPolicyVersion(Long operationalPolicyVersion) { this.operationalPolicyVersion = operationalPolicyVersion; }
+    public String getOperationalPolicySnapshot() { return operationalPolicySnapshot; }
+    public void setOperationalPolicySnapshot(String operationalPolicySnapshot) { this.operationalPolicySnapshot = operationalPolicySnapshot; }
 }

@@ -7,9 +7,10 @@ import { PropertyProfile } from '../../../core/models/property-profile.model';
 import { FeedbackStateComponent } from '../../../shared/components/feedback-state/feedback-state.component';
 import { PropertyGalleryComponent } from '../../../shared/components/property-gallery/property-gallery.component';
 import { AmenityAssignmentComponent } from '../../../shared/components/amenity-assignment/amenity-assignment.component';
+import { OperationalPolicyEditorComponent } from '../../../shared/components/operational-policy-editor/operational-policy-editor.component';
 
 @Component({
-  selector: 'app-management-dashboard', standalone: true, imports: [CommonModule, FormsModule, RouterLink, FeedbackStateComponent, PropertyGalleryComponent, AmenityAssignmentComponent],
+  selector: 'app-management-dashboard', standalone: true, imports: [CommonModule, FormsModule, RouterLink, FeedbackStateComponent, PropertyGalleryComponent, AmenityAssignmentComponent, OperationalPolicyEditorComponent],
   templateUrl: './management-dashboard.component.html', styleUrl: './management-dashboard.component.css'
 })
 export class ManagementDashboardComponent implements OnInit {

@@ -90,6 +90,12 @@
         </div>
 
         <div class="mb-8"><label for="booking-special-requests" class="block text-sm font-bold text-gray-700 mb-2">Yêu cầu đặc biệt</label><textarea id="booking-special-requests" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-primary" rows="3" [(ngModel)]="bookingData.specialRequests" name="specialRequests" placeholder="Giờ đến dự kiến hoặc yêu cầu hỗ trợ"></textarea></div>
+
+        <section *ngIf="operationalPolicy" class="mb-8 border border-blue-200 bg-blue-50 rounded-lg p-4" aria-labelledby="checkout-policy-title">
+          <h3 id="checkout-policy-title" class="font-bold text-gray-900 mb-3">Chính sách lưu trú áp dụng</h3>
+          <dl class="text-sm text-gray-700 grid gap-2"><div><dt class="font-bold">Nhận/trả phòng</dt><dd>{{ operationalPolicy.checkIn }} · {{ operationalPolicy.checkOut }}</dd></div><div><dt class="font-bold">Hủy đặt phòng</dt><dd>{{ operationalPolicy.cancellation }}</dd></div><div><dt class="font-bold">Trẻ em, thú cưng và hút thuốc</dt><dd>{{ operationalPolicy.childPolicy }} · {{ operationalPolicy.petPolicy }} · {{ operationalPolicy.smokingPolicy }}</dd></div><div><dt class="font-bold">Nội quy</dt><dd>{{ operationalPolicy.houseRules }}</dd></div></dl>
+          <label class="flex items-start gap-2 mt-4 font-medium"><input type="checkbox" name="policyAccepted" [(ngModel)]="policyAccepted" required><span>Tôi đã đọc và đồng ý với phiên bản chính sách {{ operationalPolicy.version }}.</span></label>
+        </section>
         
         <div class="mb-8">
           <label class="block text-sm font-bold text-gray-700 mb-3">Phương thức thanh toán</label>
@@ -144,7 +150,7 @@
 
         <button type="submit" 
                 class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
-                [disabled]="!bookingForm.valid || !bookingContextValid || isSubmitting"
+                [disabled]="!bookingForm.valid || !bookingContextValid || (operationalPolicy && !policyAccepted) || isSubmitting"
                 [attr.aria-busy]="isSubmitting">
           <i class="pi pi-spin pi-spinner" *ngIf="isSubmitting"></i>
           <span>Hoàn tất Đặt phòng</span>

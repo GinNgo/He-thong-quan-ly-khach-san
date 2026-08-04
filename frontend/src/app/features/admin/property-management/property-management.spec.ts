@@ -145,10 +145,12 @@ describe('PropertyManagementComponent', () => {
     http.expectOne(`${environment.apiUrl}/v1/properties/9/gallery`).flush([]);
     http.expectOne(`${environment.apiUrl}/admin/amenities`).flush([]);
     http.expectOne(`${environment.apiUrl}/v1/properties/9/amenities`).flush([]);
+    http.expectOne(`${environment.apiUrl}/v1/hotels/9/policies`).flush([]);
     fixture.detectChanges();
 
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Thu vien anh');
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Tiện nghi của cơ sở');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Chính sách lưu trú');
     fixture.destroy();
   }, 15000);
 });
