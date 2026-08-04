@@ -27,6 +27,7 @@ This file records branch-local completion evidence. Shared aggregate files are i
 | T340 | `b52b1bcb088638970d740e7c68d6d78d7c51810f` | Angular route-state components 4/4; Chromium retry/error/empty journey across 4 remediated routes 1/1; production build PASS | `docs/testing/evidence/007/remediation/T340-loading-error-empty-states.md`; `docs/testing/evidence/007/remediation/T340-route-state-inventory.md`; CROSS-032 in `docs/audit/system/inventory/cross-cutting.md` |
 | T341 | `dc7f16fef6cb0ce08d160b4109a6b53b2dc22a1b` | Chromium authenticated responsive matrix 1/1 with 25/25 role-width cases; five reviewed 320px navigation screenshots; production build PASS | `docs/testing/evidence/007/remediation/T341-authenticated-responsive-matrix.md`; CROSS-035 in `docs/audit/system/inventory/cross-cutting.md` |
 | T342 | `ac1bee693016aaf2cef0696b590073ffa3db3b5b` | Angular focus/table/dialog/layout/chat 20/20; Chromium skip-link/error/dialog/overlay/route-focus journeys 3/3; four reviewed screenshots; production build PASS | `docs/testing/evidence/007/remediation/T342-keyboard-focus-semantics.md`; CROSS-036 in `docs/audit/system/inventory/cross-cutting.md` |
+| T343 | `9d8130bd93c11d0df64f8021f3c6e3fcde8a9c89` | Chromium axe/accessibility-tree suite 1/1 across 5/5 critical role routes; zero critical/serious violations; combined responsive/keyboard/accessibility regression 5/5; five reviewed screenshots; production build PASS | `docs/testing/evidence/007/remediation/T343-accessibility-regression.md`; CROSS-037 in `docs/audit/system/inventory/cross-cutting.md` |
 
 ## Coordinator updates required
 
@@ -73,6 +74,8 @@ This file records branch-local completion evidence. Shared aggregate files are i
 - Promote CROSS-035 in `docs/audit/system/MASTER_FUNCTION_INVENTORY.md` and add T341 executable coverage to `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md` for FR-044 / SC-013.
 - Mark T342 complete in `specs/007-payment-billing-completion/tasks.md` after merging the commit and evidence.
 - Promote CROSS-036 in `docs/audit/system/MASTER_FUNCTION_INVENTORY.md` and add T342 executable coverage to `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md` for FR-044 / SC-013.
+- Mark T343 complete in `specs/007-payment-billing-completion/tasks.md` after merging the commit and evidence.
+- Promote CROSS-037 in `docs/audit/system/MASTER_FUNCTION_INVENTORY.md` and add T343 executable coverage to `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md` for FR-044 / SC-013.
 
 ## Deferred claim conflicts
 
