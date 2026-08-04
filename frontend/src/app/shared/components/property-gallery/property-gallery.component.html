@@ -19,8 +19,8 @@
       <label class="wide">Lien ket anh HTTPS
         <input type="url" [(ngModel)]="linkUrl" [ngModelOptions]="{standalone: true}" maxlength="1000" placeholder="https://cdn.example/property.jpg" />
       </label>
-      <label>Mo ta tieng Viet
-        <input [(ngModel)]="altTextVi" [ngModelOptions]="{standalone: true}" maxlength="255" />
+      <label>Mo ta tieng Viet *
+        <input [(ngModel)]="altTextVi" [ngModelOptions]="{standalone: true}" maxlength="255" required />
       </label>
       <label>Mo ta tieng Anh
         <input [(ngModel)]="altTextEn" [ngModelOptions]="{standalone: true}" maxlength="255" />
@@ -32,10 +32,10 @@
         <input type="checkbox" [(ngModel)]="makePrimary" [ngModelOptions]="{standalone: true}" /> Dat lam anh dai dien
       </label>
       <div class="composer-actions">
-        <button type="button" class="secondary" (click)="addLink()" [disabled]="saving || !linkUrl.trim()">
+        <button type="button" class="secondary" (click)="addLink()" [disabled]="saving || !linkUrl.trim() || !altTextVi.trim()">
           Them lien ket
         </button>
-        <button type="button" (click)="upload()" [disabled]="saving || !selectedFile">
+        <button type="button" (click)="upload()" [disabled]="saving || !selectedFile || !altTextVi.trim()">
           {{ saving ? 'Dang xu ly...' : 'Tai anh len' }}
         </button>
       </div>
@@ -56,7 +56,10 @@
           </div>
           <div class="image-meta">
             <strong>{{ image.altTextVi || image.altTextEn || 'Chua co mo ta' }}</strong>
-            <small>{{ image.managedUpload ? 'Tep do he thong quan ly' : 'Lien ket ben ngoai' }}</small>
+            <small>{{ image.managedUpload ? 'Tep do he thong quan ly' : 'Lien ket HTTPS ben ngoai' }}</small>
+            @if (image.contentType) {
+              <small>{{ image.contentType }} - {{ image.width }}x{{ image.height }}</small>
+            }
           </div>
           @if (editable) {
             <div class="image-actions">

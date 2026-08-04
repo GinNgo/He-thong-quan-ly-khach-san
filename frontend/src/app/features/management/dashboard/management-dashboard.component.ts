@@ -143,8 +143,7 @@ export class ManagementDashboardComponent implements OnInit {
       checkinTime: clean(value.checkinTime),
       checkoutTime: clean(value.checkoutTime),
       minPrice: value.minPrice,
-      maxPrice: value.maxPrice,
-      mainImage: clean(value.mainImage)
+      maxPrice: value.maxPrice
     };
   }
 }

@@ -33,7 +33,7 @@
     <label>Khách tối đa *<input pInputText type="number" min="1" [(ngModel)]="form.maxGuests" /></label><label>Giá cơ bản *<input pInputText type="number" min="0" [(ngModel)]="form.basePrice" /></label>
     <label>Trạng thái<p-select [options]="statuses" optionLabel="label" optionValue="value" [(ngModel)]="form.status"></p-select></label>
     <label class="wide">Mô tả tiếng Việt<textarea pInputTextarea rows="3" [(ngModel)]="form.descriptionVi"></textarea></label>
-    <label class="wide">Ảnh loại phòng (mỗi URL một dòng)<textarea pInputTextarea rows="4" [(ngModel)]="imageText" placeholder="/assets/room-types/..."></textarea></label>
+    <label class="wide">Ảnh loại phòng (mỗi URL HTTPS một dòng)<textarea pInputTextarea rows="4" [(ngModel)]="imageText" placeholder="https://cdn.example/room-type.jpg"></textarea><small>Mỗi URL được lưu thành media thuộc cơ sở; tên loại phòng được dùng làm mô tả ảnh.</small></label>
   </div>
   <ng-template pTemplate="footer"><button pButton label="Hủy" class="p-button-text" (click)="dialogVisible=false" [disabled]="saving"></button><button pButton [label]="saving ? 'Đang lưu...' : 'Lưu'" icon="pi pi-check" (click)="save()" [disabled]="saving"></button></ng-template>
 </p-dialog>

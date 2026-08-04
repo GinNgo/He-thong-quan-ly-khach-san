@@ -5,7 +5,13 @@ import { environment } from '../../../environments/environment';
 export interface PropertyGalleryImage {
   id: number;
   propertyId: number;
+  mediaId?: number;
   imageUrl: string;
+  sourceType: string;
+  contentType?: string;
+  fileSizeBytes?: number;
+  width?: number;
+  height?: number;
   primary: boolean;
   altTextVi?: string;
   altTextEn?: string;

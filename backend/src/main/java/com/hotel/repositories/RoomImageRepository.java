@@ -9,5 +9,7 @@ import java.util.List;
 @Repository
 public interface RoomImageRepository extends JpaRepository<RoomImage, Long> {
     List<RoomImage> findByRoomId(Long roomId);
+    List<RoomImage> findByRoomIdOrderBySortOrderAsc(Long roomId);
     long countByRoomHotelId(Long hotelId);
+    long countByMediaId(Long mediaId);
 }

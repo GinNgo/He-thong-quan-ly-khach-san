@@ -57,7 +57,6 @@ public class PropertyProfileMapper {
         hotel.setCheckoutTime(trimToNull(profile.getCheckoutTime()));
         hotel.setMinPrice(profile.getMinPrice());
         hotel.setMaxPrice(profile.getMaxPrice());
-        hotel.setMainImage(trimToNull(profile.getMainImage()));
     }
 
     private LocationPair validateLocation(Long provinceId, Long wardId) {

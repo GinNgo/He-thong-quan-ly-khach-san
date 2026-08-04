@@ -122,9 +122,6 @@
         <input id="property-max-price" pInputText type="number" min="0" formControlName="maxPrice" />
       </label>
       <small *ngIf="form.hasError('priceRange')" class="wide field-error">Giá tối thiểu không được lớn hơn giá tối đa.</small>
-      <label class="wide" for="property-image">Ảnh đại diện (URL)
-        <input id="property-image" pInputText formControlName="mainImage" placeholder="/assets/properties/..." />
-      </label>
       <label class="wide" for="property-description-vi">Mô tả tiếng Việt
         <textarea id="property-description-vi" pInputTextarea rows="3" formControlName="descriptionVi"></textarea>
       </label>

@@ -7,6 +7,7 @@ import com.hotel.dtos.RoomImageDTO;
 import com.hotel.entities.Room;
 import com.hotel.entities.RoomImage;
 import com.hotel.entities.RoomType;
+import com.hotel.entities.PropertyMedia;
 import com.hotel.repositories.PropertyImageRepository;
 import com.hotel.repositories.RoomImageRepository;
 import com.hotel.repositories.RoomRepository;
@@ -32,6 +33,8 @@ public class RoomServiceImpl implements RoomService {
     private final RoomTypeImageRepository roomTypeImageRepository;
     private final PropertyAccessService propertyAccessService;
     private final SubscriptionFeatureService subscriptionFeatureService;
+    private final PropertyMediaService propertyMediaService;
+    private final PropertyMediaPolicy propertyMediaPolicy;
 
     @Autowired(required = false)
     private OperationalAuditService operationalAuditService;
@@ -65,6 +68,7 @@ public class RoomServiceImpl implements RoomService {
         Long hotelId = roomType.getHotel().getId();
         requireCapacity(hotelId, "MAX_ROOMS", roomRepository.countByHotelId(hotelId), 1);
         requireImageCapacity(hotelId, imageCount(dto.getImages()));
+        List<PreparedRoomImage> preparedImages = prepareImages(dto.getImages());
         if (dto.getHotelId() != null && !dto.getHotelId().equals(roomType.getHotel().getId())) {
             throw new IllegalArgumentException("Loại phòng không thuộc cơ sở đã chọn.");
         }
@@ -77,12 +81,18 @@ public class RoomServiceImpl implements RoomService {
         RoomStatePolicy.initialize(room);
         room = roomRepository.save(room);
         
-        if (dto.getImages() != null && !dto.getImages().isEmpty()) {
-            for (RoomImageDTO imgDto : dto.getImages()) {
-                if (imgDto == null || imgDto.getImageUrl() == null || imgDto.getImageUrl().trim().isBlank()) continue;
+        if (!preparedImages.isEmpty()) {
+            for (int index = 0; index < preparedImages.size(); index++) {
+                PreparedRoomImage prepared = preparedImages.get(index);
+                PropertyMedia media = propertyMediaService.createExternal(
+                        room.getHotel(), prepared.imageUrl(), prepared.altTextVi(), prepared.altTextEn());
                 RoomImage img = new RoomImage();
-                img.setImageUrl(imgDto.getImageUrl().trim());
-                img.setIsPrimary(imgDto.getIsPrimary());
+                img.setMedia(media);
+                img.setImageUrl(media.getPublicUrl());
+                img.setIsPrimary(prepared.primary());
+                img.setSortOrder(index);
+                img.setAltTextVi(media.getAltTextVi());
+                img.setAltTextEn(media.getAltTextEn());
                 img.setRoom(room);
                 roomImageRepository.save(img);
             }
@@ -236,6 +246,34 @@ public class RoomServiceImpl implements RoomService {
                 .count();
     }
 
+    private List<PreparedRoomImage> prepareImages(List<RoomImageDTO> images) {
+        if (images == null || images.isEmpty()) return List.of();
+        List<PreparedRoomImage> prepared = new ArrayList<>();
+        java.util.Set<String> urls = new java.util.LinkedHashSet<>();
+        int primaryCount = 0;
+        for (RoomImageDTO image : images) {
+            if (image == null || image.getImageUrl() == null || image.getImageUrl().isBlank()) continue;
+            String imageUrl = propertyMediaPolicy.normalizeExternalUrl(image.getImageUrl());
+            if (!urls.add(imageUrl)) {
+                throw new IllegalArgumentException("Room image URLs must be unique.");
+            }
+            String altTextVi = propertyMediaPolicy.requireAltTextVi(image.getAltTextVi());
+            String altTextEn = propertyMediaPolicy.normalizeAltTextEn(image.getAltTextEn());
+            boolean primary = Boolean.TRUE.equals(image.getIsPrimary());
+            if (primary) primaryCount++;
+            prepared.add(new PreparedRoomImage(imageUrl, altTextVi, altTextEn, primary));
+        }
+        if (primaryCount > 1) {
+            throw new IllegalArgumentException("Only one room image can be primary.");
+        }
+        if (!prepared.isEmpty() && primaryCount == 0) {
+            PreparedRoomImage first = prepared.getFirst();
+            prepared.set(0, new PreparedRoomImage(
+                    first.imageUrl(), first.altTextVi(), first.altTextEn(), true));
+        }
+        return prepared;
+    }
+
     private RoomDTO mapToDTO(Room room) {
         RoomDTO dto = new RoomDTO();
         dto.setId(room.getId());
@@ -259,12 +297,17 @@ public class RoomServiceImpl implements RoomService {
             dto.setRoomTypeNameVi(room.getRoomType().getNameVi());
         }
         
-        List<RoomImage> images = roomImageRepository.findByRoomId(room.getId());
+        List<RoomImage> images = roomImageRepository.findByRoomIdOrderBySortOrderAsc(room.getId());
         dto.setImages(images.stream().map(img -> {
             RoomImageDTO imgDto = new RoomImageDTO();
             imgDto.setId(img.getId());
             imgDto.setImageUrl(img.getImageUrl());
             imgDto.setIsPrimary(img.getIsPrimary());
+            imgDto.setSortOrder(img.getSortOrder());
+            imgDto.setAltTextVi(img.getAltTextVi());
+            imgDto.setAltTextEn(img.getAltTextEn());
+            imgDto.setMediaId(img.getMedia() == null ? null : img.getMedia().getId());
+            imgDto.setSourceType(img.getMedia() == null ? "LEGACY" : img.getMedia().getSourceType());
             imgDto.setCreatedAt(img.getCreatedAt());
             return imgDto;
         }).collect(Collectors.toList()));
@@ -300,5 +343,12 @@ public class RoomServiceImpl implements RoomService {
         operationalAuditService.append(new OperationalAuditService.AuditCommand(
                 "TENANT", room.getHotel().getId(), domain, eventType, "ROOM", aggregateId,
                 null, null, reason, before, after, null));
+    }
+
+    private record PreparedRoomImage(
+            String imageUrl,
+            String altTextVi,
+            String altTextEn,
+            boolean primary) {
     }
 }

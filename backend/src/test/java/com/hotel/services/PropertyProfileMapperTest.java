@@ -31,6 +31,7 @@ class PropertyProfileMapperTest {
     void canonicalProfileRoundTripsEveryEditableFieldAndSynchronizesLegacyColumns() {
         arrangeLocation();
         Hotel hotel = new Hotel();
+        hotel.setMainImage("/api/public/uploads/property-7-owned.png");
         PropertyProfileDTO profile = profile();
 
         mapper.apply(hotel, profile);
@@ -51,6 +52,7 @@ class PropertyProfileMapperTest {
         assertEquals(profile.getCheckoutTime(), result.getCheckoutTime());
         assertEquals(profile.getMinPrice(), result.getMinPrice());
         assertEquals(profile.getMaxPrice(), result.getMaxPrice());
+        assertEquals("/api/public/uploads/property-7-owned.png", result.getMainImage());
     }
 
     @Test
@@ -108,7 +110,6 @@ class PropertyProfileMapperTest {
         profile.setCheckoutTime("12:00");
         profile.setMinPrice(750_000D);
         profile.setMaxPrice(2_500_000D);
-        profile.setMainImage("/assets/properties/riverside.jpg");
         return profile;
     }
 }

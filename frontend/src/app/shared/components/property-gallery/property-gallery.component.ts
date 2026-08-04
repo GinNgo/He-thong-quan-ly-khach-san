@@ -53,6 +53,10 @@ export class PropertyGalleryComponent implements OnChanges {
 
   upload(): void {
     if (!this.editable || !this.selectedFile || this.saving) return;
+    if (!this.altTextVi.trim()) {
+      this.error = 'Mo ta tieng Viet la bat buoc cho moi anh.';
+      return;
+    }
     this.saving = true;
     this.error = '';
     this.galleryService.upload(
@@ -73,6 +77,10 @@ export class PropertyGalleryComponent implements OnChanges {
   addLink(): void {
     const imageUrl = this.linkUrl.trim();
     if (!this.editable || !imageUrl || this.saving) return;
+    if (!this.altTextVi.trim()) {
+      this.error = 'Mo ta tieng Viet la bat buoc cho moi anh.';
+      return;
+    }
     this.saving = true;
     this.error = '';
     this.galleryService.addLink(this.propertyId, {

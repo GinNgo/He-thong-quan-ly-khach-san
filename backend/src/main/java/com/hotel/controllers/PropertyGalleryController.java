@@ -6,6 +6,7 @@ import com.hotel.dtos.PropertyImageLinkRequest;
 import com.hotel.services.PropertyGalleryService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -50,7 +51,7 @@ public class PropertyGalleryController {
     public ResponseEntity<PropertyGalleryImageDTO> upload(
             @PathVariable Long propertyId,
             @RequestPart("file") MultipartFile file,
-            @RequestParam(required = false) @Size(max = 255) String altTextVi,
+            @RequestParam @NotBlank @Size(max = 255) String altTextVi,
             @RequestParam(required = false) @Size(max = 255) String altTextEn,
             @RequestParam(defaultValue = "false") boolean primary) {
         return ResponseEntity.ok(propertyGalleryService.upload(

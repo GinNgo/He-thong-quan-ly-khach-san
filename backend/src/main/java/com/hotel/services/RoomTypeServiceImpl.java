@@ -1,6 +1,7 @@
 package com.hotel.services;
 
 import com.hotel.dtos.RoomTypeDTO;
+import com.hotel.entities.PropertyMedia;
 import com.hotel.entities.RoomType;
 import com.hotel.repositories.PropertyImageRepository;
 import com.hotel.repositories.RoomImageRepository;
@@ -27,6 +28,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
     private final PropertyAccessService propertyAccessService;
     private final SubscriptionFeatureService subscriptionFeatureService;
     private final PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
+    private final PropertyMediaService propertyMediaService;
 
     @Override
     @Transactional(readOnly = true)
@@ -147,20 +149,40 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 
     private void syncImages(RoomType roomType, List<String> imageUrls) {
         if (imageUrls == null) return;
+        List<com.hotel.entities.RoomTypeImage> existing =
+                roomTypeImageRepository.findByRoomTypeIdOrderBySortOrderAsc(roomType.getId());
+        List<PropertyMedia> previousMedia = existing.stream()
+                .map(com.hotel.entities.RoomTypeImage::getMedia)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        java.util.Set<String> uniqueUrls = new java.util.LinkedHashSet<>();
+        for (String rawUrl : imageUrls) {
+            if (rawUrl == null || rawUrl.isBlank()) continue;
+            String url = rawUrl.trim();
+            if (!uniqueUrls.add(url)) {
+                throw new IllegalArgumentException("Room-type image URLs must be unique.");
+            }
+        }
         roomTypeImageRepository.deleteByRoomTypeId(roomType.getId());
         int order = 0;
-        for (String rawUrl : imageUrls) {
-            String url = rawUrl == null ? "" : rawUrl.trim();
-            if (url.isBlank()) continue;
+        for (String url : uniqueUrls) {
+            PropertyMedia media = propertyMediaService.createExternal(
+                    roomType.getHotel(), url, roomType.getNameVi(), roomType.getNameEn());
             com.hotel.entities.RoomTypeImage image = new com.hotel.entities.RoomTypeImage();
             image.setRoomType(roomType);
-            image.setImageUrl(url);
+            image.setMedia(media);
+            image.setImageUrl(media.getPublicUrl());
             image.setSortOrder(order);
             image.setIsPrimary(order == 0);
-            image.setAltTextVi(roomType.getNameVi());
+            image.setAltTextVi(media.getAltTextVi());
+            image.setAltTextEn(media.getAltTextEn());
+            image.setIsDemo(false);
             roomTypeImageRepository.save(image);
             order++;
         }
+        roomTypeImageRepository.flush();
+        previousMedia.forEach(propertyMediaService::releaseIfUnreferenced);
     }
 
     private void requireFeature(Long hotelId, String featureCode) {

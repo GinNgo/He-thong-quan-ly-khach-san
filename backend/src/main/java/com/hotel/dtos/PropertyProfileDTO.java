@@ -100,7 +100,7 @@ public class PropertyProfileDTO {
     @PositiveOrZero
     private Double maxPrice;
 
-    @Size(max = 1000)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private String mainImage;
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)

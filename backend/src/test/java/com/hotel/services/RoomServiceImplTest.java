@@ -2,8 +2,11 @@ package com.hotel.services;
 
 import com.hotel.dtos.BulkRoomRequest;
 import com.hotel.dtos.RoomDTO;
+import com.hotel.dtos.RoomImageDTO;
 import com.hotel.entities.Hotel;
+import com.hotel.entities.PropertyMedia;
 import com.hotel.entities.Room;
+import com.hotel.entities.RoomImage;
 import com.hotel.entities.RoomType;
 import com.hotel.repositories.PropertyImageRepository;
 import com.hotel.repositories.RoomImageRepository;
@@ -14,13 +17,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -36,6 +42,8 @@ class RoomServiceImplTest {
     @Mock private RoomTypeImageRepository roomTypeImageRepository;
     @Mock private PropertyAccessService propertyAccessService;
     @Mock private SubscriptionFeatureService subscriptionFeatureService;
+    @Mock private PropertyMediaService propertyMediaService;
+    @Mock private PropertyMediaPolicy propertyMediaPolicy;
 
     @InjectMocks
     private RoomServiceImpl roomService;
@@ -137,13 +145,56 @@ class RoomServiceImplTest {
         existing.setRoomType(roomType);
         when(roomRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(existing));
         when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(roomImageRepository.findByRoomId(30L)).thenReturn(java.util.List.of());
-
         RoomDTO started = roomService.startMaintenance(30L);
         assertEquals("MAINTENANCE", started.getStatus());
         RoomDTO completed = roomService.completeMaintenance(30L);
         assertEquals("AVAILABLE", completed.getStatus());
         verify(roomRepository, org.mockito.Mockito.times(2)).findByIdForUpdate(30L);
+    }
+
+    @Test
+    void createRoomAssociatesValidatedImagesWithPropertyOwnedMedia() {
+        RoomImageDTO image = new RoomImageDTO();
+        image.setImageUrl("https://cdn.example.com/rooms/101.jpg");
+        image.setAltTextVi("Phòng 101");
+        image.setAltTextEn("Room 101");
+        RoomDTO request = new RoomDTO();
+        request.setRoomTypeId(20L);
+        request.setRoomNumber("101");
+        request.setMaxGuests(2);
+        request.setImages(List.of(image));
+
+        PropertyMedia media = new PropertyMedia();
+        media.setId(40L);
+        media.setHotel(hotel);
+        media.setSourceType("EXTERNAL_HTTPS");
+        media.setPublicUrl(image.getImageUrl());
+        media.setAltTextVi(image.getAltTextVi());
+        media.setAltTextEn(image.getAltTextEn());
+
+        when(roomTypeRepository.findById(20L)).thenReturn(Optional.of(roomType));
+        when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
+        when(roomRepository.findByHotelIdAndRoomNumber(10L, "101")).thenReturn(Optional.empty());
+        when(propertyMediaPolicy.normalizeExternalUrl(image.getImageUrl())).thenReturn(image.getImageUrl());
+        when(propertyMediaPolicy.requireAltTextVi(image.getAltTextVi())).thenReturn(image.getAltTextVi());
+        when(propertyMediaPolicy.normalizeAltTextEn(image.getAltTextEn())).thenReturn(image.getAltTextEn());
+        when(propertyMediaService.createExternal(hotel, image.getImageUrl(), image.getAltTextVi(), image.getAltTextEn()))
+                .thenReturn(media);
+        when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> {
+            Room saved = invocation.getArgument(0);
+            saved.setId(30L);
+            return saved;
+        });
+
+        roomService.createRoom(request);
+
+        ArgumentCaptor<RoomImage> imageCaptor = ArgumentCaptor.forClass(RoomImage.class);
+        verify(roomImageRepository).save(imageCaptor.capture());
+        RoomImage savedImage = imageCaptor.getValue();
+        assertSame(media, savedImage.getMedia());
+        assertEquals(0, savedImage.getSortOrder());
+        assertEquals(true, savedImage.getIsPrimary());
+        assertEquals("Phòng 101", savedImage.getAltTextVi());
     }
 
     private Room room(String status, String housekeeping, String maintenance) {

@@ -84,7 +84,6 @@ export class PropertyManagementComponent implements OnInit {
     checkoutTime: ['', Validators.pattern(/^([01]\d|2[0-3]):[0-5]\d$/)],
     minPrice: [null as number | null, Validators.min(0)],
     maxPrice: [null as number | null, Validators.min(0)],
-    mainImage: ['', Validators.maxLength(1000)],
     descriptionVi: ['', Validators.maxLength(4000)],
     descriptionEn: ['', Validators.maxLength(4000)],
     reason: ['', Validators.maxLength(500)]
@@ -137,7 +136,7 @@ export class PropertyManagementComponent implements OnInit {
     this.form.reset({
       nameVi: '', nameEn: '', propertyType: 'HOTEL', provinceId: null, wardId: null,
       addressLine: '', latitude: null, longitude: null, starRating: 0, phone: '', email: '', website: '',
-      checkinTime: '', checkoutTime: '', minPrice: null, maxPrice: null, mainImage: '',
+      checkinTime: '', checkoutTime: '', minPrice: null, maxPrice: null,
       descriptionVi: '', descriptionEn: '', reason: ''
     });
     this.openDialog();
@@ -152,7 +151,7 @@ export class PropertyManagementComponent implements OnInit {
       latitude: property.latitude ?? null, longitude: property.longitude ?? null, starRating: property.starRating ?? 0,
       phone: property.phone || '', email: property.email || '', website: property.website || '',
       checkinTime: property.checkinTime || '', checkoutTime: property.checkoutTime || '',
-      minPrice: property.minPrice ?? null, maxPrice: property.maxPrice ?? null, mainImage: property.mainImage || '',
+      minPrice: property.minPrice ?? null, maxPrice: property.maxPrice ?? null,
       descriptionVi: property.descriptionVi || '', descriptionEn: property.descriptionEn || '', reason: ''
     });
     this.loadWards(property.provinceId, property.wardId);
@@ -280,7 +279,7 @@ export class PropertyManagementComponent implements OnInit {
       descriptionVi: clean(value.descriptionVi), descriptionEn: clean(value.descriptionEn),
       starRating: value.starRating ?? undefined, phone: clean(value.phone), email: clean(value.email),
       website: clean(value.website), checkinTime: clean(value.checkinTime), checkoutTime: clean(value.checkoutTime),
-      minPrice: value.minPrice ?? undefined, maxPrice: value.maxPrice ?? undefined, mainImage: clean(value.mainImage)
+      minPrice: value.minPrice ?? undefined, maxPrice: value.maxPrice ?? undefined
     };
   }
 }

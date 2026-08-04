@@ -9,10 +9,11 @@ import { PropertyGalleryComponent } from './property-gallery.component';
 describe('PropertyGalleryComponent', () => {
   const first: PropertyGalleryImage = {
     id: 1, propertyId: 7, imageUrl: 'https://cdn.example/one.jpg', primary: true,
-    sortOrder: 0, managedUpload: false, altTextVi: 'Anh mot'
+    sourceType: 'EXTERNAL_HTTPS', sortOrder: 0, managedUpload: false, altTextVi: 'Anh mot'
   };
   const second: PropertyGalleryImage = {
     id: 2, propertyId: 7, imageUrl: '/api/public/uploads/property-7-two.png', primary: false,
+    sourceType: 'MANAGED_UPLOAD', contentType: 'image/png', width: 20, height: 20,
     sortOrder: 1, managedUpload: true, altTextVi: 'Anh hai'
   };
 

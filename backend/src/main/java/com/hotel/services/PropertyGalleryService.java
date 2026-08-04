@@ -4,6 +4,7 @@ import com.hotel.dtos.PropertyGalleryImageDTO;
 import com.hotel.dtos.PropertyGalleryOrderRequest;
 import com.hotel.dtos.PropertyImageLinkRequest;
 import com.hotel.entities.Hotel;
+import com.hotel.entities.PropertyMedia;
 import com.hotel.entities.PropertyImage;
 import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.repositories.HotelRepository;
@@ -13,23 +14,16 @@ import com.hotel.repositories.RoomTypeImageRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class PropertyGalleryService {
-
-    private static final String MANAGED_UPLOAD_PREFIX = "/api/public/uploads/";
 
     private final HotelRepository hotelRepository;
     private final PropertyImageRepository propertyImageRepository;
@@ -37,7 +31,8 @@ public class PropertyGalleryService {
     private final RoomImageRepository roomImageRepository;
     private final PropertyAccessService propertyAccessService;
     private final SubscriptionFeatureService subscriptionFeatureService;
-    private final FileUploadService fileUploadService;
+    private final PropertyMediaService propertyMediaService;
+    private final PropertyMediaPolicy propertyMediaPolicy;
 
     @Transactional(readOnly = true)
     public List<PropertyGalleryImageDTO> list(Long propertyId) {
@@ -50,9 +45,16 @@ public class PropertyGalleryService {
         Hotel hotel = requireLockedMutableProperty(propertyId);
         List<PropertyImage> images = sortedImages(propertyId);
         requireImageCapacity(propertyId, images.size());
-        String imageUrl = normalizeImageUrl(request.imageUrl());
+        String imageUrl = propertyMediaPolicy.normalizeExternalUrl(request.imageUrl());
         ensureUniqueUrl(images, imageUrl);
-        return addImage(hotel, images, imageUrl, request.altTextVi(), request.altTextEn(), request.primary());
+        PropertyMedia media = propertyMediaService.createExternal(
+                hotel, imageUrl, request.altTextVi(), request.altTextEn());
+        try {
+            return addImage(hotel, images, media, request.primary());
+        } catch (RuntimeException exception) {
+            propertyMediaService.discardAfterFailedAssociation(media);
+            throw exception;
+        }
     }
 
     @Transactional
@@ -65,12 +67,11 @@ public class PropertyGalleryService {
         Hotel hotel = requireLockedMutableProperty(propertyId);
         List<PropertyImage> images = sortedImages(propertyId);
         requireImageCapacity(propertyId, images.size());
-        FileUploadService.StoredImage stored = fileUploadService.storePropertyImage(propertyId, file);
-        scheduleRollbackCleanup(stored.url());
+        PropertyMedia media = propertyMediaService.createUpload(hotel, file, altTextVi, altTextEn);
         try {
-            return addImage(hotel, images, stored.url(), cleanAlt(altTextVi), cleanAlt(altTextEn), primary);
+            return addImage(hotel, images, media, primary);
         } catch (RuntimeException exception) {
-            fileUploadService.deleteManagedImage(stored.url());
+            propertyMediaService.discardAfterFailedAssociation(media);
             throw exception;
         }
     }
@@ -119,8 +120,10 @@ public class PropertyGalleryService {
         Hotel hotel = requireLockedMutableProperty(propertyId);
         List<PropertyImage> images = sortedImages(propertyId);
         PropertyImage removed = requireGalleryImage(images, imageId);
+        PropertyMedia media = removed.getMedia();
         images.remove(removed);
         propertyImageRepository.delete(removed);
+        propertyImageRepository.flush();
         for (int index = 0; index < images.size(); index++) {
             images.get(index).setSortOrder(index);
         }
@@ -128,22 +131,21 @@ public class PropertyGalleryService {
         ensureSinglePrimary(hotel, images, preferred);
         propertyImageRepository.saveAll(images);
         hotelRepository.save(hotel);
-        scheduleDeleteAfterCommit(removed.getImageUrl());
+        propertyMediaService.releaseIfUnreferenced(media);
         return images.stream().map(PropertyGalleryImageDTO::from).toList();
     }
 
     private PropertyGalleryImageDTO addImage(
             Hotel hotel,
             List<PropertyImage> images,
-            String imageUrl,
-            String altTextVi,
-            String altTextEn,
+            PropertyMedia media,
             boolean requestedPrimary) {
         PropertyImage image = new PropertyImage();
         image.setHotel(hotel);
-        image.setImageUrl(imageUrl);
-        image.setAltTextVi(cleanAlt(altTextVi));
-        image.setAltTextEn(cleanAlt(altTextEn));
+        image.setMedia(media);
+        image.setImageUrl(media.getPublicUrl());
+        image.setAltTextVi(media.getAltTextVi());
+        image.setAltTextEn(media.getAltTextEn());
         image.setSortOrder(images.size());
         image.setIsDemo(false);
         images.add(image);
@@ -231,58 +233,7 @@ public class PropertyGalleryService {
         return images.isEmpty() ? null : images.getFirst();
     }
 
-    private String normalizeImageUrl(String value) {
-        String url = value == null ? "" : value.trim();
-        if (url.startsWith(MANAGED_UPLOAD_PREFIX)) {
-            throw new IllegalArgumentException("Managed images must be added through the upload endpoint.");
-        }
-        try {
-            URI parsed = new URI(url);
-            String scheme = parsed.getScheme() == null ? "" : parsed.getScheme().toLowerCase(Locale.ROOT);
-            if (!("http".equals(scheme) || "https".equals(scheme)) || parsed.getHost() == null) {
-                throw new IllegalArgumentException("Image URL must use HTTP or HTTPS.");
-            }
-        } catch (URISyntaxException exception) {
-            throw new IllegalArgumentException("Image URL is invalid.");
-        }
-        return url;
-    }
-
-    private String cleanAlt(String value) {
-        if (value == null || value.isBlank()) return null;
-        String cleaned = value.trim();
-        if (cleaned.length() > 255) {
-            throw new IllegalArgumentException("Image alternative text must not exceed 255 characters.");
-        }
-        return cleaned;
-    }
-
     private String normalize(String value) {
-        return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
-    }
-
-    private void scheduleRollbackCleanup(String imageUrl) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) return;
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int status) {
-                if (status != TransactionSynchronization.STATUS_COMMITTED) {
-                    fileUploadService.deleteManagedImage(imageUrl);
-                }
-            }
-        });
-    }
-
-    private void scheduleDeleteAfterCommit(String imageUrl) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            fileUploadService.deleteManagedImage(imageUrl);
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                fileUploadService.deleteManagedImage(imageUrl);
-            }
-        });
+        return value == null ? "" : value.trim().toUpperCase(java.util.Locale.ROOT);
     }
 }
