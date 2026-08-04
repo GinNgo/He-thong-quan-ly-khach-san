@@ -1,48 +1,27 @@
-<div class="card shadow-sm border-0 mb-4">
-  <div class="card-header bg-white py-3">
-    <h4 class="mb-0 text-primary">Tạo Đặt phòng Mới</h4>
-  </div>
-  <div class="card-body">
-    <div class="row g-4">
-      <div class="col-md-6">
-        <label class="form-label fw-bold">Khách hàng <span class="text-danger">*</span></label>
-        <p-select [options]="users" [(ngModel)]="reservation.userId" optionLabel="fullName" optionValue="id" [filter]="true" filterBy="fullName,username" placeholder="Chọn khách hàng" styleClass="w-100"></p-select>
-      </div>
-      <div class="col-md-6">
-        <label class="form-label fw-bold">Phòng <span class="text-danger">*</span></label>
-        <p-select [options]="rooms" [(ngModel)]="selectedRoomId" optionLabel="roomNumber" optionValue="id" [filter]="true" filterBy="roomNumber" placeholder="Chọn phòng trống" styleClass="w-100">
-          <ng-template let-room pTemplate="item">
-            <div class="d-flex justify-content-between w-100">
-              <span>{{room.roomNumber}}</span>
-              <span class="text-muted">{{room.roomType?.nameVi}}</span>
-            </div>
-          </ng-template>
-        </p-select>
-      </div>
-      <div class="col-md-6">
-        <label class="form-label fw-bold">Ngày nhận phòng <span class="text-danger">*</span></label>
-        <p-datepicker [(ngModel)]="reservation.checkInDate" dateFormat="dd/mm/yy" [showIcon]="true" styleClass="w-100"></p-datepicker>
-      </div>
-      <div class="col-md-6">
-        <label class="form-label fw-bold">Ngày trả phòng <span class="text-danger">*</span></label>
-        <p-datepicker [(ngModel)]="reservation.checkOutDate" dateFormat="dd/mm/yy" [showIcon]="true" styleClass="w-100"></p-datepicker>
-      </div>
-      <div class="col-md-6">
-        <label class="form-label fw-bold">Số lượng khách</label>
-        <p-inputNumber [(ngModel)]="reservation.guests" [min]="1" [max]="10" [showButtons]="true" styleClass="w-100"></p-inputNumber>
-      </div>
-      <div class="col-md-6">
-        <label class="form-label fw-bold">Hình thức thanh toán</label>
-        <p-select [options]="paymentMethods" [(ngModel)]="reservation.paymentMethod" styleClass="w-100"></p-select>
-      </div>
-      <div class="col-12">
-        <label class="form-label fw-bold">Yêu cầu đặc biệt</label>
-        <textarea pTextarea [(ngModel)]="reservation.specialRequests" rows="3" class="w-100"></textarea>
-      </div>
-    </div>
-  </div>
-  <div class="card-footer bg-light d-flex justify-content-end gap-2 py-3">
-    <p-button label="Hủy" icon="pi pi-times" styleClass="p-button-secondary p-button-outlined" (onClick)="cancel()"></p-button>
-    <p-button label="Lưu thông tin" icon="pi pi-check" styleClass="p-button-primary" (onClick)="save()"></p-button>
-  </div>
-</div>
+<main class="staff-booking" aria-labelledby="staff-booking-title">
+  <header><span>RESERVATION DESK</span><h1 id="staff-booking-title">Tạo đặt phòng cho khách</h1><p>Giá và tồn phòng được xác nhận bởi máy chủ. Phòng vật lý chỉ gán sau khi tạo booking.</p></header>
+  <div *ngIf="loading" class="state" role="status">Đang tải ngữ cảnh cơ sở...</div>
+  <div *ngIf="error" class="state error" role="alert">{{ error }} <button type="button" (click)="loadContext()">Thử lại</button></div>
+  <section *ngIf="!loading" class="workspace">
+    <form (submit)="$event.preventDefault(); requestQuote()">
+      <label>Cơ sở<select name="hotelId" [(ngModel)]="form.hotelId" (ngModelChange)="loadContext()"><option *ngFor="let property of properties" [ngValue]="property.id">{{ property.nameVi }}</option></select></label>
+      <label class="wide">Tìm khách hàng<div class="search"><input name="customerQuery" [(ngModel)]="customerQuery" placeholder="Nhập tên, tài khoản hoặc email" (input)="invalidateQuote()"><button type="button" (click)="searchCustomers()" [disabled]="customerQuery.trim().length < 2 || contextLoading">Tìm</button></div></label>
+      <label>Khách hàng<select name="customerId" [(ngModel)]="form.customerId" (ngModelChange)="invalidateQuote()"><option [ngValue]="undefined">Chọn khách hàng</option><option *ngFor="let customer of context?.customers" [ngValue]="customer.id">{{ customer.fullName || customer.username }} · {{ customer.maskedEmail }}</option></select></label>
+      <label>Loại phòng<select name="roomTypeId" [(ngModel)]="form.roomTypeId" (ngModelChange)="invalidateQuote()"><option [ngValue]="undefined">Chọn loại phòng</option><option *ngFor="let roomType of context?.roomTypes" [ngValue]="roomType.id">{{ roomType.nameVi }} · {{ roomType.basePrice | currency:'VND' }}</option></select></label>
+      <label>Ngày nhận<input type="date" name="checkInDate" [(ngModel)]="form.checkInDate" (ngModelChange)="invalidateQuote()"></label>
+      <label>Ngày trả<input type="date" name="checkOutDate" [(ngModel)]="form.checkOutDate" (ngModelChange)="invalidateQuote()"></label>
+      <label>Số phòng<input type="number" min="1" name="quantity" [(ngModel)]="form.quantity" (ngModelChange)="invalidateQuote()"></label>
+      <label>Người lớn<input type="number" min="1" name="adults" [(ngModel)]="form.adults" (ngModelChange)="invalidateQuote()"></label>
+      <label>Trẻ em<input type="number" min="0" name="children" [(ngModel)]="form.children" (ngModelChange)="invalidateQuote()"></label>
+      <label>Thanh toán<select name="paymentMethod" [(ngModel)]="form.paymentMethod" (ngModelChange)="invalidateQuote()"><option *ngFor="let method of context?.paymentMethods" [value]="method">{{ method }}</option></select></label>
+      <label class="wide">Yêu cầu đặc biệt<textarea name="specialRequests" [(ngModel)]="form.specialRequests" (ngModelChange)="invalidateQuote()" rows="3"></textarea></label>
+      <div class="actions wide"><button type="button" class="ghost" (click)="cancel()">Hủy</button><button type="submit" [disabled]="!validRequest || quoting">{{ quoting ? 'Đang báo giá...' : 'Lấy báo giá máy chủ' }}</button></div>
+    </form>
+    <aside *ngIf="quote as q" aria-label="Báo giá đặt phòng">
+      <span>SERVER QUOTE</span><h2>{{ q.roomTypeName }}</h2>
+      <dl><div><dt>Tồn phòng</dt><dd>{{ q.availableRooms }} phòng</dd></div><div><dt>Tổng tiền</dt><dd>{{ q.totalAmount | currency:q.currency }}</dd></div><div><dt>Tiền cọc</dt><dd>{{ q.depositAmount | currency:q.currency }}</dd></div><div><dt>Hiệu lực đến</dt><dd>{{ q.expiresAt | date:'HH:mm:ss' }}</dd></div></dl>
+      <p>Booking được tạo ở trạng thái chờ thanh toán, không gán phòng vật lý tại bước này.</p>
+      <button type="button" (click)="createBooking()" [disabled]="creating">{{ creating ? 'Đang tạo...' : 'Xác nhận tạo đặt phòng' }}</button>
+    </aside>
+  </section>
+</main>

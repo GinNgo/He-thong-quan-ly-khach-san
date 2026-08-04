@@ -71,8 +71,35 @@ public class ReservationService {
                 : userRepository.findByUsername(username)
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng đặt phòng."));
 
+        return createReservationForUser(user, request, idempotencyScope, idempotencyKey, false);
+    }
+
+    @Transactional
+    public ReservationDTO createStaffReservation(
+            Long customerId,
+            ReservationRequest request,
+            String idempotencyScope,
+            String idempotencyKey) {
+        validateReservationRequest(request);
+        User customer = userRepository.findByIdForUpdate(customerId)
+                .filter(this::isActiveCustomer)
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException(
+                        "Không tìm thấy khách hàng."));
+        return createReservationForUser(customer, request, idempotencyScope, idempotencyKey, true);
+    }
+
+    private ReservationDTO createReservationForUser(
+            User user,
+            ReservationRequest request,
+            String idempotencyScope,
+            String idempotencyKey,
+            boolean enforceStaffPropertyAccess) {
+
         RoomType roomType = roomTypeRepository.findByIdForUpdate(request.getRoomTypeId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy loại phòng."));
+        if (enforceStaffPropertyAccess) {
+            propertyAccessService.requireAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
+        }
         publicInventoryEligibilityPolicy.requireSellableRoomTypeForBooking(roomType);
         Hotel hotel = roomType.getHotel();
 
@@ -148,6 +175,13 @@ public class ReservationService {
                         + " từ " + request.getCheckInDate() + " đến " + request.getCheckOutDate()
         );
         return mapToDTO(savedReservation);
+    }
+
+    private boolean isActiveCustomer(User user) {
+        return user != null
+                && "ACTIVE".equalsIgnoreCase(user.getStatus())
+                && user.getRoles() != null
+                && user.getRoles().stream().anyMatch(role -> "CUSTOMER".equalsIgnoreCase(role.getCode()));
     }
 
     @Transactional(readOnly = true)

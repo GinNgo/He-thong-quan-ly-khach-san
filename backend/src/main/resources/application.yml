@@ -101,6 +101,8 @@ jwt:
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
 
 app:
+  staff-booking:
+    quote-ttl-minutes: ${STAFF_BOOKING_QUOTE_TTL_MINUTES:2}
   auth:
     # Must be true behind HTTPS in production; false supports local HTTP development only.
     refresh-cookie-secure: ${AUTH_REFRESH_COOKIE_SECURE:false}

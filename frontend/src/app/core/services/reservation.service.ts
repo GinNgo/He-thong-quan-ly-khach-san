@@ -108,6 +108,12 @@ export interface CheckInReadiness {
   blockers: CheckInReadinessIssue[];
 }
 
+export interface StaffBookingCustomerOption { id: number; fullName: string; username: string; maskedEmail: string; }
+export interface StaffBookingRoomTypeOption { id: number; code: string; nameVi: string; nameEn: string; basePrice: number; maxAdults?: number; maxChildren?: number; maxGuests?: number; }
+export interface StaffBookingContext { hotelId: number; hotelName: string; customers: StaffBookingCustomerOption[]; roomTypes: StaffBookingRoomTypeOption[]; paymentMethods: string[]; }
+export interface StaffBookingQuoteRequest { hotelId: number; customerId: number; roomTypeId: number; checkInDate: string; checkOutDate: string; quantity: number; adults: number; children: number; paymentMethod: string; specialRequests?: string; }
+export interface StaffBookingQuote extends StaffBookingQuoteRequest { quoteId: string; roomTypeName: string; availableRooms: number; basePrice: number; totalAmount: number; depositAmount: number; currency: 'VND'; expiresAt: string; status: string; replayed: boolean; }
+
 export type ReservationAmendmentStatus =
   | 'QUOTED'
   | 'AWAITING_PAYMENT'
@@ -228,6 +234,24 @@ export class ReservationService {
 
   getCheckInReadiness(id: number): Observable<CheckInReadiness> {
     return this.http.get<CheckInReadiness>(`${this.apiUrl}/${id}/check-in-readiness`);
+  }
+
+  getStaffBookingContext(hotelId: number, customerQuery = ''): Observable<StaffBookingContext> {
+    let params = new HttpParams().set('hotelId', String(hotelId));
+    if (customerQuery.trim()) params = params.set('customerQuery', customerQuery.trim());
+    return this.http.get<StaffBookingContext>(`${environment.apiUrl}/management/staff-bookings/context`, { params });
+  }
+
+  createStaffBookingQuote(request: StaffBookingQuoteRequest, idempotencyKey: string): Observable<StaffBookingQuote> {
+    return this.http.post<StaffBookingQuote>(`${environment.apiUrl}/management/staff-bookings/quotes`, request, {
+      headers: new HttpHeaders({ 'Idempotency-Key': idempotencyKey }),
+    });
+  }
+
+  createStaffBooking(quoteId: string, idempotencyKey: string): Observable<Reservation> {
+    return this.http.post<Reservation>(`${environment.apiUrl}/management/staff-bookings`, { quoteId }, {
+      headers: new HttpHeaders({ 'Idempotency-Key': idempotencyKey }),
+    });
   }
 
   checkIn(id: number, idempotencyKey: string): Observable<Reservation> {
