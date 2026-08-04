@@ -18,6 +18,7 @@ Base: `origin/codex/ui-functional-audit-polish`
 | T235 | COMPLETE_VERIFIED | `5945588` | Backend compile 440 sources and 98/98 regressions; frontend 15/15 plus development build; `git diff --check` | Mark T235 complete in Feature 007 `tasks.md`; merge PROP-SUB-007 status/evidence into the two shared aggregate inventories; preserve the branch-reserved V71 migration range. |
 | T236 | COMPLETE_VERIFIED | `a05c10b` | Backend compile and 64/64 focused tests; frontend 38/38 plus development build; `git diff --check` | Mark T236 complete in Feature 007 `tasks.md`; merge PROP-SUB-009 status/evidence into the two shared aggregate inventories; preserve V72 and coordinate any later consolidation with the generic T324 email outbox. |
 | T237 | COMPLETE_VERIFIED | `758b425`; teardown fix `c0eb1a4` | Backend compile, 27/27 focused and 11/11 clock/persistence tests; frontend 14/14 plus development build after teardown fix; `git diff --check` | Mark T237 complete in Feature 007 `tasks.md`; merge PROP-SUB-010 status/evidence into the two shared aggregate inventories; preserve V73 and record evidence upload as not approved/N/A. |
+| T238 | COMPLETE_VERIFIED | `4198fb5` | Backend compile and 44/44 focused tests; frontend 8/8 plus development build; independent review findings fixed; `git diff --check` | Mark T238 complete in Feature 007 `tasks.md`; merge PROP-SUB-011 status/evidence into the two shared aggregate inventories; retain fail-closed ownership conflicts for T239/T241 and lock-order concurrency for T240. |
 
 ## Shared files intentionally not edited
 
