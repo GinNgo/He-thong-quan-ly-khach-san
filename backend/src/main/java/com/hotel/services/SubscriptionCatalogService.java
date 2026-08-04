@@ -38,7 +38,9 @@ public class SubscriptionCatalogService {
 
     @Transactional(readOnly = true)
     public List<SubscriptionPlanDTO> getActivePlans() {
-        List<SubscriptionPlan> plans = planRepository.findByStatusOrderByPriceAsc("ACTIVE");
+        List<SubscriptionPlan> plans = planRepository.findByStatusOrderByPriceAsc("ACTIVE").stream()
+                .filter(plan -> plan.getPrice() != null && plan.getPrice().signum() > 0)
+                .toList();
         Set<String> codes = plans.stream()
                 .flatMap(plan -> safeFeatures(plan).stream())
                 .map(PlanFeature::getFeatureCode)

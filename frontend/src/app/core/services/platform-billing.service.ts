@@ -122,6 +122,43 @@ export interface PlatformSubscriptionRevokeResult {
   occurredAt: string;
 }
 
+export interface PlatformPlanVersionFeature {
+  code: string;
+  limit: number;
+}
+
+export interface PlatformPlanVersion {
+  id: number;
+  familyCode: string;
+  versionNumber: number;
+  versionCode: string;
+  nameVi: string;
+  nameEn: string;
+  billingType: 'MONTHLY' | 'YEARLY' | 'ONCE';
+  price: number;
+  currency: string;
+  lifetime: boolean;
+  durationValue: number | null;
+  durationUnit: 'DAY' | 'MONTH' | 'YEAR' | 'LIFETIME';
+  status: 'INACTIVE' | 'ACTIVE' | string;
+  recordVersion: number;
+  features: PlatformPlanVersionFeature[];
+  createdAt: string;
+  activatedAt: string | null;
+  deactivatedAt: string | null;
+}
+
+export interface CreatePlatformPlanVersionRequest {
+  familyCode: string;
+  nameVi: string;
+  nameEn: string;
+  billingType: 'MONTHLY' | 'YEARLY' | 'ONCE';
+  price: number;
+  durationValue: number | null;
+  durationUnit: 'DAY' | 'MONTH' | 'YEAR' | 'LIFETIME';
+  features: PlatformPlanVersionFeature[];
+}
+
 export interface PlatformPolicyAvailability {
   downgradeConfigured: boolean;
   prorationConfigured: boolean;
@@ -266,6 +303,30 @@ export class PlatformBillingService {
     return this.http.get<PlatformSubscriptionHistoryItem[]>(
       `${this.baseUrl}/subscriptions/${targetHotelId}/history`,
     );
+  }
+
+  getPlanVersions(): Observable<PlatformPlanVersion[]> {
+    return this.http.get<PlatformPlanVersion[]>(`${this.baseUrl}/subscription-plan-admin`);
+  }
+
+  createPlanVersion(request: CreatePlatformPlanVersionRequest, idempotencyKey: string): Observable<PlatformPlanVersion> {
+    return this.http.post<PlatformPlanVersion>(`${this.baseUrl}/subscription-plan-admin`, request, {
+      headers: this.mutationHeaders({ idempotencyKey })
+    });
+  }
+
+  activatePlanVersion(planId: number, idempotencyKey: string): Observable<PlatformPlanVersion> {
+    return this.http.post<PlatformPlanVersion>(`${this.baseUrl}/subscription-plan-admin/${planId}/activate`, null, {
+      headers: this.mutationHeaders({ idempotencyKey })
+    });
+  }
+
+  deactivatePlanVersion(planId: number, reason: string, idempotencyKey: string): Observable<PlatformPlanVersion> {
+    return this.http.post<PlatformPlanVersion>(`${this.baseUrl}/subscription-plan-admin/${planId}/deactivate`, {
+      reason: this.requiredReason(reason)
+    }, {
+      headers: this.mutationHeaders({ idempotencyKey })
+    });
   }
 
   exportHistory(targetHotelId: number): Observable<HttpResponse<Blob>> {

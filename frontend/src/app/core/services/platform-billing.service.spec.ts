@@ -87,4 +87,28 @@ describe('PlatformBillingService', () => {
     expect(request.request.body).toBeNull();
     request.flush({ ready: false, mode: 'SANDBOX', provider: 'MOMO', blockers: ['missing'] });
   });
+
+  it('uses idempotent governed plan-version commands without client contract mutation', () => {
+    service.getPlanVersions().subscribe();
+    http.expectOne(`${environment.apiUrl}/platform/subscription-plan-admin`).flush([]);
+
+    const request = { familyCode: 'PRO', nameVi: 'Pro', nameEn: 'Pro', billingType: 'YEARLY' as const, price: 2400000, durationValue: 1, durationUnit: 'YEAR' as const, features: [{ code: 'MAX_ROOMS', limit: 50 }] };
+    service.createPlanVersion(request, 'create-version-key').subscribe();
+    const create = http.expectOne(`${environment.apiUrl}/platform/subscription-plan-admin`);
+    expect(create.request.body).toEqual(request);
+    expect(create.request.headers.get('Idempotency-Key')).toBe('create-version-key');
+    create.flush({ id: 9, versionCode: 'PRO-V2' });
+
+    service.activatePlanVersion(9, 'activate-key').subscribe();
+    const activate = http.expectOne(`${environment.apiUrl}/platform/subscription-plan-admin/9/activate`);
+    expect(activate.request.body).toBeNull();
+    expect(activate.request.headers.get('Idempotency-Key')).toBe('activate-key');
+    activate.flush({ id: 9, status: 'ACTIVE' });
+
+    service.deactivatePlanVersion(9, '  Replaced by a governed newer version.  ', 'deactivate-key').subscribe();
+    const deactivate = http.expectOne(`${environment.apiUrl}/platform/subscription-plan-admin/9/deactivate`);
+    expect(deactivate.request.body).toEqual({ reason: 'Replaced by a governed newer version.' });
+    deactivate.flush({ id: 9, status: 'INACTIVE' });
+    expect(() => service.deactivatePlanVersion(9, 'short', 'key')).toThrowError(/between 10 and 1000/);
+  });
 });

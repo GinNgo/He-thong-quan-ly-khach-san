@@ -38,6 +38,7 @@ class PlatformBillingControllerLifecycleTest {
                 mock(PlatformPaymentAttemptService.class), mock(SubscriptionRenewalService.class),
                 mock(SubscriptionUpgradeService.class), mock(SubscriptionPolicyService.class),
                 mock(PlatformPaymentConfigurationService.class), query,
-                mock(PropertySubscriptionEntitlementService.class), lifecycle);
+                mock(PropertySubscriptionEntitlementService.class), lifecycle,
+                mock(SubscriptionPlanAdministrationService.class));
     }
 }

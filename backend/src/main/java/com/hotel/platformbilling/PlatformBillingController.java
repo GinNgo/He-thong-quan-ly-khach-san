@@ -9,6 +9,7 @@ import com.hotel.platformbilling.subscription.SubscriptionPolicyService;
 import com.hotel.platformbilling.subscription.SubscriptionRenewalService;
 import com.hotel.platformbilling.subscription.SubscriptionUpgradeService;
 import com.hotel.platformbilling.subscription.SubscriptionLifecycleService;
+import com.hotel.platformbilling.subscription.SubscriptionPlanAdministrationService;
 import com.hotel.exceptions.CorrelationIdSupport;
 import com.hotel.security.ActionCode;
 import com.hotel.security.FunctionCode;
@@ -47,6 +48,7 @@ public class PlatformBillingController {
     private final PlatformBillingQueryService queryService;
     private final PropertySubscriptionEntitlementService entitlementService;
     private final SubscriptionLifecycleService lifecycleService;
+    private final SubscriptionPlanAdministrationService planAdministrationService;
 
     @Autowired
     public PlatformBillingController(
@@ -59,7 +61,8 @@ public class PlatformBillingController {
             PlatformPaymentConfigurationService configurationService,
             PlatformBillingQueryService queryService,
             PropertySubscriptionEntitlementService entitlementService,
-            SubscriptionLifecycleService lifecycleService) {
+            SubscriptionLifecycleService lifecycleService,
+            SubscriptionPlanAdministrationService planAdministrationService) {
         this.catalogService = catalogService;
         this.orderService = orderService;
         this.attemptService = attemptService;
@@ -70,6 +73,7 @@ public class PlatformBillingController {
         this.queryService = queryService;
         this.entitlementService = entitlementService;
         this.lifecycleService = lifecycleService;
+        this.planAdministrationService = planAdministrationService;
     }
 
     /** Compatibility constructor retained for focused controller tests and integrations. */
@@ -83,7 +87,7 @@ public class PlatformBillingController {
             PlatformPaymentConfigurationService configurationService,
             PlatformBillingQueryService queryService) {
         this(catalogService, orderService, attemptService, renewalService, upgradeService, policyService,
-                configurationService, queryService, null, null);
+                configurationService, queryService, null, null, null);
     }
 
     @GetMapping("/subscription-plans")
@@ -192,6 +196,38 @@ public class PlatformBillingController {
                 CorrelationIdSupport.resolve(servletRequest)));
     }
 
+    @GetMapping("/subscription-plan-admin")
+    @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.UPDATE)
+    public ResponseEntity<List<SubscriptionPlanAdministrationService.PlanVersionView>> planVersions() {
+        return ResponseEntity.ok(planAdministrationService.list());
+    }
+
+    @PostMapping("/subscription-plan-admin")
+    @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.UPDATE)
+    public ResponseEntity<SubscriptionPlanAdministrationService.PlanVersionView> createPlanVersion(
+            @RequestBody SubscriptionPlanAdministrationService.CreateVersionCommand command,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId) {
+        return ResponseEntity.ok(planAdministrationService.createVersion(command, idempotencyKey, correlationId));
+    }
+
+    @PostMapping("/subscription-plan-admin/{planId}/activate")
+    @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.UPDATE)
+    public ResponseEntity<SubscriptionPlanAdministrationService.PlanVersionView> activatePlanVersion(
+            @PathVariable Long planId, @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId) {
+        return ResponseEntity.ok(planAdministrationService.activate(planId, idempotencyKey, correlationId));
+    }
+
+    @PostMapping("/subscription-plan-admin/{planId}/deactivate")
+    @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.UPDATE)
+    public ResponseEntity<SubscriptionPlanAdministrationService.PlanVersionView> deactivatePlanVersion(
+            @PathVariable Long planId, @RequestBody PlanDeactivationRequest request,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId) {
+        return ResponseEntity.ok(planAdministrationService.deactivate(planId, request.reason(), idempotencyKey, correlationId));
+    }
+
     @GetMapping("/subscription-policies")
     @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.VIEW)
     public ResponseEntity<SubscriptionPolicyService.PolicyAvailability> policies() {
@@ -236,5 +272,8 @@ public class PlatformBillingController {
     }
 
     public record RevokeRequest(String reason) {
+    }
+
+    public record PlanDeactivationRequest(String reason) {
     }
 }

@@ -51,4 +51,45 @@
     <p *ngIf="revokeError" role="alert">{{ revokeError }}</p>
   </section>
   <p *ngIf="revokeMessage" class="state" role="status">{{ revokeMessage }}</p>
+
+  <section class="state" *ngIf="canAdministerVersions" aria-labelledby="plan-version-admin-title">
+    <h2 id="plan-version-admin-title">Governed plan versions</h2>
+    <p>Mọi correction tạo version INACTIVE mới. Version đã dùng, order snapshot và contract hiện tại không bị sửa trực tiếp.</p>
+    <div class="admin-form">
+      <label>Family code<input [(ngModel)]="versionForm.familyCode" maxlength="50" [disabled]="!!versionBusy" placeholder="PRO"></label>
+      <label>Tên tiếng Việt<input [(ngModel)]="versionForm.nameVi" maxlength="255" [disabled]="!!versionBusy"></label>
+      <label>English name<input [(ngModel)]="versionForm.nameEn" maxlength="255" [disabled]="!!versionBusy"></label>
+      <label>Billing type<select [(ngModel)]="versionForm.billingType" [disabled]="!!versionBusy" (change)="versionForm.lifetime = versionForm.billingType === 'ONCE'; versionForm.durationUnit = versionForm.billingType === 'ONCE' ? 'LIFETIME' : (versionForm.billingType === 'YEARLY' ? 'YEAR' : 'MONTH'); versionForm.durationValue = 1"><option value="MONTHLY">MONTHLY</option><option value="YEARLY">YEARLY</option><option value="ONCE">ONCE / LIFETIME</option></select></label>
+      <label>Giá VND<input type="number" min="0" step="1" [(ngModel)]="versionForm.price" [disabled]="!!versionBusy"></label>
+      <label>Duration unit<input [value]="versionForm.durationUnit" disabled></label>
+      <label>Duration value<input type="number" min="1" max="120" step="1" [(ngModel)]="versionForm.durationValue" [disabled]="!!versionBusy || versionForm.lifetime"></label>
+      <label class="wide">Features, mỗi dòng `CODE=limit`<textarea rows="6" [(ngModel)]="versionForm.featuresText" [disabled]="!!versionBusy" placeholder="MAX_ROOMS=50&#10;AI_CHAT=-1"></textarea></label>
+    </div>
+    <button pButton type="button" [disabled]="!!versionBusy" [label]="versionBusy === 'create' ? 'Đang tạo...' : 'Tạo version INACTIVE mới'" (click)="createPlanVersion()"></button>
+    <p *ngIf="versionsError" class="error" role="alert">{{ versionsError }}</p>
+    <p *ngIf="versionMessage" role="status">{{ versionMessage }}</p>
+
+    <p *ngIf="versionsLoading" role="status">Đang tải lịch sử version...</p>
+    <div class="version-list" *ngIf="!versionsLoading">
+      <article class="version-row" *ngFor="let version of planVersions">
+        <strong>{{ version.versionCode }} · {{ version.status }}</strong>
+        <span>{{ version.nameVi }} · {{ version.price | currency:version.currency }} · {{ version.durationValue }} {{ version.durationUnit }}</span>
+        <small>Created {{ version.createdAt | date:'dd/MM/yyyy HH:mm' }} · activated {{ version.activatedAt ? (version.activatedAt | date:'dd/MM/yyyy HH:mm') : 'never' }} · deactivated {{ version.deactivatedAt ? (version.deactivatedAt | date:'dd/MM/yyyy HH:mm') : 'never' }}</small>
+        <small>Immutable version record #{{ version.recordVersion }}. Existing snapshots/contracts are not edited.</small>
+        <div class="actions">
+          <button pButton type="button" severity="secondary" [disabled]="!!versionBusy" label="Dùng làm mẫu version mới" (click)="useVersionAsBasis(version)"></button>
+          <button *ngIf="version.status === 'INACTIVE' && !version.deactivatedAt" pButton type="button" [disabled]="!!versionBusy" label="Yêu cầu activate" (click)="requestVersionAction(version, 'activate')"></button>
+          <button *ngIf="version.status === 'ACTIVE'" pButton type="button" severity="danger" [disabled]="!!versionBusy" label="Yêu cầu deactivate" (click)="requestVersionAction(version, 'deactivate')"></button>
+          <span *ngIf="version.deactivatedAt" class="source">Version đã deactivated là terminal; hãy tạo version mới để thay thế.</span>
+        </div>
+      </article>
+    </div>
+    <div class="error" *ngIf="pendingVersionAction">
+      <strong>Xác nhận {{ pendingVersionAction.action }} {{ pendingVersionAction.version.versionCode }}</strong>
+      <p>Thao tác chỉ đổi khả năng bán version; không sửa order snapshot hoặc contract đã phát hành.</p>
+      <label *ngIf="pendingVersionAction.action === 'deactivate'">Lý do deactivate (10–1000 ký tự)<textarea rows="3" maxlength="1000" [(ngModel)]="versionActionReason" [disabled]="!!versionBusy"></textarea></label>
+      <button pButton type="button" severity="danger" [disabled]="!!versionBusy || (pendingVersionAction.action === 'deactivate' && (versionActionReason.trim().length < 10 || versionActionReason.trim().length > 1000))" label="Xác nhận" (click)="confirmVersionAction()"></button>
+      <button pButton type="button" severity="secondary" [disabled]="!!versionBusy" label="Hủy" (click)="pendingVersionAction = null; versionActionReason = ''"></button>
+    </div>
+  </section>
 </div>

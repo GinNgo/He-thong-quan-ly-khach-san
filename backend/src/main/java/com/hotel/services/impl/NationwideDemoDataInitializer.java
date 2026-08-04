@@ -167,14 +167,20 @@ public class NationwideDemoDataInitializer {
 
     private void seedPlan(String code, String nameVi, String nameEn, String billingType, BigDecimal price,
                           boolean lifetime, Map<String, Integer> limits) {
-        SubscriptionPlan plan = subscriptionPlanRepository.findByCode(code).orElseGet(SubscriptionPlan::new);
+        if (subscriptionPlanRepository.findByCode(code).isPresent()) return;
+        SubscriptionPlan plan = new SubscriptionPlan();
         plan.setCode(code);
+        plan.setFamilyCode(code);
+        plan.setVersionNumber(1);
         plan.setNameVi(nameVi);
         plan.setNameEn(nameEn);
         plan.setBillingType(billingType);
         plan.setPrice(price);
         plan.setIsLifetime(lifetime);
+        plan.setDurationValue(lifetime ? null : 1);
+        plan.setDurationUnit(lifetime ? "LIFETIME" : "MONTHLY".equals(billingType) ? "MONTH" : "YEAR");
         plan.setStatus("ACTIVE");
+        plan.setActivatedAt(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC));
         plan = subscriptionPlanRepository.save(plan);
         for (Map.Entry<String, Integer> entry : limits.entrySet()) {
             PlanFeature feature = planFeatureRepository.findByPlanIdAndFeatureCode(plan.getId(), entry.getKey()).orElseGet(PlanFeature::new);
