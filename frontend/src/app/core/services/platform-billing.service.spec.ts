@@ -62,6 +62,22 @@ describe('PlatformBillingService', () => {
     cancel.flush({ publicId: 'order-1', attempts: [] });
   });
 
+  it('revokes with a bounded trimmed reason and exports retained history', () => {
+    service.revokeSubscription(42, '  Contract ended by authorized administrator.  ').subscribe();
+    const revoke = http.expectOne(`${environment.apiUrl}/platform/subscriptions/42/revoke`);
+    expect(revoke.request.method).toBe('POST');
+    expect(revoke.request.body).toEqual({ reason: 'Contract ended by authorized administrator.' });
+    revoke.flush({ targetHotelId: 42, contractPublicId: 'contract-1', contractStatus: 'REVOKED', entitlementStatus: 'REVOKED', transitioned: true, occurredAt: '2026-08-04T00:00:00' });
+
+    service.exportHistory(42).subscribe();
+    const historyExport = http.expectOne(`${environment.apiUrl}/platform/subscriptions/42/history/export`);
+    expect(historyExport.request.method).toBe('GET');
+    expect(historyExport.request.responseType).toBe('blob');
+    historyExport.flush(new Blob(['action,occurredAt']));
+
+    expect(() => service.revokeSubscription(42, 'short')).toThrowError(/between 10 and 1000/);
+  });
+
   it('reads masked readiness without accepting a secret from the client', () => {
     service.validatePaymentConfiguration('MOMO').subscribe();
     const request = http.expectOne(

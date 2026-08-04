@@ -33,6 +33,22 @@
       <p class="source">Nguồn: {{ current.source }} · Platform authoritative: {{ current.platformAuthoritative ? 'Có' : 'Không' }}</p>
       <p *ngIf="current.migrationBlocker" class="error">{{ current.migrationBlocker }}</p>
       <div *ngFor="let feature of usage.features">{{ feature.nameVi || feature.code }}: {{ feature.usage }} / {{ featureLimit(feature.limit) }}</div>
+      <p *ngIf="['EXPIRED', 'REVOKED'].includes(current.status)" class="error">Subscription đã kết thúc. Active limits bằng 0; lịch sử vẫn được giữ trong trang quản lý billing của cơ sở.</p>
     </ng-container>
   </section>
+
+  <section class="state error" *ngIf="canRevokeSelectedProperty" aria-labelledby="revoke-subscription-title">
+    <h2 id="revoke-subscription-title">Thu hồi subscription</h2>
+    <p>Thao tác này kết thúc entitlement đang hoạt động nhưng không xóa lịch sử contract, thanh toán hoặc audit.</p>
+    <button *ngIf="!revokeEditorOpen" pButton type="button" severity="danger" label="Mở xác nhận thu hồi" [disabled]="revoking" (click)="revokeEditorOpen = true"></button>
+    <div *ngIf="revokeEditorOpen">
+      <label for="revoke-reason">Lý do (10–1000 ký tự)</label>
+      <textarea id="revoke-reason" rows="4" maxlength="1000" [(ngModel)]="revokeReason" [disabled]="revoking"></textarea>
+      <label><input type="checkbox" [(ngModel)]="revokeConfirmed" [disabled]="revoking"> Tôi xác nhận thu hồi entitlement của đúng cơ sở đã chọn.</label>
+      <button pButton type="button" severity="danger" [disabled]="revoking || !revokeConfirmed || !revokeReasonValid" [label]="revoking ? 'Đang thu hồi...' : 'Xác nhận thu hồi'" (click)="revokeSubscription()"></button>
+      <button pButton type="button" severity="secondary" [disabled]="revoking" label="Hủy" (click)="revokeEditorOpen = false; revokeConfirmed = false; revokeReason = ''"></button>
+    </div>
+    <p *ngIf="revokeError" role="alert">{{ revokeError }}</p>
+  </section>
+  <p *ngIf="revokeMessage" class="state" role="status">{{ revokeMessage }}</p>
 </div>

@@ -2,6 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { SubscriptionService } from '../../../core/services/subscription.service';
+import { PlatformBillingService } from '../../../core/services/platform-billing.service';
+import { PermissionService } from '../../../core/services/permission.service';
 import { SubscriptionPlansComponent } from './subscription-plans';
 
 describe('SubscriptionPlansComponent', () => {
@@ -10,17 +12,23 @@ describe('SubscriptionPlansComponent', () => {
     getPropertySubscription: vi.fn(),
     getPropertyUsage: vi.fn(),
   };
+  const platform = { revokeSubscription: vi.fn() };
+  const permissions = { hasPermission: vi.fn() };
 
   beforeEach(async () => {
     vi.clearAllMocks();
     api.getPlans.mockReturnValue(of([plan()]));
     api.getPropertySubscription.mockReturnValue(of(current()));
     api.getPropertyUsage.mockReturnValue(of(usage()));
+    platform.revokeSubscription.mockReturnValue(of({ targetHotelId: 17, contractPublicId: 'contract-1', contractStatus: 'REVOKED', entitlementStatus: 'REVOKED', transitioned: true, occurredAt: '2026-08-04T00:00:00' }));
+    permissions.hasPermission.mockReturnValue(true);
     await TestBed.configureTestingModule({
       imports: [SubscriptionPlansComponent],
       providers: [
         provideRouter([]),
         { provide: SubscriptionService, useValue: api },
+        { provide: PlatformBillingService, useValue: platform },
+        { provide: PermissionService, useValue: permissions },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({ propertyId: 17 }) } } },
       ]
     }).compileComponents();
@@ -44,6 +52,41 @@ describe('SubscriptionPlansComponent', () => {
     expect(fixture.componentInstance.usage).toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Kiểm tra quyền truy cập');
     expect(fixture.nativeElement.textContent).not.toContain('hotel 99');
+  });
+
+  it('shows revoke only with PLATFORM_BILLING UPDATE and requires confirmation plus reason', () => {
+    const fixture = TestBed.createComponent(SubscriptionPlansComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    expect(component.canRevokeSelectedProperty).toBe(true);
+    component.revokeReason = 'Authorized administrative subscription revoke.';
+    component.revokeSubscription();
+    expect(platform.revokeSubscription).not.toHaveBeenCalled();
+    component.revokeConfirmed = true;
+    component.revokeSubscription();
+    expect(platform.revokeSubscription).toHaveBeenCalledWith(17, 'Authorized administrative subscription revoke.');
+    expect(component.revokeMessage).toContain('được thu hồi');
+  });
+
+  it('keeps VIEW-only admin read access but hides revoke', () => {
+    permissions.hasPermission.mockReturnValue(false);
+    const fixture = TestBed.createComponent(SubscriptionPlansComponent);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.current?.planCode).toBe('PRO');
+    expect(fixture.componentInstance.canRevokeSelectedProperty).toBe(false);
+    expect(fixture.nativeElement.textContent).not.toContain('Thu hồi subscription');
+  });
+
+  it('reports clock-driven expiry truthfully when revoke resolves an elapsed term', () => {
+    platform.revokeSubscription.mockReturnValue(of({ targetHotelId: 17, contractPublicId: 'contract-1', contractStatus: 'EXPIRED', entitlementStatus: 'EXPIRED', transitioned: true, occurredAt: '2026-08-04T00:00:00' }));
+    const fixture = TestBed.createComponent(SubscriptionPlansComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component.revokeReason = 'Administrative lifecycle reconciliation.';
+    component.revokeConfirmed = true;
+    component.revokeSubscription();
+    expect(component.revokeMessage).toContain('đã hết hạn');
+    expect(component.revokeMessage).not.toContain('được thu hồi');
   });
 });
 

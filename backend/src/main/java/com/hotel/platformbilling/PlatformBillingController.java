@@ -8,6 +8,8 @@ import com.hotel.platformbilling.payment.PlatformPaymentAttemptService;
 import com.hotel.platformbilling.subscription.SubscriptionPolicyService;
 import com.hotel.platformbilling.subscription.SubscriptionRenewalService;
 import com.hotel.platformbilling.subscription.SubscriptionUpgradeService;
+import com.hotel.platformbilling.subscription.SubscriptionLifecycleService;
+import com.hotel.exceptions.CorrelationIdSupport;
 import com.hotel.security.ActionCode;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.Permission;
@@ -15,6 +17,8 @@ import com.hotel.services.SubscriptionCatalogService;
 import com.hotel.services.PropertySubscriptionEntitlementService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
 
@@ -41,6 +46,7 @@ public class PlatformBillingController {
     private final PlatformPaymentConfigurationService configurationService;
     private final PlatformBillingQueryService queryService;
     private final PropertySubscriptionEntitlementService entitlementService;
+    private final SubscriptionLifecycleService lifecycleService;
 
     @Autowired
     public PlatformBillingController(
@@ -52,7 +58,8 @@ public class PlatformBillingController {
             SubscriptionPolicyService policyService,
             PlatformPaymentConfigurationService configurationService,
             PlatformBillingQueryService queryService,
-            PropertySubscriptionEntitlementService entitlementService) {
+            PropertySubscriptionEntitlementService entitlementService,
+            SubscriptionLifecycleService lifecycleService) {
         this.catalogService = catalogService;
         this.orderService = orderService;
         this.attemptService = attemptService;
@@ -62,6 +69,7 @@ public class PlatformBillingController {
         this.configurationService = configurationService;
         this.queryService = queryService;
         this.entitlementService = entitlementService;
+        this.lifecycleService = lifecycleService;
     }
 
     /** Compatibility constructor retained for focused controller tests and integrations. */
@@ -75,7 +83,7 @@ public class PlatformBillingController {
             PlatformPaymentConfigurationService configurationService,
             PlatformBillingQueryService queryService) {
         this(catalogService, orderService, attemptService, renewalService, upgradeService, policyService,
-                configurationService, queryService, null);
+                configurationService, queryService, null, null);
     }
 
     @GetMapping("/subscription-plans")
@@ -163,6 +171,27 @@ public class PlatformBillingController {
         return ResponseEntity.ok(entitlementService.getCurrent(targetHotelId));
     }
 
+    @GetMapping(value = "/subscriptions/{targetHotelId}/history/export", produces = "text/csv;charset=UTF-8")
+    @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.VIEW)
+    public ResponseEntity<String> exportHistory(@PathVariable Long targetHotelId) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"subscription-history-" + targetHotelId + ".csv\"")
+                .contentType(new MediaType("text", "csv", java.nio.charset.StandardCharsets.UTF_8))
+                .body(queryService.historyCsv(targetHotelId));
+    }
+
+    @PostMapping("/subscriptions/{targetHotelId}/revoke")
+    @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.UPDATE)
+    public ResponseEntity<SubscriptionLifecycleService.LifecycleResult> revoke(
+            @PathVariable Long targetHotelId,
+            @RequestBody RevokeRequest request,
+            HttpServletRequest servletRequest) {
+        return ResponseEntity.ok(lifecycleService.revoke(targetHotelId, request.reason(),
+                servletRequest.getRemoteAddr(), servletRequest.getHeader("User-Agent"),
+                CorrelationIdSupport.resolve(servletRequest)));
+    }
+
     @GetMapping("/subscription-policies")
     @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.VIEW)
     public ResponseEntity<SubscriptionPolicyService.PolicyAvailability> policies() {
@@ -204,5 +233,8 @@ public class PlatformBillingController {
     }
 
     public record PlanChangeRequest(Long targetPlanId) {
+    }
+
+    public record RevokeRequest(String reason) {
     }
 }

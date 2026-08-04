@@ -86,12 +86,25 @@ describe('SubscriptionBillingComponent', () => {
     expect(element.textContent).not.toContain('Create purchase order');
   });
 
-  function flushInitial(plans: PlatformCatalogPlan[], current: unknown): void {
+  it('keeps terminal history and export visible without exposing revoke controls', async () => {
+    flushInitial([standardPlan()], entitlement(1, standardPlan(), 'REVOKED'), [{
+      id: 8, orderPublicId: 'order-1', actionType: 'REVOKED', actorType: 'USER', reason: 'Administrative revoke', occurredAt: '2026-08-04T10:00:00'
+    }]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    expect(element.textContent).toContain('historical records remain readable and exportable');
+    expect(element.textContent).toContain('Administrative revoke');
+    expect(element.textContent).toContain('Export CSV');
+    expect(element.textContent).not.toContain('Confirm revoke');
+  });
+
+  function flushInitial(plans: PlatformCatalogPlan[], current: unknown, history: unknown[] = []): void {
     http.expectOne(`${environment.apiUrl}/platform/subscription-plans`).flush(plans);
-    flushEntitlementAndPolicy(current);
+    flushEntitlementAndPolicy(current, history);
   }
 
-  function flushEntitlementAndPolicy(current: unknown): void {
+  function flushEntitlementAndPolicy(current: unknown, history: unknown[] = []): void {
     http.expectOne(`${environment.apiUrl}/platform/subscriptions/42/entitlement`).flush(current as object);
     http.expectOne(`${environment.apiUrl}/platform/subscription-policies`).flush({
       downgradeConfigured: false,
@@ -100,6 +113,7 @@ describe('SubscriptionBillingComponent', () => {
       downgradeMessage: 'Downgrade is blocked',
       prorationMessage: 'Proration is blocked',
     });
+    http.expectOne(`${environment.apiUrl}/platform/subscriptions/42/history`).flush(history);
   }
 
   function standardPlan(): PlatformCatalogPlan {
