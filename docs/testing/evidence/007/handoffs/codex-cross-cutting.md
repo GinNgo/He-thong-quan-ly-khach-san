@@ -23,6 +23,7 @@ This file records branch-local completion evidence. Shared aggregate files are i
 | T336 | `b862534d922e260e34743a1a1f96fe5ca4811f0b` | Backend permission/security 3/3; Angular service/component 5/5; Chromium filename/checksum/row-count export 1/1; production build PASS | `docs/testing/evidence/007/remediation/T336-property-revenue-export-ui.md`; CROSS-026 in `docs/audit/system/inventory/cross-cutting.md` |
 | T337 | `9d93064aa230967d4d30ba9012d4f506c0af1237` | Backend schema/PII/tenant/permission 4/4; Angular inventory/maintenance 2/2; Chromium selected-property masked export 1/1; production build PASS | `docs/testing/evidence/007/remediation/T337-operational-exports.md`; CROSS-027 in `docs/audit/system/inventory/cross-cutting.md` |
 | T338 | `25e5c9da909e03916f7cdfb9c1895ea019500b6f` | Backend redaction/IDOR/policy 3/3; Angular viewer 1/1; Chromium tenant redacted viewer 1/1; production build PASS | `docs/testing/evidence/007/remediation/T338-financial-audit-viewer.md`; CROSS-028 in `docs/audit/system/inventory/cross-cutting.md` |
+| T339 | `49e65b07fe16e91c376086672a580b8c74d42956` | Backend append-only/retention/IDOR/read-state 14/14; Angular service/dashboard 20/20; Chromium event viewer/foreign `404` 1/1; production build PASS | `docs/testing/evidence/007/remediation/T339-support-conversation-audit.md`; CROSS-029 in `docs/audit/system/inventory/cross-cutting.md` |
 
 ## Coordinator updates required
 
@@ -61,6 +62,8 @@ This file records branch-local completion evidence. Shared aggregate files are i
 - Promote CROSS-027 in `docs/audit/system/MASTER_FUNCTION_INVENTORY.md` and add T337 executable coverage to `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md` for FR-044 / SC-013.
 - Mark T338 complete in `specs/007-payment-billing-completion/tasks.md` after merging the commit and evidence.
 - Promote CROSS-028 in `docs/audit/system/MASTER_FUNCTION_INVENTORY.md` and add T338 executable coverage to `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md` for FR-044 / SC-013.
+- Mark T339 complete in `specs/007-payment-billing-completion/tasks.md` after merging the commit and evidence.
+- Promote CROSS-029 in `docs/audit/system/MASTER_FUNCTION_INVENTORY.md` and add T339 executable coverage to `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md` for FR-044 / SC-013.
 
 ## Deferred claim conflicts
 
