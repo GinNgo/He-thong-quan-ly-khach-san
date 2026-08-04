@@ -1,6 +1,7 @@
 package com.hotel.controllers;
 
 import com.hotel.dtos.*;
+import com.hotel.exceptions.ApiErrorResponse;
 import com.hotel.exceptions.CorrelationIdSupport;
 import com.hotel.paymentprovider.idempotency.FinancialIdempotencyService;
 import com.hotel.paymentprovider.idempotency.MutationIdempotencyService;
@@ -129,12 +130,19 @@ public class ReservationController {
     }
 
     @PostMapping("/public/book")
-    public ResponseEntity<ReservationDTO> createPublicReservation(
-            @RequestBody ReservationRequest request,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
-            HttpServletRequest httpRequest) {
-        String publicScope = "PUBLIC:" + httpRequest.getRemoteAddr();
-        return createIdempotentReservation(publicScope, request, idempotencyKey, httpRequest, null);
+    public ResponseEntity<ApiErrorResponse> createPublicReservation(HttpServletRequest httpRequest) {
+        ApiErrorResponse body = new ApiErrorResponse(
+                HttpStatus.GONE.value(),
+                "ANONYMOUS_BOOKING_DISABLED",
+                "Anonymous booking is unavailable. Sign in with a customer account to book.",
+                CorrelationIdSupport.resolve(httpRequest),
+                null,
+                false,
+                null,
+                httpRequest.getRequestURI());
+        return ResponseEntity.status(HttpStatus.GONE)
+                .header("Deprecation", "true")
+                .body(body);
     }
 
     @PostMapping("/book")

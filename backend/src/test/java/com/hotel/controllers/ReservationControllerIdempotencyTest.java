@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -78,6 +79,23 @@ class ReservationControllerIdempotencyTest {
                 authentication, bookingRequest(), "  ", servletRequest("corr-3")));
 
         verify(mutationIdempotencyService, never()).execute(any(), anyInt(), eq(ReservationDTO.class), any(), any());
+    }
+
+    @Test
+    void anonymousBookingIsGoneWithoutStartingIdempotencyOrReservationMutation() {
+        MockHttpServletRequest request = servletRequest("corr-public-disabled");
+        request.setRequestURI("/api/reservations/public/book");
+
+        var response = controller.createPublicReservation(request);
+
+        assertEquals(HttpStatus.GONE, response.getStatusCode());
+        assertEquals("true", response.getHeaders().getFirst("Deprecation"));
+        assertEquals("ANONYMOUS_BOOKING_DISABLED", response.getBody().code());
+        assertEquals("corr-public-disabled", response.getBody().correlationId());
+        assertEquals("/api/reservations/public/book", response.getBody().path());
+        assertFalse(response.getBody().retryable());
+        verify(mutationIdempotencyService, never()).execute(any(), anyInt(), eq(ReservationDTO.class), any(), any());
+        verify(reservationService, never()).createReservation(any(), any(), any(), any());
     }
 
     @Test
