@@ -59,7 +59,7 @@ class PropertyClaimServiceTest {
         claim.setRequesterUser(requester);
         claim.setProperty(property);
 
-        when(claimRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(claim));
+        mockAdminClaimLock(claim);
         when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
         when(userPropertyRepository.countActiveOwnedPropertiesByUserId(7L)).thenReturn(1L);
         doThrow(new RuntimeException("quota exceeded"))
@@ -78,9 +78,9 @@ class PropertyClaimServiceTest {
     void requestClaim_CreatesPendingOwnerWithoutGrantingOperationalAccess() {
         User requester = user(7L);
         Hotel property = hotel(10L, "IMPORTED_PENDING_REVIEW");
-        when(hotelRepository.findById(10L)).thenReturn(Optional.of(property));
+        when(hotelRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(property));
         when(userRepository.findById(7L)).thenReturn(Optional.of(requester));
-        when(claimRepository.save(any(PropertyClaimRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(claimRepository.saveAndFlush(any(PropertyClaimRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         PropertyClaimResponseDTO result = claimService.requestClaim(
                 10L,
@@ -94,7 +94,7 @@ class PropertyClaimServiceTest {
         assertNull(result.note());
         InOrder mutationOrder = inOrder(rateLimiter, claimRepository, ownershipLifecycleService);
         mutationOrder.verify(rateLimiter).check(7L);
-        mutationOrder.verify(claimRepository).save(any(PropertyClaimRequest.class));
+        mutationOrder.verify(claimRepository).saveAndFlush(any(PropertyClaimRequest.class));
         mutationOrder.verify(ownershipLifecycleService).createPendingOwner(requester, property);
         verify(ownershipLifecycleService).createPendingOwner(requester, property);
         verify(ownershipLifecycleService, never()).activateOwner(any(), any());
@@ -104,7 +104,7 @@ class PropertyClaimServiceTest {
     void requestClaim_WhenAccountRateLimited_CreatesNoClaimOrPendingOwner() {
         User requester = user(7L);
         Hotel property = hotel(10L, "IMPORTED_PENDING_REVIEW");
-        when(hotelRepository.findById(10L)).thenReturn(Optional.of(property));
+        when(hotelRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(property));
         when(userRepository.findById(7L)).thenReturn(Optional.of(requester));
         doThrow(new PropertyClaimRateLimitException(90)).when(rateLimiter).check(7L);
 
@@ -155,7 +155,7 @@ class PropertyClaimServiceTest {
         Hotel property = hotel(10L, "IMPORTED_PENDING_REVIEW");
         PropertyClaimRequest claim = claim(20L, "PENDING", requester, property);
         LocalDateTime reviewedAt = LocalDateTime.of(2026, 8, 4, 7, 15);
-        when(claimRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(claim));
+        mockAdminClaimLock(claim);
         when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
         when(approvalWorkflowService.approveImportedClaim(1L, 10L, 7L, 20L))
                 .thenReturn(new com.hotel.dtos.PropertyApprovalDecisionResponse(
@@ -177,7 +177,7 @@ class PropertyClaimServiceTest {
         User requester = user(7L);
         Hotel property = hotel(10L, "IMPORTED_PENDING_REVIEW");
         PropertyClaimRequest claim = claim(20L, "APPROVED", requester, property);
-        when(claimRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(claim));
+        mockAdminClaimLock(claim);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L)));
 
         assertThrows(IllegalStateException.class, () -> claimService.approveClaim(20L, 1L));
@@ -192,7 +192,7 @@ class PropertyClaimServiceTest {
         User admin = user(1L);
         Hotel property = hotel(10L, "IMPORTED_PENDING_REVIEW");
         PropertyClaimRequest claim = claim(20L, "PENDING", requester, property);
-        when(claimRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(claim));
+        mockAdminClaimLock(claim);
         when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
         when(ownershipLifecycleService.deactivatePendingOwner(10L, 7L)).thenReturn(true);
         when(claimRepository.saveAndFlush(claim)).thenReturn(claim);
@@ -214,7 +214,7 @@ class PropertyClaimServiceTest {
         User requester = user(7L);
         Hotel property = hotel(10L, "IMPORTED_PENDING_REVIEW");
         PropertyClaimRequest claim = claim(20L, "PENDING", requester, property);
-        when(claimRepository.findByIdAndRequesterUserIdForUpdate(20L, 7L)).thenReturn(Optional.of(claim));
+        mockRequesterClaimLock(claim, 7L);
         when(ownershipLifecycleService.deactivatePendingOwner(10L, 7L)).thenReturn(true);
         when(claimRepository.saveAndFlush(claim)).thenReturn(claim);
 
@@ -251,7 +251,7 @@ class PropertyClaimServiceTest {
         User admin = user(1L);
         Hotel property = hotel(10L, "IMPORTED_PENDING_REVIEW");
         PropertyClaimRequest approved = claim(20L, "APPROVED", requester, property);
-        when(claimRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(approved));
+        mockAdminClaimLock(approved);
 
         assertThrows(IllegalStateException.class,
                 () -> claimService.rejectClaim(20L, 1L, "Ownership evidence is invalid"));
@@ -259,7 +259,7 @@ class PropertyClaimServiceTest {
         verify(claimRepository, never()).saveAndFlush(any());
 
         PropertyClaimRequest pending = claim(21L, "PENDING", requester, property);
-        when(claimRepository.findByIdForUpdate(21L)).thenReturn(Optional.of(pending));
+        mockAdminClaimLock(pending);
         when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
         when(ownershipLifecycleService.deactivatePendingOwner(10L, 7L)).thenReturn(false);
 
@@ -272,10 +272,8 @@ class PropertyClaimServiceTest {
 
     @Test
     void cancelClaim_HidesForeignAndMissingClaimsBehindTheSameNotFoundBoundary() {
-        when(claimRepository.findByIdAndRequesterUserIdForUpdate(20L, 99L))
-                .thenReturn(Optional.empty());
-        when(claimRepository.findByIdAndRequesterUserIdForUpdate(404L, 99L))
-                .thenReturn(Optional.empty());
+        when(claimRepository.findPropertyIdByIdAndRequesterUserId(20L, 99L)).thenReturn(Optional.empty());
+        when(claimRepository.findPropertyIdByIdAndRequesterUserId(404L, 99L)).thenReturn(Optional.empty());
 
         IllegalArgumentException foreign = assertThrows(
                 IllegalArgumentException.class, () -> claimService.cancelClaim(20L, 99L));
@@ -294,18 +292,34 @@ class PropertyClaimServiceTest {
         User requester = user(7L);
         Hotel property = hotel(10L, "IMPORTED_PENDING_REVIEW");
         PropertyClaimRequest reviewed = claim(20L, "REJECTED", requester, property);
-        when(claimRepository.findByIdAndRequesterUserIdForUpdate(20L, 7L)).thenReturn(Optional.of(reviewed));
+        mockRequesterClaimLock(reviewed, 7L);
 
         assertThrows(IllegalStateException.class, () -> claimService.cancelClaim(20L, 7L));
         verifyNoInteractions(ownershipLifecycleService);
 
         PropertyClaimRequest pending = claim(21L, "PENDING", requester, property);
-        when(claimRepository.findByIdAndRequesterUserIdForUpdate(21L, 7L)).thenReturn(Optional.of(pending));
+        mockRequesterClaimLock(pending, 7L);
         when(ownershipLifecycleService.deactivatePendingOwner(10L, 7L)).thenReturn(false);
 
         assertThrows(IllegalStateException.class, () -> claimService.cancelClaim(21L, 7L));
         assertEquals("PENDING", pending.getStatus());
         verify(claimRepository, never()).saveAndFlush(any());
+    }
+
+    private void mockAdminClaimLock(PropertyClaimRequest claim) {
+        Long propertyId = claim.getProperty().getId();
+        when(claimRepository.findPropertyIdById(claim.getId())).thenReturn(Optional.of(propertyId));
+        when(hotelRepository.findByIdForUpdate(propertyId)).thenReturn(Optional.of(claim.getProperty()));
+        when(claimRepository.findByIdForUpdate(claim.getId())).thenReturn(Optional.of(claim));
+    }
+
+    private void mockRequesterClaimLock(PropertyClaimRequest claim, Long requesterUserId) {
+        Long propertyId = claim.getProperty().getId();
+        when(claimRepository.findPropertyIdByIdAndRequesterUserId(claim.getId(), requesterUserId))
+                .thenReturn(Optional.of(propertyId));
+        when(hotelRepository.findByIdForUpdate(propertyId)).thenReturn(Optional.of(claim.getProperty()));
+        when(claimRepository.findByIdAndRequesterUserIdForUpdate(claim.getId(), requesterUserId))
+                .thenReturn(Optional.of(claim));
     }
 
     private User user(Long id) {

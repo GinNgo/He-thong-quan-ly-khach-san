@@ -36,6 +36,34 @@ public interface PropertyClaimRequestRepository extends JpaRepository<PropertyCl
             """)
     Optional<PropertyClaimRequest> findByIdForUpdate(@Param("claimId") Long claimId);
 
+    @Query("select claim.property.id from PropertyClaimRequest claim where claim.id = :claimId")
+    Optional<Long> findPropertyIdById(@Param("claimId") Long claimId);
+
+    @Query("""
+            select claim.property.id
+            from PropertyClaimRequest claim
+            where claim.id = :claimId
+              and claim.requesterUser.id = :requesterUserId
+            """)
+    Optional<Long> findPropertyIdByIdAndRequesterUserId(
+            @Param("claimId") Long claimId,
+            @Param("requesterUserId") Long requesterUserId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select claim
+            from PropertyClaimRequest claim
+            join fetch claim.property
+            join fetch claim.requesterUser
+            where claim.property.id = :propertyId
+              and claim.requesterUser.id = :requesterUserId
+              and claim.status = 'PENDING'
+            order by claim.id
+            """)
+    List<PropertyClaimRequest> findPendingByPropertyIdAndRequesterUserIdForUpdate(
+            @Param("propertyId") Long propertyId,
+            @Param("requesterUserId") Long requesterUserId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select claim

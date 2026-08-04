@@ -290,7 +290,8 @@ export class PropertyClaimsComponent implements OnInit {
   private approvalErrorMessage(error: HttpErrorResponse): string {
     if (error.status === 403) return 'You do not have permission to approve property claims.';
     if (error.status === 404) return 'This claim no longer exists. Refresh the queue before trying again.';
-    if (error.status === 400 || error.status === 409) {
+    if (error.status === 409) return this.claimConflictMessage(error);
+    if (error.status === 400) {
       return 'This claim can no longer be approved from its current state. Refresh the queue.';
     }
     return 'Unable to approve this claim right now. Please retry.';
@@ -300,8 +301,23 @@ export class PropertyClaimsComponent implements OnInit {
     if (error.status === 403) return 'You do not have permission to reject property claims.';
     if (error.status === 404) return 'This claim no longer exists. Refresh the queue before trying again.';
     if (error.status === 400) return 'Enter a valid rejection reason between 10 and 500 characters.';
-    if (error.status === 409) return 'This claim can no longer be rejected from its current state. Refresh the queue.';
+    if (error.status === 409) return this.claimConflictMessage(error);
     return 'Unable to reject this claim right now. Please retry.';
+  }
+
+  private claimConflictMessage(error: HttpErrorResponse): string {
+    const body = error.error && typeof error.error === 'object'
+      ? error.error as Record<string, unknown>
+      : {};
+    const code = typeof body['code'] === 'string' ? body['code'] : '';
+    const currentState = typeof body['currentState'] === 'string' ? body['currentState'] : '';
+    if (code === 'PROPERTY_CLAIM_CONFLICT') {
+      return 'Another request changed this claim at the same time. Refresh the queue before continuing.';
+    }
+    if (code === 'PROPERTY_CLAIM_NOT_PENDING' && ['APPROVED', 'REJECTED', 'CANCELLED'].includes(currentState)) {
+      return `This claim is already ${currentState.toLowerCase()}. Refresh the queue before continuing.`;
+    }
+    return 'This claim can no longer be changed from its current state. Refresh the queue.';
   }
 
   private isCanonicalApproval(claim: PropertyClaimResponse): boolean {

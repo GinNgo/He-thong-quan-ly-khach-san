@@ -48,6 +48,20 @@ public interface UserPropertyRepository extends JpaRepository<UserProperty, Long
             @Param("userId") Long userId,
             @Param("hotelId") Long hotelId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select up
+            from UserProperty up
+            join fetch up.user
+            join fetch up.hotel
+            where up.user.id = :userId
+              and up.hotel.id = :hotelId
+              and up.relationshipType = 'OWNER'
+            """)
+    java.util.Optional<UserProperty> findOwnerMappingForUpdate(
+            @Param("userId") Long userId,
+            @Param("hotelId") Long hotelId);
+
     @Query("""
             select up
             from UserProperty up

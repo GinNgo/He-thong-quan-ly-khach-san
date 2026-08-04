@@ -152,6 +152,29 @@ describe('PropertyClaimsComponent', () => {
     expect(fixture.componentInstance.rejectionPromptId).toBe(81);
     expect(fixture.componentInstance.rejectingClaimId).toBeNull();
   });
+
+  it('shows stable conflict feedback when another reviewer wins rejection', () => {
+    fixture.detectChanges();
+    flushQueue(http, [pendingClaim()]);
+    const claim = fixture.componentInstance.claims[0];
+    fixture.componentInstance.requestRejection(claim);
+    fixture.componentInstance.rejectionReasons[81] = 'Ownership evidence is inconsistent.';
+    fixture.componentInstance.confirmRejection(claim);
+
+    http.expectOne(`${environment.apiUrl}/admin/property-claims/81/reject`).flush(
+      {
+        code: 'PROPERTY_CLAIM_NOT_PENDING',
+        currentState: 'APPROVED',
+        message: 'Reviewer 9 already approved claim version 7'
+      },
+      { status: 409, statusText: 'Conflict' }
+    );
+
+    expect(fixture.componentInstance.actionError).toContain('already approved');
+    expect(fixture.componentInstance.actionError).not.toContain('Reviewer 9');
+    expect(fixture.componentInstance.rejectionPromptId).toBe(81);
+    expect(fixture.componentInstance.claims[0].status).toBe('PENDING');
+  });
 });
 
 function flushQueue(http: HttpTestingController, content: PropertyClaimResponse[]): void {

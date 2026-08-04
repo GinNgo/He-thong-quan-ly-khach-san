@@ -39,7 +39,7 @@ class PropertyOwnershipLifecycleServiceTest {
     void createPendingOwner_DoesNotGrantRoleOrStartOperationalOwnership() {
         User user = user(7L);
         Hotel hotel = hotel(10L);
-        when(userPropertyRepository.findByUserIdAndHotelIdAndRelationshipType(7L, 10L, "OWNER"))
+        when(userPropertyRepository.findOwnerMappingForUpdate(7L, 10L))
                 .thenReturn(Optional.empty());
         when(userPropertyRepository.save(any(UserProperty.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -58,7 +58,7 @@ class PropertyOwnershipLifecycleServiceTest {
         UserProperty mapping = mapping(user, hotel, "PENDING");
         Role ownerRole = new Role();
         ownerRole.setCode("PROPERTY_OWNER");
-        when(userPropertyRepository.findByUserIdAndHotelIdAndRelationshipType(7L, 10L, "OWNER"))
+        when(userPropertyRepository.findOwnerMappingForUpdate(7L, 10L))
                 .thenReturn(Optional.of(mapping));
         when(userPropertyRepository.countByHotelIdAndRelationshipTypeAndStatus(10L, "OWNER", "ACTIVE"))
                 .thenReturn(0L);
@@ -82,7 +82,7 @@ class PropertyOwnershipLifecycleServiceTest {
         user.getRoles().add(ownerRole);
         Hotel hotel = hotel(10L);
         UserProperty mapping = mapping(user, hotel, "PENDING");
-        when(userPropertyRepository.findPendingOwnerMappingForUpdate(7L, 10L))
+        when(userPropertyRepository.findOwnerMappingForUpdate(7L, 10L))
                 .thenReturn(Optional.of(mapping));
         when(userPropertyRepository.findByUserIdAndRelationshipType(7L, "OWNER"))
                 .thenReturn(java.util.List.of(mapping));
@@ -100,8 +100,8 @@ class PropertyOwnershipLifecycleServiceTest {
         User user = user(7L);
         Hotel hotel = hotel(10L);
         UserProperty mapping = mapping(user, hotel, "ACTIVE");
-        when(userPropertyRepository.findPendingOwnerMappingForUpdate(7L, 10L))
-                .thenReturn(Optional.empty());
+        when(userPropertyRepository.findOwnerMappingForUpdate(7L, 10L))
+                .thenReturn(Optional.of(mapping));
 
         boolean changed = service.deactivatePendingOwner(10L, 7L);
 
@@ -119,7 +119,7 @@ class PropertyOwnershipLifecycleServiceTest {
         Hotel activeHotel = hotel(11L);
         UserProperty pending = mapping(user, pendingHotel, "PENDING");
         UserProperty active = mapping(user, activeHotel, "ACTIVE");
-        when(userPropertyRepository.findPendingOwnerMappingForUpdate(7L, 10L))
+        when(userPropertyRepository.findOwnerMappingForUpdate(7L, 10L))
                 .thenReturn(Optional.of(pending));
         when(userPropertyRepository.findByUserIdAndRelationshipType(7L, "OWNER"))
                 .thenReturn(java.util.List.of(pending, active));

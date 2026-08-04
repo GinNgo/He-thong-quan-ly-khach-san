@@ -59,6 +59,10 @@ describe('PropertyClaimService', () => {
       status: 409,
       error: { message: 'Internal duplicate key details' }
     });
+    const concurrentConflict = new HttpErrorResponse({
+      status: 409,
+      error: { code: 'PROPERTY_CLAIM_CONFLICT', message: 'Filtered index details' }
+    });
     const throttled = new HttpErrorResponse({
       status: 429,
       headers: new HttpHeaders({ 'Retry-After': '75' }),
@@ -69,6 +73,8 @@ describe('PropertyClaimService', () => {
     expect(propertyClaimRequestErrorMessage(invalid)).not.toContain('Constraint');
     expect(propertyClaimRequestErrorMessage(conflict)).toContain('đang được xử lý');
     expect(propertyClaimRequestErrorMessage(conflict)).not.toContain('Internal');
+    expect(propertyClaimRequestErrorMessage(concurrentConflict)).toContain('đồng thời');
+    expect(propertyClaimRequestErrorMessage(concurrentConflict)).not.toContain('Filtered index');
     expect(propertyClaimRequestErrorMessage(throttled)).toContain('2 phút');
     expect(propertyClaimRequestErrorMessage(throttled)).not.toContain('Internal');
   });

@@ -6,6 +6,7 @@ import com.hotel.dtos.PropertyClaimResponseDTO;
 import com.hotel.exceptions.ApiErrorResponse;
 import com.hotel.exceptions.CorrelationIdSupport;
 import com.hotel.exceptions.PropertyClaimRateLimitException;
+import com.hotel.exceptions.PropertyClaimConflictException;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.services.PropertyClaimService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -59,6 +61,35 @@ public class PropertyClaimController {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                 .header(CorrelationIdSupport.HEADER, correlationId)
                 .header(HttpHeaders.RETRY_AFTER, String.valueOf(exception.getRetryAfterSeconds()))
+                .body(body);
+    }
+
+    @ExceptionHandler(PropertyClaimConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleClaimConflict(
+            PropertyClaimConflictException exception,
+            HttpServletRequest request) {
+        return conflictResponse(exception.code(), exception.getMessage(), exception.currentState(), request);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleUntranslatedClaimConflict(
+            DataIntegrityViolationException exception,
+            HttpServletRequest request) {
+        return conflictResponse(
+                PropertyClaimConflictException.GENERIC_CODE,
+                "The property claim changed concurrently. Refresh and try again.",
+                null,
+                request);
+    }
+
+    private ResponseEntity<ApiErrorResponse> conflictResponse(
+            String code, String message, String currentState, HttpServletRequest request) {
+        String correlationId = CorrelationIdSupport.resolve(request);
+        ApiErrorResponse body = new ApiErrorResponse(
+                HttpStatus.CONFLICT.value(), code, message, correlationId,
+                Map.of(), false, currentState, request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .header(CorrelationIdSupport.HEADER, correlationId)
                 .body(body);
     }
 

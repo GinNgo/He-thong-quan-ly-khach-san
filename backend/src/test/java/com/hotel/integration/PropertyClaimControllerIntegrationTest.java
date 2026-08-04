@@ -6,6 +6,7 @@ import com.hotel.controllers.PropertyClaimController;
 import com.hotel.dtos.PropertyClaimRequestDTO;
 import com.hotel.dtos.PropertyClaimResponseDTO;
 import com.hotel.exceptions.PropertyClaimRateLimitException;
+import com.hotel.exceptions.PropertyClaimConflictException;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.JwtAccessDeniedHandler;
@@ -25,6 +26,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.context.ContextConfiguration;
@@ -151,6 +153,55 @@ class PropertyClaimControllerIntegrationTest {
                 .andExpect(jsonPath("$.retryable").value(true))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
                         .header().string("Retry-After", "120"));
+    }
+
+    @Test
+    void concurrentClaimConflictReturnsSafeStableEnvelope() throws Exception {
+        PropertyClaimRequestDTO request = new PropertyClaimRequestDTO("EMAIL", "owner@example.com", null);
+        when(claimService.requestClaim(17L, 42L, request))
+                .thenThrow(PropertyClaimConflictException.concurrentConflict());
+
+        mockMvc.perform(post("/api/properties/{propertyId}/claim", 17L)
+                        .with(user(principal(42L, "USER")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"verificationMethod":"EMAIL","verificationData":"owner@example.com"}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PROPERTY_CLAIM_CONFLICT"))
+                .andExpect(jsonPath("$.currentState").doesNotExist())
+                .andExpect(jsonPath("$.message").value(
+                        "The property claim changed concurrently. Refresh and try again."));
+    }
+
+    @Test
+    void staleTerminalActionReturnsCurrentClaimState() throws Exception {
+        when(claimService.approveClaim(8L, 71L))
+                .thenThrow(PropertyClaimConflictException.notPending("CANCELLED"));
+
+        mockMvc.perform(post("/api/admin/property-claims/{id}/approve", 8L)
+                        .with(user(principal(71L, "PROPERTY_CLAIM_APPROVE"))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PROPERTY_CLAIM_NOT_PENDING"))
+                .andExpect(jsonPath("$.currentState").value("CANCELLED"));
+    }
+
+    @Test
+    void untranslatedDatabaseConflictNeverLeaksConstraintDetails() throws Exception {
+        PropertyClaimRequestDTO request = new PropertyClaimRequestDTO("EMAIL", "owner@example.com", null);
+        when(claimService.requestClaim(17L, 42L, request))
+                .thenThrow(new DataIntegrityViolationException("UX_secret raw database detail"));
+
+        mockMvc.perform(post("/api/properties/{propertyId}/claim", 17L)
+                        .with(user(principal(42L, "USER")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"verificationMethod":"EMAIL","verificationData":"owner@example.com"}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PROPERTY_CLAIM_CONFLICT"))
+                .andExpect(jsonPath("$.message").value(
+                        "The property claim changed concurrently. Refresh and try again."));
     }
 
     @Test

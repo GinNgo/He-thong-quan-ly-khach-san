@@ -26,7 +26,7 @@ public class PropertyOwnershipLifecycleService {
     @Transactional
     public UserProperty createPendingOwner(User user, Hotel hotel) {
         var existing = userPropertyRepository
-                .findByUserIdAndHotelIdAndRelationshipType(user.getId(), hotel.getId(), "OWNER");
+                .findOwnerMappingForUpdate(user.getId(), hotel.getId());
         if (existing.filter(mapping -> "ACTIVE".equalsIgnoreCase(mapping.getStatus())).isPresent()) {
             throw new IllegalStateException("The account already owns this property.");
         }
@@ -44,7 +44,7 @@ public class PropertyOwnershipLifecycleService {
     @Transactional
     public UserProperty activateOwner(Long hotelId, Long userId) {
         UserProperty mapping = userPropertyRepository
-                .findByUserIdAndHotelIdAndRelationshipType(userId, hotelId, "OWNER")
+                .findOwnerMappingForUpdate(userId, hotelId)
                 .orElseThrow(() -> new IllegalStateException("Pending property ownership was not found."));
         if ("ACTIVE".equalsIgnoreCase(mapping.getStatus())) {
             grantOwnerRole(mapping.getUser());
@@ -70,7 +70,8 @@ public class PropertyOwnershipLifecycleService {
     @Transactional
     public boolean deactivatePendingOwner(Long hotelId, Long userId) {
         return userPropertyRepository
-                .findPendingOwnerMappingForUpdate(userId, hotelId)
+                .findOwnerMappingForUpdate(userId, hotelId)
+                .filter(mapping -> "PENDING".equalsIgnoreCase(mapping.getStatus()))
                 .map(mapping -> {
                     mapping.setStatus("INACTIVE");
                     mapping.setIsPrimaryOwner(false);

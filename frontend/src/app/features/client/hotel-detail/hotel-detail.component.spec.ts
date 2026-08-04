@@ -155,6 +155,37 @@ describe('HotelDetailComponent', () => {
     expect(browserAlert).not.toHaveBeenCalled();
   });
 
+  it('shows stable conflict feedback after a concurrent duplicate and allows a deliberate retry', () => {
+    const retryResponse$ = new Subject<PropertyClaimResponse>();
+    claims.submit
+      .mockReturnValueOnce(throwError(() => new HttpErrorResponse({
+        status: 409,
+        error: {
+          code: 'PROPERTY_CLAIM_CONFLICT',
+          message: 'Unique constraint UX_PROPERTY_CLAIM_PENDING exposed requester 42'
+        }
+      })))
+      .mockReturnValueOnce(retryResponse$);
+    component.hotel = importedProperty();
+    component.openClaimModal();
+    component.claimForm.verificationData = 'license-123';
+
+    component.submitClaim(formStub());
+
+    expect(component.claimSubmitting).toBe(false);
+    expect(component.claimSubmitted).toBe(false);
+    expect(component.claimRequestError).toContain('đồng thời');
+    expect(component.claimRequestError).not.toContain('UX_PROPERTY_CLAIM_PENDING');
+
+    component.submitClaim(formStub());
+    component.submitClaim(formStub());
+
+    expect(claims.submit).toHaveBeenCalledTimes(2);
+    expect(component.claimSubmitting).toBe(true);
+    retryResponse$.next({ id: 82, status: 'PENDING' } as PropertyClaimResponse);
+    retryResponse$.complete();
+  });
+
   it('redirects safely when the claim session expires during submission', () => {
     claims.submit.mockReturnValue(throwError(() => new HttpErrorResponse({
       status: 401,

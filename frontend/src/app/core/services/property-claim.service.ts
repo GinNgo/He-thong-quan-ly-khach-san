@@ -89,6 +89,10 @@ export function propertyClaimRequestErrorMessage(error: HttpErrorResponse): stri
     return 'Thông tin xác minh chưa hợp lệ. Vui lòng kiểm tra phương thức, nội dung và độ dài đã nhập.';
   }
   if (error.status === 409) {
+    const code = propertyClaimErrorField(error, 'code');
+    if (code === 'PROPERTY_CLAIM_CONFLICT') {
+      return 'Một yêu cầu khác vừa được gửi đồng thời. Vui lòng tải lại trạng thái trước khi thử lại.';
+    }
     return 'Cơ sở này đã có yêu cầu xác nhận đang được xử lý. Vui lòng chờ kết quả trước khi gửi lại.';
   }
   if (error.status === 429) {
@@ -102,6 +106,13 @@ export function propertyClaimRequestErrorMessage(error: HttpErrorResponse): stri
     return `Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau ${Math.ceil(retryAfter / 60)} phút.`;
   }
   return 'Không thể gửi yêu cầu lúc này. Vui lòng thử lại sau.';
+}
+
+function propertyClaimErrorField(error: HttpErrorResponse, field: string): string | null {
+  const value = error.error && typeof error.error === 'object'
+    ? (error.error as Record<string, unknown>)[field]
+    : null;
+  return typeof value === 'string' ? value : null;
 }
 
 function retryAfterSeconds(error: HttpErrorResponse): number | null {
