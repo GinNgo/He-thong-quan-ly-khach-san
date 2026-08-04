@@ -15,6 +15,7 @@ below after merging or cherry-picking the task commits.
 | T300 | `29338ee` | Isolated backend compile; backend 20/20; frontend 12/12 | `docs/testing/evidence/007/remediation/T300-available-physical-room-picker.md` |
 | T301 | `bcc85e0`, `ada8586`, `3bed3ba` | Isolated backend compile; backend 38/38; frontend 24/24; final picker 10/10 | `docs/testing/evidence/007/remediation/T301-room-assignment-lifecycle.md` |
 | T306 | `7d4999b` | Database-backed reconciliation and tenant isolation 2/2 | `docs/testing/evidence/007/remediation/T306-booking-financial-reconciliation.md` |
+| T307 | `a5baf5c` | Database preview/recheck 3/3; HTTP permission/tenant 3/3 | `docs/testing/evidence/007/remediation/T307-authoritative-checkout-preview.md` |
 
 ## Partial Tasks
 
@@ -47,4 +48,8 @@ below after merging or cherry-picking the task commits.
 - Mark T306 complete in `specs/007-payment-billing-completion/tasks.md`.
 - Promote STAY-016 to `COMPLETE_VERIFIED` in
   `docs/audit/system/MASTER_FUNCTION_INVENTORY.md` and add the exact-VND T306 evidence/commit to
+  `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md`.
+- Mark T307 complete in `specs/007-payment-billing-completion/tasks.md`.
+- Promote STAY-017 to `COMPLETE_VERIFIED` in
+  `docs/audit/system/MASTER_FUNCTION_INVENTORY.md` and add T307 HTTP/database evidence to
   `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md`.
