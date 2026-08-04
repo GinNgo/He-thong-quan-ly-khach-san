@@ -9,10 +9,11 @@ import { Reservation, ReservationService } from '@app/core/services/reservation.
 import { AsyncActionCoordinatorService } from '@app/core/services/async-action-coordinator.service';
 import { UserService } from '@app/core/services/user';
 import { EmailVerificationService } from '@app/core/services/email-verification.service';
+import { ReservationAmendmentWorkspaceComponent } from '@app/shared/reservation-amendment/reservation-amendment-workspace.component';
 
 @Component({
   selector: 'app-profile', standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, ReservationAmendmentWorkspaceComponent],
   templateUrl: './profile.component.html', styleUrls: ['./profile.component.css']
 })
 export class ProfileComponent implements OnInit {
@@ -38,6 +39,7 @@ export class ProfileComponent implements OnInit {
   selectedBooking: Reservation | null = null;
   bookingDetailLoading = false;
   bookingDetailError = '';
+  amendmentReservationId: number | null = null;
   error = ''; bookingsError = ''; success = '';
   readonly emailVerificationText = {
     verified: 'Email đã xác minh / Email verified',
@@ -197,6 +199,21 @@ export class ProfileComponent implements OnInit {
       next: booking => this.selectedBooking = booking,
       error: () => this.bookingDetailError = 'Không thể tải chi tiết chuyến đi.',
     });
+  }
+
+  openAmendment(id: number): void {
+    this.amendmentReservationId = id;
+  }
+
+  closeAmendment(): void {
+    this.amendmentReservationId = null;
+  }
+
+  handleAmendmentApplied(id: number): void {
+    this.success = 'Đã cập nhật đặt phòng theo báo giá mới.';
+    this.amendmentReservationId = null;
+    this.loadBookings();
+    this.viewBooking(id);
   }
 
   private getCancellationKey(id: number): string {

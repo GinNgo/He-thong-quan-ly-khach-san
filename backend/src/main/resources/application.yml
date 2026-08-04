@@ -117,6 +117,11 @@ app:
   reservation-hold:
     ttl-minutes: ${RESERVATION_HOLD_TTL_MINUTES:15}
     expiry-scan-ms: ${RESERVATION_HOLD_EXPIRY_SCAN_MS:60000}
+  reservation-amendment:
+    cutoff-minutes: ${RESERVATION_AMENDMENT_CUTOFF_MINUTES:1440}
+    quote-ttl-minutes: ${RESERVATION_AMENDMENT_QUOTE_TTL_MINUTES:15}
+    default-arrival-time: ${RESERVATION_AMENDMENT_DEFAULT_ARRIVAL_TIME:14:00}
+    property-zone-id: ${RESERVATION_AMENDMENT_PROPERTY_ZONE_ID:Asia/Ho_Chi_Minh}
   websocket:
     allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:4200}
   observability:

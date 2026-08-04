@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.spec.json",
+  "include": [
+    "src/app/core/services/reservation-amendment.service.spec.ts",
+    "src/app/shared/reservation-amendment/reservation-amendment-workspace.component.spec.ts",
+    "src/app/features/admin/reservation-management/reservation-lifecycle-permissions.spec.ts",
+    "src/app/features/client/profile/profile-booking-read.component.spec.ts"
+  ]
+}

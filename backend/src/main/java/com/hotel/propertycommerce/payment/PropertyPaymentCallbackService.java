@@ -271,6 +271,7 @@ public class PropertyPaymentCallbackService {
         return switch (purpose) {
             case DEPOSIT -> PropertyFinancialTransaction.TransactionType.BOOKING_DEPOSIT;
             case BALANCE -> PropertyFinancialTransaction.TransactionType.ROOM_PAYMENT;
+            case AMENDMENT_DELTA -> PropertyFinancialTransaction.TransactionType.ROOM_PAYMENT;
             case SERVICE -> PropertyFinancialTransaction.TransactionType.SERVICE_PAYMENT;
             case SURCHARGE -> PropertyFinancialTransaction.TransactionType.SURCHARGE;
             case OTHER -> PropertyFinancialTransaction.TransactionType.MANUAL_ADJUSTMENT;

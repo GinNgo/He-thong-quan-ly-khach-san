@@ -62,6 +62,13 @@
             <span class="status">{{ getStatusLabel(booking.status) }}</span>
             <button type="button" class="booking-detail-btn" (click)="viewBooking(booking.id)">Xem chi tiết</button>
             <button
+              *ngIf="booking.status === 'PENDING_PAYMENT' || booking.status === 'CONFIRMED'"
+              type="button"
+              class="amend-booking-btn"
+              (click)="openAmendment(booking.id)">
+              Thay đổi đặt phòng
+            </button>
+            <button
               *ngIf="booking.status === 'PENDING' || booking.status === 'PENDING_PAYMENT' || booking.status === 'CONFIRMED'"
               type="button"
               class="cancel-btn"
@@ -94,3 +101,13 @@
     </section>
   </section>
 </main>
+
+<div *ngIf="amendmentReservationId as reservationId" class="amendment-overlay" role="dialog" aria-modal="true" aria-label="Thay đổi đặt phòng">
+  <div class="amendment-overlay__panel">
+    <app-reservation-amendment-workspace
+      [reservationId]="reservationId"
+      (closed)="closeAmendment()"
+      (applied)="handleAmendmentApplied($event)"
+    ></app-reservation-amendment-workspace>
+  </div>
+</div>

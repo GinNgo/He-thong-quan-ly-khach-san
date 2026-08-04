@@ -79,6 +79,7 @@
           <td class="text-center">
             <div class="d-flex gap-2 justify-content-center">
               <button pButton icon="pi pi-eye" class="p-button-text p-button-secondary p-button-sm" data-action="view-reservation" pTooltip="Xem chi tiết" (click)="openReservationDetail(res.id)"></button>
+              <button pButton icon="pi pi-calendar-plus" class="p-button-text p-button-secondary p-button-sm" data-action="amend-reservation" pTooltip="Thay đổi đặt phòng" *ngIf="canAmendReservation && (res.status === 'PENDING_PAYMENT' || res.status === 'CONFIRMED')" (click)="openAmendmentWorkspace(res)"></button>
               <button pButton icon="pi pi-check" class="p-button-text p-button-success p-button-sm" pTooltip="Xác nhận" *ngIf="canUpdateReservation && res.status === 'PENDING'" [loading]="isLifecycleBusy(res.id, 'STATUS_CONFIRMED')" [disabled]="lifecycleActionKey() !== null" (click)="updateStatus(res.id, 'CONFIRMED')"></button>
               <button pButton icon="pi pi-sign-in" class="p-button-text p-button-info p-button-sm" data-action="check-in" pTooltip="Check-in" *ngIf="canCheckIn && res.status === 'CONFIRMED'" [loading]="isLifecycleBusy(res.id, 'CHECK_IN')" [disabled]="lifecycleActionKey() !== null" (click)="checkIn(res.id)"></button>
               <button pButton icon="pi pi-user-minus" class="p-button-text p-button-warning p-button-sm" data-action="no-show" pTooltip="No-show" *ngIf="canMarkNoShow && res.status === 'CONFIRMED'" [loading]="isLifecycleBusy(res.id, 'NO_SHOW')" [disabled]="lifecycleActionKey() !== null" (click)="markNoShow(res.id)"></button>
@@ -130,6 +131,24 @@
       </ol>
       <ng-template #noEvents><p class="reservation-state">Chưa có sự kiện vận hành được ghi nhận.</p></ng-template>
     </section>
+  </p-dialog>
+
+  <p-dialog
+    [(visible)]="showAmendmentDialog"
+    [modal]="true"
+    [showHeader]="false"
+    [style]="{ width: 'min(900px, 96vw)' }"
+    [breakpoints]="{ '640px': '100vw' }"
+    styleClass="amendment-dialog"
+    (onHide)="amendmentReservationId = null"
+  >
+    <app-reservation-amendment-workspace
+      *ngIf="amendmentReservationId as reservationId"
+      [reservationId]="reservationId"
+      [staffMode]="true"
+      (closed)="showAmendmentDialog = false"
+      (applied)="handleAmendmentApplied($event)"
+    ></app-reservation-amendment-workspace>
   </p-dialog>
 
   <p-dialog

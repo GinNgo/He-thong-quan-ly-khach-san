@@ -12,7 +12,7 @@ import {
   PropertyPaymentMethodCode,
 } from './property-payment-configuration.service';
 
-export type PropertyPaymentPurpose = 'DEPOSIT' | 'BALANCE' | 'SERVICE' | 'SURCHARGE' | 'OTHER';
+export type PropertyPaymentPurpose = 'DEPOSIT' | 'BALANCE' | 'SERVICE' | 'SURCHARGE' | 'AMENDMENT_DELTA' | 'OTHER';
 export type PropertyPaymentState = Extract<
   FinancialState,
   'CREATED' | 'PENDING' | 'PENDING_VERIFICATION' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'CANCELLED' | 'EXPIRED'

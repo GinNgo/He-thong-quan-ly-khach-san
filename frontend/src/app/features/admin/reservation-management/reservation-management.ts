@@ -17,6 +17,7 @@ import { CheckoutResult } from '../../../core/services/property-checkout.service
 import { ReservationCheckoutComponent } from './reservation-checkout.component';
 import { ActionCode, FunctionCode, PermissionService } from '../../../core/services/permission.service';
 import { Observable, finalize } from 'rxjs';
+import { ReservationAmendmentWorkspaceComponent } from '../../../shared/reservation-amendment/reservation-amendment-workspace.component';
 
 @Component({
   selector: 'app-reservation-management',
@@ -32,6 +33,7 @@ import { Observable, finalize } from 'rxjs';
     DialogModule,
     TooltipModule,
     ReservationCheckoutComponent,
+    ReservationAmendmentWorkspaceComponent,
   ],
   providers: [MessageService],
   templateUrl: './reservation-management.html',
@@ -55,8 +57,11 @@ export class ReservationManagement implements OnInit {
 
   showCheckoutDialog = false;
   selectedReservationId: number | null = null;
+  amendmentReservationId: number | null = null;
+  showAmendmentDialog = false;
   private permissionService = inject(PermissionService);
   readonly canUpdateReservation = this.permissionService.hasPermission(FunctionCode.RESERVATION, ActionCode.UPDATE);
+  readonly canAmendReservation = this.permissionService.hasPermission(FunctionCode.RESERVATION_AMEND, ActionCode.UPDATE);
   readonly canCheckIn = this.permissionService.hasPermission(FunctionCode.CHECKIN, ActionCode.UPDATE);
   readonly canCancelOperational = this.permissionService.hasPermission(FunctionCode.RESERVATION_CANCEL, ActionCode.UPDATE);
   readonly canMarkNoShow = this.permissionService.hasPermission(FunctionCode.RESERVATION_NO_SHOW, ActionCode.UPDATE);
@@ -207,6 +212,24 @@ export class ReservationManagement implements OnInit {
     if (!res.id) return;
     this.selectedReservationId = res.id;
     this.showCheckoutDialog = true;
+  }
+
+  openAmendmentWorkspace(res: Reservation) {
+    if (!res.id) return;
+    this.amendmentReservationId = res.id;
+    this.showAmendmentDialog = true;
+  }
+
+  handleAmendmentApplied(reservationId: number) {
+    this.showAmendmentDialog = false;
+    this.amendmentReservationId = null;
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Đã thay đổi đặt phòng',
+      detail: `Đặt phòng RES-${reservationId} đã được cập nhật theo báo giá máy chủ.`,
+    });
+    this.loadReservations();
+    this.openReservationDetail(reservationId);
   }
 
   handleCheckoutCompleted(result: CheckoutResult) {

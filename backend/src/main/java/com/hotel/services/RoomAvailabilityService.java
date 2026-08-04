@@ -5,12 +5,17 @@ import com.hotel.entities.Room;
 import com.hotel.entities.RoomType;
 import com.hotel.repositories.ReservationDetailRepository;
 import com.hotel.repositories.RoomRepository;
+import com.hotel.propertycommerce.booking.ReservationAmendment;
+import com.hotel.propertycommerce.booking.ReservationAmendmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @Service
@@ -27,6 +32,8 @@ public class RoomAvailabilityService {
 
     private final RoomRepository roomRepository;
     private final ReservationDetailRepository reservationDetailRepository;
+    private final ReservationAmendmentRepository reservationAmendmentRepository;
+    private final Clock clock = Clock.systemUTC();
 
     public long countAvailableRooms(Long roomTypeId, LocalDate checkIn, LocalDate checkOut) {
         long totalActiveRooms = roomRepository.countBookableRoomsByRoomTypeId(roomTypeId, EXCLUDED_ROOM_STATUSES);
@@ -38,7 +45,34 @@ public class RoomAvailabilityService {
         long reservedRooms = reservationDetailRepository.sumReservedQuantity(
                 roomTypeId, RELEASED_RESERVATION_STATUSES, checkIn, checkOut
         );
-        return Math.max(0, totalActiveRooms - reservedRooms);
+        long quotedRooms = reservationAmendmentRepository.sumActiveHoldQuantity(
+                roomTypeId,
+                activeAmendmentStatuses(),
+                checkIn,
+                checkOut,
+                null,
+                now());
+        return Math.max(0, totalActiveRooms - reservedRooms - quotedRooms);
+    }
+
+    public long countAvailableRoomsExcludingReservation(
+            Long roomTypeId,
+            LocalDate checkIn,
+            LocalDate checkOut,
+            Long reservationId,
+            Long excludedQuoteId,
+            LocalDateTime now) {
+        validateStayDates(checkIn, checkOut);
+        if (reservationId == null) {
+            throw new IllegalArgumentException("reservationId is required.");
+        }
+        long totalActiveRooms = roomRepository.countBookableRoomsByRoomTypeId(roomTypeId, EXCLUDED_ROOM_STATUSES);
+        long reservedRooms = reservationDetailRepository.sumReservedQuantityExcludingReservation(
+                roomTypeId, reservationId, RELEASED_RESERVATION_STATUSES, checkIn, checkOut);
+        long quotedRooms = reservationAmendmentRepository.sumActiveHoldQuantity(
+                roomTypeId, activeAmendmentStatuses(), checkIn, checkOut, excludedQuoteId,
+                now == null ? now() : now);
+        return Math.max(0, totalActiveRooms - reservedRooms - quotedRooms);
     }
 
     public Room findFirstAvailableRoomForBooking(Long roomTypeId, LocalDate checkIn, LocalDate checkOut, Integer guests) {
@@ -125,5 +159,16 @@ public class RoomAvailabilityService {
             if (value != null && value >= 0) return value;
         }
         return Integer.MAX_VALUE;
+    }
+
+    private List<ReservationAmendment.Status> activeAmendmentStatuses() {
+        return List.of(
+                ReservationAmendment.Status.QUOTED,
+                ReservationAmendment.Status.AWAITING_PAYMENT,
+                ReservationAmendment.Status.PAYMENT_PENDING);
+    }
+
+    private LocalDateTime now() {
+        return LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
     }
 }

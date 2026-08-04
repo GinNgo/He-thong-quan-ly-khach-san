@@ -1,0 +1,108 @@
+<section class="amendment" [attr.aria-busy]="loading || busy">
+  <header class="amendment__header">
+    <div>
+      <p class="amendment__eyebrow">RESERVATION_CHANGE_POLICY_V1</p>
+      <h2>Thay đổi đặt phòng</h2>
+      <p>Hệ thống khóa lại tồn phòng và tính toàn bộ chênh lệch ở máy chủ.</p>
+    </div>
+    <button type="button" class="amendment__close" aria-label="Đóng cửa sổ thay đổi đặt phòng" (click)="close()">×</button>
+  </header>
+
+  <div *ngIf="loading" class="amendment__state" role="status">Đang tải điều kiện thay đổi...</div>
+  <div *ngIf="error" class="amendment__alert" role="alert">
+    <span>{{ error }}</span>
+    <button *ngIf="!context" type="button" (click)="loadContext()">Thử lại</button>
+  </div>
+
+  <ng-container *ngIf="!loading && context as amendmentContext">
+    <div *ngIf="!amendmentContext.allowed" class="amendment__blocked" role="alert">
+      <strong>Đặt phòng này hiện không thể thay đổi.</strong>
+      <span>{{ amendmentContext.blockedReason }}</span>
+      <small>Hạn thay đổi: {{ amendmentContext.cutoffAt | date:'dd/MM/yyyy HH:mm' }}</small>
+    </div>
+
+    <form *ngIf="amendmentContext.allowed" [formGroup]="form" (ngSubmit)="requestQuote()">
+      <fieldset [disabled]="busy || !!quote">
+        <legend>Thông tin lưu trú mới</legend>
+        <label>
+          <span>Loại phòng</span>
+          <select formControlName="proposedRoomTypeId">
+            <option *ngFor="let roomType of amendmentContext.roomTypeOptions" [ngValue]="roomType.id">
+              {{ roomType.name }} · tối đa {{ roomType.maxGuests }} khách
+            </option>
+          </select>
+        </label>
+        <div class="amendment__grid">
+          <label><span>Ngày nhận phòng</span><input type="date" formControlName="proposedCheckInDate"></label>
+          <label><span>Ngày trả phòng</span><input type="date" formControlName="proposedCheckOutDate"></label>
+          <label><span>Số phòng</span><input type="number" min="1" formControlName="proposedQuantity"></label>
+          <label><span>Người lớn</span><input type="number" min="1" formControlName="proposedAdults"></label>
+          <label><span>Trẻ em</span><input type="number" min="0" formControlName="proposedChildren"></label>
+        </div>
+      </fieldset>
+
+      <button *ngIf="!quote" class="amendment__primary" type="submit" [disabled]="busy || form.invalid">
+        {{ busy ? 'Đang tạo báo giá...' : 'Tạo báo giá mới' }}
+      </button>
+    </form>
+
+    <article *ngIf="quote as currentQuote" class="quote-card">
+      <header>
+        <div><span>Báo giá giữ phòng</span><strong>#{{ currentQuote.publicId | slice:0:8 }}</strong></div>
+        <div class="quote-card__timer" [class.quote-card__timer--expired]="expired">
+          <span>{{ expired ? 'Đã hết hạn' : 'Còn hiệu lực' }}</span>
+          <strong>{{ countdownLabel }}</strong>
+        </div>
+      </header>
+
+      <div class="quote-card__comparison">
+        <section>
+          <span>Hiện tại</span>
+          <strong>{{ currentQuote.original.roomTypeName }}</strong>
+          <small>{{ currentQuote.original.checkInDate | date:'dd/MM/yyyy' }} - {{ currentQuote.original.checkOutDate | date:'dd/MM/yyyy' }}</small>
+          <small>{{ currentQuote.original.quantity }} phòng · {{ currentQuote.original.adults }} người lớn · {{ currentQuote.original.children }} trẻ em</small>
+          <b>{{ formatMoney(currentQuote.original.totalAmount.amount) }}</b>
+        </section>
+        <span class="quote-card__arrow" aria-hidden="true">→</span>
+        <section>
+          <span>Sau thay đổi</span>
+          <strong>{{ currentQuote.proposed.roomTypeName }}</strong>
+          <small>{{ currentQuote.proposed.checkInDate | date:'dd/MM/yyyy' }} - {{ currentQuote.proposed.checkOutDate | date:'dd/MM/yyyy' }}</small>
+          <small>{{ currentQuote.proposed.quantity }} phòng · {{ currentQuote.proposed.adults }} người lớn · {{ currentQuote.proposed.children }} trẻ em</small>
+          <b>{{ formatMoney(currentQuote.proposed.totalAmount.amount) }}</b>
+        </section>
+      </div>
+
+      <dl class="quote-card__money">
+        <div><dt>Chênh lệch giá</dt><dd [class.quote-card__decrease]="priceDeltaValue(currentQuote) < 0">{{ formatMoney(currentQuote.priceDelta.amount) }}</dd></div>
+        <div><dt>Ưu đãi cũ được giữ lại</dt><dd>{{ formatMoney(currentQuote.preservedDiscount.amount) }}</dd></div>
+        <div><dt>Tiền cọc mới</dt><dd>{{ formatMoney(currentQuote.proposed.depositRequired.amount) }}</dd></div>
+      </dl>
+
+      <div *ngIf="priceDeltaValue(currentQuote) > 0" class="quote-card__settlement">
+        <label *ngIf="!currentQuote.settlement.paymentAttempt">
+          <span>Phương thức thanh toán phần tăng thêm</span>
+          <select [(ngModel)]="selectedPaymentMethod" [ngModelOptions]="{standalone: true}">
+            <option *ngFor="let method of amendmentContext.paymentMethods" [value]="method">{{ method }}</option>
+          </select>
+        </label>
+        <ng-container *ngIf="currentQuote.settlement.paymentAttempt as attempt">
+          <strong>Thanh toán: {{ attempt.status }}</strong>
+          <span>{{ attempt.provider }} · {{ formatMoney(attempt.expectedAmount.amount) }}</span>
+          <code *ngIf="attempt.uniqueTransferContent">{{ attempt.uniqueTransferContent }}</code>
+        </ng-container>
+      </div>
+
+      <div *ngIf="currentQuote.settlement.refundRequestPublicId" class="quote-card__refund" role="status">
+        Yêu cầu hoàn tiền {{ currentQuote.settlement.refundRequestPublicId }} đã được tạo và đang chờ xử lý.
+      </div>
+
+      <footer>
+        <button type="button" class="amendment__secondary" (click)="requote()" [disabled]="busy">Tạo báo giá lại</button>
+        <button type="button" class="amendment__primary" (click)="confirm()" [disabled]="busy || expired">
+          {{ busy ? 'Đang xử lý...' : primaryLabel }}
+        </button>
+      </footer>
+    </article>
+  </ng-container>
+</section>

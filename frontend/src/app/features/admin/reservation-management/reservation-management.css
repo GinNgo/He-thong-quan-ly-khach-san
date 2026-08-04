@@ -4,6 +4,8 @@
   border-radius: var(--hotel-radius-lg);
 }
 
+:host ::ng-deep .amendment-dialog .p-dialog-content{padding:0;background:transparent;border-radius:22px;overflow:visible}
+
 .reservation-filters {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) minmax(180px, 240px) auto;
@@ -130,4 +132,7 @@
     max-height: 100dvh;
     border-radius: 0;
   }
+
+  :host ::ng-deep .amendment-dialog{margin:0;max-height:100dvh;border-radius:0}
+  :host ::ng-deep .amendment-dialog .p-dialog-content{max-height:100dvh;overflow:auto;border-radius:0}
 }

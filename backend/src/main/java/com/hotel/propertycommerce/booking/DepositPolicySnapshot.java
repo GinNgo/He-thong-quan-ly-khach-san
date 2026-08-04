@@ -79,6 +79,29 @@ public record DepositPolicySnapshot(
                 requiredDeposit);
     }
 
+    public static DepositPolicySnapshot reprice(
+            DepositPolicySnapshot original,
+            BigDecimal authoritativeBookingTotal) {
+        Objects.requireNonNull(original, "original snapshot must not be null");
+        if (authoritativeBookingTotal == null) {
+            throw invalid("bookingTotal", "Booking total is required.");
+        }
+        VndMoney bookingTotal;
+        try {
+            bookingTotal = VndMoney.of(authoritativeBookingTotal);
+        } catch (IllegalArgumentException | ArithmeticException exception) {
+            throw invalid("bookingTotal", "Booking total must be an integer VND amount.", exception);
+        }
+        return new DepositPolicySnapshot(
+                original.propertyId(),
+                original.configurationId(),
+                original.configurationVersion(),
+                original.policyType(),
+                original.policyValue(),
+                bookingTotal,
+                calculate(original.policyType(), original.policyValue(), bookingTotal));
+    }
+
     public String currency() {
         return "VND";
     }

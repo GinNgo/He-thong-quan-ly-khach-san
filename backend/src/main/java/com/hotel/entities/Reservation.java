@@ -209,6 +209,28 @@ public class Reservation extends AuditableEntity {
                 com.hotel.paymentprovider.domain.VndMoney.of(depositRequired));
     }
 
+    public void applyAmendedDepositPolicy(DepositPolicySnapshot snapshot) {
+        if (snapshot == null) {
+            throw new IllegalArgumentException("Deposit policy snapshot is required.");
+        }
+        if (depositPolicyType == null) {
+            throw new IllegalStateException("The reservation has no deposit policy to amend.");
+        }
+        boolean samePolicy = hotel != null
+                && hotel.getId() != null
+                && hotel.getId().equals(snapshot.propertyId())
+                && java.util.Objects.equals(depositConfigurationId, snapshot.configurationId())
+                && java.util.Objects.equals(depositConfigurationVersion, snapshot.configurationVersion())
+                && depositPolicyType.equals(snapshot.policyType().name())
+                && java.util.Objects.equals(depositPolicyValue, snapshot.policyValue());
+        if (!samePolicy) {
+            throw new IllegalArgumentException("Reservation amendments must preserve the original deposit policy identity.");
+        }
+        depositBookingTotal = snapshot.bookingTotal().amount();
+        depositRequired = snapshot.requiredDeposit().amount();
+        depositCurrency = snapshot.currency();
+    }
+
     public Long getDepositConfigurationId() { return depositConfigurationId; }
     public Long getDepositConfigurationVersion() { return depositConfigurationVersion; }
     public String getDepositPolicyType() { return depositPolicyType; }

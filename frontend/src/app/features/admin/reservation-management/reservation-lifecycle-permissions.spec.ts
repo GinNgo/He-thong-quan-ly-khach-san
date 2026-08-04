@@ -60,6 +60,7 @@ describe('ReservationManagement lifecycle permissions', () => {
           useValue: {
             hasPermission: vi.fn((functionCode: string, actionCode: number) =>
               (functionCode === FunctionCode.RESERVATION && actionCode === ActionCode.UPDATE) ||
+              (functionCode === FunctionCode.RESERVATION_AMEND && actionCode === ActionCode.UPDATE) ||
               (functionCode === FunctionCode.HOTEL_SERVICE && actionCode === ActionCode.VIEW) ||
               (functionCode === FunctionCode.CHECKIN && actionCode === ActionCode.UPDATE) ||
               (functionCode === FunctionCode.RESERVATION_CANCEL && actionCode === ActionCode.UPDATE) ||
@@ -78,6 +79,7 @@ describe('ReservationManagement lifecycle permissions', () => {
     expect(fixture.nativeElement.querySelector('[data-action="check-in"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-action="no-show"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-action="cancel-operational"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-action="amend-reservation"]')).not.toBeNull();
 
     component.checkIn(55);
     component.markNoShow(55);
@@ -98,6 +100,18 @@ describe('ReservationManagement lifecycle permissions', () => {
     expect(fixture.nativeElement.querySelector('[data-action="check-in"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-action="no-show"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-action="cancel-operational"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-action="amend-reservation"]')).toBeNull();
+  });
+
+  it('does not treat the generic reservation update mask as amendment authority', () => {
+    const permissionService = TestBed.inject(PermissionService) as unknown as { hasPermission: ReturnType<typeof vi.fn> };
+    permissionService.hasPermission.mockImplementation((functionCode: string, actionCode: number) =>
+      functionCode === FunctionCode.RESERVATION && actionCode === ActionCode.UPDATE);
+
+    fixture = TestBed.createComponent(ReservationManagement);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-action="amend-reservation"]')).toBeNull();
   });
 
   it('routes in-stay service work to the authoritative folio workspace', () => {

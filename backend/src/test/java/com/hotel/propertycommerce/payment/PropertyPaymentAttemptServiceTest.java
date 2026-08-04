@@ -3,6 +3,7 @@ package com.hotel.propertycommerce.payment;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.Reservation;
+import com.hotel.entities.RoomType;
 import com.hotel.entities.User;
 import com.hotel.paymentprovider.domain.FinancialStates.BookingFinancialState;
 import com.hotel.paymentprovider.domain.FinancialStates.PaymentState;
@@ -13,6 +14,7 @@ import com.hotel.paymentprovider.error.FinancialException;
 import com.hotel.paymentprovider.idempotency.FinancialIdempotencyRecord;
 import com.hotel.paymentprovider.idempotency.FinancialIdempotencyService;
 import com.hotel.propertycommerce.booking.BookingFinancialSummaryService;
+import com.hotel.propertycommerce.booking.ReservationAmendment;
 import com.hotel.propertycommerce.config.PropertyPaymentConfiguration;
 import com.hotel.propertycommerce.config.PropertyPaymentConfigurationMethod;
 import com.hotel.propertycommerce.config.PropertyPaymentConfigurationRepository;
@@ -28,6 +30,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
@@ -127,6 +130,34 @@ class PropertyPaymentAttemptServiceTest {
                 null));
 
         assertAmount(840_000, response.expectedAmount());
+    }
+
+    @Test
+    void amendmentDeltaUsesTheExactServerQuoteAndCannotOutliveIt() {
+        Reservation reservation = reservation();
+        LocalDateTime quoteExpiry = LocalDateTime.ofInstant(NOW, ZoneOffset.UTC).plusMinutes(2);
+        ReservationAmendment amendment = amendment(reservation, quoteExpiry);
+        acquired("amendment-hash");
+        when(propertyAccessService.currentUser()).thenReturn(reservation.getUser());
+        when(configurationRepository.findByHotelId(3L))
+                .thenReturn(Optional.of(configuration(reservation.getHotel(), true)));
+        when(attemptRepository.saveAndFlush(any(PropertyPaymentAttempt.class))).thenAnswer(invocation -> {
+            PropertyPaymentAttempt attempt = invocation.getArgument(0);
+            ReflectionTestUtils.setField(attempt, "id", 73L);
+            return attempt;
+        });
+
+        PropertyPaymentAttemptService.AttemptResponse response = service.createAmendmentDelta(
+                new PropertyPaymentAttemptService.CreateAmendmentCommand(
+                        amendment,
+                        "MANUAL_TRANSFER",
+                        "idem-amendment-1",
+                        "correlation-amendment"));
+
+        assertEquals(PropertyPaymentAttempt.Purpose.AMENDMENT_DELTA, response.purpose());
+        assertAmount(200_000, response.expectedAmount());
+        assertEquals(quoteExpiry, response.expiresAt());
+        assertEquals(response.publicId(), amendment.getPaymentAttempt().getPublicId());
     }
 
     @Test
@@ -384,10 +415,48 @@ class PropertyPaymentAttemptServiceTest {
         reservation.setHotel(hotel);
         reservation.setUser(user);
         reservation.setStatus("PENDING_PAYMENT");
+        reservation.setCheckInDate(LocalDate.of(2026, 8, 10));
+        reservation.setCheckOutDate(LocalDate.of(2026, 8, 12));
         reservation.setTotalAmount(BigDecimal.valueOf(1_200_000));
         ReflectionTestUtils.setField(reservation, "depositBookingTotal", BigDecimal.valueOf(1_200_000));
         ReflectionTestUtils.setField(reservation, "depositRequired", BigDecimal.valueOf(360_000));
         return reservation;
+    }
+
+    private ReservationAmendment amendment(Reservation reservation, LocalDateTime expiresAt) {
+        RoomType roomType = new RoomType();
+        roomType.setId(21L);
+        roomType.setHotel(reservation.getHotel());
+        roomType.setBasePrice(BigDecimal.valueOf(500_000));
+        ReservationAmendment amendment = ReservationAmendment.quote(new ReservationAmendment.QuoteSnapshot(
+                "quote-amendment",
+                reservation,
+                reservation.getUser(),
+                "CUSTOMER",
+                roomType,
+                roomType,
+                reservation.getCheckInDate(),
+                reservation.getCheckOutDate(),
+                reservation.getCheckInDate(),
+                reservation.getCheckOutDate().plusDays(1),
+                1,
+                1,
+                2,
+                2,
+                0,
+                0,
+                BigDecimal.valueOf(1_200_000),
+                BigDecimal.valueOf(1_400_000),
+                BigDecimal.valueOf(200_000),
+                BigDecimal.valueOf(360_000),
+                BigDecimal.valueOf(420_000),
+                BigDecimal.ZERO,
+                1,
+                "quote-idempotency",
+                "a".repeat(64),
+                expiresAt));
+        ReflectionTestUtils.setField(amendment, "id", 301L);
+        return amendment;
     }
 
     private PropertyPaymentConfiguration configuration(Hotel hotel, boolean enabled) {
