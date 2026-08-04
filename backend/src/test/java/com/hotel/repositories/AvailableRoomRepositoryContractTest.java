@@ -30,4 +30,21 @@ class AvailableRoomRepositoryContractTest {
         assertThat(query).contains("order by room.floor, room.roomNumber, room.id");
         assertThat(method.getReturnType()).isEqualTo(List.class);
     }
+
+    @Test
+    void assignmentConflictCheckUsesImmutableAssignmentStayDates() throws Exception {
+        Method method = ReservationRoomRepository.class.getMethod(
+                "hasConflictingAssignment",
+                Long.class,
+                Long.class,
+                List.class,
+                LocalDate.class,
+                LocalDate.class);
+        String query = method.getAnnotation(Query.class).value();
+
+        assertThat(query).contains("coalesce(assignment.stayStartDate, reservation.checkInDate)");
+        assertThat(query).contains("coalesce(assignment.stayEndDate, reservation.checkOutDate)");
+        assertThat(query).contains("reservation.id <> :reservationId");
+        assertThat(query).contains("assignment.status = 'ASSIGNED'");
+    }
 }

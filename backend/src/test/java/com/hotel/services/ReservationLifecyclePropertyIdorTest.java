@@ -1,6 +1,8 @@
 package com.hotel.services;
 
 import com.hotel.dtos.AssignRoomsRequest;
+import com.hotel.dtos.RoomAssignmentMutationRequest;
+import com.hotel.dtos.RoomAssignmentReleaseRequest;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.Reservation;
 import com.hotel.exceptions.ResourceNotFoundException;
@@ -103,6 +105,10 @@ class ReservationLifecyclePropertyIdorTest {
                 request.setRoomIds(List.of(10L));
                 reservationService.assignRooms(7L, request);
             }
+            case REASSIGN -> reservationService.updateRoomAssignment(
+                    7L, new RoomAssignmentMutationRequest(List.of(10L), "Đổi phòng theo yêu cầu"));
+            case RELEASE -> reservationService.releaseRoomAssignment(
+                    7L, new RoomAssignmentReleaseRequest("Giải phóng để bảo trì"));
             case CHECK_IN -> reservationService.checkIn(7L);
             case CANCEL -> reservationService.cancelOperational(7L);
             case NO_SHOW -> reservationService.markNoShow(7L);
@@ -111,6 +117,8 @@ class ReservationLifecyclePropertyIdorTest {
 
     private enum OperationalAction {
         ASSIGN,
+        REASSIGN,
+        RELEASE,
         CHECK_IN,
         CANCEL,
         NO_SHOW

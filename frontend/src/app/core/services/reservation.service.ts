@@ -74,8 +74,14 @@ export interface AvailableRoomContext {
   checkInDate: string;
   checkOutDate: string;
   requiredQuantity: number;
+  assignedRooms: AvailablePhysicalRoom[];
   assignedRoomIds: number[];
   candidates: AvailablePhysicalRoom[];
+}
+
+export interface RoomAssignmentMutationRequest {
+  roomIds: number[];
+  reason: string;
 }
 
 export type ReservationAmendmentStatus =
@@ -210,6 +216,22 @@ export class ReservationService {
 
   getAvailableRoomContext(id: number): Observable<AvailableRoomContext> {
     return this.http.get<AvailableRoomContext>(`${this.apiUrl}/${id}/available-rooms/context`);
+  }
+
+  updateRoomAssignment(
+    id: number,
+    request: RoomAssignmentMutationRequest,
+    idempotencyKey: string,
+  ): Observable<Reservation> {
+    return this.http.post<Reservation>(`${this.apiUrl}/${id}/room-assignment`, request, {
+      headers: new HttpHeaders({ 'Idempotency-Key': idempotencyKey }),
+    });
+  }
+
+  releaseRoomAssignment(id: number, reason: string, idempotencyKey: string): Observable<Reservation> {
+    return this.http.post<Reservation>(`${this.apiUrl}/${id}/room-assignment/release`, { reason }, {
+      headers: new HttpHeaders({ 'Idempotency-Key': idempotencyKey }),
+    });
   }
 
   cancelMyReservation(id: number, idempotencyKey?: string): Observable<Reservation> {

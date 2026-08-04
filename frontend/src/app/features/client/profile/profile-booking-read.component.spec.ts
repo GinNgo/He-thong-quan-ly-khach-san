@@ -35,7 +35,16 @@ describe('ProfileComponent seeded booking read journey', () => {
     ...summary,
     userId: profile.id,
     userFullName: profile.fullName,
-    details: [],
+    details: [{
+      id: 1,
+      reservationId: 801,
+      roomId: 11,
+      roomTypeId: 7,
+      roomTypeName: 'Deluxe',
+      quantity: 1,
+      assignedRoomIds: [11],
+      assignedRoomNumbers: ['101'],
+    }],
     events: [{
       id: 91,
       eventType: 'RESERVATION_CREATED',
@@ -79,6 +88,21 @@ describe('ProfileComponent seeded booking read journey', () => {
     expect(getReservationById).toHaveBeenCalledWith(801);
     expect(fixture.nativeElement.textContent).toContain('Lịch sử chuyến đi');
     expect(fixture.nativeElement.textContent).toContain('Đã tạo đặt phòng');
+    expect(fixture.nativeElement.textContent).toContain('Phòng đã được cơ sở sắp xếp');
+    expect(fixture.nativeElement.textContent).toContain('101');
+  });
+
+  it('shows a pending assignment state without exposing staff mutation controls', () => {
+    getReservationById.mockReturnValue(of({
+      ...detail,
+      details: [{ ...detail.details[0], assignedRoomIds: [], assignedRoomNumbers: [] }],
+    }));
+
+    fixture.componentInstance.viewBooking(801);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Chưa có phòng vật lý được gán');
+    expect(fixture.nativeElement.querySelector('[data-action="apply-room-assignment"]')).toBeNull();
   });
 
   it('shows a safe error without removing the booking list', () => {

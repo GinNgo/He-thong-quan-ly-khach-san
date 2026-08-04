@@ -136,6 +136,7 @@
         <li *ngFor="let event of reservation.events">
           <div><strong>{{ getEventLabel(event.eventType) }}</strong><time>{{ event.occurredAt | date:'dd/MM/yyyy HH:mm' }}</time></div>
           <p>{{ event.reason }}</p>
+          <small *ngIf="getAssignmentEventSummary(event) as summary">{{ summary }}</small>
         </li>
       </ol>
       <ng-template #noEvents><p class="reservation-state">Chưa có sự kiện vận hành được ghi nhận.</p></ng-template>
@@ -154,10 +155,13 @@
     <app-physical-room-picker
       *ngIf="roomPickerReservationId as reservationId"
       [reservationId]="reservationId"
+      [allowMutation]="canManageRoomAssignments"
       (selectionChange)="handleRoomPickerSelection($event)"
+      (assignmentApplied)="handleRoomAssignmentApplied($event)"
     ></app-physical-room-picker>
     <div class="room-picker-dialog__footer" *ngIf="roomPickerReservationId">
-      <span>{{ roomPickerSelection.length ? 'Đã chọn ' + roomPickerSelection.length + ' phòng để dùng ở bước phân phòng.' : 'Chưa chọn phòng.' }}</span>
+      <span *ngIf="canManageRoomAssignments">Đã chọn {{ roomPickerSelection.length }} phòng.</span>
+      <span *ngIf="!canManageRoomAssignments">Chế độ chỉ xem. Cần quyền cập nhật phân phòng để thay đổi.</span>
       <button type="button" (click)="showRoomPickerDialog = false">Đóng</button>
     </div>
   </p-dialog>

@@ -2,6 +2,9 @@ package com.hotel.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hotel.dtos.AssignRoomsRequest;
+import com.hotel.dtos.RoomAssignmentMutationRequest;
+import com.hotel.dtos.RoomAssignmentReleaseRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import com.hotel.paymentprovider.idempotency.MutationIdempotencyService;
 import com.hotel.security.ActionCode;
 import com.hotel.security.CustomUserDetails;
@@ -18,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.method.HandlerMethod;
@@ -57,6 +61,12 @@ class ReservationLifecyclePermissionMatrixTest {
                 Long.class, AssignRoomsRequest.class);
         assertPermission("availableRooms", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.VIEW, Long.class);
         assertPermission("availableRoomContext", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.VIEW, Long.class);
+        assertPermission("updateRoomAssignment", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.UPDATE,
+                Authentication.class, Long.class, RoomAssignmentMutationRequest.class, String.class,
+                HttpServletRequest.class);
+        assertPermission("releaseRoomAssignment", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.UPDATE,
+                Authentication.class, Long.class, RoomAssignmentReleaseRequest.class, String.class,
+                HttpServletRequest.class);
         assertPermission("checkIn", FunctionCode.CHECKIN, ActionCode.UPDATE, Long.class);
         assertPermission("cancelOperational", FunctionCode.RESERVATION_CANCEL, ActionCode.UPDATE, Long.class);
         assertPermission("markNoShow", FunctionCode.RESERVATION_NO_SHOW, ActionCode.UPDATE, Long.class);
@@ -130,6 +140,12 @@ class ReservationLifecyclePermissionMatrixTest {
                         Long.class, AssignRoomsRequest.class),
                 endpoint("availableRoomContext", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.VIEW,
                         Long.class),
+                endpoint("updateRoomAssignment", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.UPDATE,
+                        Authentication.class, Long.class, RoomAssignmentMutationRequest.class, String.class,
+                        HttpServletRequest.class),
+                endpoint("releaseRoomAssignment", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.UPDATE,
+                        Authentication.class, Long.class, RoomAssignmentReleaseRequest.class, String.class,
+                        HttpServletRequest.class),
                 endpoint("checkIn", FunctionCode.CHECKIN, ActionCode.UPDATE, Long.class),
                 endpoint("cancelOperational", FunctionCode.RESERVATION_CANCEL, ActionCode.UPDATE, Long.class),
                 endpoint("markNoShow", FunctionCode.RESERVATION_NO_SHOW, ActionCode.UPDATE, Long.class));

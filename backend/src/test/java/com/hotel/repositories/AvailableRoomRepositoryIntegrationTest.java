@@ -30,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AvailableRoomRepositoryIntegrationTest {
 
     @Autowired private RoomRepository roomRepository;
+    @Autowired private ReservationRoomRepository reservationRoomRepository;
     @Autowired private EntityManager entityManager;
 
     @Test
@@ -62,6 +63,39 @@ class AvailableRoomRepositoryIntegrationTest {
 
         assertThat(result).extracting(Room::getRoomNumber)
                 .containsExactly("102", "103", "104");
+    }
+
+    @Test
+    void conflictCheckUsesAssignmentSnapshotsAfterReservationDatesChange() {
+        Hotel hotel = persistHotel("assignment-conflict");
+        RoomType roomType = persistRoomType(hotel);
+        User guest = persistUser("assignment-conflict");
+        Reservation source = persistReservation(hotel, guest);
+        Reservation target = persistReservation(hotel, guest);
+        ReservationDetail sourceDetail = persistDetail(source, roomType);
+        Room overlapping = persistRoom(hotel, roomType, "201");
+        Room boundary = persistRoom(hotel, roomType, "202");
+        Room released = persistRoom(hotel, roomType, "203");
+        persistAssignment(sourceDetail, overlapping, "ASSIGNED",
+                LocalDate.of(2028, 2, 10), LocalDate.of(2028, 2, 12));
+        persistAssignment(sourceDetail, boundary, "ASSIGNED",
+                LocalDate.of(2028, 2, 8), LocalDate.of(2028, 2, 10));
+        persistAssignment(sourceDetail, released, "RELEASED",
+                LocalDate.of(2028, 2, 10), LocalDate.of(2028, 2, 12));
+        entityManager.flush();
+        entityManager.clear();
+
+        List<String> terminalStatuses = List.of(
+                "CANCELLED", "REJECTED", "EXPIRED", "NO_SHOW", "CHECKED_OUT", "COMPLETED");
+        LocalDate checkIn = LocalDate.of(2028, 2, 10);
+        LocalDate checkOut = LocalDate.of(2028, 2, 12);
+
+        assertThat(reservationRoomRepository.hasConflictingAssignment(
+                overlapping.getId(), target.getId(), terminalStatuses, checkIn, checkOut)).isTrue();
+        assertThat(reservationRoomRepository.hasConflictingAssignment(
+                boundary.getId(), target.getId(), terminalStatuses, checkIn, checkOut)).isFalse();
+        assertThat(reservationRoomRepository.hasConflictingAssignment(
+                released.getId(), target.getId(), terminalStatuses, checkIn, checkOut)).isFalse();
     }
 
     private Hotel persistHotel(String suffix) {

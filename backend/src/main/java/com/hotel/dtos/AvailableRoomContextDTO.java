@@ -11,6 +11,7 @@ public record AvailableRoomContextDTO(
         LocalDate checkInDate,
         LocalDate checkOutDate,
         int requiredQuantity,
+        List<RoomDTO> assignedRooms,
         List<Long> assignedRoomIds,
         List<RoomDTO> candidates) {
 }

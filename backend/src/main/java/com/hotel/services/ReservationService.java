@@ -224,72 +224,226 @@ public class ReservationService {
 
     @Transactional
     public ReservationDTO assignRooms(Long reservationId, AssignRoomsRequest request) {
+        List<Long> roomIds = request == null ? null : request.getRoomIds();
+        return mutateRoomAssignment(reservationId, roomIds, "Đã xếp phòng cụ thể cho đặt phòng.", false);
+    }
+
+    @Transactional
+    public ReservationDTO updateRoomAssignment(Long reservationId, RoomAssignmentMutationRequest request) {
+        if (request == null) throw new IllegalArgumentException("Yêu cầu phân phòng là bắt buộc.");
+        return mutateRoomAssignment(reservationId, request.roomIds(), requireAssignmentReason(request.reason()), true);
+    }
+
+    @Transactional
+    public ReservationDTO releaseRoomAssignment(Long reservationId, RoomAssignmentReleaseRequest request) {
+        if (request == null) throw new IllegalArgumentException("Yêu cầu giải phóng phòng là bắt buộc.");
+        String reason = requireAssignmentReason(request.reason());
         Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy booking."));
         requireOperationalAccess(reservation);
-        if (Set.of("CHECKED_OUT", "COMPLETED", "CANCELLED", "REJECTED", "EXPIRED", "NO_SHOW")
-                .contains(reservation.getStatus())) {
-            throw new IllegalStateException("Không thể gán phòng cho booking đã kết thúc hoặc bị hủy.");
-        }
+        requireRoomAssignmentMutable(reservation);
 
         List<ReservationDetail> details = reservationDetailRepository.findByReservationId(reservationId);
-        if (details.size() != 1) {
+        if (details.size() != 1 || details.get(0).getRoomType() == null) {
             throw new IllegalStateException("Luồng hiện tại chỉ hỗ trợ một loại phòng trong mỗi booking.");
         }
         ReservationDetail detail = details.get(0);
-        List<Long> roomIds = request == null || request.getRoomIds() == null
-                ? List.of()
-                : request.getRoomIds().stream().sorted().toList();
-        int requiredQuantity = detail.getQuantity() == null ? 1 : detail.getQuantity();
-        if (roomIds.size() != requiredQuantity || new HashSet<>(roomIds).size() != roomIds.size()) {
-            throw new IllegalArgumentException("Số phòng được gán phải đúng bằng số lượng đã đặt và không được trùng.");
-        }
-
         List<ReservationRoom> currentAssignments = reservationRoomRepository
                 .findByReservationDetailIdAndStatusForUpdate(detail.getId(), "ASSIGNED");
-        if (!currentAssignments.isEmpty()) {
-            List<Long> assignedRoomIds = currentAssignments.stream()
-                    .map(ReservationRoom::getRoom)
-                    .map(Room::getId)
-                    .sorted()
-                    .toList();
-            if (assignedRoomIds.equals(roomIds)) {
-                return mapToDTO(reservation);
-            }
-            throw new IllegalStateException("Booking đã được gán phòng. Hãy giải phóng phòng trước khi gán lại.");
-        }
-
-        List<Room> rooms = roomRepository.findAllByIdForUpdate(roomIds);
-        if (rooms.size() != roomIds.size()) {
-            throw new IllegalArgumentException("Có phòng vật lý không tồn tại.");
-        }
-        List<ReservationRoom> newAssignments = new java.util.ArrayList<>();
-        for (Room room : rooms) {
-            validateAssignableRoom(reservation, detail, room);
-            RoomStatePolicy.reserve(room);
-            ReservationRoom assignment = new ReservationRoom();
-            assignment.setReservationDetail(detail);
+        if (currentAssignments.isEmpty()) return mapToDTO(reservation);
+        List<Long> currentRoomIds = assignmentRoomIds(currentAssignments);
+        Map<Long, Room> lockedRooms = lockAssignmentRooms(reservation, currentRoomIds);
+        LocalDateTime releasedAt = LocalDateTime.now();
+        currentAssignments.forEach(assignment -> {
+            Room room = lockedRooms.get(assignment.getRoom().getId());
+            RoomStatePolicy.releaseReservation(room);
             assignment.setRoom(room);
-            assignment.setAssignedAt(LocalDateTime.now());
-            assignment.setStayStartDate(reservation.getCheckInDate());
-            assignment.setStayEndDate(reservation.getCheckOutDate());
-            assignment.setStatus("ASSIGNED");
-            newAssignments.add(assignment);
-        }
-        roomRepository.saveAllAndFlush(rooms);
-        reservationRoomRepository.saveAllAndFlush(newAssignments);
+            assignment.setStatus("RELEASED");
+            assignment.setReleasedAt(releasedAt);
+        });
+        roomRepository.saveAllAndFlush(currentRoomIds.stream().map(lockedRooms::get).toList());
+        reservationRoomRepository.saveAllAndFlush(currentAssignments);
 
-        detail.setRoom(rooms.get(0));
-        reservation.setRoom(rooms.get(0));
+        detail.setRoom(null);
+        reservation.setRoom(null);
         reservationDetailRepository.save(detail);
         reservationRepository.save(reservation);
         appendReservationEvent(
                 reservation,
-                "ROOMS_ASSIGNED",
-                "Đã xếp phòng cụ thể cho đặt phòng.",
-                Map.of("roomIds", List.of()),
-                Map.of("roomIds", roomIds));
+                "ROOMS_RELEASED",
+                reason,
+                Map.of("roomIds", currentRoomIds),
+                Map.of("roomIds", List.of()));
         return mapToDTO(reservation);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ReservationDTO> findRoomAssignmentReplay(Long reservationId, List<Long> requestedRoomIds) {
+        Reservation reservation = findReservation(reservationId);
+        requireOperationalAccess(reservation);
+        List<ReservationDetail> details = reservationDetailRepository.findByReservationId(reservationId);
+        if (details.size() != 1) return Optional.empty();
+        List<Long> targetRoomIds;
+        try {
+            targetRoomIds = normalizeAssignmentRoomIds(requestedRoomIds, details.get(0));
+        } catch (IllegalArgumentException exception) {
+            return Optional.empty();
+        }
+        List<Long> currentRoomIds = assignmentRoomIds(reservationRoomRepository
+                .findByReservationDetailIdAndStatus(details.get(0).getId(), "ASSIGNED"));
+        return currentRoomIds.equals(targetRoomIds) ? Optional.of(mapToDTO(reservation)) : Optional.empty();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ReservationDTO> findRoomReleaseReplay(Long reservationId) {
+        Reservation reservation = findReservation(reservationId);
+        requireOperationalAccess(reservation);
+        List<ReservationDetail> details = reservationDetailRepository.findByReservationId(reservationId);
+        if (details.size() != 1) return Optional.empty();
+        boolean released = reservationRoomRepository
+                .findByReservationDetailIdAndStatus(details.get(0).getId(), "ASSIGNED")
+                .isEmpty();
+        return released ? Optional.of(mapToDTO(reservation)) : Optional.empty();
+    }
+
+    private ReservationDTO mutateRoomAssignment(
+            Long reservationId,
+            List<Long> requestedRoomIds,
+            String reason,
+            boolean allowReassignment) {
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy booking."));
+        requireOperationalAccess(reservation);
+        requireRoomAssignmentMutable(reservation);
+
+        List<ReservationDetail> details = reservationDetailRepository.findByReservationId(reservationId);
+        if (details.size() != 1 || details.get(0).getRoomType() == null) {
+            throw new IllegalStateException("Luồng hiện tại chỉ hỗ trợ một loại phòng trong mỗi booking.");
+        }
+        ReservationDetail detail = details.get(0);
+        List<Long> targetRoomIds = normalizeAssignmentRoomIds(requestedRoomIds, detail);
+        List<ReservationRoom> currentAssignments = reservationRoomRepository
+                .findByReservationDetailIdAndStatusForUpdate(detail.getId(), "ASSIGNED");
+        List<Long> currentRoomIds = assignmentRoomIds(currentAssignments);
+        if (currentRoomIds.equals(targetRoomIds)) return mapToDTO(reservation);
+        if (!allowReassignment && !currentAssignments.isEmpty()) {
+            throw new IllegalStateException("Booking đã được gán phòng. Dùng lệnh gán lại có lý do để thay đổi.");
+        }
+
+        List<Long> unionRoomIds = java.util.stream.Stream.concat(
+                        currentRoomIds.stream(), targetRoomIds.stream())
+                .distinct()
+                .sorted()
+                .toList();
+        Map<Long, Room> lockedRooms = lockAssignmentRooms(reservation, unionRoomIds);
+        Set<Long> targetSet = new HashSet<>(targetRoomIds);
+        Set<Long> currentSet = new HashSet<>(currentRoomIds);
+        List<Long> removedRoomIds = currentRoomIds.stream().filter(id -> !targetSet.contains(id)).toList();
+        List<Long> addedRoomIds = targetRoomIds.stream().filter(id -> !currentSet.contains(id)).toList();
+        LocalDateTime changedAt = LocalDateTime.now();
+
+        for (Long roomId : addedRoomIds) {
+            validateAssignableRoom(reservation, detail, lockedRooms.get(roomId));
+        }
+
+        List<ReservationRoom> changedAssignments = new java.util.ArrayList<>();
+        currentAssignments.stream()
+                .filter(assignment -> removedRoomIds.contains(assignment.getRoom().getId()))
+                .forEach(assignment -> {
+                    Room room = lockedRooms.get(assignment.getRoom().getId());
+                    RoomStatePolicy.releaseReservation(room);
+                    assignment.setRoom(room);
+                    assignment.setStatus("RELEASED");
+                    assignment.setReleasedAt(changedAt);
+                    changedAssignments.add(assignment);
+                });
+        for (Long roomId : addedRoomIds) {
+            Room room = lockedRooms.get(roomId);
+            RoomStatePolicy.reserve(room);
+            ReservationRoom assignment = new ReservationRoom();
+            assignment.setReservationDetail(detail);
+            assignment.setRoom(room);
+            assignment.setAssignedAt(changedAt);
+            assignment.setStayStartDate(reservation.getCheckInDate());
+            assignment.setStayEndDate(reservation.getCheckOutDate());
+            assignment.setStatus("ASSIGNED");
+            changedAssignments.add(assignment);
+        }
+
+        List<Room> changedRooms = java.util.stream.Stream.concat(
+                        removedRoomIds.stream(), addedRoomIds.stream())
+                .distinct()
+                .sorted()
+                .map(lockedRooms::get)
+                .toList();
+        if (!changedRooms.isEmpty()) roomRepository.saveAllAndFlush(changedRooms);
+        if (!changedAssignments.isEmpty()) reservationRoomRepository.saveAllAndFlush(changedAssignments);
+
+        Room primaryRoom = lockedRooms.get(targetRoomIds.get(0));
+        detail.setRoom(primaryRoom);
+        reservation.setRoom(primaryRoom);
+        reservationDetailRepository.save(detail);
+        reservationRepository.save(reservation);
+        appendReservationEvent(
+                reservation,
+                currentRoomIds.isEmpty() ? "ROOMS_ASSIGNED" : "ROOMS_REASSIGNED",
+                reason,
+                Map.of("roomIds", currentRoomIds),
+                Map.of("roomIds", targetRoomIds));
+        return mapToDTO(reservation);
+    }
+
+    private List<Long> normalizeAssignmentRoomIds(List<Long> requestedRoomIds, ReservationDetail detail) {
+        if (requestedRoomIds == null || requestedRoomIds.stream().anyMatch(id -> id == null || id <= 0)) {
+            throw new IllegalArgumentException("Mã phòng vật lý phải là số dương.");
+        }
+        List<Long> roomIds = requestedRoomIds.stream().sorted().toList();
+        int requiredQuantity = detail.getQuantity() == null ? 1 : detail.getQuantity();
+        if (requiredQuantity < 1) {
+            throw new IllegalStateException("Số lượng phòng của booking không hợp lệ.");
+        }
+        if (roomIds.size() != requiredQuantity || new HashSet<>(roomIds).size() != roomIds.size()) {
+            throw new IllegalArgumentException("Số phòng được gán phải đúng bằng số lượng đã đặt và không được trùng.");
+        }
+        return roomIds;
+    }
+
+    private List<Long> assignmentRoomIds(List<ReservationRoom> assignments) {
+        return assignments.stream()
+                .map(ReservationRoom::getRoom)
+                .map(Room::getId)
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
+    private Map<Long, Room> lockAssignmentRooms(Reservation reservation, List<Long> roomIds) {
+        if (roomIds.isEmpty()) return Map.of();
+        List<Room> rooms = roomRepository.findAllByHotelIdAndIdInForUpdate(
+                reservation.getHotel().getId(), roomIds);
+        if (rooms.size() != roomIds.size()) {
+            throw new FinancialException(
+                    FinancialErrorCode.CONCURRENT_MODIFICATION,
+                    "Kho phòng đã thay đổi; hãy làm mới và thử lại.");
+        }
+        return rooms.stream().collect(Collectors.toMap(Room::getId, room -> room));
+    }
+
+    private void requireRoomAssignmentMutable(Reservation reservation) {
+        if (!Set.of("PENDING", "PENDING_PAYMENT", "CONFIRMED").contains(reservation.getStatus())) {
+            throw new IllegalStateException("Chỉ có thể phân phòng trước khi khách check-in.");
+        }
+    }
+
+    private String requireAssignmentReason(String reason) {
+        if (reason == null || reason.trim().length() < 3) {
+            throw new IllegalArgumentException("Lý do phân phòng phải có ít nhất 3 ký tự.");
+        }
+        String normalized = reason.trim();
+        if (normalized.length() > 500) {
+            throw new IllegalArgumentException("Lý do phân phòng không được vượt quá 500 ký tự.");
+        }
+        return normalized;
     }
 
     @Transactional
@@ -471,13 +625,14 @@ public class ReservationService {
             throw new IllegalStateException("Booking phải có đúng một loại phòng để chọn phòng vật lý.");
         }
         ReservationDetail detail = details.get(0);
-        List<Long> assignedRoomIds = reservationRoomRepository
+        List<RoomDTO> assignedRooms = reservationRoomRepository
                 .findByReservationDetailIdAndStatus(detail.getId(), "ASSIGNED").stream()
                 .map(ReservationRoom::getRoom)
-                .map(Room::getId)
                 .distinct()
-                .sorted()
+                .sorted(java.util.Comparator.comparing(Room::getId))
+                .map(this::availableRoomDto)
                 .toList();
+        List<Long> assignedRoomIds = assignedRooms.stream().map(RoomDTO::getId).toList();
         List<RoomDTO> candidates = roomRepository.findAvailableRoomsByRoomTypeAndDate(
                         reservation.getHotel().getId(),
                         detail.getRoomType().getId(),
@@ -495,6 +650,7 @@ public class ReservationService {
                 reservation.getCheckInDate(),
                 reservation.getCheckOutDate(),
                 detail.getQuantity() == null ? 1 : detail.getQuantity(),
+                assignedRooms,
                 assignedRoomIds,
                 candidates);
     }

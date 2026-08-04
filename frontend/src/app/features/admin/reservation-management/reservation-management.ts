@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
-import { ReservationService, Reservation } from '../../../core/services/reservation.service';
+import { ReservationService, Reservation, ReservationEvent } from '../../../core/services/reservation.service';
 import { InvoiceService } from '../../../core/services/invoice.service';
 import { Router } from '@angular/router';
 import { CardModule } from 'primeng/card';
@@ -73,6 +73,10 @@ export class ReservationManagement implements OnInit {
   readonly canViewRoomAssignments = this.permissionService.hasPermission(
     FunctionCode.RESERVATION_ASSIGNMENT,
     ActionCode.VIEW,
+  );
+  readonly canManageRoomAssignments = this.permissionService.hasPermission(
+    FunctionCode.RESERVATION_ASSIGNMENT,
+    ActionCode.UPDATE,
   );
   readonly lifecycleActionKey = signal<string | null>(null);
 
@@ -167,7 +171,17 @@ export class ReservationManagement implements OnInit {
       RESERVATION_CREATED: 'Đã tạo đặt phòng',
       RESERVATION_STATUS_CHANGED: 'Đã đổi trạng thái',
       ROOMS_ASSIGNED: 'Đã xếp phòng cụ thể',
+      ROOMS_REASSIGNED: 'Đã gán lại phòng',
+      ROOMS_RELEASED: 'Đã giải phóng phòng',
     } as Record<string, string>)[eventType] || eventType;
+  }
+
+  getAssignmentEventSummary(event: ReservationEvent): string {
+    if (!['ROOMS_ASSIGNED', 'ROOMS_REASSIGNED', 'ROOMS_RELEASED'].includes(event.eventType)) return '';
+    const before = this.roomIdsFromState(event.beforeState);
+    const after = this.roomIdsFromState(event.afterState);
+    const format = (ids: number[]) => ids.length ? ids.map(id => `#${id}`).join(', ') : 'Chưa gán';
+    return `Trước: ${format(before)} · Sau: ${format(after)}`;
   }
 
   updateStatus(id: number | undefined, status: string) {
@@ -240,6 +254,16 @@ export class ReservationManagement implements OnInit {
     this.roomPickerSelection = roomIds;
   }
 
+  handleRoomAssignmentApplied(reservation: Reservation) {
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Đã cập nhật phân phòng',
+      detail: `Đặt phòng RES-${reservation.id} đã được đồng bộ.`,
+    });
+    this.loadReservations();
+    if (reservation.id && this.showDetailDialog) this.openReservationDetail(reservation.id);
+  }
+
   canOpenRoomPicker(status: string | undefined): boolean {
     return this.canViewRoomAssignments && !new Set([
       'CHECKED_OUT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED', 'NO_SHOW',
@@ -308,5 +332,17 @@ export class ReservationManagement implements OnInit {
           });
         },
       });
+  }
+
+  private roomIdsFromState(value?: string): number[] {
+    if (!value) return [];
+    try {
+      const parsed = JSON.parse(value) as { roomIds?: unknown[] };
+      return Array.isArray(parsed.roomIds)
+        ? parsed.roomIds.filter((id): id is number => typeof id === 'number')
+        : [];
+    } catch {
+      return [];
+    }
   }
 }

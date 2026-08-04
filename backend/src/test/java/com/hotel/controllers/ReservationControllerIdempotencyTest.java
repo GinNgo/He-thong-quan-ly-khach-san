@@ -2,6 +2,7 @@ package com.hotel.controllers;
 
 import com.hotel.dtos.ReservationDTO;
 import com.hotel.dtos.ReservationRequest;
+import com.hotel.dtos.RoomAssignmentMutationRequest;
 import com.hotel.paymentprovider.idempotency.FinancialIdempotencyService;
 import com.hotel.paymentprovider.idempotency.MutationIdempotencyService;
 import com.hotel.services.ReservationService;
@@ -16,6 +17,8 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.core.Authentication;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -96,6 +99,46 @@ class ReservationControllerIdempotencyTest {
         assertEquals("RESERVATION_CANCEL", command.operation());
         assertEquals("customer@example.test:77", command.scopeKey());
         assertEquals("cancel-key", command.idempotencyKey());
+    }
+
+    @Test
+    void roomAssignmentUsesPersistedIdempotencyAndRecoversACommittedTargetSet() {
+        RoomAssignmentMutationRequest request = new RoomAssignmentMutationRequest(
+                List.of(11L, 12L), "Đổi phòng theo yêu cầu khách");
+        ReservationDTO recovered = new ReservationDTO();
+        recovered.setId(88L);
+        when(authentication.getName()).thenReturn("receptionist@example.test");
+        when(reservationService.findRoomAssignmentReplay(88L, List.of(11L, 12L)))
+                .thenReturn(Optional.of(recovered));
+        when(mutationIdempotencyService.execute(any(), anyInt(), eq(ReservationDTO.class), any(), any()))
+                .thenAnswer(invocation -> mutation(invocation.getArgument(4)));
+
+        var response = controller.updateRoomAssignment(
+                authentication, 88L, request, "room-key", servletRequest("corr-room"));
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(88L, response.getBody().getId());
+        verify(reservationService, never()).updateRoomAssignment(88L, request);
+        FinancialIdempotencyService.BeginCommand command = capturedCreateCommand();
+        assertEquals("RESERVATION_ROOM_ASSIGNMENT", command.operation());
+        assertEquals("receptionist@example.test:88", command.scopeKey());
+        assertEquals("room-key", command.idempotencyKey());
+        assertEquals("corr-room", command.correlationId());
+    }
+
+    @Test
+    void roomAssignmentRejectsMissingIdempotencyKey() {
+        when(authentication.getName()).thenReturn("receptionist@example.test");
+
+        assertThrows(IllegalArgumentException.class, () -> controller.updateRoomAssignment(
+                authentication,
+                88L,
+                new RoomAssignmentMutationRequest(List.of(11L), "Phân phòng mới"),
+                " ",
+                servletRequest("corr-room")));
+
+        verify(mutationIdempotencyService, never())
+                .execute(any(), anyInt(), eq(ReservationDTO.class), any(), any());
     }
 
     private FinancialIdempotencyService.BeginCommand capturedCommand() {

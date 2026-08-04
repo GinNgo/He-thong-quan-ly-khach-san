@@ -1,6 +1,8 @@
 package com.hotel.services;
 
 import com.hotel.dtos.AssignRoomsRequest;
+import com.hotel.dtos.RoomAssignmentMutationRequest;
+import com.hotel.dtos.RoomAssignmentReleaseRequest;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.Reservation;
 import com.hotel.entities.ReservationDetail;
@@ -33,10 +35,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
@@ -122,7 +126,7 @@ class ReservationLifecycleLockingTest {
         AssignRoomsRequest request = request(12L, 11L);
         when(reservationRoomRepository.findByReservationDetailIdAndStatusForUpdate(71L, "ASSIGNED"))
                 .thenReturn(List.of());
-        when(roomRepository.findAllByIdForUpdate(List.of(11L, 12L)))
+        when(roomRepository.findAllByHotelIdAndIdInForUpdate(3L, List.of(11L, 12L)))
                 .thenReturn(List.of(firstRoom, secondRoom));
         when(reservationRepository.save(reservation)).thenReturn(reservation);
 
@@ -132,7 +136,7 @@ class ReservationLifecycleLockingTest {
         order.verify(reservationRepository).findByIdForUpdate(42L);
         order.verify(reservationRoomRepository)
                 .findByReservationDetailIdAndStatusForUpdate(71L, "ASSIGNED");
-        order.verify(roomRepository).findAllByIdForUpdate(List.of(11L, 12L));
+        order.verify(roomRepository).findAllByHotelIdAndIdInForUpdate(3L, List.of(11L, 12L));
         ArgumentCaptor<List<ReservationRoom>> assignments = ArgumentCaptor.forClass(List.class);
         verify(reservationRoomRepository).saveAllAndFlush(assignments.capture());
         assertThat(assignments.getValue())
@@ -157,6 +161,204 @@ class ReservationLifecycleLockingTest {
         verify(roomRepository, never()).findAllByIdForUpdate(any());
         verify(reservationRoomRepository, never()).saveAllAndFlush(any());
         verify(reservationRepository, never()).save(any());
+        verify(operationalAuditService, never()).append(any());
+    }
+
+    @Test
+    void exactReassignmentReplayReturnsWithoutWritesOrDuplicateHistory() {
+        detail.setQuantity(1);
+        firstRoom.setStatus("RESERVED");
+        ReservationRoom current = assignment(detail, firstRoom);
+        when(reservationRoomRepository.findByReservationDetailIdAndStatusForUpdate(71L, "ASSIGNED"))
+                .thenReturn(List.of(current));
+        when(reservationRoomRepository.findByReservationDetailIdAndStatus(71L, "ASSIGNED"))
+                .thenReturn(List.of(current));
+
+        reservationService.updateRoomAssignment(
+                42L, new RoomAssignmentMutationRequest(List.of(11L), "Giữ nguyên phòng đã xác nhận"));
+
+        verify(roomRepository, never()).findAllByHotelIdAndIdInForUpdate(any(), any());
+        verify(reservationRoomRepository, never()).saveAllAndFlush(any());
+        verify(operationalAuditService, never()).append(any());
+    }
+
+    @Test
+    void idempotencyRecoveryReturnsOnlyCommittedAssignmentOrReleaseState() {
+        detail.setQuantity(1);
+        firstRoom.setStatus("RESERVED");
+        ReservationRoom current = assignment(detail, firstRoom);
+        when(reservationRepository.findById(42L)).thenReturn(Optional.of(reservation));
+        when(reservationRoomRepository.findByReservationDetailIdAndStatus(71L, "ASSIGNED"))
+                .thenReturn(List.of(current));
+
+        assertThat(reservationService.findRoomAssignmentReplay(42L, List.of(11L))).isPresent();
+        assertThat(reservationService.findRoomAssignmentReplay(42L, List.of(12L))).isEmpty();
+
+        when(reservationRoomRepository.findByReservationDetailIdAndStatus(71L, "ASSIGNED"))
+                .thenReturn(List.of());
+        assertThat(reservationService.findRoomReleaseReplay(42L)).isPresent();
+    }
+
+    @Test
+    void reassignmentPreservesIntersectionAndLocksTheSortedRoomUnion() {
+        Room thirdRoom = room(reservation.getHotel(), detail.getRoomType(), 13L, "103");
+        firstRoom.setStatus("RESERVED");
+        secondRoom.setStatus("RESERVED");
+        ReservationRoom firstAssignment = assignment(81L, detail, firstRoom);
+        ReservationRoom retainedAssignment = assignment(82L, detail, secondRoom);
+        LocalDateTime originalAssignedAt = LocalDateTime.of(2028, 1, 5, 10, 30);
+        retainedAssignment.setAssignedAt(originalAssignedAt);
+        when(reservationRoomRepository.findByReservationDetailIdAndStatusForUpdate(71L, "ASSIGNED"))
+                .thenReturn(List.of(firstAssignment, retainedAssignment));
+        when(roomRepository.findAllByHotelIdAndIdInForUpdate(3L, List.of(11L, 12L, 13L)))
+                .thenReturn(List.of(firstRoom, secondRoom, thirdRoom));
+        when(reservationRepository.save(reservation)).thenReturn(reservation);
+
+        reservationService.updateRoomAssignment(
+                42L,
+                new RoomAssignmentMutationRequest(List.of(13L, 12L), "Đổi một phòng do yêu cầu tầng cao"));
+
+        InOrder order = inOrder(reservationRepository, reservationRoomRepository, roomRepository);
+        order.verify(reservationRepository).findByIdForUpdate(42L);
+        order.verify(reservationRoomRepository)
+                .findByReservationDetailIdAndStatusForUpdate(71L, "ASSIGNED");
+        order.verify(roomRepository).findAllByHotelIdAndIdInForUpdate(3L, List.of(11L, 12L, 13L));
+        ArgumentCaptor<List<ReservationRoom>> changed = ArgumentCaptor.forClass(List.class);
+        verify(reservationRoomRepository).saveAllAndFlush(changed.capture());
+        assertThat(changed.getValue()).hasSize(2);
+        assertThat(changed.getValue()).anySatisfy(item -> {
+            assertThat(item).isSameAs(firstAssignment);
+            assertThat(item.getStatus()).isEqualTo("RELEASED");
+        });
+        assertThat(changed.getValue()).anySatisfy(item -> {
+            assertThat(item.getRoom()).isSameAs(thirdRoom);
+            assertThat(item.getStatus()).isEqualTo("ASSIGNED");
+        });
+        assertThat(retainedAssignment.getStatus()).isEqualTo("ASSIGNED");
+        assertThat(retainedAssignment.getAssignedAt()).isEqualTo(originalAssignedAt);
+        assertThat(firstRoom.getStatus()).isEqualTo("AVAILABLE");
+        assertThat(secondRoom.getStatus()).isEqualTo("RESERVED");
+        assertThat(thirdRoom.getStatus()).isEqualTo("RESERVED");
+        assertThat(detail.getRoom()).isSameAs(secondRoom);
+        ArgumentCaptor<OperationalAuditService.AuditCommand> audit =
+                ArgumentCaptor.forClass(OperationalAuditService.AuditCommand.class);
+        verify(operationalAuditService).append(audit.capture());
+        assertThat(audit.getValue().eventType()).isEqualTo("ROOMS_REASSIGNED");
+        assertThat(audit.getValue().reason()).isEqualTo("Đổi một phòng do yêu cầu tầng cao");
+    }
+
+    @Test
+    void reassignmentConflictLeavesCurrentAssignmentStateUntouched() {
+        Room thirdRoom = room(reservation.getHotel(), detail.getRoomType(), 13L, "103");
+        firstRoom.setStatus("RESERVED");
+        secondRoom.setStatus("RESERVED");
+        ReservationRoom firstAssignment = assignment(81L, detail, firstRoom);
+        ReservationRoom secondAssignment = assignment(82L, detail, secondRoom);
+        when(reservationRoomRepository.findByReservationDetailIdAndStatusForUpdate(71L, "ASSIGNED"))
+                .thenReturn(List.of(firstAssignment, secondAssignment));
+        when(roomRepository.findAllByHotelIdAndIdInForUpdate(3L, List.of(11L, 12L, 13L)))
+                .thenReturn(List.of(firstRoom, secondRoom, thirdRoom));
+        when(reservationRoomRepository.hasConflictingAssignment(
+                13L, 42L, RoomAvailabilityService.RELEASED_RESERVATION_STATUSES,
+                reservation.getCheckInDate(), reservation.getCheckOutDate())).thenReturn(true);
+
+        assertThatThrownBy(() -> reservationService.updateRoomAssignment(
+                42L, new RoomAssignmentMutationRequest(List.of(12L, 13L), "Đổi phòng theo yêu cầu")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("booking khác");
+
+        assertThat(firstAssignment.getStatus()).isEqualTo("ASSIGNED");
+        assertThat(secondAssignment.getStatus()).isEqualTo("ASSIGNED");
+        assertThat(firstRoom.getStatus()).isEqualTo("RESERVED");
+        assertThat(secondRoom.getStatus()).isEqualTo("RESERVED");
+        assertThat(thirdRoom.getStatus()).isEqualTo("AVAILABLE");
+        verify(roomRepository, never()).saveAllAndFlush(any());
+        verify(reservationRoomRepository, never()).saveAllAndFlush(any());
+        verify(operationalAuditService, never()).append(any());
+    }
+
+    @Test
+    void reassignmentDoesNotReadOrMutateForeignPropertyRoomIds() {
+        firstRoom.setStatus("RESERVED");
+        secondRoom.setStatus("RESERVED");
+        ReservationRoom firstAssignment = assignment(81L, detail, firstRoom);
+        ReservationRoom secondAssignment = assignment(82L, detail, secondRoom);
+        when(reservationRoomRepository.findByReservationDetailIdAndStatusForUpdate(71L, "ASSIGNED"))
+                .thenReturn(List.of(firstAssignment, secondAssignment));
+        when(roomRepository.findAllByHotelIdAndIdInForUpdate(3L, List.of(11L, 12L, 99L)))
+                .thenReturn(List.of(firstRoom, secondRoom));
+
+        assertThatThrownBy(() -> reservationService.updateRoomAssignment(
+                42L, new RoomAssignmentMutationRequest(List.of(12L, 99L), "Đổi phòng theo yêu cầu")))
+                .isInstanceOf(com.hotel.paymentprovider.error.FinancialException.class)
+                .hasMessageContaining("Kho phòng đã thay đổi");
+
+        verify(roomRepository).findAllByHotelIdAndIdInForUpdate(3L, List.of(11L, 12L, 99L));
+        verify(roomRepository, never()).findAllByIdForUpdate(List.of(11L, 12L, 99L));
+        verify(operationalAuditService, never()).append(any());
+    }
+
+    @Test
+    void releaseRequiresReasonAndIsReplaySafeWhenNoAssignmentRemains() {
+        when(reservationRoomRepository.findByReservationDetailIdAndStatusForUpdate(71L, "ASSIGNED"))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(() -> reservationService.releaseRoomAssignment(
+                42L, new RoomAssignmentReleaseRequest(" ")))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        reservationService.releaseRoomAssignment(
+                42L, new RoomAssignmentReleaseRequest("Khách đổi ngày nhận phòng"));
+
+        verify(roomRepository, never()).findAllByHotelIdAndIdInForUpdate(any(), any());
+        verify(reservationRoomRepository, never()).saveAllAndFlush(any());
+        verify(operationalAuditService, never()).append(any());
+    }
+
+    @Test
+    void releaseLocksRoomsClearsLegacyPointersAndWritesHistory() {
+        firstRoom.setStatus("RESERVED");
+        secondRoom.setStatus("RESERVED");
+        detail.setRoom(firstRoom);
+        reservation.setRoom(firstRoom);
+        ReservationRoom firstAssignment = assignment(81L, detail, firstRoom);
+        ReservationRoom secondAssignment = assignment(82L, detail, secondRoom);
+        when(reservationRoomRepository.findByReservationDetailIdAndStatusForUpdate(71L, "ASSIGNED"))
+                .thenReturn(List.of(firstAssignment, secondAssignment));
+        when(roomRepository.findAllByHotelIdAndIdInForUpdate(3L, List.of(11L, 12L)))
+                .thenReturn(List.of(firstRoom, secondRoom));
+        when(reservationRepository.save(reservation)).thenReturn(reservation);
+
+        reservationService.releaseRoomAssignment(
+                42L, new RoomAssignmentReleaseRequest("Giải phóng để xử lý bảo trì"));
+
+        InOrder order = inOrder(reservationRepository, reservationRoomRepository, roomRepository);
+        order.verify(reservationRepository).findByIdForUpdate(42L);
+        order.verify(reservationRoomRepository)
+                .findByReservationDetailIdAndStatusForUpdate(71L, "ASSIGNED");
+        order.verify(roomRepository).findAllByHotelIdAndIdInForUpdate(3L, List.of(11L, 12L));
+        assertThat(firstRoom.getStatus()).isEqualTo("AVAILABLE");
+        assertThat(secondRoom.getStatus()).isEqualTo("AVAILABLE");
+        assertThat(firstAssignment.getStatus()).isEqualTo("RELEASED");
+        assertThat(secondAssignment.getStatus()).isEqualTo("RELEASED");
+        assertThat(detail.getRoom()).isNull();
+        assertThat(reservation.getRoom()).isNull();
+        ArgumentCaptor<OperationalAuditService.AuditCommand> audit =
+                ArgumentCaptor.forClass(OperationalAuditService.AuditCommand.class);
+        verify(operationalAuditService).append(audit.capture());
+        assertThat(audit.getValue().eventType()).isEqualTo("ROOMS_RELEASED");
+        assertThat(audit.getValue().reason()).isEqualTo("Giải phóng để xử lý bảo trì");
+    }
+
+    @Test
+    void assignmentRejectsNullRoomIdsInsteadOfSilentlyDroppingThem() {
+        assertThatThrownBy(() -> reservationService.updateRoomAssignment(
+                42L, new RoomAssignmentMutationRequest(java.util.Arrays.asList(11L, null), "Phân phòng mới")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("số dương");
+
+        verify(reservationRoomRepository, never())
+                .findByReservationDetailIdAndStatusForUpdate(71L, "ASSIGNED");
     }
 
     @Test
@@ -258,8 +460,12 @@ class ReservationLifecycleLockingTest {
     }
 
     private ReservationRoom assignment(ReservationDetail reservationDetail, Room room) {
+        return assignment(81L, reservationDetail, room);
+    }
+
+    private ReservationRoom assignment(Long id, ReservationDetail reservationDetail, Room room) {
         ReservationRoom assignment = new ReservationRoom();
-        assignment.setId(81L);
+        assignment.setId(id);
         assignment.setReservationDetail(reservationDetail);
         assignment.setRoom(room);
         assignment.setStatus("ASSIGNED");

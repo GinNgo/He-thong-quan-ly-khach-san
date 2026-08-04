@@ -19,6 +19,9 @@ describe('ReservationManagement lifecycle permissions', () => {
     cancelOperational: ReturnType<typeof vi.fn>;
     markNoShow: ReturnType<typeof vi.fn>;
     updateReservationStatus: ReturnType<typeof vi.fn>;
+    getAvailableRoomContext: ReturnType<typeof vi.fn>;
+    updateRoomAssignment: ReturnType<typeof vi.fn>;
+    releaseRoomAssignment: ReturnType<typeof vi.fn>;
   };
 
   const reservation: Reservation = {
@@ -44,6 +47,20 @@ describe('ReservationManagement lifecycle permissions', () => {
       cancelOperational: vi.fn(() => of(reservation)),
       markNoShow: vi.fn(() => of(reservation)),
       updateReservationStatus: vi.fn(() => of(reservation)),
+      getAvailableRoomContext: vi.fn(() => of({
+        reservationId: 55,
+        hotelId: 3,
+        roomTypeId: 7,
+        roomTypeName: 'Deluxe',
+        checkInDate: '2026-08-02',
+        checkOutDate: '2026-08-03',
+        requiredQuantity: 1,
+        assignedRooms: [],
+        assignedRoomIds: [],
+        candidates: [],
+      })),
+      updateRoomAssignment: vi.fn(() => of(reservation)),
+      releaseRoomAssignment: vi.fn(() => of(reservation)),
     };
 
     await TestBed.configureTestingModule({
@@ -61,6 +78,8 @@ describe('ReservationManagement lifecycle permissions', () => {
             hasPermission: vi.fn((functionCode: string, actionCode: number) =>
               (functionCode === FunctionCode.RESERVATION && actionCode === ActionCode.UPDATE) ||
               (functionCode === FunctionCode.RESERVATION_AMEND && actionCode === ActionCode.UPDATE) ||
+              (functionCode === FunctionCode.RESERVATION_ASSIGNMENT &&
+                (actionCode === ActionCode.VIEW || actionCode === ActionCode.UPDATE)) ||
               (functionCode === FunctionCode.HOTEL_SERVICE && actionCode === ActionCode.VIEW) ||
               (functionCode === FunctionCode.CHECKIN && actionCode === ActionCode.UPDATE) ||
               (functionCode === FunctionCode.RESERVATION_CANCEL && actionCode === ActionCode.UPDATE) ||
@@ -88,6 +107,32 @@ describe('ReservationManagement lifecycle permissions', () => {
     expect(reservationService.checkIn).toHaveBeenCalledWith(55);
     expect(reservationService.markNoShow).toHaveBeenCalledWith(55);
     expect(reservationService.cancelOperational).toHaveBeenCalledWith(55);
+  });
+
+  it('opens the assignment workflow only with the dedicated view and update masks', () => {
+    component.openRoomPicker(reservation);
+    fixture.detectChanges();
+
+    expect(component.showRoomPickerDialog).toBe(true);
+    expect(component.canViewRoomAssignments).toBe(true);
+    expect(component.canManageRoomAssignments).toBe(true);
+    expect(fixture.nativeElement.querySelector('app-physical-room-picker')).not.toBeNull();
+  });
+
+  it('keeps assignment mutation hidden for a view-only operator', () => {
+    const permissionService = TestBed.inject(PermissionService) as unknown as { hasPermission: ReturnType<typeof vi.fn> };
+    permissionService.hasPermission.mockImplementation((functionCode: string, actionCode: number) =>
+      functionCode === FunctionCode.RESERVATION_ASSIGNMENT && actionCode === ActionCode.VIEW);
+
+    fixture = TestBed.createComponent(ReservationManagement);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    component.openRoomPicker(reservation);
+    fixture.detectChanges();
+
+    expect(component.canViewRoomAssignments).toBe(true);
+    expect(component.canManageRoomAssignments).toBe(false);
+    expect(fixture.nativeElement.querySelector('.assignment-command')).toBeNull();
   });
 
   it('does not render lifecycle controls when the dedicated masks are absent', async () => {

@@ -129,6 +129,42 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.assignRooms(id, request));
     }
 
+    @PostMapping("/{id}/room-assignment")
+    @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.UPDATE)
+    public ResponseEntity<ReservationDTO> updateRoomAssignment(
+            Authentication authentication,
+            @PathVariable Long id,
+            @RequestBody RoomAssignmentMutationRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            HttpServletRequest httpRequest) {
+        ReservationDTO response = mutationIdempotencyService.execute(
+                mutationCommand("RESERVATION_ROOM_ASSIGNMENT", authentication.getName() + ":" + id,
+                idempotencyKey, request, httpRequest),
+                HttpStatus.OK.value(),
+                ReservationDTO.class,
+                () -> reservationService.updateRoomAssignment(id, request),
+                () -> reservationService.findRoomAssignmentReplay(id, request.roomIds()).orElse(null));
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/room-assignment/release")
+    @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.UPDATE)
+    public ResponseEntity<ReservationDTO> releaseRoomAssignment(
+            Authentication authentication,
+            @PathVariable Long id,
+            @RequestBody RoomAssignmentReleaseRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            HttpServletRequest httpRequest) {
+        ReservationDTO response = mutationIdempotencyService.execute(
+                mutationCommand("RESERVATION_ROOM_RELEASE", authentication.getName() + ":" + id,
+                idempotencyKey, request, httpRequest),
+                HttpStatus.OK.value(),
+                ReservationDTO.class,
+                () -> reservationService.releaseRoomAssignment(id, request),
+                () -> reservationService.findRoomReleaseReplay(id).orElse(null));
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/{id}/check-in")
     @Permission(function = FunctionCode.CHECKIN, action = ActionCode.UPDATE)
     public ResponseEntity<ReservationDTO> checkIn(@PathVariable Long id) {

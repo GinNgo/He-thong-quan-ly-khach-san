@@ -229,7 +229,11 @@ export class ProfileComponent implements OnInit {
   logout(): void { this.authService.logout(); this.router.navigate(['/']); }
   avatarError(): void { this.profileForm.patchValue({ avatarUrl: '' }); }
   getStatusLabel(status: string): string { return ({PENDING:'Chờ xác nhận',PENDING_PAYMENT:'Chờ thanh toán',CONFIRMED:'Đã xác nhận',CHECKED_IN:'Đã nhận phòng',CHECKED_OUT:'Đã trả phòng',CANCELLED:'Đã hủy'} as Record<string,string>)[status] || status; }
-  getEventLabel(eventType: string): string { return ({RESERVATION_CREATED:'Đã tạo đặt phòng',RESERVATION_STATUS_CHANGED:'Đã đổi trạng thái',ROOMS_ASSIGNED:'Đã xếp phòng cụ thể'} as Record<string,string>)[eventType] || eventType; }
+  getEventLabel(eventType: string): string { return ({RESERVATION_CREATED:'Đã tạo đặt phòng',RESERVATION_STATUS_CHANGED:'Đã đổi trạng thái',ROOMS_ASSIGNED:'Đã xếp phòng cụ thể',ROOMS_REASSIGNED:'Đã gán lại phòng',ROOMS_RELEASED:'Đã giải phóng phòng'} as Record<string,string>)[eventType] || eventType; }
+
+  assignedRoomNumbers(booking: Reservation): string[] {
+    return [...new Set((booking.details || []).flatMap(detail => detail.assignedRoomNumbers || []))];
+  }
 
   loadProfile(): void {
     this.loading = true;

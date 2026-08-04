@@ -53,8 +53,29 @@ describe('ReservationService lifecycle commands', () => {
       checkInDate: '2026-08-10',
       checkOutDate: '2026-08-12',
       requiredQuantity: 2,
+      assignedRooms: [],
       assignedRoomIds: [],
       candidates: [],
     });
+  });
+
+  it('sends idempotent assignment and release commands', () => {
+    service.updateRoomAssignment(88, {
+      roomIds: [11, 12],
+      reason: 'Phân phòng gần thang máy',
+    }, 'assignment-key').subscribe();
+
+    const assignment = http.expectOne(`${environment.apiUrl}/reservations/88/room-assignment`);
+    expect(assignment.request.method).toBe('POST');
+    expect(assignment.request.headers.get('Idempotency-Key')).toBe('assignment-key');
+    expect(assignment.request.body).toEqual({ roomIds: [11, 12], reason: 'Phân phòng gần thang máy' });
+    assignment.flush({ id: 88 });
+
+    service.releaseRoomAssignment(88, 'Giải phóng để bảo trì', 'release-key').subscribe();
+    const release = http.expectOne(`${environment.apiUrl}/reservations/88/room-assignment/release`);
+    expect(release.request.method).toBe('POST');
+    expect(release.request.headers.get('Idempotency-Key')).toBe('release-key');
+    expect(release.request.body).toEqual({ reason: 'Giải phóng để bảo trì' });
+    release.flush({ id: 88 });
   });
 });

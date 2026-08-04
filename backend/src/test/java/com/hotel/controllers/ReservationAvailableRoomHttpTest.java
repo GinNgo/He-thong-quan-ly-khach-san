@@ -52,7 +52,7 @@ class ReservationAvailableRoomHttpTest {
         when(reservationService.getAvailableRoomContext(88L)).thenReturn(new AvailableRoomContextDTO(
                 88L, 3L, 7L, "Deluxe",
                 LocalDate.of(2026, 8, 10), LocalDate.of(2026, 8, 12),
-                2, List.of(19L), List.of(room)));
+                2, List.of(), List.of(19L), List.of(room)));
 
         mockMvc.perform(get("/api/reservations/88/available-rooms/context"))
                 .andExpect(status().isOk())

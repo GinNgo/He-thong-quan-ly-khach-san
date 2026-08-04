@@ -2,9 +2,9 @@
   <header>
     <div>
       <span>Kho phòng vật lý</span>
-      <h2 id="room-picker-title">Chọn phòng sẵn sàng cho đặt phòng</h2>
+      <h2 id="room-picker-title">Phân phòng cho đặt phòng</h2>
     </div>
-    <button type="button" class="refresh" (click)="load()" [disabled]="loading">
+    <button type="button" class="refresh" (click)="load()" [disabled]="loading || mutationBusy">
       <i class="pi pi-refresh" [class.pi-spin]="loading" aria-hidden="true"></i>
       Làm mới
     </button>
@@ -29,11 +29,13 @@
       <div><small>Đã chọn</small><strong [class.complete]="selectionComplete">{{ selectedCount }}/{{ data.requiredQuantity }}</strong></div>
     </div>
 
-    <div *ngIf="data.assignedRoomIds.length" class="assigned-note">
-      Booking đang có {{ data.assignedRoomIds.length }} phòng được gán. Bộ chọn chỉ hiển thị ứng viên còn sẵn sàng để đối chiếu hoặc gán lại ở bước phân phòng.
+    <div *ngIf="hasAssignment" class="assigned-note">
+      Các phòng có nhãn “Đang gán” là phân phòng hiện tại. Giữ nguyên phòng cần bảo toàn và chọn
+      ứng viên mới để gán lại trong một giao dịch.
     </div>
     <div *ngIf="hasShortage" class="shortage" role="alert">
-      Chỉ có {{ data.candidates.length }} phòng phù hợp cho {{ data.requiredQuantity }} phòng cần chọn. Hãy làm mới sau khi housekeeping hoặc bảo trì cập nhật trạng thái.
+      Chỉ có {{ visibleRooms.length }} phòng có thể giữ hoặc chọn cho {{ data.requiredQuantity }} phòng cần gán.
+      Hãy làm mới sau khi housekeeping hoặc bảo trì cập nhật trạng thái.
     </div>
     <div *ngIf="isEmpty" class="picker-state">
       <i class="pi pi-building" aria-hidden="true"></i>
@@ -41,24 +43,72 @@
       <span>Cần {{ data.requiredQuantity }} phòng trong khoảng lưu trú này. Hãy làm mới sau khi trạng thái vận hành thay đổi.</span>
     </div>
 
-    <div class="room-grid" *ngIf="data.candidates.length">
+    <div class="room-grid" *ngIf="visibleRooms.length">
       <button
-        *ngFor="let room of data.candidates; trackBy: trackRoom"
+        *ngFor="let room of visibleRooms; trackBy: trackRoom"
         type="button"
         class="room-card"
         [class.selected]="isSelected(room.id)"
-        [disabled]="!isSelected(room.id) && selectedCount >= data.requiredQuantity"
+        [class.current]="isCurrentlyAssigned(room.id)"
+        [disabled]="!allowMutation || mutationBusy || (!isSelected(room.id) && selectedCount >= data.requiredQuantity)"
         [attr.aria-pressed]="isSelected(room.id)"
         (click)="toggle(room)">
         <span class="floor">Tầng {{ room.floor }}</span>
         <strong>Phòng {{ room.roomNumber }}</strong>
-        <small>{{ room.housekeepingStatus === 'INSPECTED' ? 'Đã kiểm tra' : 'Sạch' }} · Không bảo trì</small>
+        <small *ngIf="isCurrentlyAssigned(room.id)" class="current-label">Đang gán</small>
+        <small *ngIf="!isCurrentlyAssigned(room.id)">{{ room.housekeepingStatus === 'INSPECTED' ? 'Đã kiểm tra' : 'Sạch' }} · Không bảo trì</small>
         <i class="pi" [class.pi-check-circle]="isSelected(room.id)" [class.pi-circle]="!isSelected(room.id)" aria-hidden="true"></i>
       </button>
     </div>
 
+    <div *ngIf="allowMutation" class="assignment-command">
+      <label for="assignment-reason">Lý do phân phòng</label>
+      <textarea
+        id="assignment-reason"
+        [(ngModel)]="reason"
+        maxlength="500"
+        rows="3"
+        placeholder="Ví dụ: khách yêu cầu tầng cao, đổi phòng do bảo trì..."
+        [disabled]="mutationBusy"
+      ></textarea>
+      <small>Nhập từ 3 đến 500 ký tự. Lý do được lưu vào lịch sử đặt phòng.</small>
+
+      <div *ngIf="mutationError" class="mutation-message mutation-message--error" role="alert">{{ mutationError }}</div>
+      <div *ngIf="mutationSuccess" class="mutation-message mutation-message--success" role="status">{{ mutationSuccess }}</div>
+
+      <div class="assignment-actions" *ngIf="!releaseConfirmation">
+        <button
+          type="button"
+          class="primary-action"
+          data-action="apply-room-assignment"
+          [disabled]="!canApplyAssignment"
+          (click)="applyAssignment()">
+          {{ hasAssignment ? 'Gán lại phòng' : 'Gán phòng' }}
+        </button>
+        <button
+          *ngIf="hasAssignment"
+          type="button"
+          class="danger-action"
+          data-action="begin-room-release"
+          [disabled]="!canReleaseAssignment"
+          (click)="beginRelease()">
+          Giải phóng toàn bộ phòng
+        </button>
+      </div>
+
+      <div *ngIf="releaseConfirmation" class="release-confirmation" role="alertdialog" aria-label="Xác nhận giải phóng phòng">
+        <strong>Xác nhận giải phóng {{ currentAssignedIds.length }} phòng đang gán?</strong>
+        <span>Đặt phòng sẽ quay về trạng thái chưa phân phòng và phải gán lại trước khi nhận phòng.</span>
+        <div>
+          <button type="button" (click)="cancelRelease()">Quay lại</button>
+          <button type="button" class="danger-action" data-action="confirm-room-release" [disabled]="!canReleaseAssignment" (click)="releaseAssignment()">Xác nhận giải phóng</button>
+        </div>
+      </div>
+    </div>
+
     <footer>
-      <span *ngIf="selectionComplete">Đã chọn đủ số lượng. Danh sách này sẵn sàng cho bước gán phòng.</span>
+      <span *ngIf="selectionComplete && !selectionChanged">Phân phòng hiện tại đang được giữ nguyên.</span>
+      <span *ngIf="selectionComplete && selectionChanged">Đã chọn đủ số lượng; nhập lý do để xác nhận thay đổi.</span>
       <span *ngIf="!selectionComplete && !hasShortage && !isEmpty">Chọn đúng {{ data.requiredQuantity }} phòng để tiếp tục.</span>
     </footer>
   </ng-container>
