@@ -24,6 +24,12 @@ below after merging or cherry-picking the task commits.
 | T302 | `8834080` | Backend policy/locking/IDOR/HTTP PASS; frontend 16/16 | Authenticated real API/browser journey is blocked because no usable local staff demo credential is configured. Evidence: `docs/testing/evidence/007/remediation/T302-check-in-readiness.md`. |
 | T303 | `c6a8340` | Isolated backend compile; backend 6/6; frontend 10/10; Angular development build PASS | Authenticated real quote/create/assignment journey is blocked by the same missing local staff demo credential. Evidence: `docs/testing/evidence/007/remediation/T303-staff-booking.md`. |
 
+## Blocked Tasks
+
+| Task | Evidence | Stop gate |
+|---|---|---|
+| T308 | `docs/testing/evidence/007/remediation/T308-debt-overpayment-policy-gate.md` | Missing owner-approved debt limits/approval rules and overpayment refund-versus-credit/accounting policy; current behavior remains fail-closed. |
+
 ## Coordinator Updates
 
 - Mark T295 complete in `specs/007-payment-billing-completion/tasks.md`.
@@ -53,3 +59,5 @@ below after merging or cherry-picking the task commits.
 - Promote STAY-017 to `COMPLETE_VERIFIED` in
   `docs/audit/system/MASTER_FUNCTION_INVENTORY.md` and add T307 HTTP/database evidence to
   `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md`.
+- Keep T308 open and classify STAY-018 as `BLOCKED_EXTERNAL` in the aggregate
+  inventories until the versioned debt/overpayment policy described in the handoff is approved.
