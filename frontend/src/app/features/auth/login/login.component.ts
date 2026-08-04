@@ -2,6 +2,7 @@ import { Component, ChangeDetectionStrategy, inject, ChangeDetectorRef, OnInit }
 import { SharedModule } from '@app/shared/shared.module';
 import { AuthService } from '@app/core/services/auth';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
+import { isBookingReturnUrl, safeClientReturnUrl } from '@app/core/auth/client-return-url';
 
 @Component({
   standalone: true,
@@ -27,7 +28,7 @@ export class LoginComponent implements OnInit {
   returnUrl: string = '/';
 
   ngOnInit() {
-    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
+    this.returnUrl = safeClientReturnUrl(this.route.snapshot.queryParams['returnUrl']);
     if (this.route.snapshot.queryParams['reason'] === 'ACCOUNT_DISABLED') {
       this.errorMessage = 'Tài khoản đã bị tạm ngưng hoặc vô hiệu hóa. Vui lòng liên hệ bộ phận hỗ trợ. / This account is suspended or disabled.';
     }
@@ -39,7 +40,11 @@ export class LoginComponent implements OnInit {
         username = JSON.parse(userStr).username;
       }
       const roles = this.authService.getRoles();
-      if (username === 'admin' || roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) {
+      if (this.canReturnToRequestedRoute(roles)) {
+        this.router.navigateByUrl(this.returnUrl);
+      } else if (isBookingReturnUrl(this.returnUrl)) {
+        this.router.navigate(['/403'], { queryParams: { reason: 'CUSTOMER_REQUIRED' } });
+      } else if (username === 'admin' || roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) {
         this.router.navigate(['/admin/dashboard']);
       } else {
         this.router.navigate(['/']);
@@ -65,10 +70,14 @@ export class LoginComponent implements OnInit {
             permissions: res.permissions
           });
           
-          if (res.username === 'admin' || res.roles.includes('SUPER_ADMIN') || res.roles.includes('ADMIN')) {
+          if (this.canReturnToRequestedRoute(res.roles)) {
+            this.router.navigateByUrl(this.returnUrl);
+          } else if (isBookingReturnUrl(this.returnUrl)) {
+            this.router.navigate(['/403'], { queryParams: { reason: 'CUSTOMER_REQUIRED' } });
+          } else if (res.username === 'admin' || res.roles.includes('SUPER_ADMIN') || res.roles.includes('ADMIN')) {
             this.router.navigate(['/admin/dashboard']);
           } else {
-            this.router.navigateByUrl(this.returnUrl);
+            this.router.navigate(['/']);
           }
         }
         this.isLoading = false;
@@ -82,5 +91,9 @@ export class LoginComponent implements OnInit {
         this.cdr.markForCheck();
       }
     });
+  }
+
+  private canReturnToRequestedRoute(roles: string[]): boolean {
+    return this.returnUrl !== '/' && (!isBookingReturnUrl(this.returnUrl) || roles.includes('CUSTOMER'));
   }
 }

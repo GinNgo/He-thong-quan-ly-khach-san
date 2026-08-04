@@ -131,7 +131,8 @@
           <div class="mt-4 text-center shrink-0">
             <p class="font-body-sm text-[12px] text-on-surface-variant m-0">
               Đã có tài khoản? 
-              <a class="text-primary font-bold hover:underline" routerLink="/login">Đăng nhập</a>
+              <a class="text-primary font-bold hover:underline" routerLink="/login"
+                [queryParams]="returnUrl === '/' ? null : { returnUrl }">Đăng nhập</a>
             </p>
           </div>
         </div>

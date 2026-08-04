@@ -151,6 +151,19 @@ describe('errorInterceptor', () => {
     expect(routerSpy.navigate).toHaveBeenCalledWith(['/login'], { queryParams: { returnUrl: '/profile' } });
   });
 
+  it('preserves the complete booking URL after an expired session', () => {
+    routerSpy.url = '/booking/49?checkIn=2026-08-10&checkOut=2026-08-12&quantity=2&hotelId=10';
+    httpClient.post('/api/reservations/book', {}).subscribe({ error: () => undefined });
+
+    const req = httpMock.expectOne('/api/reservations/book');
+    req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+
+    expect(authServiceSpy.logout).toHaveBeenCalled();
+    expect(routerSpy.navigate).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: routerSpy.url },
+    });
+  });
+
   it('should not navigate to /login if already there on 401', () => {
     routerSpy.url = '/login';
 
