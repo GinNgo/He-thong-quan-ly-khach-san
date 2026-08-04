@@ -189,6 +189,7 @@ public class DemoDataInitializer {
             room.setRoomNumber(roomNumber);
             room.setFloor(Integer.parseInt(roomNumber.substring(0, 1)));
             room.setStatus("AVAILABLE");
+            room.setHousekeepingStatus("CLEAN");
             room.setMaintenanceStatus("NONE");
             room.setMaxGuests(maxGuests);
             room.setDescriptionVi("Phòng " + roomNumber + " thuộc " + nameVi + ".");

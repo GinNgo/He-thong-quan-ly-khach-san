@@ -35,8 +35,15 @@ import { ImageFallbackService } from '../../../../core/services/image-fallback.s
         <div class="amenities" *ngIf="property.amenities?.length">
           <span *ngFor="let amenity of property.amenities.slice(0, 4)">{{ amenity }}</span>
         </div>
-        <p *ngIf="property.availableRoomCount" class="availability">
-          <i class="pi pi-check-circle"></i> {{ property.availableRoomCount }} phòng phù hợp còn trống
+        <p *ngIf="availabilityCount !== null && availabilityCount > 0" class="availability"
+          data-availability-count [attr.data-availability-value]="availabilityCount" aria-live="polite">
+          <i class="pi pi-check-circle" aria-hidden="true"></i> {{ availabilityCount }} phòng phù hợp còn trống
+        </p>
+        <p *ngIf="availabilityCount === 0" class="availability unavailable" data-availability-unavailable>
+          Hết phòng phù hợp cho kỳ lưu trú đã chọn
+        </p>
+        <p *ngIf="availabilityCount === null" class="availability unknown" data-availability-missing>
+          Chưa có dữ liệu phòng trống cho kỳ lưu trú này
         </p>
       </div>
 
@@ -63,7 +70,7 @@ import { ImageFallbackService } from '../../../../core/services/image-fallback.s
     .result-card{display:grid;grid-template-columns:245px minmax(0,1fr) 220px;background:#fff;border:1px solid #dfe5ec;border-radius:8px;overflow:hidden;margin-bottom:16px;box-shadow:0 3px 14px rgba(15,23,42,.05);transition:.2s}.result-card:hover{border-color:#b9c8db;box-shadow:0 8px 24px rgba(15,23,42,.09)}
     .media{position:relative;border:0;padding:0;background:#eef2f6;cursor:pointer;min-height:224px}.media img{width:100%;height:100%;object-fit:cover;display:block}.type-badge,.image-count{position:absolute;background:rgba(15,23,42,.82);color:#fff;border-radius:4px;font-size:11px;padding:5px 8px}.type-badge{left:10px;top:10px}.image-count{right:10px;bottom:10px}
     .property-info{padding:20px;min-width:0}.title-row{display:flex;justify-content:space-between;gap:12px}.property-type{margin:0 0 4px;color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase}.title-row h2{font-size:20px;line-height:1.25;margin:0}.title-row h2 button{border:0;padding:0;background:none;text-align:left;color:#12213a;font:inherit;font-weight:800;cursor:pointer}.title-row h2 button:hover{color:#1769e0}.star-rating{color:#d79a00;font-size:12px;white-space:nowrap}
-    .address{display:flex;align-items:flex-start;gap:7px;color:#2864a7;font-size:13px;margin:12px 0}.address small{color:#64748b;border-left:1px solid #cbd5e1;padding-left:8px}.room-fact{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#f7f9fc;border-radius:6px;color:#334155;font-size:13px}.amenities{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.amenities span{background:#edf7f2;color:#14734b;padding:4px 7px;border-radius:4px;font-size:11px}.availability{font-size:12px;color:#14734b;font-weight:700;margin:14px 0 0}
+    .address{display:flex;align-items:flex-start;gap:7px;color:#2864a7;font-size:13px;margin:12px 0}.address small{color:#64748b;border-left:1px solid #cbd5e1;padding-left:8px}.room-fact{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#f7f9fc;border-radius:6px;color:#334155;font-size:13px}.amenities{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.amenities span{background:#edf7f2;color:#14734b;padding:4px 7px;border-radius:4px;font-size:11px}.availability{font-size:12px;color:#14734b;font-weight:700;margin:14px 0 0}.availability.unavailable{color:#b42318}.availability.unknown{color:#64748b}
     .commercial{border-left:1px solid #edf1f5;padding:18px;display:flex;flex-direction:column;text-align:right}.review{display:flex;justify-content:flex-end;gap:9px;align-items:center}.review span{display:flex;flex-direction:column;font-size:12px}.review small,.unrated{font-size:11px;color:#64748b}.review b{background:#174f9b;color:#fff;padding:8px;border-radius:5px;font-size:14px}.unrated{margin:0}.price-block{margin-top:auto}.price-block p{margin:12px 0 2px;font-size:13px;color:#475569}.price-block p strong{display:block;color:#12213a;font-size:23px}.price-block p span{font-size:12px}.price-block small{color:#64748b;font-size:11px}.total{margin-top:10px;font-size:13px}.total b{font-size:16px}.view-button{width:100%;height:42px;margin-top:13px;border:0;border-radius:6px;background:#1769e0;color:#fff;font-weight:800;cursor:pointer}.view-button:hover{background:#0f58c7}.unavailable{color:#b42318!important;font-weight:700}
     @media(max-width:760px){.result-card{grid-template-columns:1fr}.media{height:210px;min-height:0}.commercial{border-left:0;border-top:1px solid #edf1f5;text-align:left}.review{justify-content:flex-start}.price-block p strong{display:inline;margin-left:5px}.address{flex-wrap:wrap}}
   `]
@@ -85,6 +92,10 @@ export class PropertyResultCardComponent {
     return parts.join(', ');
   }
   get effectiveNightlyPrice(): number { return this.property.pricing?.discountedNightlyPrice ?? this.property.pricing?.discountedPrice ?? this.property.pricing?.nightlyPrice ?? 0; }
+  get availabilityCount(): number | null {
+    const value = this.property.availableRoomCount;
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+  }
   get taxAndFees(): number { return (this.property.pricing?.taxAmount || 0) + (this.property.pricing?.feeAmount || 0); }
   get hasReviews(): boolean {
     return (this.property.reviewCount ?? 0) > 0

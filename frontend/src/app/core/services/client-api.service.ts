@@ -30,7 +30,7 @@ export interface Hotel {
   wardName?: string;
   reviewScore?: number;
   reviewCount?: number;
-  availableRoomCount?: number;
+  availableRoomCount?: number | null;
   amenities?: string[];
   lowestRoomType?: { id: number; name: string; maxGuests: number };
   pricing?: {
@@ -98,7 +98,7 @@ export interface RoomType {
   basePrice: number;
   descriptionVi: string;
   descriptionEn: string;
-  availableRooms?: number;
+  availableRooms?: number | null;
   nights?: number;
   totalPrice?: number;
   imageUrls?: string[];

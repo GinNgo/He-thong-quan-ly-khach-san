@@ -11,6 +11,7 @@ import com.hotel.repositories.RoomTypeRepository;
 import com.hotel.services.PropertySearchService;
 import com.hotel.services.PublicInventoryEligibilityPolicy;
 import com.hotel.services.ProvinceCompatibilityService;
+import com.hotel.services.RoomAvailabilityPolicy;
 import com.hotel.services.RoomAvailabilityService;
 import com.hotel.util.VietnameseTextNormalizer;
 import jakarta.persistence.EntityManager;
@@ -44,6 +45,7 @@ public class PropertySearchServiceImpl implements PropertySearchService {
     private final RoomTypeRepository roomTypeRepository;
     private final PropertyImageRepository propertyImageRepository;
     private final RoomAvailabilityService roomAvailabilityService;
+    private final RoomAvailabilityPolicy roomAvailabilityPolicy;
     private final ProvinceCompatibilityService provinceCompatibilityService;
     private final PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
 
@@ -51,6 +53,7 @@ public class PropertySearchServiceImpl implements PropertySearchService {
                                      RoomTypeRepository roomTypeRepository,
                                      PropertyImageRepository propertyImageRepository,
                                      RoomAvailabilityService roomAvailabilityService,
+                                     RoomAvailabilityPolicy roomAvailabilityPolicy,
                                      ProvinceCompatibilityService provinceCompatibilityService,
                                      PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy) {
         this.entityManager = entityManager;
@@ -58,6 +61,7 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         this.roomTypeRepository = roomTypeRepository;
         this.propertyImageRepository = propertyImageRepository;
         this.roomAvailabilityService = roomAvailabilityService;
+        this.roomAvailabilityPolicy = roomAvailabilityPolicy;
         this.provinceCompatibilityService = provinceCompatibilityService;
         this.publicInventoryEligibilityPolicy = publicInventoryEligibilityPolicy;
     }
@@ -399,9 +403,9 @@ public class PropertySearchServiceImpl implements PropertySearchService {
                 .append(roomAlias).append(".max_guest,999)*:roomCount>=:guestCount ")
                 .append("AND ((SELECT COUNT(*) FROM rooms ").append(physicalRoomAlias)
                 .append(" WHERE ").append(physicalRoomAlias).append(".room_type_id=")
-                .append(roomAlias).append(".id AND ").append(physicalRoomAlias)
-                .append(".status<>'MAINTENANCE' AND COALESCE(").append(physicalRoomAlias)
-                .append(".maintenance_status,'NONE') NOT IN ('MAINTENANCE','OUT_OF_SERVICE')) ");
+                .append(roomAlias).append(".id AND ")
+                .append(roomAvailabilityPolicy.sqlPredicate(physicalRoomAlias, hasStayDates))
+                .append(") ");
         if (hasStayDates) {
             predicate.append("- (SELECT COALESCE(SUM(").append(detailAlias)
                     .append(".quantity),0) FROM reservation_details ").append(detailAlias)

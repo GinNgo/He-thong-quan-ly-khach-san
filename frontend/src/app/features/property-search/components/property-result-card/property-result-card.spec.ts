@@ -73,6 +73,19 @@ describe('PropertyResultCardComponent image fallback', () => {
     expect(fixture.nativeElement.querySelector('[data-nightly-price]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-pricing-unavailable]')).not.toBeNull();
   });
+
+  it.each([
+    [3, '[data-availability-count]', '3', 'positive authoritative count'],
+    [0, '[data-availability-unavailable]', null, 'sold out'],
+    [undefined, '[data-availability-missing]', null, 'missing projection'],
+  ])('renders availability state for %s (%s)', (availableRoomCount, selector, rawValue, _label) => {
+    fixture.componentRef.setInput('property', property({ availableRoomCount }));
+    fixture.detectChanges();
+
+    const state = fixture.nativeElement.querySelector(selector) as HTMLElement;
+    expect(state).not.toBeNull();
+    if (rawValue !== null) expect(state.getAttribute('data-availability-value')).toBe(rawValue);
+  });
 });
 
 function property(override: Record<string, unknown> = {}) {

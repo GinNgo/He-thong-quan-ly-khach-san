@@ -17,9 +17,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RoomAvailabilityService {
 
-    private static final List<String> EXCLUDED_ROOM_STATUSES = List.of(
-            "MAINTENANCE", "OUT_OF_SERVICE", "DIRTY", "CLEANING", "OCCUPIED"
-    );
     public static final List<String> RELEASED_RESERVATION_STATUSES = List.of(
             "CANCELLED", "REJECTED", "EXPIRED", "NO_SHOW", "CHECKED_OUT", "COMPLETED"
     );
@@ -27,25 +24,29 @@ public class RoomAvailabilityService {
 
     private final RoomRepository roomRepository;
     private final ReservationDetailRepository reservationDetailRepository;
+    private final RoomAvailabilityPolicy roomAvailabilityPolicy;
 
     public long countAvailableRooms(Long roomTypeId, LocalDate checkIn, LocalDate checkOut) {
-        long totalActiveRooms = roomRepository.countBookableRoomsByRoomTypeId(roomTypeId, EXCLUDED_ROOM_STATUSES);
-        if (!hasStayDates(checkIn, checkOut)) {
-            return totalActiveRooms;
-        }
+        boolean datedStay = hasStayDates(checkIn, checkOut);
+        if (datedStay) validateStayDates(checkIn, checkOut);
+        long roomsInPool = roomRepository.countRoomsInAvailabilityPool(
+                roomTypeId,
+                roomAvailabilityPolicy.roomStatuses(datedStay),
+                roomAvailabilityPolicy.housekeepingStatuses());
+        if (!datedStay) return roomsInPool;
 
-        validateStayDates(checkIn, checkOut);
         long reservedRooms = reservationDetailRepository.sumReservedQuantity(
                 roomTypeId, RELEASED_RESERVATION_STATUSES, checkIn, checkOut
         );
-        return Math.max(0, totalActiveRooms - reservedRooms);
+        return Math.max(0, roomsInPool - reservedRooms);
     }
 
     public Room findFirstAvailableRoomForBooking(Long roomTypeId, LocalDate checkIn, LocalDate checkOut, Integer guests) {
         validateStayDates(checkIn, checkOut);
-        return roomRepository.findAvailableRoomsByRoomTypeAndDateForUpdate(
+        return roomRepository.findRoomsInDatedAvailabilityPoolForUpdate(
                         roomTypeId,
-                        EXCLUDED_ROOM_STATUSES,
+                        roomAvailabilityPolicy.roomStatuses(true),
+                        roomAvailabilityPolicy.housekeepingStatuses(),
                         RELEASED_RESERVATION_STATUSES,
                         checkIn,
                         checkOut

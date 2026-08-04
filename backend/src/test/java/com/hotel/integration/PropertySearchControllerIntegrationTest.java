@@ -141,6 +141,7 @@ public class PropertySearchControllerIntegrationTest {
         room.setRoomNumber(number);
         room.setFloor(1);
         room.setStatus("AVAILABLE");
+        room.setHousekeepingStatus("CLEAN");
         room.setMaintenanceStatus("NONE");
         roomRepository.saveAndFlush(room);
     }

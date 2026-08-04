@@ -25,12 +25,14 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
             select count(room)
             from Room room
             where room.roomType.id = :roomTypeId
-              and room.status not in :excludedRoomStatuses
-              and (room.maintenanceStatus is null or room.maintenanceStatus = 'NONE')
+              and room.status in :eligibleRoomStatuses
+              and room.housekeepingStatus in :eligibleHousekeepingStatuses
+              and room.maintenanceStatus = 'NONE'
             """)
-    long countBookableRoomsByRoomTypeId(
+    long countRoomsInAvailabilityPool(
             @Param("roomTypeId") Long roomTypeId,
-            @Param("excludedRoomStatuses") List<String> excludedRoomStatuses
+            @Param("eligibleRoomStatuses") List<String> eligibleRoomStatuses,
+            @Param("eligibleHousekeepingStatuses") List<String> eligibleHousekeepingStatuses
     );
 
     @Query("""
@@ -65,8 +67,9 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
             select room
             from Room room
             where room.roomType.id = :roomTypeId
-              and room.status not in :excludedRoomStatuses
-              and (room.maintenanceStatus is null or room.maintenanceStatus = 'NONE')
+              and room.status in :eligibleRoomStatuses
+              and room.housekeepingStatus in :eligibleHousekeepingStatuses
+              and room.maintenanceStatus = 'NONE'
               and room.id not in (
                   select assignment.room.id
                   from ReservationRoom assignment
@@ -80,9 +83,10 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
               )
             order by room.id
             """)
-    List<Room> findAvailableRoomsByRoomTypeAndDateForUpdate(
+    List<Room> findRoomsInDatedAvailabilityPoolForUpdate(
             @Param("roomTypeId") Long roomTypeId,
-            @Param("excludedRoomStatuses") List<String> excludedRoomStatuses,
+            @Param("eligibleRoomStatuses") List<String> eligibleRoomStatuses,
+            @Param("eligibleHousekeepingStatuses") List<String> eligibleHousekeepingStatuses,
             @Param("excludedReservationStatuses") List<String> excludedReservationStatuses,
             @Param("checkIn") java.time.LocalDate checkIn,
             @Param("checkOut") java.time.LocalDate checkOut
