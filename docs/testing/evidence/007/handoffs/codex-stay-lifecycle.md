@@ -6,6 +6,26 @@ This branch does not edit the parallel aggregate task list or system-wide
 inventory/traceability files. The coordinator should apply the updates listed
 below after merging or cherry-picking the task commits.
 
+## Assigned Queue Disposition
+
+| Task range | Disposition | Authoritative basis |
+|---|---|---|
+| T295-T296 | Completed and pushed on this branch | Per-task commits, focused tests and remediation evidence below |
+| T297-T299 | `BLOCKED_EXTERNAL` | Versioned cancellation/refund/no-show financial and operational policies are not approved |
+| T300-T301 | Completed and pushed on this branch | Per-task commits, focused tests and remediation evidence below |
+| T302-T303 | `PARTIAL` | Code and focused tests pass; authenticated real-browser fixture remains unavailable |
+| T304-T305 | Completed by parallel owners; intentionally skipped | Root `Active Parallel Claims` records `COMPLETE` with backend/frontend validation |
+| T306-T307 | Completed and pushed on this branch | Database/HTTP reconciliation commits and evidence below |
+| T308 | `BLOCKED_EXTERNAL` | Debt/overpayment approval and accounting policy is not approved |
+| T309 | Deferred due active exclusive claim | Root claim remains `IN_PROGRESS` under `/root/t309_itemized_invoice` |
+| T310 | Deferred due T309 scope conflict | Required invoice package/controller/UI overlap the active T309 claim |
+| T311-T312 | Completed by parallel owners; intentionally skipped | Root claim records the housekeeping queue/completion aliases `COMPLETE` |
+| T313 | Completed and pushed on this branch | Backend/frontend implementation, tests and evidence below |
+| T314 | Completed by parallel owner; intentionally skipped | Root claim records backend 7/7, frontend 7/7 and Angular build PASS |
+| T315 | `BLOCKED_EXTERNAL` | OQ-002 through OQ-005 commercial policy is not approved |
+| T316 | `PARTIAL` | Mocked browser and real SQL Server suites exist separately; one real stack is unavailable |
+| T317 | Completed by parallel owner; intentionally skipped | Root claim records backend 14/14 and Angular 9/9 PASS |
+
 ## Completed Tasks
 
 | Task | Commit | Focused validation | Domain evidence |
