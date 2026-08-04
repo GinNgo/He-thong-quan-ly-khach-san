@@ -19,8 +19,17 @@ public record PropertyClaimResponseDTO(
             Long id,
             String code,
             String name,
+            String status,
             String approvalStatus,
             String operationStatus) {
+        public PropertySummary(
+                Long id,
+                String code,
+                String name,
+                String approvalStatus,
+                String operationStatus) {
+            this(id, code, name, null, approvalStatus, operationStatus);
+        }
     }
 
     public record UserSummary(

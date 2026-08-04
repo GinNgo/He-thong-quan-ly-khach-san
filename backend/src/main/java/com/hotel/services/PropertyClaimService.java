@@ -28,6 +28,7 @@ public class PropertyClaimService {
     private final SubscriptionFeatureService subscriptionFeatureService;
     private final PropertyOwnershipLifecycleService ownershipLifecycleService;
     private final PropertyClaimRateLimiter rateLimiter;
+    private final PropertyApprovalWorkflowService approvalWorkflowService;
 
     @Transactional
     public PropertyClaimResponseDTO requestClaim(Long propertyId, Long userId, PropertyClaimRequestDTO request) {
@@ -69,7 +70,13 @@ public class PropertyClaimService {
 
     @Transactional
     public PropertyClaimResponseDTO approveClaim(Long claimId, Long adminUserId) {
-        PropertyClaimRequest claim = claimRepository.findById(claimId)
+        if (claimId == null) {
+            throw new IllegalArgumentException("Claim request id is required.");
+        }
+        if (adminUserId == null) {
+            throw new IllegalArgumentException("Admin user id is required.");
+        }
+        PropertyClaimRequest claim = claimRepository.findByIdForUpdate(claimId)
                 .orElseThrow(() -> new IllegalArgumentException("Claim request not found"));
         
         User admin = userRepository.findById(adminUserId)
@@ -84,19 +91,13 @@ public class PropertyClaimService {
         long currentProperties = userPropertyRepository.countActiveOwnedPropertiesByUserId(requester.getId());
         subscriptionFeatureService.checkFeatureLimit(
                 requester.getId(), "MAX_PROPERTIES", currentProperties, 1);
-        ownershipLifecycleService.activateOwner(property.getId(), requester.getId());
+        var approval = approvalWorkflowService.approveImportedClaim(
+                adminUserId, property.getId(), requester.getId(), claim.getId());
 
-        // Update Claim Status
         claim.setStatus("APPROVED");
         claim.setReviewedBy(admin);
-        claim.setReviewedAt(LocalDateTime.now());
-        claimRepository.save(claim);
-
-        // Update Property Status
-        property.setApprovalStatus("APPROVED");
-        property.setStatus("ACTIVE");
-        property.setOperationStatus("ACTIVE");
-        hotelRepository.save(property);
+        claim.setReviewedAt(approval.reviewedAt());
+        claimRepository.saveAndFlush(claim);
 
         return toResponse(claim);
     }
@@ -157,6 +158,7 @@ public class PropertyClaimService {
                 claim.getId(),
                 property == null ? null : new PropertyClaimResponseDTO.PropertySummary(
                         property.getId(), property.getCode(), property.getName(),
+                        property.getStatus(),
                         property.getApprovalStatus(), property.getOperationStatus()),
                 userSummary(requester),
                 claim.getVerificationMethod(),

@@ -22,6 +22,7 @@ export interface PropertyClaimPropertySummary {
   id: number;
   code: string | null;
   name: string | null;
+  status: string | null;
   approvalStatus: string | null;
   operationStatus: string | null;
 }

@@ -188,6 +188,56 @@ public class PropertyApprovalWorkflowService {
     }
 
     @Transactional
+    public PropertyApprovalDecisionResponse approveImportedClaim(
+            Long reviewerUserId,
+            Long propertyId,
+            Long requesterUserId,
+            Long claimId) {
+        requireAuthenticatedUser(reviewerUserId);
+        requirePropertyId(propertyId);
+        requireId(requesterUserId, "Claim requester");
+        requireId(claimId, "Property claim");
+
+        Hotel property = lockImportedProperty(propertyId);
+        UserProperty pendingOwner = lockSinglePendingOwner(propertyId);
+        if (!requesterUserId.equals(pendingOwner.getUser().getId())) {
+            throw new IllegalStateException("Pending property owner does not match the approved claimant.");
+        }
+        if (userPropertyRepository.countByHotelIdAndRelationshipTypeAndStatus(
+                propertyId, "OWNER", "ACTIVE") > 0) {
+            throw new IllegalStateException("Property already has an active owner.");
+        }
+
+        Map<String, Object> before = claimSnapshot(property, pendingOwner.getStatus(), claimId, "PENDING");
+        LocalDateTime reviewedAt = now();
+        UserProperty activeOwner = ownershipLifecycleService.activateOwner(propertyId, requesterUserId);
+        property.setStatus("ACTIVE");
+        property.setApprovalStatus("APPROVED");
+        property.setOperationStatus("ACTIVE");
+        property.setReviewedByUserId(reviewerUserId);
+        property.setReviewedAt(reviewedAt);
+        property.setReviewReason(null);
+        Hotel saved = hotelRepository.saveAndFlush(property);
+
+        OperationalAuditEvent auditEvent = appendDecisionAudit(
+                "PROPERTY_APPROVED",
+                reviewerUserId,
+                "Imported property claim approved (claim " + claimId + ")",
+                before,
+                claimSnapshot(saved, activeOwner.getStatus(), claimId, "APPROVED"),
+                saved);
+        notifyOwner(
+                auditEvent,
+                pendingOwner.getUser(),
+                saved,
+                reviewedAt,
+                "Property claim approved",
+                "Your ownership claim for " + displayName(saved) + " has been approved and the property is now active.");
+
+        return decision(saved, activeOwner.getStatus());
+    }
+
+    @Transactional
     public PropertyApprovalDecisionResponse reject(Long reviewerUserId, Long propertyId, String reason) {
         requireAuthenticatedUser(reviewerUserId);
         requirePropertyId(propertyId);
@@ -234,6 +284,17 @@ public class PropertyApprovalWorkflowService {
                 || !"PENDING_APPROVAL".equals(normalize(property.getApprovalStatus()))
                 || !"INACTIVE".equals(normalize(property.getOperationStatus()))) {
             throw new IllegalStateException("Only a pending property can be reviewed.");
+        }
+        return property;
+    }
+
+    private Hotel lockImportedProperty(Long propertyId) {
+        Hotel property = hotelRepository.findByIdForUpdate(propertyId)
+                .orElseThrow(this::notFound);
+        if (!"DRAFT".equals(normalize(property.getStatus()))
+                || !"IMPORTED_PENDING_REVIEW".equals(normalize(property.getApprovalStatus()))
+                || !"ACTIVE".equals(normalize(property.getOperationStatus()))) {
+            throw new IllegalStateException("Only an imported property awaiting review can have a claim approved.");
         }
         return property;
     }
@@ -362,6 +423,17 @@ public class PropertyApprovalWorkflowService {
         return state;
     }
 
+    private Map<String, Object> claimSnapshot(
+            Hotel property,
+            String ownershipStatus,
+            Long claimId,
+            String claimStatus) {
+        Map<String, Object> state = snapshot(property, ownershipStatus);
+        state.put("claimId", claimId);
+        state.put("claimStatus", claimStatus);
+        return state;
+    }
+
     private String validateRejectionReason(String reason) {
         String normalized = reason == null ? "" : reason.trim();
         if (normalized.length() < MIN_REJECTION_REASON_LENGTH
@@ -397,6 +469,12 @@ public class PropertyApprovalWorkflowService {
     private void requirePropertyId(Long propertyId) {
         if (propertyId == null) {
             throw new IllegalArgumentException("Property id is required.");
+        }
+    }
+
+    private void requireId(Long value, String label) {
+        if (value == null) {
+            throw new IllegalArgumentException(label + " id is required.");
         }
     }
 

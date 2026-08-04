@@ -4,10 +4,12 @@ import com.hotel.entities.PropertyClaimRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,6 +25,16 @@ public interface PropertyClaimRequestRepository extends JpaRepository<PropertyCl
     Optional<PropertyClaimRequest> findFirstByRequesterUserIdAndCreatedAtGreaterThanOrderByCreatedAtAscIdAsc(
             Long requesterUserId,
             LocalDateTime cutoff);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select claim
+            from PropertyClaimRequest claim
+            join fetch claim.property
+            join fetch claim.requesterUser
+            where claim.id = :claimId
+            """)
+    Optional<PropertyClaimRequest> findByIdForUpdate(@Param("claimId") Long claimId);
 
     @Query("""
             select claim

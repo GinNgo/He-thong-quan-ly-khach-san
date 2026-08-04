@@ -121,6 +121,102 @@ class PropertyApprovalWorkflowServiceTest {
     }
 
     @Test
+    void importedClaimApprovalActivatesOnlyMatchingClaimantWithClaimAuditContext() {
+        Hotel property = property(51L, "DRAFT", "IMPORTED_PENDING_REVIEW", "ACTIVE");
+        User owner = owner(7L);
+        UserProperty pending = ownership(property, owner, "PENDING");
+        UserProperty active = ownership(property, owner, "ACTIVE");
+        when(hotelRepository.findByIdForUpdate(51L)).thenReturn(Optional.of(property));
+        when(userPropertyRepository.findPendingOwnerMappingsForUpdate(51L)).thenReturn(List.of(pending));
+        when(ownershipLifecycleService.activateOwner(51L, 7L)).thenReturn(active);
+        when(hotelRepository.saveAndFlush(property)).thenReturn(property);
+
+        var result = workflowService.approveImportedClaim(99L, 51L, 7L, 801L);
+
+        assertEquals("ACTIVE", result.status());
+        assertEquals("APPROVED", result.approvalStatus());
+        assertEquals("ACTIVE", result.operationStatus());
+        assertEquals("ACTIVE", result.ownershipStatus());
+        assertEquals(NOW, result.reviewedAt());
+        verify(notificationService).sendUserNotification(
+                7L,
+                "PROPERTY_APPROVAL",
+                "Property claim approved",
+                "Your ownership claim for Harbor Hotel has been approved and the property is now active.",
+                NOW);
+
+        ArgumentCaptor<OperationalAuditService.AuditCommand> audit =
+                ArgumentCaptor.forClass(OperationalAuditService.AuditCommand.class);
+        verify(operationalAuditService).append(audit.capture());
+        assertEquals("PROPERTY_APPROVED", audit.getValue().eventType());
+        assertEquals("Imported property claim approved (claim 801)", audit.getValue().reason());
+        assertEquals(801L, ((Map<?, ?>) audit.getValue().beforeState()).get("claimId"));
+        assertEquals("PENDING", ((Map<?, ?>) audit.getValue().beforeState()).get("claimStatus"));
+        assertEquals("APPROVED", ((Map<?, ?>) audit.getValue().afterState()).get("claimStatus"));
+        assertEquals("ACTIVE", ((Map<?, ?>) audit.getValue().afterState()).get("ownershipStatus"));
+    }
+
+    @Test
+    void importedClaimApprovalFailsClosedForMismatchedOrAmbiguousPendingOwner() {
+        Hotel mismatchProperty = property(51L, "DRAFT", "IMPORTED_PENDING_REVIEW", "ACTIVE");
+        when(hotelRepository.findByIdForUpdate(51L)).thenReturn(Optional.of(mismatchProperty));
+        when(userPropertyRepository.findPendingOwnerMappingsForUpdate(51L))
+                .thenReturn(List.of(ownership(mismatchProperty, owner(8L), "PENDING")));
+
+        assertThrows(IllegalStateException.class,
+                () -> workflowService.approveImportedClaim(99L, 51L, 7L, 801L));
+
+        Hotel ambiguousProperty = property(52L, "DRAFT", "IMPORTED_PENDING_REVIEW", "ACTIVE");
+        when(hotelRepository.findByIdForUpdate(52L)).thenReturn(Optional.of(ambiguousProperty));
+        when(userPropertyRepository.findPendingOwnerMappingsForUpdate(52L)).thenReturn(List.of(
+                ownership(ambiguousProperty, owner(7L), "PENDING"),
+                ownership(ambiguousProperty, owner(8L), "PENDING")));
+
+        assertThrows(IllegalStateException.class,
+                () -> workflowService.approveImportedClaim(99L, 52L, 7L, 802L));
+
+        verify(ownershipLifecycleService, never()).activateOwner(any(), any());
+        verify(hotelRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void importedClaimApprovalDoesNotReplaceExistingActiveOwner() {
+        Hotel property = property(51L, "DRAFT", "IMPORTED_PENDING_REVIEW", "ACTIVE");
+        when(hotelRepository.findByIdForUpdate(51L)).thenReturn(Optional.of(property));
+        when(userPropertyRepository.findPendingOwnerMappingsForUpdate(51L))
+                .thenReturn(List.of(ownership(property, owner(7L), "PENDING")));
+        when(userPropertyRepository.countByHotelIdAndRelationshipTypeAndStatus(51L, "OWNER", "ACTIVE"))
+                .thenReturn(1L);
+
+        assertThrows(IllegalStateException.class,
+                () -> workflowService.approveImportedClaim(99L, 51L, 7L, 801L));
+
+        verify(ownershipLifecycleService, never()).activateOwner(any(), any());
+        verify(hotelRepository, never()).saveAndFlush(any());
+        verify(notificationService, never()).sendUserNotification(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void importedClaimApprovalRejectsTamperedLifecycleStateBeforeOwnerLocks() {
+        Hotel activeStatus = property(51L, "ACTIVE", "IMPORTED_PENDING_REVIEW", "ACTIVE");
+        Hotel suspendedOperation = property(52L, "DRAFT", "IMPORTED_PENDING_REVIEW", "SUSPENDED");
+        Hotel nullLegacyState = property(53L, null, "IMPORTED_PENDING_REVIEW", null);
+        when(hotelRepository.findByIdForUpdate(51L)).thenReturn(Optional.of(activeStatus));
+        when(hotelRepository.findByIdForUpdate(52L)).thenReturn(Optional.of(suspendedOperation));
+        when(hotelRepository.findByIdForUpdate(53L)).thenReturn(Optional.of(nullLegacyState));
+
+        assertThrows(IllegalStateException.class,
+                () -> workflowService.approveImportedClaim(99L, 51L, 7L, 801L));
+        assertThrows(IllegalStateException.class,
+                () -> workflowService.approveImportedClaim(99L, 52L, 7L, 802L));
+        assertThrows(IllegalStateException.class,
+                () -> workflowService.approveImportedClaim(99L, 53L, 7L, 803L));
+
+        verify(userPropertyRepository, never()).findPendingOwnerMappingsForUpdate(any());
+        verify(ownershipLifecycleService, never()).activateOwner(any(), any());
+    }
+
+    @Test
     void rejectTrimsReasonDeactivatesExactOwnerAndNotifiesOnlyThatOwner() {
         Hotel property = property(51L, "PENDING_APPROVAL", "PENDING_APPROVAL", "INACTIVE");
         UserProperty pending = ownership(property, owner(7L), "PENDING");

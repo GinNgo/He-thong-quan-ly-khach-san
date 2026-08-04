@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -39,6 +40,7 @@ class PropertyClaimServiceTest {
     @Mock private SubscriptionFeatureService subscriptionFeatureService;
     @Mock private PropertyOwnershipLifecycleService ownershipLifecycleService;
     @Mock private PropertyClaimRateLimiter rateLimiter;
+    @Mock private PropertyApprovalWorkflowService approvalWorkflowService;
 
     @InjectMocks
     private PropertyClaimService claimService;
@@ -57,7 +59,7 @@ class PropertyClaimServiceTest {
         claim.setRequesterUser(requester);
         claim.setProperty(property);
 
-        when(claimRepository.findById(20L)).thenReturn(Optional.of(claim));
+        when(claimRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(claim));
         when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
         when(userPropertyRepository.countActiveOwnedPropertiesByUserId(7L)).thenReturn(1L);
         doThrow(new RuntimeException("quota exceeded"))
@@ -66,8 +68,10 @@ class PropertyClaimServiceTest {
         assertThrows(RuntimeException.class, () -> claimService.approveClaim(20L, 1L));
 
         verify(claimRepository, never()).save(any());
+        verify(claimRepository, never()).saveAndFlush(any());
         verify(hotelRepository, never()).save(any());
         verify(userPropertyRepository, never()).save(any());
+        verifyNoInteractions(approvalWorkflowService);
     }
 
     @Test
@@ -150,15 +154,36 @@ class PropertyClaimServiceTest {
         User admin = user(1L);
         Hotel property = hotel(10L, "IMPORTED_PENDING_REVIEW");
         PropertyClaimRequest claim = claim(20L, "PENDING", requester, property);
-        when(claimRepository.findById(20L)).thenReturn(Optional.of(claim));
+        LocalDateTime reviewedAt = LocalDateTime.of(2026, 8, 4, 7, 15);
+        when(claimRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(claim));
         when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
+        when(approvalWorkflowService.approveImportedClaim(1L, 10L, 7L, 20L))
+                .thenReturn(new com.hotel.dtos.PropertyApprovalDecisionResponse(
+                        10L, "ACTIVE", "APPROVED", "ACTIVE", "ACTIVE", 1L, reviewedAt, null));
 
         claimService.approveClaim(20L, 1L);
 
         assertEquals("APPROVED", claim.getStatus());
-        assertEquals("APPROVED", property.getApprovalStatus());
-        assertEquals("ACTIVE", property.getOperationStatus());
-        verify(ownershipLifecycleService).activateOwner(10L, 7L);
+        assertEquals(admin, claim.getReviewedBy());
+        assertEquals(reviewedAt, claim.getReviewedAt());
+        assertEquals("DRAFT", property.getStatus());
+        verify(approvalWorkflowService).approveImportedClaim(1L, 10L, 7L, 20L);
+        verify(claimRepository).saveAndFlush(claim);
+        verify(ownershipLifecycleService, never()).activateOwner(any(), any());
+    }
+
+    @Test
+    void approveClaim_RejectsNonPendingClaimBeforeQuotaOrWorkflowMutation() {
+        User requester = user(7L);
+        Hotel property = hotel(10L, "IMPORTED_PENDING_REVIEW");
+        PropertyClaimRequest claim = claim(20L, "APPROVED", requester, property);
+        when(claimRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(claim));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L)));
+
+        assertThrows(IllegalStateException.class, () -> claimService.approveClaim(20L, 1L));
+
+        verifyNoInteractions(subscriptionFeatureService, approvalWorkflowService);
+        verify(claimRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -201,6 +226,7 @@ class PropertyClaimServiceTest {
     private Hotel hotel(Long id, String approvalStatus) {
         Hotel hotel = new Hotel();
         hotel.setId(id);
+        hotel.setStatus("DRAFT");
         hotel.setApprovalStatus(approvalStatus);
         hotel.setOperationStatus("INACTIVE");
         return hotel;

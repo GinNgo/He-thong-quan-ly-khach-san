@@ -172,7 +172,10 @@ class PropertyClaimControllerIntegrationTest {
                         .with(user(principal(71L, "PROPERTY_CLAIM_APPROVE"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(8L))
-                .andExpect(jsonPath("$.status").value("APPROVED"));
+                .andExpect(jsonPath("$.status").value("APPROVED"))
+                .andExpect(jsonPath("$.property.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.property.approvalStatus").value("APPROVED"))
+                .andExpect(jsonPath("$.property.operationStatus").value("ACTIVE"));
 
         verify(claimService).approveClaim(8L, 71L);
     }
@@ -236,9 +239,16 @@ class PropertyClaimControllerIntegrationTest {
     }
 
     private PropertyClaimResponseDTO claim(Long id, String status, String verificationMethod, String rejectionReason) {
+        boolean approved = "APPROVED".equals(status);
         return new PropertyClaimResponseDTO(
                 id,
-                new PropertyClaimResponseDTO.PropertySummary(17L, "HOTEL-17", "Safe Hotel", "PENDING_APPROVAL", "INACTIVE"),
+                new PropertyClaimResponseDTO.PropertySummary(
+                        17L,
+                        "HOTEL-17",
+                        "Safe Hotel",
+                        approved ? "ACTIVE" : "DRAFT",
+                        approved ? "APPROVED" : "PENDING_APPROVAL",
+                        approved ? "ACTIVE" : "INACTIVE"),
                 new PropertyClaimResponseDTO.UserSummary(42L, "claim-user-42", "owner@example.com", "Claim User"),
                 verificationMethod,
                 verificationMethod == null ? null : "owner@example.com",

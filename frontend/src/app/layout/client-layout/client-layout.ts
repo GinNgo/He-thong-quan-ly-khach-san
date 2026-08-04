@@ -32,12 +32,13 @@ export class ClientLayout implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(state => {
+      const becameAuthenticated = state.isAuthenticated && !this.isLoggedIn;
       this.isLoggedIn = state.isAuthenticated;
       this.username = state.username;
       this.fullName = state.fullName || state.username;
       this.avatarUrl = state.avatarUrl || '';
-      if (state.isAuthenticated) this.loadUserContext();
-      else this.userContext = null;
+      if (becameAuthenticated) this.loadUserContext();
+      else if (!state.isAuthenticated) this.userContext = null;
     });
   }
 
@@ -51,11 +52,18 @@ export class ClientLayout implements OnInit, OnDestroy {
   }
 
   get isPropertyOwner(): boolean {
-    return this.roleCodes.includes('PROPERTY_OWNER') || Boolean(this.userContext?.assignedProperties?.length);
+    return this.roleCodes.includes('PROPERTY_OWNER');
   }
 
   get isAdmin(): boolean {
     return this.roleCodes.some(role => ['ADMIN', 'SUPER_ADMIN'].includes(role));
+  }
+
+  get managementQueryParams(): { propertyId: number } | null {
+    const properties = this.userContext?.assignedProperties ?? [];
+    if (properties.length !== 1) return null;
+    const propertyId = properties[0]?.id;
+    return Number.isInteger(propertyId) && propertyId > 0 ? { propertyId } : null;
   }
 
   get partnerLabel(): string {
@@ -76,7 +84,11 @@ export class ClientLayout implements OnInit, OnDestroy {
     this.closeAccountMenu();
     if (this.userContext?.status && ['LOCKED', 'BLOCKED', 'INACTIVE'].includes(this.userContext.status)) return;
     if (!this.isLoggedIn) this.router.navigate(['/login'], { queryParams: { returnUrl: '/partner/register' } });
-    else if (this.isPropertyOwner || this.userContext?.partnerRegistrationStatus === 'APPROVED') this.router.navigate(['/management/dashboard']);
+    else if (this.isPropertyOwner || this.userContext?.partnerRegistrationStatus === 'APPROVED') {
+      const queryParams = this.managementQueryParams;
+      if (queryParams) this.router.navigate(['/management/dashboard'], { queryParams });
+      else this.router.navigate(['/management/dashboard']);
+    }
     else if (this.userContext?.partnerRegistrationStatus === 'PENDING') this.router.navigate(['/partner/registration-status']);
     else this.router.navigate(['/partner/register']);
   }
