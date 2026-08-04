@@ -20,8 +20,12 @@
     @if (loading) { <app-feedback-state state="loading" title="Đang tải dữ liệu" message="Đang đồng bộ kho phòng của cơ sở." /> }
     @else if (!rows.length) { <app-feedback-state state="empty" title="Chưa có dữ liệu" message="Hãy tạo loại phòng hoặc phòng vật lý đầu tiên." /> }
     @else {
-      <table><thead><tr><th>ID</th><th>{{ mode === 'room-types' ? 'Mã' : 'Số phòng' }}</th><th>{{ mode === 'room-types' ? 'Tên' : 'Loại phòng' }}</th><th>Trạng thái</th><th>{{ mode === 'room-types' ? 'Sức chứa' : 'Tầng' }}</th>@if (mode === 'rooms') { <th>Thao tác</th> }</tr></thead>
-      <tbody>@for (row of rows; track row.id) { <tr><td>{{ row.id }}</td><td>{{ mode === 'room-types' ? row.code : row.roomNumber }}</td><td>{{ mode === 'room-types' ? row.nameVi : row.roomTypeNameVi }}</td><td>{{ row.status }}</td><td>{{ mode === 'room-types' ? row.maxGuests : row.floor }}</td>@if (mode === 'rooms') { <td><button type="button" (click)="toggleMaintenance(row)" [disabled]="changingRoomId === row.id || row.status === 'OCCUPIED' || row.maintenanceStatus === 'OUT_OF_SERVICE'"><i class="pi" [class.pi-wrench]="row.maintenanceStatus !== 'MAINTENANCE'" [class.pi-check]="row.maintenanceStatus === 'MAINTENANCE'"></i>{{ row.maintenanceStatus === 'MAINTENANCE' ? 'Hoàn tất bảo trì' : 'Bắt đầu bảo trì' }}</button></td> }</tr> }</tbody></table>
+      <table><thead><tr><th>ID</th><th>{{ mode === 'room-types' ? 'Mã' : 'Số phòng' }}</th><th>{{ mode === 'room-types' ? 'Tên' : 'Loại phòng' }}</th><th>Trạng thái</th><th>{{ mode === 'room-types' ? 'Sức chứa' : 'Tầng' }}</th><th>Thao tác</th></tr></thead>
+      <tbody>@for (row of rows; track row.id) { <tr><td>{{ row.id }}</td><td>{{ mode === 'room-types' ? row.code : row.roomNumber }}</td><td>{{ mode === 'room-types' ? row.nameVi : row.roomTypeNameVi }}</td><td>{{ row.status }}</td><td>{{ mode === 'room-types' ? row.maxGuests : row.floor }}</td><td>@if (mode === 'room-types') { <button type="button" (click)="manageAmenities(row.id)"><i class="pi pi-list-check"></i> Tiện nghi</button> } @else { <button type="button" (click)="toggleMaintenance(row)" [disabled]="changingRoomId === row.id || row.status === 'OCCUPIED' || row.maintenanceStatus === 'OUT_OF_SERVICE'"><i class="pi" [class.pi-wrench]="row.maintenanceStatus !== 'MAINTENANCE'" [class.pi-check]="row.maintenanceStatus === 'MAINTENANCE'"></i>{{ row.maintenanceStatus === 'MAINTENANCE' ? 'Hoàn tất bảo trì' : 'Bắt đầu bảo trì' }}</button> }</td></tr> }</tbody></table>
     }
   </div>
+  @if (mode === 'room-types' && selectedAmenityRoomTypeId) {
+    <app-amenity-assignment scope="roomType" [entityId]="selectedAmenityRoomTypeId"
+      [editable]="true" title="Tiện nghi của loại phòng"></app-amenity-assignment>
+  }
 </section>

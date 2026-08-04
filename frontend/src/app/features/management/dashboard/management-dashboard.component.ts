@@ -6,9 +6,10 @@ import { ManagedProperty, ManagementApiService, ManagementContext, ManagementLoc
 import { PropertyProfile } from '../../../core/models/property-profile.model';
 import { FeedbackStateComponent } from '../../../shared/components/feedback-state/feedback-state.component';
 import { PropertyGalleryComponent } from '../../../shared/components/property-gallery/property-gallery.component';
+import { AmenityAssignmentComponent } from '../../../shared/components/amenity-assignment/amenity-assignment.component';
 
 @Component({
-  selector: 'app-management-dashboard', standalone: true, imports: [CommonModule, FormsModule, RouterLink, FeedbackStateComponent, PropertyGalleryComponent],
+  selector: 'app-management-dashboard', standalone: true, imports: [CommonModule, FormsModule, RouterLink, FeedbackStateComponent, PropertyGalleryComponent, AmenityAssignmentComponent],
   templateUrl: './management-dashboard.component.html', styleUrl: './management-dashboard.component.css'
 })
 export class ManagementDashboardComponent implements OnInit {

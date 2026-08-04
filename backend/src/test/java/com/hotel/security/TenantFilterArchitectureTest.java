@@ -30,6 +30,8 @@ class TenantFilterArchitectureTest {
                 "hotelServiceTenantFilter",
                 "propertyMediaTenantFilter",
                 "propertyImageTenantFilter",
+                "propertyAmenityTenantFilter",
+                "roomTypeAmenityTenantFilter",
                 "roomTenantFilter",
                 "roomTypeTenantFilter",
                 "reservationTenantFilter",
@@ -55,6 +57,8 @@ class TenantFilterArchitectureTest {
                 Map.entry("HotelService.java", "hotelServiceTenantFilter"),
                 Map.entry("PropertyMedia.java", "propertyMediaTenantFilter"),
                 Map.entry("PropertyImage.java", "propertyImageTenantFilter"),
+                Map.entry("PropertyAmenity.java", "propertyAmenityTenantFilter"),
+                Map.entry("RoomTypeAmenity.java", "roomTypeAmenityTenantFilter"),
                 Map.entry("Room.java", "roomTenantFilter"),
                 Map.entry("RoomType.java", "roomTypeTenantFilter"),
                 Map.entry("Reservation.java", "reservationTenantFilter"));

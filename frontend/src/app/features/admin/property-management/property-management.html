@@ -138,6 +138,14 @@
       [propertyId]="editingProperty!.id!"
       [editable]="isAdmin">
     </app-property-gallery>
+    <app-amenity-assignment
+      *ngIf="editingProperty?.id"
+      scope="property"
+      [entityId]="editingProperty!.id!"
+      [editable]="isAdmin"
+      [catalogEditable]="isAdmin"
+      title="Tiện nghi của cơ sở">
+    </app-amenity-assignment>
 
   </form>
   <ng-template pTemplate="footer">

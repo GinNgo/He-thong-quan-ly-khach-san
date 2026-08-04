@@ -16,6 +16,7 @@ import { PropertyProfile } from '../../../core/models/property-profile.model';
 import { AuthService } from '../../../core/services/auth';
 import { AdminProperty, PropertyLocation, PropertyService } from '../../../core/services/property.service';
 import { PropertyGalleryComponent } from '../../../shared/components/property-gallery/property-gallery.component';
+import { AmenityAssignmentComponent } from '../../../shared/components/amenity-assignment/amenity-assignment.component';
 
 type PropertyStatus = 'DRAFT' | 'PENDING' | 'ACTIVE' | 'INACTIVE' | 'REJECTED';
 
@@ -35,7 +36,8 @@ function profileRangeValidator(control: AbstractControl): ValidationErrors | nul
   standalone: true,
   imports: [
     CommonModule, ReactiveFormsModule, TableModule, ButtonModule, ToastModule, TagModule,
-    TooltipModule, DialogModule, InputTextModule, SelectModule, TextareaModule, PropertyGalleryComponent
+    TooltipModule, DialogModule, InputTextModule, SelectModule, TextareaModule,
+    PropertyGalleryComponent, AmenityAssignmentComponent
   ],
   providers: [MessageService],
   templateUrl: './property-management.html',

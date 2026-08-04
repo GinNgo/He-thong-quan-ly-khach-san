@@ -28,6 +28,8 @@ public class TenantFilterInterceptor implements HandlerInterceptor {
             "hotelServiceTenantFilter",
             "propertyMediaTenantFilter",
             "propertyImageTenantFilter",
+            "propertyAmenityTenantFilter",
+            "roomTypeAmenityTenantFilter",
             "roomTenantFilter",
             "roomTypeTenantFilter",
             "reservationTenantFilter",

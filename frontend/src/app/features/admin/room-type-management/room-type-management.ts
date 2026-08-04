@@ -5,10 +5,11 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { SharedModule } from '../../../shared/shared.module';
 import { AdminInventoryService, AdminPropertyOption, AdminRoomType } from '../../../core/services/admin-inventory.service';
 import { ActionCode, FunctionCode, PermissionService } from '../../../core/services/permission.service';
+import { AmenityAssignmentComponent } from '../../../shared/components/amenity-assignment/amenity-assignment.component';
 
 @Component({
   selector: 'app-room-type-management',
-  imports: [SharedModule],
+  imports: [SharedModule, AmenityAssignmentComponent],
   providers: [ConfirmationService, MessageService],
   templateUrl: './room-type-management.html',
   styleUrl: './room-type-management.css',

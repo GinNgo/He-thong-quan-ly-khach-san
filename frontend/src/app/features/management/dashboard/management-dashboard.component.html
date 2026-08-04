@@ -100,6 +100,8 @@
         }
       </section>
       <app-property-gallery [propertyId]="activeProperty.id!" [editable]="canEditProfile" />
+      <app-amenity-assignment scope="property" [entityId]="activeProperty.id!"
+        [editable]="canEditProfile" title="Tiện nghi của cơ sở" />
     }
     @if (!activePropertyOperational && activeProperty) {
       <div class="operation-gate" role="status">

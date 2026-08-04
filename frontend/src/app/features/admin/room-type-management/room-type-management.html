@@ -35,5 +35,7 @@
     <label class="wide">Mô tả tiếng Việt<textarea pInputTextarea rows="3" [(ngModel)]="form.descriptionVi"></textarea></label>
     <label class="wide">Ảnh loại phòng (mỗi URL HTTPS một dòng)<textarea pInputTextarea rows="4" [(ngModel)]="imageText" placeholder="https://cdn.example/room-type.jpg"></textarea><small>Mỗi URL được lưu thành media thuộc cơ sở; tên loại phòng được dùng làm mô tả ảnh.</small></label>
   </div>
+  <app-amenity-assignment *ngIf="editingId" scope="roomType" [entityId]="editingId"
+    [editable]="canUpdate" title="Tiện nghi của loại phòng"></app-amenity-assignment>
   <ng-template pTemplate="footer"><button pButton label="Hủy" class="p-button-text" (click)="dialogVisible=false" [disabled]="saving"></button><button pButton [label]="saving ? 'Đang lưu...' : 'Lưu'" icon="pi pi-check" (click)="save()" [disabled]="saving"></button></ng-template>
 </p-dialog>

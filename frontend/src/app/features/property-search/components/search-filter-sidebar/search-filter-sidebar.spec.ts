@@ -14,9 +14,11 @@ describe('SearchFilterSidebarComponent', () => {
     component.selectedPropertyTypes = ['HOTEL'];
     component.selectedStars = [4, 5];
     component.selectedReviewScore = 8;
+    component.selectedAmenityIds = [3, 7];
     component.applyFilters();
     expect(emit).toHaveBeenCalledWith(expect.objectContaining({
-      minPrice: 0, maxPrice: 1500000, propertyTypes: ['HOTEL'], starRatings: [4, 5], minReviewScore: 8
+      minPrice: 0, maxPrice: 1500000, propertyTypes: ['HOTEL'], starRatings: [4, 5], minReviewScore: 8,
+      amenityIds: [3, 7]
     }));
   });
 });

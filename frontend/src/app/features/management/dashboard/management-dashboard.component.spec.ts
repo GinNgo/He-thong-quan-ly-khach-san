@@ -4,8 +4,10 @@ import { of, Subject } from 'rxjs';
 import { ManagementApiService, ManagementContext } from '../../../core/services/management-api.service';
 import { ManagementDashboardComponent } from './management-dashboard.component';
 import { PropertyGalleryService } from '../../../core/services/property-gallery.service';
+import { AmenityService } from '../../../core/services/amenity.service';
 
 const galleryApi = { list: vi.fn(() => of([])) };
+const amenityApi = { publicCatalog: vi.fn(() => of([])), assignments: vi.fn(() => of([])), replaceAssignments: vi.fn(() => of([])) };
 
 describe('ManagementDashboardComponent', () => {
   it('submits an owner-scoped profile edit with a reason', async () => {
@@ -31,7 +33,8 @@ describe('ManagementDashboardComponent', () => {
       providers: [
         provideRouter([]),
         { provide: ManagementApiService, useValue: api },
-        { provide: PropertyGalleryService, useValue: galleryApi }
+        { provide: PropertyGalleryService, useValue: galleryApi },
+        { provide: AmenityService, useValue: amenityApi }
       ]
     }).compileComponents();
 
@@ -73,6 +76,7 @@ describe('ManagementDashboardComponent', () => {
         provideRouter([]),
         { provide: ManagementApiService, useValue: { context: () => context$ } },
         { provide: PropertyGalleryService, useValue: galleryApi },
+        { provide: AmenityService, useValue: amenityApi },
       ],
     }).compileComponents();
 
@@ -108,6 +112,7 @@ describe('ManagementDashboardComponent', () => {
         provideRouter([]),
         { provide: ManagementApiService, useValue: { context: () => context$ } },
         { provide: PropertyGalleryService, useValue: galleryApi },
+        { provide: AmenityService, useValue: amenityApi },
       ],
     }).compileComponents();
 

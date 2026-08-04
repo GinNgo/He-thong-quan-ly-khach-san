@@ -3,6 +3,7 @@ import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core
 import { FormsModule } from '@angular/forms';
 import { CheckboxModule } from 'primeng/checkbox';
 import { SliderModule } from 'primeng/slider';
+import { Amenity } from '../../../../core/services/amenity.service';
 
 export interface FilterState {
   minPrice: number;
@@ -51,6 +52,16 @@ export interface FilterState {
         </label>
       </section>
 
+      <section class="filter-group" *ngIf="amenityOptions.length">
+        <h3>Tiện nghi</h3>
+        <label *ngFor="let amenity of amenityOptions" class="check-row" [for]="'amenity-' + amenity.id">
+          <p-checkbox [value]="amenity.id" [(ngModel)]="selectedAmenityIds"
+            [inputId]="'amenity-' + amenity.id"></p-checkbox>
+          <i [class]="amenity.icon || 'pi pi-check-circle'"></i>
+          <span>{{ amenity.nameVi }}</span>
+        </label>
+      </section>
+
       <section class="filter-group">
         <h3>Điểm đánh giá</h3>
         <label *ngFor="let score of reviewOptions" class="radio-row">
@@ -80,12 +91,14 @@ export interface FilterState {
 })
 export class SearchFilterSidebarComponent implements OnChanges {
   @Input() initialState: Partial<FilterState> = {};
+  @Input() amenityOptions: Amenity[] = [];
   @Output() filtersChanged = new EventEmitter<FilterState>();
 
   priceRange = [0, 10000000];
   selectedPropertyTypes: string[] = [];
   selectedStars: number[] = [];
   selectedReviewScore: number | null = null;
+  selectedAmenityIds: number[] = [];
 
   readonly propertyTypeOptions = [
     { label: 'Khách sạn', value: 'HOTEL' }, { label: 'Khu nghỉ dưỡng', value: 'RESORT' },
@@ -103,6 +116,7 @@ export class SearchFilterSidebarComponent implements OnChanges {
     this.selectedPropertyTypes = [...(this.initialState.propertyTypes || [])];
     this.selectedStars = [...(this.initialState.starRatings || [])];
     this.selectedReviewScore = this.initialState.minReviewScore ?? null;
+    this.selectedAmenityIds = [...(this.initialState.amenityIds || [])];
   }
 
   applyFilters(): void {
@@ -110,13 +124,13 @@ export class SearchFilterSidebarComponent implements OnChanges {
       minPrice: Math.max(0, Number(this.priceRange[0]) || 0),
       maxPrice: Math.max(this.priceRange[0], Number(this.priceRange[1]) || 10000000),
       propertyTypes: [...this.selectedPropertyTypes], starRatings: [...this.selectedStars],
-      minReviewScore: this.selectedReviewScore, amenityIds: []
+      minReviewScore: this.selectedReviewScore, amenityIds: [...this.selectedAmenityIds]
     });
   }
 
   clearAll(): void {
     this.priceRange = [0, 10000000]; this.selectedPropertyTypes = []; this.selectedStars = [];
-    this.selectedReviewScore = null; this.applyFilters();
+    this.selectedReviewScore = null; this.selectedAmenityIds = []; this.applyFilters();
   }
 
   formatVnd(value: number): string {
