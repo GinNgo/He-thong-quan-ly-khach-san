@@ -31,7 +31,7 @@
     --hotel-border-strong: #94a3b8;
     --hotel-heading: #0f172a;
     --hotel-text: #334155;
-    --hotel-text-muted: #64748b;
+    --hotel-text-muted: #475569;
 
     /* Typography */
     --hotel-font-body: 'Montserrat', sans-serif;
@@ -183,6 +183,10 @@ h1, h2, h3, h4, h5, h6, .font-serif {
 
 .skip-link:focus {
     transform: translateY(0);
+}
+
+.admin-page .page-header p {
+    color: var(--hotel-text-muted) !important;
 }
 
 /* Keep authenticated tables and overlays inside narrow viewports while preserving local scrolling. */
