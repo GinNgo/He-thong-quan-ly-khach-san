@@ -9,6 +9,7 @@ import { PermissionService } from '../../../core/services/permission.service';
 describe('ManagementInventoryComponent', () => {
   let fixture: ComponentFixture<ManagementInventoryComponent>;
   let component: ManagementInventoryComponent;
+  let allowActions = true;
   let api: {
     context: ReturnType<typeof vi.fn>;
     rooms: ReturnType<typeof vi.fn>;
@@ -22,6 +23,7 @@ describe('ManagementInventoryComponent', () => {
   };
 
   beforeEach(async () => {
+    allowActions = true;
     api = {
       context: vi.fn(() => of({ properties: [{ id: 3, nameVi: 'Hotel' }], activePropertyId: 3 })),
       rooms: vi.fn(() => of([{ id: 12, status: 'AVAILABLE', maintenanceStatus: 'NONE' }])),
@@ -39,7 +41,7 @@ describe('ManagementInventoryComponent', () => {
       providers: [
         { provide: ManagementApiService, useValue: api },
         { provide: ActivatedRoute, useValue: { snapshot: { data: { mode: 'rooms' } } } },
-        { provide: PermissionService, useValue: { hasPermission: () => true } },
+        { provide: PermissionService, useValue: { hasPermission: () => allowActions } },
       ],
     }).compileComponents();
 
@@ -79,5 +81,19 @@ describe('ManagementInventoryComponent', () => {
 
     component.deactivateRoom({ id: 12, status: 'AVAILABLE' });
     expect(api.deleteRoom).toHaveBeenCalledWith(12);
+  });
+
+  it('hides every physical-room mutation control without action permission', () => {
+    fixture.destroy();
+    allowActions = false;
+    fixture = TestBed.createComponent(ManagementInventoryComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent || '';
+    expect(text).not.toContain('Tạo hàng loạt');
+    expect(text).not.toContain('Sửa');
+    expect(text).not.toContain('Ngừng');
+    expect(text).not.toContain('Phiếu bảo trì');
   });
 });

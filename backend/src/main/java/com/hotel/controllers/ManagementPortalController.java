@@ -24,24 +24,29 @@ public class ManagementPortalController {
     private final HotelManagementService hotelManagementService;
 
     @GetMapping("/context")
+    @Permission(function = FunctionCode.HOTEL, action = ActionCode.VIEW)
     public ResponseEntity<Map<String, Object>> context(@RequestParam(required = false) Long activePropertyId) {
         return ResponseEntity.ok(service.context(activePropertyId));
     }
 
     @GetMapping("/properties")
+    @Permission(function = FunctionCode.HOTEL, action = ActionCode.VIEW)
     public ResponseEntity<List<PropertyProfileDTO>> properties() { return ResponseEntity.ok(service.properties()); }
 
     @GetMapping("/properties/{id}")
+    @Permission(function = FunctionCode.HOTEL, action = ActionCode.VIEW)
     public ResponseEntity<PropertyProfileDTO> property(@PathVariable Long id) {
         return ResponseEntity.ok(hotelManagementService.getOwnedProfile(id));
     }
 
     @PostMapping("/properties")
+    @Permission(function = FunctionCode.HOTEL, action = ActionCode.CREATE)
     public ResponseEntity<PropertyProfileDTO> createProperty(@Valid @RequestBody PropertyProfileDTO request) {
         return ResponseEntity.ok(service.createProperty(request));
     }
 
     @PutMapping("/properties/{id}")
+    @Permission(function = FunctionCode.HOTEL, action = ActionCode.UPDATE)
     public ResponseEntity<PropertyProfileDTO> updateProperty(
             @PathVariable Long id,
             @Valid @RequestBody PropertyProfileUpdateRequest request) {
@@ -117,6 +122,7 @@ public class ManagementPortalController {
     }
 
     @PostMapping("/housekeeping/{taskId}/complete")
+    @Permission(function = FunctionCode.ROOM, action = ActionCode.UPDATE)
     public ResponseEntity<Map<String, Object>> completeHousekeeping(@PathVariable Long taskId) {
         return ResponseEntity.ok(service.completeHousekeeping(taskId));
     }

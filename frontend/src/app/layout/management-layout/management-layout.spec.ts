@@ -3,7 +3,7 @@ import { provideRouter } from '@angular/router';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { AuthService, AuthState } from '../../core/services/auth';
 import { ManagementApiService, ManagementContext } from '../../core/services/management-api.service';
-import { PermissionService } from '../../core/services/permission.service';
+import { ActionCode, FunctionCode, PermissionService } from '../../core/services/permission.service';
 import { ManagementLayout } from './management-layout';
 
 describe('ManagementLayout', () => {
@@ -24,6 +24,7 @@ describe('ManagementLayout', () => {
         provideRouter([]),
         { provide: AuthService, useValue: { currentUser$: user$, logout: () => undefined } },
         { provide: ManagementApiService, useValue: { context: () => context$ } },
+        { provide: PermissionService, useValue: { hasPermission: vi.fn(() => true) } },
       ],
     }).compileComponents();
 
@@ -79,6 +80,7 @@ describe('ManagementLayout', () => {
           },
         },
         { provide: ManagementApiService, useValue: { context: () => new Subject<ManagementContext>() } },
+        { provide: PermissionService, useValue: { hasPermission: vi.fn(() => true) } },
       ],
     }).compileComponents();
 
@@ -209,5 +211,28 @@ describe('ManagementLayout', () => {
     expect(text).not.toContain('Phòng vật lý');
     expect(text).not.toContain('Cấu hình thanh toán');
     expect(text).not.toContain('Doanh thu cơ sở');
+  });
+
+  it('maps core management navigation to matching view permissions', async () => {
+    const allowed = new Set([`${FunctionCode.HOTEL}:${ActionCode.VIEW}`, `${FunctionCode.ROOM}:${ActionCode.VIEW}`]);
+    await TestBed.configureTestingModule({
+      imports: [ManagementLayout],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: { currentUser$: new BehaviorSubject<AuthState>({ isAuthenticated: true, username: 'manager', fullName: 'Manager', avatarUrl: '', roles: ['HOTEL_MANAGER'], permissions: [] }), logout: () => undefined } },
+        { provide: ManagementApiService, useValue: { context: () => new Subject<ManagementContext>() } },
+        { provide: PermissionService, useValue: { hasPermission: vi.fn(() => true) } },
+        { provide: PermissionService, useValue: { hasPermission: (fn: FunctionCode, action: ActionCode) => allowed.has(`${fn}:${action}`) } },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(ManagementLayout);
+    const component = fixture.componentInstance;
+    component.activePropertyOperational = true;
+    const links = component.navigationGroups.flatMap(group => group.links);
+
+    expect(component.canViewLink(links.find(link => link.url.endsWith('/dashboard'))!)).toBe(true);
+    expect(component.canViewLink(links.find(link => link.url.endsWith('/properties'))!)).toBe(true);
+    expect(component.canViewLink(links.find(link => link.url.endsWith('/rooms'))!)).toBe(true);
+    expect(component.canViewLink(links.find(link => link.url.endsWith('/room-types'))!)).toBe(false);
   });
 });

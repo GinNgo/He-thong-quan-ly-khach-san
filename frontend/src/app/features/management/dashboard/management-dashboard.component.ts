@@ -8,6 +8,7 @@ import { FeedbackStateComponent } from '../../../shared/components/feedback-stat
 import { PropertyGalleryComponent } from '../../../shared/components/property-gallery/property-gallery.component';
 import { AmenityAssignmentComponent } from '../../../shared/components/amenity-assignment/amenity-assignment.component';
 import { OperationalPolicyEditorComponent } from '../../../shared/components/operational-policy-editor/operational-policy-editor.component';
+import { ActionCode, FunctionCode, PermissionService } from '../../../core/services/permission.service';
 
 @Component({
   selector: 'app-management-dashboard', standalone: true, imports: [CommonModule, FormsModule, RouterLink, FeedbackStateComponent, PropertyGalleryComponent, AmenityAssignmentComponent, OperationalPolicyEditorComponent],
@@ -16,6 +17,7 @@ import { OperationalPolicyEditorComponent } from '../../../shared/components/ope
 export class ManagementDashboardComponent implements OnInit {
   private api = inject(ManagementApiService);
   private cdr = inject(ChangeDetectorRef);
+  private permissions = inject(PermissionService);
   context?: ManagementContext;
   selectedPropertyId?: number;
   loading = true;
@@ -51,7 +53,8 @@ export class ManagementDashboardComponent implements OnInit {
   get activePropertyOperational(): boolean { return this.context?.activePropertyOperational ?? this.activeProperty?.operational ?? false; }
   get canEditProfile(): boolean {
     const property = this.activeProperty;
-    if (!property || property.operationStatus === 'CLOSED') return false;
+    if (!this.permissions.hasPermission(FunctionCode.HOTEL, ActionCode.UPDATE)
+      || !property || property.operationStatus === 'CLOSED') return false;
     return property.approvalStatus === 'DRAFT'
       || property.approvalStatus === 'REJECTED'
       || (property.approvalStatus === 'APPROVED' && property.operationStatus === 'ACTIVE');

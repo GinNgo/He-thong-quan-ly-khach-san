@@ -6,12 +6,18 @@ import { ManagementDashboardComponent } from './management-dashboard.component';
 import { PropertyGalleryService } from '../../../core/services/property-gallery.service';
 import { AmenityService } from '../../../core/services/amenity.service';
 import { OperationalPolicyService } from '../../../core/services/operational-policy.service';
+import { PermissionService } from '../../../core/services/permission.service';
 
 const galleryApi = { list: vi.fn(() => of([])) };
 const amenityApi = { publicCatalog: vi.fn(() => of([])), assignments: vi.fn(() => of([])), replaceAssignments: vi.fn(() => of([])) };
 const policyApi = { list: vi.fn(() => of([])), create: vi.fn(), update: vi.fn(), publish: vi.fn() };
+const dashboardPermissions = { hasPermission: vi.fn(() => true) };
 
 describe('ManagementDashboardComponent', () => {
+  beforeEach(() => {
+    dashboardPermissions.hasPermission.mockReturnValue(true);
+    TestBed.configureTestingModule({ providers: [{ provide: PermissionService, useValue: dashboardPermissions }] });
+  });
   it('submits an owner-scoped profile edit with a reason', async () => {
     const context: ManagementContext = {
       properties: [{
@@ -68,6 +74,27 @@ describe('ManagementDashboardComponent', () => {
       reason: 'Correct public profile'
     });
     expect(component.profileEditing).toBe(false);
+  });
+
+  it('hides property profile mutation when HOTEL update is missing', async () => {
+    dashboardPermissions.hasPermission.mockReturnValue(false);
+    const context = contextFor(3, 'STANDARD', 1);
+    await TestBed.configureTestingModule({
+      imports: [ManagementDashboardComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ManagementApiService, useValue: { context: () => of(context) } },
+        { provide: PropertyGalleryService, useValue: galleryApi },
+        { provide: AmenityService, useValue: amenityApi },
+        { provide: OperationalPolicyService, useValue: policyApi },
+      ]
+    }).compileComponents();
+    const fixture = TestBed.createComponent(ManagementDashboardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.canEditProfile).toBe(false);
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Chỉnh sửa hồ sơ');
   });
 
   it('renders loaded context in zoneless mode', async () => {
