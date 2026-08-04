@@ -1,10 +1,10 @@
 <section class="chat-dashboard" aria-labelledby="support-dashboard-title">
-  <aside class="conversation-panel" aria-label="Danh sách hội thoại hỗ trợ">
+  <aside class="conversation-panel" aria-label="Danh sach hoi thoai ho tro">
     <header class="conversation-header">
       <div>
-        <p class="eyebrow">SYSTEM · AI_CHAT</p>
+        <p class="eyebrow">SYSTEM / AI_CHAT</p>
         <h1 id="support-dashboard-title">LuxeStay Care</h1>
-        <p>Hàng đợi hỗ trợ trung tâm</p>
+        <p>Hang doi ho tro trung tam</p>
       </div>
       <span class="connection-pill" [class.is-connected]="connectionState() === 'connected'">
         <span aria-hidden="true"></span>{{ connectionLabel() }}
@@ -13,38 +13,39 @@
 
     <div *ngIf="connectionError()" class="dashboard-alert" role="status">
       <span>{{ connectionError() }}</span>
-      <button type="button" class="text-action" (click)="retryConnection()">Thử lại</button>
+      <button type="button" class="text-action" (click)="retryConnection()">Thu lai</button>
     </div>
 
-    <div *ngIf="conversationState() === 'loading'" class="dashboard-state" aria-label="Đang tải hội thoại">
+    <div *ngIf="conversationState() === 'loading'" class="dashboard-state" aria-label="Dang tai hoi thoai">
       <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
-      <span>Đang tải hàng đợi…</span>
+      <span>Dang tai hang doi...</span>
     </div>
 
     <div *ngIf="conversationState() === 'error'" class="dashboard-state dashboard-error" role="alert">
       <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
       <span>{{ conversationError() }}</span>
-      <button type="button" class="text-action" (click)="loadConversations()">Thử lại</button>
+      <button type="button" class="text-action" (click)="loadConversations()">Thu lai</button>
     </div>
 
-    <div *ngIf="conversationState() === 'ready' && conversations().length === 0" class="dashboard-state dashboard-empty">
+    <div *ngIf="conversationState() === 'ready' && conversations().length === 0"
+      class="dashboard-state dashboard-empty">
       <i class="pi pi-inbox" aria-hidden="true"></i>
-      <p>Chưa có cuộc hội thoại mới.</p>
-      <small>Khách hàng sẽ xuất hiện ở đây sau khi gửi yêu cầu.</small>
+      <p>Chua co cuoc hoi thoai moi.</p>
+      <small>Khach hang se xuat hien o day sau khi gui yeu cau.</small>
     </div>
 
-    <nav *ngIf="conversationState() === 'ready'" class="conversation-list" aria-label="Các cuộc hội thoại">
+    <nav *ngIf="conversationState() === 'ready'" class="conversation-list" aria-label="Cac cuoc hoi thoai">
       <button
         *ngFor="let conversation of conversations()"
         type="button"
         class="conversation-item"
-        [class.is-selected]="selectedCustomerId() === conversation.customerId"
-        [attr.aria-current]="selectedCustomerId() === conversation.customerId ? 'true' : null"
+        [class.is-selected]="selectedConversationId() === conversation.conversationId"
+        [attr.aria-current]="selectedConversationId() === conversation.conversationId ? 'true' : null"
         (click)="selectConversation(conversation)">
         <span class="conversation-avatar" aria-hidden="true">{{ conversationInitials(conversation) }}</span>
         <span class="conversation-copy">
-          <strong>{{ conversation.customerName }}</strong>
-          <span>{{ conversation.lastMessage || 'Cuộc hội thoại mới' }}</span>
+          <strong>{{ conversation.subject }}</strong>
+          <span>{{ conversation.customerName }} / {{ conversation.lastMessage || 'Cuoc hoi thoai moi' }}</span>
         </span>
         <time *ngIf="conversation.lastMessageAt" [attr.datetime]="conversation.lastMessageAt">
           {{ conversation.lastMessageAt | date:'HH:mm' }}
@@ -54,31 +55,38 @@
   </aside>
 
   <main class="message-panel" aria-live="polite">
-    <ng-container *ngIf="selectedCustomerId() as selectedId; else noSelection">
+    <ng-container *ngIf="selectedConversationId() as selectedId; else noSelection">
       <header class="message-header">
         <div class="selected-avatar" aria-hidden="true">
           {{ (getConversation(selectedId)?.customerName || '?').charAt(0) | uppercase }}
         </div>
         <div>
           <p class="eyebrow">CUSTOMER CONVERSATION</p>
-          <h2>{{ getConversation(selectedId)?.customerName || ('Khách hàng #' + selectedId) }}</h2>
-          <p>Hội thoại trong hàng đợi CSKH trung tâm</p>
+          <h2>{{ getConversation(selectedId)?.subject || ('Hoi thoai #' + selectedId) }}</h2>
+          <p>{{ getConversation(selectedId)?.customerName }}</p>
         </div>
       </header>
 
       <div class="message-stream" #scrollMe role="log" aria-relevant="additions">
         <div *ngIf="messagesState() === 'loading'" class="dashboard-state">
           <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
-          <span>Đang tải lịch sử…</span>
+          <span>Dang tai lich su...</span>
         </div>
         <div *ngIf="messagesState() === 'error'" class="dashboard-state dashboard-error" role="alert">
           <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
           <span>{{ messagesError() }}</span>
-          <button type="button" class="text-action" (click)="loadConversations()">Thử lại</button>
+          <button type="button" class="text-action"
+            (click)="selectConversation(getConversation(selectedId)!)">Thu lai</button>
         </div>
+        <button *ngIf="hasOlderMessages()" type="button" class="load-older"
+          (click)="loadOlderMessages()" [disabled]="isLoadingOlder()">
+          <i class="pi" [class.pi-history]="!isLoadingOlder()" [class.pi-spin]="isLoadingOlder()"
+            [class.pi-spinner]="isLoadingOlder()" aria-hidden="true"></i>
+          {{ isLoadingOlder() ? 'Dang tai...' : 'Tai tin nhan cu hon' }}
+        </button>
         <div *ngIf="messagesState() === 'ready' && messages().length === 0" class="dashboard-state">
           <i class="pi pi-comments" aria-hidden="true"></i>
-          <span>Chưa có tin nhắn trong cuộc hội thoại này.</span>
+          <span>Chua co tin nhan trong cuoc hoi thoai nay.</span>
         </div>
 
         <article *ngFor="let message of messages()" class="message-row" [class.is-own]="isOwnMessage(message)">
@@ -92,7 +100,7 @@
       </div>
 
       <form class="message-composer" (ngSubmit)="sendMessage()">
-        <label class="visually-hidden" for="support-dashboard-message">Phản hồi khách hàng</label>
+        <label class="visually-hidden" for="support-dashboard-message">Phan hoi khach hang</label>
         <input
           id="support-dashboard-message"
           name="supportDashboardMessage"
@@ -102,17 +110,17 @@
           [(ngModel)]="newMessage"
           [disabled]="isSending()"
           aria-describedby="dashboard-send-status"
-          placeholder="Viết phản hồi cho khách hàng…">
+          placeholder="Viet phan hoi cho khach hang...">
         <button
           type="submit"
           class="send-button"
-          aria-label="Gửi phản hồi"
-          [disabled]="!newMessage.trim() || isSending() || connectionState() !== 'connected'">
+          aria-label="Gui phan hoi"
+          [disabled]="!newMessage.trim() || isSending()">
           <i *ngIf="!isSending()" class="pi pi-send" aria-hidden="true"></i>
           <i *ngIf="isSending()" class="pi pi-spin pi-spinner" aria-hidden="true"></i>
         </button>
         <p id="dashboard-send-status" class="composer-status" [class.has-error]="sendError()" aria-live="polite">
-          {{ sendError() || (isSending() ? 'Đang chờ máy chủ xác nhận…' : '') }}
+          {{ sendError() || (isSending() ? 'Dang cho may chu xac nhan...' : '') }}
         </p>
       </form>
     </ng-container>
@@ -120,8 +128,8 @@
     <ng-template #noSelection>
       <div class="dashboard-state dashboard-welcome">
         <span class="welcome-icon" aria-hidden="true"><i class="pi pi-comments"></i></span>
-        <h2>Chọn một cuộc hội thoại</h2>
-        <p>Hãy chọn khách hàng trong hàng đợi để xem lịch sử và phản hồi.</p>
+        <h2>Chon mot cuoc hoi thoai</h2>
+        <p>Chon dung chu de cua khach hang de xem lich su va phan hoi.</p>
       </div>
     </ng-template>
   </main>

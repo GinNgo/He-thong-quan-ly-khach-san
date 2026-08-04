@@ -1,12 +1,16 @@
 package com.hotel.repositories;
 
 import com.hotel.entities.ChatMessage;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
@@ -24,4 +28,9 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
 
     @Query("SELECT DISTINCT m.senderId FROM ChatMessage m WHERE m.receiverId = 0")
     List<Long> findDistinctQueueCustomerIds();
+
+    Page<ChatMessage> findByConversationIdAndTimestampGreaterThanEqualOrderByTimestampDescIdDesc(
+            Long conversationId, Instant cutoff, Pageable pageable);
+
+    Optional<ChatMessage> findFirstByConversationIdOrderByTimestampDesc(Long conversationId);
 }

@@ -8,6 +8,7 @@ public class ChatMessageDTO {
     private Long id;
     private Long senderId;
     private Long receiverId;
+    private Long conversationId;
     private String content;
     private Instant timestamp;
     private boolean isRead;

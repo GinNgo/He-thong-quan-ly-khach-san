@@ -25,6 +25,9 @@ public class ChatMessage {
     @Column(name = "receiver_id", nullable = false)
     private Long receiverId;
 
+    @Column(name = "conversation_id")
+    private Long conversationId;
+
     @Column(columnDefinition = "NVARCHAR(MAX)")
     private String content;
 

@@ -8,8 +8,10 @@ import java.time.Instant;
 @Data
 @AllArgsConstructor
 public class ChatConversationDTO {
+    private Long conversationId;
     private Long customerId;
     private String customerName;
+    private String subject;
     private String lastMessage;
     private Instant lastMessageAt;
 }

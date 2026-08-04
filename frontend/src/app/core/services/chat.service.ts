@@ -9,6 +9,7 @@ import { ClientObservabilityService } from './client-observability.service';
 
 export interface ChatMessage {
   id?: number;
+  conversationId?: number;
   senderId: number;
   receiverId: number;
   content: string;
@@ -17,10 +18,23 @@ export interface ChatMessage {
 }
 
 export interface ChatConversation {
+  conversationId: number;
   customerId: number;
   customerName: string;
+  subject: string;
   lastMessage: string;
   lastMessageAt?: string;
+}
+
+export interface ChatPage<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+  first: boolean;
+  last: boolean;
+  retentionDays: number;
 }
 
 export type ChatMode = 'customer' | 'support';
@@ -116,24 +130,54 @@ export class ChatService {
     }
   }
 
-  sendCustomerMessage(content: string): boolean {
-    return this.publish('/app/chat.support.send', { content });
+  sendCustomerMessage(content: string, conversationId?: number): boolean {
+    return this.publish('/app/chat.support.send', { content, conversationId });
   }
 
-  sendSupportReply(customerId: number, content: string): boolean {
-    return this.publish('/app/chat.support.reply', { customerId, content });
+  sendSupportReply(conversationId: number, content: string): boolean {
+    return this.publish('/app/chat.support.reply', { conversationId, content });
   }
 
   getMyHistory(): Observable<ChatMessage[]> {
     return this.http.get<ChatMessage[]>(`${this.apiUrl}/me/history`);
   }
 
+  getMyConversations(page = 0, size = 20): Observable<ChatPage<ChatConversation>> {
+    return this.http.get<ChatPage<ChatConversation>>(`${this.apiUrl}/me/conversations`, {
+      params: { page, size },
+    });
+  }
+
+  createMyConversation(subject: string): Observable<ChatConversation> {
+    return this.http.post<ChatConversation>(`${this.apiUrl}/me/conversations`, { subject });
+  }
+
+  getMyConversationMessages(conversationId: number, page = 0, size = 50): Observable<ChatPage<ChatMessage>> {
+    return this.http.get<ChatPage<ChatMessage>>(
+      `${this.apiUrl}/me/conversations/${conversationId}/messages`, { params: { page, size } });
+  }
+
+  sendMyConversationMessage(conversationId: number, content: string): Observable<ChatMessage> {
+    return this.http.post<ChatMessage>(
+      `${this.apiUrl}/me/conversations/${conversationId}/messages`, { content });
+  }
+
   getSupportConversations(): Observable<ChatConversation[]> {
     return this.http.get<ChatConversation[]>(`${this.apiUrl}/support/conversations`);
   }
 
-  getSupportHistory(customerId: number): Observable<ChatMessage[]> {
-    return this.http.get<ChatMessage[]>(`${this.apiUrl}/support/conversations/${customerId}`);
+  getSupportHistory(conversationId: number): Observable<ChatMessage[]> {
+    return this.http.get<ChatMessage[]>(`${this.apiUrl}/support/conversations/${conversationId}`);
+  }
+
+  getSupportConversationMessages(conversationId: number, page = 0, size = 50): Observable<ChatPage<ChatMessage>> {
+    return this.http.get<ChatPage<ChatMessage>>(
+      `${this.apiUrl}/support/conversations/${conversationId}/messages`, { params: { page, size } });
+  }
+
+  sendSupportConversationMessage(conversationId: number, content: string): Observable<ChatMessage> {
+    return this.http.post<ChatMessage>(
+      `${this.apiUrl}/support/conversations/${conversationId}/messages`, { content });
   }
 
   isConnected(): boolean {

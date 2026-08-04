@@ -236,6 +236,24 @@
   background: var(--hotel-bg);
 }
 
+.load-older {
+  align-self: center;
+  min-height: 2.5rem;
+  padding: 0 var(--hotel-space-4);
+  color: var(--hotel-primary);
+  background: var(--hotel-primary-light);
+  border: 1px solid color-mix(in srgb, var(--hotel-primary) 24%, transparent);
+  border-radius: var(--hotel-radius-pill);
+  cursor: pointer;
+  font-size: var(--hotel-text-xs);
+  font-weight: 700;
+}
+
+.load-older:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .message-row {
   display: flex;
   justify-content: flex-start;
