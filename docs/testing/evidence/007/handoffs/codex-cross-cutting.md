@@ -14,6 +14,7 @@ This file records branch-local completion evidence. Shared aggregate files are i
 | T327 | `726178bef6a163708f6aae703d8fbb4a94a4e00f` | Backend 24/24; Angular 20/20; Playwright two-context 1/1; SQL Server V61 first run and rerun PASS; production build PASS | `docs/testing/evidence/007/remediation/T327-chat-idempotency-read-state.md`; CROSS-015 in `docs/audit/system/inventory/cross-cutting.md` |
 | T328 | `43700ad1ef723b25d764c2387a0bde75e86c7f48` | Backend 28/28; Angular 23/23; Playwright 1/1; SQL Server V62 first run and rerun PASS; production build PASS | `docs/testing/evidence/007/remediation/T328-support-close-attachments-search-sla.md`; CROSS-016 in `docs/audit/system/inventory/cross-cutting.md` |
 | T329 | `090178f66074ca4d1961a77a4113b6a957c6cd3c` | Backend focused/context/reconciliation 16/16; Angular 3/3; Playwright 2/2; production build PASS | `docs/testing/evidence/007/remediation/T329-admin-authoritative-kpi-dashboard.md`; CROSS-018 in `docs/audit/system/inventory/cross-cutting.md` |
+| T330 | `e03cb7f055dcf48647ab9b55feb2f6c0afee07df` | Angular 2/2; Playwright dashboard suite 3/3; production build PASS | `docs/testing/evidence/007/remediation/T330-admin-onboarding-context.md`; CROSS-019 in `docs/audit/system/inventory/cross-cutting.md` |
 
 ## Coordinator updates required
 
@@ -34,6 +35,8 @@ This file records branch-local completion evidence. Shared aggregate files are i
 - Promote CROSS-016 in `docs/audit/system/MASTER_FUNCTION_INVENTORY.md` and add T328 executable coverage to `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md` for FR-044 / SC-013.
 - Mark T329 complete in `specs/007-payment-billing-completion/tasks.md` after merging the commit and evidence.
 - Promote CROSS-018 in `docs/audit/system/MASTER_FUNCTION_INVENTORY.md` and add T329 executable coverage to `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md` for FR-044 / SC-013.
+- Mark T330 complete in `specs/007-payment-billing-completion/tasks.md` after merging the commit and evidence.
+- Promote CROSS-019 in `docs/audit/system/MASTER_FUNCTION_INVENTORY.md` and add T330 executable coverage to `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md` for FR-044 / SC-013.
 
 ## Deferred claim conflicts
 
