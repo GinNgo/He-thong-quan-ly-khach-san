@@ -136,6 +136,14 @@ public class ManagementPortalService {
         return roomTypeService.updateRoomType(id, dto);
     }
 
+    @Transactional
+    public void deleteRoomType(Long id) {
+        RoomType roomType = roomTypeRepository.findById(id)
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
+        propertyAccessService.requireAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
+        roomTypeService.deleteRoomType(id);
+    }
+
     @Transactional(readOnly = true)
     public List<RoomDTO> rooms(Long hotelId) {
         propertyAccessService.requireCanManage(hotelId);

@@ -30,6 +30,8 @@ export class ManagementApiService {
   roomTypes(propertyId: number) { return this.http.get<any[]>(`${this.baseUrl}/room-types`, { params: { propertyId } }); }
   rooms(propertyId: number) { return this.http.get<any[]>(`${this.baseUrl}/rooms`, { params: { propertyId } }); }
   createRoomType(body: any) { return this.http.post<any>(`${this.baseUrl}/room-types`, body); }
+  updateRoomType(id: number, body: any) { return this.http.put<any>(`${this.baseUrl}/room-types/${id}`, body); }
+  deleteRoomType(id: number) { return this.http.delete<void>(`${this.baseUrl}/room-types/${id}`); }
   createRoom(body: any) { return this.http.post<any>(`${this.baseUrl}/rooms`, body); }
   bulkRooms(body: any) { return this.http.post<any[]>(`${this.baseUrl}/rooms/bulk`, body); }
   startRoomMaintenance(roomId: number) { return this.http.post<any>(`${this.baseUrl}/rooms/${roomId}/maintenance/start`, {}); }

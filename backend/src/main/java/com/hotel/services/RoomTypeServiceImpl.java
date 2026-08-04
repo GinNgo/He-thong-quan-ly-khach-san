@@ -29,6 +29,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
     private final SubscriptionFeatureService subscriptionFeatureService;
     private final PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
     private final PropertyMediaService propertyMediaService;
+    private final com.hotel.repositories.ReservationDetailRepository reservationDetailRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -97,7 +98,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
     @Override
     @Transactional
     public RoomTypeDTO updateRoomType(Long id, RoomTypeDTO dto) {
-        RoomType roomType = roomTypeRepository.findById(id)
+        RoomType roomType = roomTypeRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
         propertyAccessService.requireAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
         requireFeature(roomType.getHotel().getId(), "MAX_ROOM_TYPES");
@@ -111,6 +112,9 @@ public class RoomTypeServiceImpl implements RoomTypeService {
             throw new IllegalArgumentException("Không thể chuyển loại phòng sang cơ sở khác.");
         }
         normalizeAndValidate(dto);
+        if ("ACTIVE".equals(roomType.getStatus()) && "INACTIVE".equals(dto.getStatus())) {
+            requireNoActiveBookings(roomType);
+        }
         roomTypeRepository.findByCodeAndHotelId(dto.getCode(), roomType.getHotel().getId())
                 .filter(existing -> !existing.getId().equals(id))
                 .ifPresent(existing -> { throw new IllegalArgumentException("Mã loại phòng đã tồn tại trong cơ sở này."); });
@@ -123,10 +127,12 @@ public class RoomTypeServiceImpl implements RoomTypeService {
     @Override
     @Transactional
     public void deleteRoomType(Long id) {
-        RoomType roomType = roomTypeRepository.findById(id)
+        RoomType roomType = roomTypeRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
         propertyAccessService.requireAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
         requireFeature(roomType.getHotel().getId(), "MAX_ROOM_TYPES");
+        if ("INACTIVE".equals(roomType.getStatus())) return;
+        requireNoActiveBookings(roomType);
         roomType.setStatus("INACTIVE");
         roomTypeRepository.save(roomType);
     }
@@ -135,6 +141,9 @@ public class RoomTypeServiceImpl implements RoomTypeService {
         if (dto == null) throw new IllegalArgumentException("Dữ liệu loại phòng không hợp lệ.");
         dto.setCode(dto.getCode() == null ? "" : dto.getCode().trim().toUpperCase(Locale.ROOT));
         dto.setNameVi(dto.getNameVi() == null ? "" : dto.getNameVi().trim());
+        dto.setNameEn(dto.getNameEn() == null || dto.getNameEn().isBlank() ? dto.getNameVi() : dto.getNameEn().trim());
+        dto.setStatus(dto.getStatus() == null || dto.getStatus().isBlank()
+                ? "ACTIVE" : dto.getStatus().trim().toUpperCase(Locale.ROOT));
         if (dto.getHotelId() == null || dto.getCode().isBlank() || dto.getNameVi().isBlank()) {
             throw new IllegalArgumentException("Cơ sở, mã và tên loại phòng là bắt buộc.");
         }
@@ -144,6 +153,25 @@ public class RoomTypeServiceImpl implements RoomTypeService {
         if (dto.getMaxGuests() == null) dto.setMaxGuests(dto.getMaxGuest());
         if (dto.getMaxGuests() == null || dto.getMaxGuests() < 1) {
             throw new IllegalArgumentException("Sức chứa tối đa phải lớn hơn 0.");
+        }
+        int adults = dto.getMaxAdults() == null ? 1 : dto.getMaxAdults();
+        int children = dto.getMaxChildren() == null ? 0 : dto.getMaxChildren();
+        if (adults < 1 || children < 0 || dto.getMaxGuests() < adults || dto.getMaxGuests() < adults + children) {
+            throw new IllegalArgumentException("Sức chứa người lớn, trẻ em và tổng khách không nhất quán.");
+        }
+        dto.setMaxAdults(adults);
+        dto.setMaxChildren(children);
+        if (dto.getBedCount() != null && dto.getBedCount() < 1) {
+            throw new IllegalArgumentException("Số giường phải lớn hơn 0.");
+        }
+        if (dto.getArea() != null && dto.getArea().signum() <= 0) {
+            throw new IllegalArgumentException("Diện tích phải lớn hơn 0.");
+        }
+        if (dto.getHourlyPrice() != null && dto.getHourlyPrice().signum() < 0) {
+            throw new IllegalArgumentException("Giá theo giờ không hợp lệ.");
+        }
+        if (!java.util.Set.of("ACTIVE", "INACTIVE").contains(dto.getStatus())) {
+            throw new IllegalArgumentException("Trạng thái loại phòng không hợp lệ.");
         }
     }
 
@@ -211,6 +239,14 @@ public class RoomTypeServiceImpl implements RoomTypeService {
         return imageUrls.stream()
                 .filter(url -> url != null && !url.trim().isBlank())
                 .count();
+    }
+
+    private void requireNoActiveBookings(RoomType roomType) {
+        long active = reservationDetailRepository.countActiveByRoomTypeId(
+                roomType.getId(), RoomAvailabilityService.RELEASED_RESERVATION_STATUSES);
+        if (active > 0) {
+            throw new IllegalStateException("Không thể ngừng loại phòng khi còn booking đang hoạt động.");
+        }
     }
 
     private RoomTypeDTO mapToDTO(RoomType entity) {

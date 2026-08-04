@@ -3,6 +3,9 @@ package com.hotel.controllers;
 import com.hotel.dtos.*;
 import com.hotel.services.HotelManagementService;
 import com.hotel.services.ManagementPortalService;
+import com.hotel.security.ActionCode;
+import com.hotel.security.FunctionCode;
+import com.hotel.security.Permission;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -46,18 +49,28 @@ public class ManagementPortalController {
     }
 
     @GetMapping("/room-types")
+    @Permission(function = FunctionCode.ROOM_TYPE, action = ActionCode.VIEW)
     public ResponseEntity<List<RoomTypeDTO>> roomTypes(@RequestParam Long propertyId) {
         return ResponseEntity.ok(service.roomTypes(propertyId));
     }
 
     @PostMapping("/room-types")
-    public ResponseEntity<RoomTypeDTO> createRoomType(@RequestBody RoomTypeDTO request) {
+    @Permission(function = FunctionCode.ROOM_TYPE, action = ActionCode.CREATE)
+    public ResponseEntity<RoomTypeDTO> createRoomType(@Valid @RequestBody RoomTypeDTO request) {
         return ResponseEntity.ok(service.createRoomType(request));
     }
 
     @PutMapping("/room-types/{id}")
-    public ResponseEntity<RoomTypeDTO> updateRoomType(@PathVariable Long id, @RequestBody RoomTypeDTO request) {
+    @Permission(function = FunctionCode.ROOM_TYPE, action = ActionCode.UPDATE)
+    public ResponseEntity<RoomTypeDTO> updateRoomType(@PathVariable Long id, @Valid @RequestBody RoomTypeDTO request) {
         return ResponseEntity.ok(service.updateRoomType(id, request));
+    }
+
+    @DeleteMapping("/room-types/{id}")
+    @Permission(function = FunctionCode.ROOM_TYPE, action = ActionCode.DELETE)
+    public ResponseEntity<Void> deleteRoomType(@PathVariable Long id) {
+        service.deleteRoomType(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/rooms")

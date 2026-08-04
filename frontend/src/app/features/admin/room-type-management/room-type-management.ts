@@ -69,8 +69,10 @@ export class RoomTypeManagement implements OnInit {
   openEdit(item: AdminRoomType): void { this.editingId = item.id; this.form = { ...item }; this.imageText = (item.imageUrls || []).join('\n'); this.dialogVisible = true; }
 
   save(): void {
-    if (this.saving || !this.form.hotelId || !this.form.code?.trim() || !this.form.nameVi?.trim()) {
-      this.messages.add({ severity: 'warn', summary: 'Thiếu thông tin', detail: 'Vui lòng chọn cơ sở, nhập mã và tên loại phòng.' }); return;
+    const adults = Number(this.form.maxAdults ?? 0); const children = Number(this.form.maxChildren ?? 0); const guests = Number(this.form.maxGuests ?? 0);
+    if (this.saving || !this.form.hotelId || !this.form.code?.trim() || !this.form.nameVi?.trim()
+      || Number(this.form.basePrice ?? -1) < 0 || adults < 1 || children < 0 || guests < adults + children) {
+      this.messages.add({ severity: 'warn', summary: 'Dữ liệu chưa hợp lệ', detail: 'Kiểm tra cơ sở, mã, tên, giá và sức chứa loại phòng.' }); return;
     }
     this.form.imageUrls = this.imageText.split(/\r?\n/).map(v => v.trim()).filter(Boolean);
     this.saving = true;

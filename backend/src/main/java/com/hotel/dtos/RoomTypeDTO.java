@@ -1,27 +1,39 @@
 package com.hotel.dtos;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
 public class RoomTypeDTO {
     private Long id;
+    @NotNull
     private Long hotelId;
+    @NotBlank @Size(max = 50) @Pattern(regexp = "[A-Za-z0-9_-]+")
     private String code;
+    @NotBlank @Size(max = 255)
     private String nameVi;
+    @Size(max = 255)
     private String nameEn;
     private String normalizedName;
+    @DecimalMin(value = "0.01")
     private BigDecimal area;
     private Boolean isDemo;
     private Integer maxGuest;
     private String bedType;
-    private Integer bedCount;
-    private Integer maxAdults;
-    private Integer maxChildren;
-    private Integer maxGuests;
-    private BigDecimal hourlyPrice;
-    private String status;
+    @Min(1) private Integer bedCount;
+    @Min(1) private Integer maxAdults;
+    @Min(0) private Integer maxChildren;
+    @Min(1) private Integer maxGuests;
+    @DecimalMin(value = "0.00") private BigDecimal hourlyPrice;
+    @Pattern(regexp = "ACTIVE|INACTIVE") private String status;
     private Long totalRooms;
+    @NotNull @DecimalMin(value = "0.00")
     private BigDecimal basePrice;
     private String descriptionVi;
     private String descriptionEn;
