@@ -60,4 +60,25 @@ describe('PartnerRegistrationStatusService', () => {
 
     expect(submittedStatus).toBe('PENDING_APPROVAL');
   });
+
+  it('loads tenant-scoped immutable property history', () => {
+    service.loadHistory(17).subscribe();
+
+    const request = http.expectOne(`${environment.apiUrl}/partner/properties/17/history`);
+    expect(request.request.method).toBe('GET');
+    request.flush([{
+      eventId: 71,
+      propertyId: 17,
+      eventType: 'PROPERTY_SUBMITTED_FOR_APPROVAL',
+      actorKind: 'OWNER',
+      note: null,
+      beforeState: state('DRAFT', 'DRAFT', 'INACTIVE', 'PENDING'),
+      afterState: state('PENDING_APPROVAL', 'PENDING_APPROVAL', 'INACTIVE', 'PENDING'),
+      occurredAt: '2026-08-04T08:30:00Z'
+    }]);
+  });
 });
+
+function state(status: string, approvalStatus: string, operationStatus: string, ownershipStatus: string) {
+  return { status, approvalStatus, operationStatus, ownershipStatus };
+}

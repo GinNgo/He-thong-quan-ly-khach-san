@@ -69,9 +69,12 @@ describe('PartnerOverviewComponent', () => {
 
     expect(actionButton(fixture, 'Duyệt cơ sở').disabled).toBe(true);
     expect(actionButton(fixture, 'Từ chối cơ sở').disabled).toBe(true);
+    fixture.componentInstance.updateApprovalNote(7, '  Hồ sơ đã được đối chiếu đầy đủ.  ');
+    approvalConfirm(fixture).click();
+    approvalConfirm(fixture).click();
     const request = http.expectOne(`${environment.apiUrl}/admin/property-approvals/7/approve`);
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({});
+    expect(request.request.body).toEqual({ note: 'Hồ sơ đã được đối chiếu đầy đủ.' });
     request.flush(decision('APPROVED'));
     http.expectOne(`${environment.apiUrl}/admin/property-approvals`).flush([]);
     fixture.detectChanges();
@@ -95,7 +98,7 @@ describe('PartnerOverviewComponent', () => {
       }
     ]);
 
-    expect(fixture.nativeElement.querySelectorAll('.row-action-buttons .row-action')).toHaveLength(2);
+    expect(fixture.nativeElement.querySelectorAll('.row-action-buttons .row-action')).toHaveLength(4);
     expect(fixture.nativeElement.textContent).toContain('Needs claim review');
     expect(fixture.nativeElement.textContent).not.toContain('null');
   });
@@ -163,11 +166,56 @@ describe('PartnerOverviewComponent', () => {
     expect((fixture.nativeElement.querySelector('.reject-editor textarea') as HTMLTextAreaElement).value).toBe('');
   });
 
+  it('accepts an empty approval note and rejects notes above 500 characters', () => {
+    const fixture = approvalFixture();
+    const item = approvalItem();
+    loadApprovalQueue(fixture, [item]);
+
+    actionButton(fixture, 'Duyệt cơ sở').click();
+    fixture.componentInstance.updateApprovalNote(7, 'x'.repeat(501));
+    fixture.componentInstance.confirmApproval(item);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('vượt quá 500 ký tự');
+    http.expectNone(`${environment.apiUrl}/admin/property-approvals/7/approve`);
+
+    fixture.componentInstance.updateApprovalNote(7, '   ');
+    fixture.componentInstance.confirmApproval(item);
+    const request = http.expectOne(`${environment.apiUrl}/admin/property-approvals/7/approve`);
+    expect(request.request.body).toEqual({});
+    request.flush(decision('APPROVED'));
+    http.expectOne(`${environment.apiUrl}/admin/property-approvals`).flush([]);
+  });
+
+  it('lazy-loads safe admin history in a retryable dialog', () => {
+    const fixture = approvalFixture();
+    loadApprovalQueue(fixture, [approvalItem()]);
+
+    actionButton(fixture, 'Xem lịch sử').click();
+    const first = http.expectOne(`${environment.apiUrl}/admin/properties/7/history`);
+    expect(first.request.method).toBe('GET');
+    first.flush(
+      { message: 'Internal reviewer 99 history failure' },
+      { status: 500, statusText: 'Error' }
+    );
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Không thể tải lịch sử xét duyệt');
+    expect(fixture.nativeElement.textContent).not.toContain('reviewer 99');
+    fixture.componentInstance.retryHistory();
+    http.expectOne(`${environment.apiUrl}/admin/properties/7/history`).flush([historyEvent()]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Đã phê duyệt');
+    expect(fixture.nativeElement.textContent).toContain('Hồ sơ đã được xác minh.');
+  });
+
   it('shows a safe per-row failure and allows retry', () => {
     const fixture = approvalFixture();
     loadApprovalQueue(fixture, [approvalItem()]);
 
     actionButton(fixture, 'Duyệt cơ sở').click();
+    fixture.detectChanges();
+    approvalConfirm(fixture).click();
     http.expectOne(`${environment.apiUrl}/admin/property-approvals/7/approve`).flush(
       { message: 'Internal tenant 99 reviewer failure' },
       { status: 500, statusText: 'Error' }
@@ -177,9 +225,9 @@ describe('PartnerOverviewComponent', () => {
     const rowError = fixture.nativeElement.querySelector('.row-action-error') as HTMLElement;
     expect(rowError.textContent).toContain('Không thể thực hiện thao tác');
     expect(rowError.textContent).not.toContain('tenant 99');
-    expect(actionButton(fixture, 'Duyệt cơ sở').disabled).toBe(false);
+    expect(approvalConfirm(fixture).disabled).toBe(false);
 
-    actionButton(fixture, 'Duyệt cơ sở').click();
+    approvalConfirm(fixture).click();
     http.expectOne(`${environment.apiUrl}/admin/property-approvals/7/approve`).flush(decision('APPROVED'));
     http.expectOne(`${environment.apiUrl}/admin/property-approvals`).flush([]);
   });
@@ -214,6 +262,13 @@ function rejectionConfirm(fixture: ComponentFixture<PartnerOverviewComponent>): 
   return button;
 }
 
+function approvalConfirm(fixture: ComponentFixture<PartnerOverviewComponent>): HTMLButtonElement {
+  const buttons = Array.from(fixture.nativeElement.querySelectorAll('.review-note-editor-actions button')) as HTMLButtonElement[];
+  const button = buttons.find(candidate => candidate.textContent?.includes('Xác nhận phê duyệt'));
+  if (!button) throw new Error('Missing approval confirmation');
+  return button;
+}
+
 function approvalItem(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     propertyId: 7,
@@ -245,4 +300,21 @@ function decision(outcome: 'APPROVED' | 'REJECTED') {
     reviewedAt: '2026-08-04T10:00:00Z',
     reason: outcome === 'REJECTED' ? 'Thiếu giấy phép kinh doanh hợp lệ.' : null
   };
+}
+
+function historyEvent() {
+  return {
+    eventId: 71,
+    propertyId: 7,
+    eventType: 'PROPERTY_APPROVED',
+    actorKind: 'ADMIN',
+    note: 'Hồ sơ đã được xác minh.',
+    beforeState: historyState('PENDING_APPROVAL', 'PENDING_APPROVAL', 'INACTIVE', 'PENDING'),
+    afterState: historyState('ACTIVE', 'APPROVED', 'ACTIVE', 'ACTIVE'),
+    occurredAt: '2026-08-04T10:00:00Z'
+  };
+}
+
+function historyState(status: string, approvalStatus: string, operationStatus: string, ownershipStatus: string) {
+  return { status, approvalStatus, operationStatus, ownershipStatus };
 }

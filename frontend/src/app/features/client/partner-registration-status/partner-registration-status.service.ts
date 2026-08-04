@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
+import { PropertyReviewHistoryEvent } from '../../../core/services/property.service';
 
 export type PartnerPropertyStatus =
   | 'DRAFT'
@@ -53,6 +54,12 @@ export class PartnerRegistrationStatusService {
     return this.http.post<PartnerReviewSubmissionResponse>(
       `${environment.apiUrl}/partner/properties/${propertyId}/submit`,
       {}
+    );
+  }
+
+  loadHistory(propertyId: number): Observable<PropertyReviewHistoryEvent[]> {
+    return this.http.get<PropertyReviewHistoryEvent[]>(
+      `${environment.apiUrl}/partner/properties/${propertyId}/history`
     );
   }
 }

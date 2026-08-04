@@ -4,11 +4,14 @@ import com.hotel.dtos.PropertyApprovalDecisionResponse;
 import com.hotel.dtos.PropertyApprovalQueueItem;
 import com.hotel.dtos.PropertyApprovalSubmissionResponse;
 import com.hotel.entities.Hotel;
+import com.hotel.entities.OperationalAuditEvent;
 import com.hotel.entities.User;
 import com.hotel.entities.UserProperty;
 import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.UserPropertyRepository;
+import com.hotel.propertyreview.PropertyReviewEmailOutboxService;
+import com.hotel.propertyreview.PropertyReviewInAppNotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -31,7 +34,9 @@ public class PropertyApprovalWorkflowService {
     private final UserPropertyRepository userPropertyRepository;
     private final PropertyOwnershipLifecycleService ownershipLifecycleService;
     private final OperationalAuditService operationalAuditService;
-    private final NotificationService notificationService;
+    private final NotificationService legacyNotificationService;
+    private final PropertyReviewInAppNotificationService inAppNotificationService;
+    private final PropertyReviewEmailOutboxService emailOutboxService;
     private final Clock clock;
 
     @Autowired
@@ -40,9 +45,11 @@ public class PropertyApprovalWorkflowService {
             UserPropertyRepository userPropertyRepository,
             PropertyOwnershipLifecycleService ownershipLifecycleService,
             OperationalAuditService operationalAuditService,
-            NotificationService notificationService) {
+            PropertyReviewInAppNotificationService inAppNotificationService,
+            PropertyReviewEmailOutboxService emailOutboxService) {
         this(hotelRepository, userPropertyRepository, ownershipLifecycleService,
-                operationalAuditService, notificationService, Clock.systemUTC());
+                operationalAuditService, null, inAppNotificationService,
+                emailOutboxService, Clock.systemUTC());
     }
 
     PropertyApprovalWorkflowService(
@@ -52,11 +59,26 @@ public class PropertyApprovalWorkflowService {
             OperationalAuditService operationalAuditService,
             NotificationService notificationService,
             Clock clock) {
+        this(hotelRepository, userPropertyRepository, ownershipLifecycleService,
+                operationalAuditService, notificationService, null, null, clock);
+    }
+
+    PropertyApprovalWorkflowService(
+            HotelRepository hotelRepository,
+            UserPropertyRepository userPropertyRepository,
+            PropertyOwnershipLifecycleService ownershipLifecycleService,
+            OperationalAuditService operationalAuditService,
+            NotificationService legacyNotificationService,
+            PropertyReviewInAppNotificationService inAppNotificationService,
+            PropertyReviewEmailOutboxService emailOutboxService,
+            Clock clock) {
         this.hotelRepository = hotelRepository;
         this.userPropertyRepository = userPropertyRepository;
         this.ownershipLifecycleService = ownershipLifecycleService;
         this.operationalAuditService = operationalAuditService;
-        this.notificationService = notificationService;
+        this.legacyNotificationService = legacyNotificationService;
+        this.inAppNotificationService = inAppNotificationService;
+        this.emailOutboxService = emailOutboxService;
         this.clock = clock;
     }
 
@@ -91,7 +113,7 @@ public class PropertyApprovalWorkflowService {
         property.setReviewReason(null);
         Hotel saved = hotelRepository.saveAndFlush(property);
 
-        operationalAuditService.append(new OperationalAuditService.AuditCommand(
+        OperationalAuditEvent auditEvent = operationalAuditService.append(new OperationalAuditService.AuditCommand(
                 "TENANT",
                 saved.getId(),
                 "PROPERTY",
@@ -104,6 +126,13 @@ public class PropertyApprovalWorkflowService {
                 before,
                 snapshot(saved, pendingOwner.getStatus()),
                 null));
+        notifyOwner(
+                auditEvent,
+                pendingOwner.getUser(),
+                saved,
+                submittedAt,
+                "Property submitted for review",
+                "Your property " + displayName(saved) + " was submitted for review.");
 
         return new PropertyApprovalSubmissionResponse(
                 saved.getId(),
@@ -116,8 +145,14 @@ public class PropertyApprovalWorkflowService {
 
     @Transactional
     public PropertyApprovalDecisionResponse approve(Long reviewerUserId, Long propertyId) {
+        return approve(reviewerUserId, propertyId, null);
+    }
+
+    @Transactional
+    public PropertyApprovalDecisionResponse approve(Long reviewerUserId, Long propertyId, String reviewerNote) {
         requireAuthenticatedUser(reviewerUserId);
         requirePropertyId(propertyId);
+        String validatedNote = validateOptionalReviewerNote(reviewerNote);
 
         Hotel property = lockPendingProperty(propertyId);
         UserProperty pendingOwner = lockSinglePendingOwner(propertyId);
@@ -131,22 +166,23 @@ public class PropertyApprovalWorkflowService {
         property.setOperationStatus("ACTIVE");
         property.setReviewedByUserId(reviewerUserId);
         property.setReviewedAt(reviewedAt);
-        property.setReviewReason(null);
+        property.setReviewReason(validatedNote);
         Hotel saved = hotelRepository.saveAndFlush(property);
 
-        appendDecisionAudit(
+        OperationalAuditEvent auditEvent = appendDecisionAudit(
                 "PROPERTY_APPROVED",
                 reviewerUserId,
-                "Property approval completed",
+                validatedNote == null ? "Property approval completed" : validatedNote,
                 before,
                 snapshot(saved, activeOwner.getStatus()),
                 saved);
         notifyOwner(
+                auditEvent,
                 pendingOwner.getUser(),
                 saved,
                 reviewedAt,
                 "Property approved",
-                "Your property " + displayName(saved) + " has been approved and is now active.");
+                approvedMessage(saved, validatedNote));
 
         return decision(saved, activeOwner.getStatus());
     }
@@ -173,7 +209,7 @@ public class PropertyApprovalWorkflowService {
         property.setReviewReason(validatedReason);
         Hotel saved = hotelRepository.saveAndFlush(property);
 
-        appendDecisionAudit(
+        OperationalAuditEvent auditEvent = appendDecisionAudit(
                 "PROPERTY_REJECTED",
                 reviewerUserId,
                 validatedReason,
@@ -181,6 +217,7 @@ public class PropertyApprovalWorkflowService {
                 snapshot(saved, "INACTIVE"),
                 saved);
         notifyOwner(
+                auditEvent,
                 pendingOwner.getUser(),
                 saved,
                 reviewedAt,
@@ -220,14 +257,14 @@ public class PropertyApprovalWorkflowService {
         }
     }
 
-    private void appendDecisionAudit(
+    private OperationalAuditEvent appendDecisionAudit(
             String eventType,
             Long reviewerUserId,
             String reason,
             Map<String, Object> before,
             Map<String, Object> after,
             Hotel property) {
-        operationalAuditService.append(new OperationalAuditService.AuditCommand(
+        return operationalAuditService.append(new OperationalAuditService.AuditCommand(
                 "TENANT",
                 property.getId(),
                 "PROPERTY",
@@ -243,6 +280,7 @@ public class PropertyApprovalWorkflowService {
     }
 
     private void notifyOwner(
+            OperationalAuditEvent auditEvent,
             User owner,
             Hotel property,
             LocalDateTime createdAt,
@@ -251,8 +289,26 @@ public class PropertyApprovalWorkflowService {
         if (owner == null || owner.getId() == null) {
             throw new IllegalStateException("Pending property owner account is unavailable.");
         }
-        notificationService.sendUserNotification(
-                owner.getId(), "PROPERTY_APPROVAL", title, message, createdAt);
+        if (inAppNotificationService != null) {
+            inAppNotificationService.send(
+                    owner.getId(), "PROPERTY_APPROVAL", title, message, createdAt);
+        } else {
+            legacyNotificationService.sendUserNotification(
+                    owner.getId(), "PROPERTY_APPROVAL", title, message, createdAt);
+        }
+        if (emailOutboxService != null) {
+            if (auditEvent == null || auditEvent.getId() == null) {
+                throw new IllegalStateException("Property transition audit evidence is unavailable.");
+            }
+            emailOutboxService.enqueue(
+                    auditEvent.getId(),
+                    property.getId(),
+                    owner.getId(),
+                    owner.getEmail(),
+                    title,
+                    message,
+                    createdAt);
+        }
     }
 
     private PropertyApprovalQueueItem toQueueItem(UserProperty mapping) {
@@ -314,6 +370,22 @@ public class PropertyApprovalWorkflowService {
                     "Rejection reason must contain between 10 and 500 characters.");
         }
         return normalized;
+    }
+
+    private String validateOptionalReviewerNote(String note) {
+        if (note == null || note.isBlank()) {
+            return null;
+        }
+        String normalized = note.trim();
+        if (normalized.length() > MAX_REJECTION_REASON_LENGTH) {
+            throw new IllegalArgumentException("Reviewer note must contain at most 500 characters.");
+        }
+        return normalized;
+    }
+
+    private String approvedMessage(Hotel property, String reviewerNote) {
+        String message = "Your property " + displayName(property) + " has been approved and is now active.";
+        return reviewerNote == null ? message : message + " Note: " + reviewerNote;
     }
 
     private void requireAuthenticatedUser(Long userId) {

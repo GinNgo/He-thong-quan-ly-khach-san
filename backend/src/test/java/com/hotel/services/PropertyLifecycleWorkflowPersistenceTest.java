@@ -1,6 +1,7 @@
 package com.hotel.services;
 
 import com.hotel.entities.Hotel;
+import com.hotel.entities.OperationalAuditEvent;
 import com.hotel.entities.Reservation;
 import com.hotel.entities.User;
 import com.hotel.entities.UserProperty;
@@ -9,6 +10,9 @@ import com.hotel.repositories.NotificationRepository;
 import com.hotel.repositories.ReservationRepository;
 import com.hotel.repositories.UserPropertyRepository;
 import com.hotel.repositories.UserRepository;
+import com.hotel.propertyreview.PropertyReviewEmailOutboxService;
+import com.hotel.propertyreview.PropertyReviewInAppNotificationService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -32,6 +36,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @DataJpaTest(properties = {
         "spring.flyway.enabled=false",
@@ -40,7 +46,7 @@ import static org.mockito.Mockito.doThrow;
 @ActiveProfiles("test")
 @Import({
         PropertyLifecycleWorkflowService.class,
-        NotificationService.class
+        PropertyReviewInAppNotificationService.class
 })
 class PropertyLifecycleWorkflowPersistenceTest {
 
@@ -52,8 +58,16 @@ class PropertyLifecycleWorkflowPersistenceTest {
     @Autowired private NotificationRepository notificationRepository;
 
     @MockBean private OperationalAuditService operationalAuditService;
+    @MockBean private PropertyReviewEmailOutboxService emailOutboxService;
     @MockBean private SimpMessagingTemplate messagingTemplate;
-    @SpyBean private NotificationService notificationService;
+    @SpyBean private PropertyReviewInAppNotificationService notificationService;
+
+    @BeforeEach
+    void providePersistedAuditIdentity() {
+        OperationalAuditEvent event = mock(OperationalAuditEvent.class);
+        when(event.getId()).thenReturn(901L);
+        when(operationalAuditService.append(any())).thenReturn(event);
+    }
 
     @Test
     void suspensionPreservesMappingsRolesAndBookingWhileNotifyingAssignedActors() {
@@ -108,7 +122,7 @@ class PropertyLifecycleWorkflowPersistenceTest {
     void notificationPersistenceFailureRollsBackReactivation() {
         SeedData seed = seedSuspendedProperty("notification");
         doThrow(new IllegalStateException("notification store unavailable"))
-                .when(notificationService).sendUserNotification(any(), any(), any(), any(), any());
+                .when(notificationService).send(any(), any(), any(), any(), any());
 
         assertThrows(IllegalStateException.class, () -> workflowService.reactivate(
                 99L, seed.propertyId(), "Inspection issues were resolved."));

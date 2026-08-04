@@ -82,7 +82,7 @@ class AdminPartnerControllerTest {
 
     @Test
     void approvalUsesOnlyAuthoritativeCustomPrincipalReviewerId() throws Exception {
-        when(workflowService.approve(99L, 51L)).thenReturn(new PropertyApprovalDecisionResponse(
+        when(workflowService.approve(99L, 51L, null)).thenReturn(new PropertyApprovalDecisionResponse(
                 51L, "ACTIVE", "APPROVED", "ACTIVE", "ACTIVE", 99L, REVIEWED_AT, null));
 
         mockMvc.perform(post("/api/admin/property-approvals/51/approve")
@@ -96,7 +96,24 @@ class AdminPartnerControllerTest {
                 .andExpect(jsonPath("$.reviewedByUserId").value(99))
                 .andExpect(jsonPath("$.reviewedAt").value("2026-08-04T06:30:00"));
 
-        verify(workflowService).approve(99L, 51L);
+        verify(workflowService).approve(99L, 51L, null);
+    }
+
+    @Test
+    void approvalTrimsOptionalReviewerNote() throws Exception {
+        when(workflowService.approve(99L, 51L, "Ownership documents verified."))
+                .thenReturn(new PropertyApprovalDecisionResponse(
+                        51L, "ACTIVE", "APPROVED", "ACTIVE", "ACTIVE",
+                        99L, REVIEWED_AT, "Ownership documents verified."));
+
+        mockMvc.perform(post("/api/admin/property-approvals/51/approve")
+                        .with(user(admin(99L, "ADMIN")))
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"note\":\"  Ownership documents verified.  \"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reason").value("Ownership documents verified."));
+
+        verify(workflowService).approve(99L, 51L, "Ownership documents verified.");
     }
 
     @Test
@@ -138,7 +155,7 @@ class AdminPartnerControllerTest {
                 .andExpect(status().isForbidden());
 
         verify(workflowService, never()).pendingApprovals();
-        verify(workflowService, never()).approve(any(), any());
+        verify(workflowService, never()).approve(any(), any(), any());
     }
 
     private CustomUserDetails admin(Long userId, String authority) {

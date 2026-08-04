@@ -19,6 +19,7 @@ public interface UserPropertyRepository extends JpaRepository<UserProperty, Long
     List<UserProperty> findByUserIdAndRelationshipTypeOrderByStartDateDesc(Long userId, String relationshipType);
     List<UserProperty> findByHotelId(Long hotelId);
     java.util.Optional<UserProperty> findByUserIdAndHotelIdAndRelationshipType(Long userId, Long hotelId, String relationshipType);
+    boolean existsByUserIdAndHotelIdAndRelationshipType(Long userId, Long hotelId, String relationshipType);
     List<UserProperty> findByHotelIdAndRelationshipTypeAndStatus(Long hotelId, String relationshipType, String status);
     long countByHotelIdAndRelationshipTypeAndStatus(Long hotelId, String relationshipType, String status);
     long countByUserIdAndRelationshipTypeAndStatus(Long userId, String relationshipType, String status);
@@ -74,13 +75,12 @@ public interface UserPropertyRepository extends JpaRepository<UserProperty, Long
     List<UserProperty> findPendingOwnerMappingsForUpdate(@Param("hotelId") Long hotelId);
 
     @Query("""
-            select distinct up.user.id
+            select distinct up.user
             from UserProperty up
             where up.hotel.id = :hotelId
               and up.status = 'ACTIVE'
-            order by up.user.id
             """)
-    List<Long> findActiveAssignedUserIdsByHotelId(@Param("hotelId") Long hotelId);
+    List<com.hotel.entities.User> findActiveAssignedUsersByHotelId(@Param("hotelId") Long hotelId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

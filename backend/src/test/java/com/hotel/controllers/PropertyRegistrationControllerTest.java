@@ -5,9 +5,12 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.hotel.dtos.PartnerRegistrationResponse;
 import com.hotel.dtos.PartnerRegistrationStatusResponse;
 import com.hotel.dtos.PropertyApprovalSubmissionResponse;
+import com.hotel.dtos.PropertyReviewHistoryItem;
+import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.services.PropertyApprovalWorkflowService;
 import com.hotel.services.PropertyRegistrationService;
+import com.hotel.services.PropertyReviewHistoryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,6 +44,9 @@ class PropertyRegistrationControllerTest {
     @Mock
     private PropertyApprovalWorkflowService propertyApprovalWorkflowService;
 
+    @Mock
+    private PropertyReviewHistoryService propertyReviewHistoryService;
+
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
 
@@ -51,7 +57,7 @@ class PropertyRegistrationControllerTest {
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new PropertyRegistrationController(
-                        registrationService, propertyApprovalWorkflowService))
+                        registrationService, propertyApprovalWorkflowService, propertyReviewHistoryService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .build();
@@ -253,6 +259,46 @@ class PropertyRegistrationControllerTest {
                 .andExpect(status().isForbidden());
 
         verify(propertyApprovalWorkflowService, never()).submitDraft(any(), any());
+    }
+
+    @Test
+    void ownerHistoryUsesAuthoritativePrincipalAndReturnsSafeArrayContract() throws Exception {
+        when(propertyReviewHistoryService.ownerHistory(77L, 91L)).thenReturn(java.util.List.of(
+                new PropertyReviewHistoryItem(
+                        501L,
+                        91L,
+                        "PROPERTY_REJECTED",
+                        "ADMIN",
+                        "Address evidence is incomplete.",
+                        new PropertyReviewHistoryItem.StatusTriplet(
+                                "PENDING_APPROVAL", "PENDING_APPROVAL", "INACTIVE", "PENDING"),
+                        new PropertyReviewHistoryItem.StatusTriplet(
+                                "REJECTED", "REJECTED", "INACTIVE", "INACTIVE"),
+                        LocalDateTime.of(2026, 8, 4, 8, 0))));
+
+        mockMvc.perform(get("/api/partner/properties/91/history")
+                        .principal(authoritativeAuthentication(77L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].eventId").value(501))
+                .andExpect(jsonPath("$[0].actorKind").value("ADMIN"))
+                .andExpect(jsonPath("$[0].beforeState.ownershipStatus").value("PENDING"))
+                .andExpect(jsonPath("$[0].afterState.status").value("REJECTED"))
+                .andExpect(jsonPath("$[0].actorId").doesNotExist());
+
+        verify(propertyReviewHistoryService).ownerHistory(77L, 91L);
+    }
+
+    @Test
+    void ownerHistoryHidesCrossAccountPropertyAsNotFound() throws Exception {
+        when(propertyReviewHistoryService.ownerHistory(77L, 91L))
+                .thenThrow(new ResourceNotFoundException("Property history was not found."));
+
+        mockMvc.perform(get("/api/partner/properties/91/history")
+                        .principal(authoritativeAuthentication(77L)))
+                .andExpect(status().isNotFound());
+
+        verify(propertyReviewHistoryService).ownerHistory(77L, 91L);
     }
 
     private java.util.Map<String, Object> validBody() {

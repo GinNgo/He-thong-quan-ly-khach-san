@@ -4,6 +4,7 @@ import com.hotel.BackendApplication;
 import com.hotel.config.SecurityConfig;
 import com.hotel.dtos.PropertyLifecycleDecisionResponse;
 import com.hotel.dtos.PropertyLifecycleSummary;
+import com.hotel.dtos.PropertyReviewHistoryItem;
 import com.hotel.observability.OperationalMetrics;
 import com.hotel.security.ActionCode;
 import com.hotel.security.CustomUserDetails;
@@ -14,6 +15,7 @@ import com.hotel.security.JwtAuthenticationEntryPoint;
 import com.hotel.security.JwtTokenProvider;
 import com.hotel.security.TenantFilterInterceptor;
 import com.hotel.services.PropertyLifecycleWorkflowService;
+import com.hotel.services.PropertyReviewHistoryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +55,7 @@ class AdminPropertyLifecycleControllerTest {
     @Autowired private MockMvc mockMvc;
 
     @MockBean private PropertyLifecycleWorkflowService workflowService;
+    @MockBean private PropertyReviewHistoryService propertyReviewHistoryService;
     @MockBean private OperationalMetrics operationalMetrics;
     @MockBean private TenantFilterInterceptor tenantFilterInterceptor;
     @MockBean private UserDetailsService userDetailsService;
@@ -75,6 +78,30 @@ class AdminPropertyLifecycleControllerTest {
                 .andExpect(jsonPath("$[0].propertyId").value(7))
                 .andExpect(jsonPath("$[0].allowedTransitions[0]").value("SUSPEND"))
                 .andExpect(jsonPath("$[0].allowedTransitions[1]").value("CLOSE"));
+    }
+
+    @Test
+    void adminHistoryReturnsSafeArrayWithViewPermission() throws Exception {
+        when(propertyReviewHistoryService.adminHistory(7L)).thenReturn(List.of(
+                new PropertyReviewHistoryItem(
+                        501L,
+                        7L,
+                        "PROPERTY_SUSPENDED",
+                        "ADMIN",
+                        "Safety inspection is required.",
+                        new PropertyReviewHistoryItem.StatusTriplet(
+                                "ACTIVE", "APPROVED", "ACTIVE", "ACTIVE"),
+                        new PropertyReviewHistoryItem.StatusTriplet(
+                                "SUSPENDED", "APPROVED", "SUSPENDED", "ACTIVE"),
+                        LocalDateTime.of(2026, 8, 4, 8, 0))));
+
+        mockMvc.perform(get("/api/admin/properties/7/history")
+                        .with(user(principal(99L, "ADMIN", ActionCode.VIEW))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].eventType").value("PROPERTY_SUSPENDED"))
+                .andExpect(jsonPath("$[0].actorKind").value("ADMIN"))
+                .andExpect(jsonPath("$[0].actorId").doesNotExist());
     }
 
     @Test

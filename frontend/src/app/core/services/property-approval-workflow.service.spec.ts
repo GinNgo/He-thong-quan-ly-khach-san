@@ -36,6 +36,22 @@ describe('PropertyService approval workflow', () => {
     request.flush(decision('APPROVED'));
   });
 
+  it('trims an optional approval note without sending an empty value', () => {
+    service.approvePropertyReview(7, '  Hồ sơ đã được đối chiếu đầy đủ.  ').subscribe();
+
+    const request = http.expectOne(`${environment.apiUrl}/admin/property-approvals/7/approve`);
+    expect(request.request.body).toEqual({ note: 'Hồ sơ đã được đối chiếu đầy đủ.' });
+    request.flush(decision('APPROVED'));
+  });
+
+  it('loads immutable admin property history without actor identifiers', () => {
+    service.getAdminPropertyHistory(7).subscribe();
+
+    const request = http.expectOne(`${environment.apiUrl}/admin/properties/7/history`);
+    expect(request.request.method).toBe('GET');
+    request.flush([historyEvent()]);
+  });
+
   it('posts only the validated rejection reason', () => {
     service.rejectPropertyReview(7, 'Thiếu giấy phép kinh doanh hợp lệ.').subscribe();
 
@@ -57,4 +73,21 @@ function decision(outcome: 'APPROVED' | 'REJECTED') {
     reviewedAt: '2026-08-04T10:00:00Z',
     reason: outcome === 'REJECTED' ? 'Thiếu giấy phép kinh doanh hợp lệ.' : null
   };
+}
+
+function historyEvent() {
+  return {
+    eventId: 17,
+    propertyId: 7,
+    eventType: 'PROPERTY_APPROVED',
+    actorKind: 'ADMIN',
+    note: 'Hồ sơ đã được đối chiếu đầy đủ.',
+    beforeState: state('PENDING_APPROVAL', 'PENDING_APPROVAL', 'INACTIVE', 'PENDING'),
+    afterState: state('ACTIVE', 'APPROVED', 'ACTIVE', 'ACTIVE'),
+    occurredAt: '2026-08-04T10:00:00Z'
+  };
+}
+
+function state(status: string, approvalStatus: string, operationStatus: string, ownershipStatus: string) {
+  return { status, approvalStatus, operationStatus, ownershipStatus };
 }

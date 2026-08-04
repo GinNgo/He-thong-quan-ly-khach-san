@@ -1,6 +1,7 @@
 package com.hotel.controllers;
 
 import com.hotel.dtos.PropertyApprovalDecisionResponse;
+import com.hotel.dtos.PropertyApprovalNoteRequest;
 import com.hotel.dtos.PropertyApprovalQueueItem;
 import com.hotel.dtos.PropertyApprovalRejectionRequest;
 import com.hotel.security.CustomUserDetails;
@@ -87,9 +88,12 @@ public class AdminPartnerController {
     @PostMapping("/property-approvals/{id}/approve")
     public PropertyApprovalDecisionResponse approveProperty(
             @PathVariable Long id,
+            @Valid @RequestBody(required = false) PropertyApprovalNoteRequest request,
             Authentication authentication) {
         return propertyApprovalWorkflowService.approve(
-                requireAuthoritativePrincipal(authentication).getUserId(), id);
+                requireAuthoritativePrincipal(authentication).getUserId(),
+                id,
+                request == null ? null : request.note());
     }
 
     @PostMapping("/property-approvals/{id}/reject")

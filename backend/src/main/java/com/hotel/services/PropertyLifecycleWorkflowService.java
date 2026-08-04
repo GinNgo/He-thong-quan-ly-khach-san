@@ -3,7 +3,11 @@ package com.hotel.services;
 import com.hotel.dtos.PropertyLifecycleDecisionResponse;
 import com.hotel.dtos.PropertyLifecycleSummary;
 import com.hotel.entities.Hotel;
+import com.hotel.entities.OperationalAuditEvent;
+import com.hotel.entities.User;
 import com.hotel.exceptions.ResourceNotFoundException;
+import com.hotel.propertyreview.PropertyReviewEmailOutboxService;
+import com.hotel.propertyreview.PropertyReviewInAppNotificationService;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.UserPropertyRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -29,7 +34,9 @@ public class PropertyLifecycleWorkflowService {
     private final HotelRepository hotelRepository;
     private final UserPropertyRepository userPropertyRepository;
     private final OperationalAuditService operationalAuditService;
-    private final NotificationService notificationService;
+    private final NotificationService legacyNotificationService;
+    private final PropertyReviewInAppNotificationService inAppNotificationService;
+    private final PropertyReviewEmailOutboxService emailOutboxService;
     private final Clock clock;
 
     @Autowired
@@ -37,9 +44,10 @@ public class PropertyLifecycleWorkflowService {
             HotelRepository hotelRepository,
             UserPropertyRepository userPropertyRepository,
             OperationalAuditService operationalAuditService,
-            NotificationService notificationService) {
+            PropertyReviewInAppNotificationService inAppNotificationService,
+            PropertyReviewEmailOutboxService emailOutboxService) {
         this(hotelRepository, userPropertyRepository, operationalAuditService,
-                notificationService, Clock.systemUTC());
+                null, inAppNotificationService, emailOutboxService, Clock.systemUTC());
     }
 
     PropertyLifecycleWorkflowService(
@@ -48,10 +56,24 @@ public class PropertyLifecycleWorkflowService {
             OperationalAuditService operationalAuditService,
             NotificationService notificationService,
             Clock clock) {
+        this(hotelRepository, userPropertyRepository, operationalAuditService,
+                notificationService, null, null, clock);
+    }
+
+    PropertyLifecycleWorkflowService(
+            HotelRepository hotelRepository,
+            UserPropertyRepository userPropertyRepository,
+            OperationalAuditService operationalAuditService,
+            NotificationService legacyNotificationService,
+            PropertyReviewInAppNotificationService inAppNotificationService,
+            PropertyReviewEmailOutboxService emailOutboxService,
+            Clock clock) {
         this.hotelRepository = hotelRepository;
         this.userPropertyRepository = userPropertyRepository;
         this.operationalAuditService = operationalAuditService;
-        this.notificationService = notificationService;
+        this.legacyNotificationService = legacyNotificationService;
+        this.inAppNotificationService = inAppNotificationService;
+        this.emailOutboxService = emailOutboxService;
         this.clock = clock;
     }
 
@@ -94,7 +116,8 @@ public class PropertyLifecycleWorkflowService {
         }
         transition.requireSource(property);
 
-        Map<String, Object> before = snapshot(property);
+        String ownershipStatus = currentOwnershipStatus(property.getId());
+        Map<String, Object> before = snapshot(property, ownershipStatus);
         LocalDateTime changedAt = LocalDateTime.now(clock);
         property.setStatus(transition.targetStatus);
         property.setApprovalStatus("APPROVED");
@@ -105,7 +128,7 @@ public class PropertyLifecycleWorkflowService {
         property.setLifecycleChangedAt(changedAt);
         Hotel saved = hotelRepository.saveAndFlush(property);
 
-        operationalAuditService.append(new OperationalAuditService.AuditCommand(
+        OperationalAuditEvent auditEvent = operationalAuditService.append(new OperationalAuditService.AuditCommand(
                 "TENANT",
                 saved.getId(),
                 "PROPERTY",
@@ -116,14 +139,15 @@ public class PropertyLifecycleWorkflowService {
                 actorUserId,
                 validatedReason,
                 before,
-                snapshot(saved),
+                snapshot(saved, ownershipStatus),
                 null));
 
-        notifyAssignedUsers(saved, transition, validatedReason, changedAt);
+        notifyAssignedUsers(auditEvent, saved, transition, validatedReason, changedAt);
         return decision(saved, transition, true);
     }
 
     private void notifyAssignedUsers(
+            OperationalAuditEvent auditEvent,
             Hotel property,
             Transition transition,
             String reason,
@@ -139,9 +163,32 @@ public class PropertyLifecycleWorkflowService {
             case REACTIVATE -> propertyName + " has been reactivated. Reason: " + reason;
             case CLOSE -> propertyName + " has been closed. Historical records remain available. Reason: " + reason;
         };
-        for (Long userId : userPropertyRepository.findActiveAssignedUserIdsByHotelId(property.getId())) {
-            notificationService.sendUserNotification(
-                    userId, "PROPERTY_LIFECYCLE", title, message, changedAt);
+        List<User> recipients = userPropertyRepository.findActiveAssignedUsersByHotelId(property.getId()).stream()
+                .sorted(Comparator.comparing(User::getId))
+                .toList();
+        for (User user : recipients) {
+            if (inAppNotificationService != null) {
+                inAppNotificationService.send(
+                        user.getId(), "PROPERTY_LIFECYCLE", title, message, changedAt);
+            } else {
+                legacyNotificationService.sendUserNotification(
+                        user.getId(), "PROPERTY_LIFECYCLE", title, message, changedAt);
+            }
+        }
+        if (emailOutboxService != null) {
+            if (auditEvent == null || auditEvent.getId() == null) {
+                throw new IllegalStateException("Property transition audit evidence is unavailable.");
+            }
+            for (User user : recipients) {
+                emailOutboxService.enqueue(
+                        auditEvent.getId(),
+                        property.getId(),
+                        user.getId(),
+                        user.getEmail(),
+                        title,
+                        message,
+                        changedAt);
+            }
         }
     }
 
@@ -199,18 +246,25 @@ public class PropertyLifecycleWorkflowService {
                 && reason.equals(property.getLifecycleReason());
     }
 
-    private Map<String, Object> snapshot(Hotel property) {
+    private Map<String, Object> snapshot(Hotel property, String ownershipStatus) {
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("propertyId", property.getId());
         state.put("propertyName", displayName(property));
         state.put("status", property.getStatus());
         state.put("approvalStatus", property.getApprovalStatus());
         state.put("operationStatus", property.getOperationStatus());
+        state.put("ownershipStatus", ownershipStatus);
         state.put("lifecycleAction", property.getLifecycleAction());
         state.put("lifecycleReason", property.getLifecycleReason());
         state.put("lifecycleChangedByUserId", property.getLifecycleChangedByUserId());
         state.put("lifecycleChangedAt", property.getLifecycleChangedAt());
         return state;
+    }
+
+    private String currentOwnershipStatus(Long propertyId) {
+        return userPropertyRepository
+                .findByHotelIdAndRelationshipTypeAndStatus(propertyId, "OWNER", "ACTIVE")
+                .isEmpty() ? null : "ACTIVE";
     }
 
     private String validateReason(String reason) {

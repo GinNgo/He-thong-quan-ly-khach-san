@@ -105,6 +105,32 @@ export interface PropertyLifecycleDecisionResponse {
   operationStatus: string;
 }
 
+export interface PropertyReviewState {
+  status: string | null;
+  approvalStatus: string | null;
+  operationStatus: string | null;
+  ownershipStatus: string | null;
+}
+
+export type PropertyReviewEventType =
+  | 'PROPERTY_SUBMITTED_FOR_APPROVAL'
+  | 'PROPERTY_APPROVED'
+  | 'PROPERTY_REJECTED'
+  | 'PROPERTY_SUSPENDED'
+  | 'PROPERTY_REACTIVATED'
+  | 'PROPERTY_CLOSED';
+
+export interface PropertyReviewHistoryEvent {
+  eventId: number;
+  propertyId: number;
+  eventType: PropertyReviewEventType;
+  actorKind: 'OWNER' | 'ADMIN';
+  note: string | null;
+  beforeState: PropertyReviewState | null;
+  afterState: PropertyReviewState | null;
+  occurredAt: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -148,10 +174,11 @@ export class PropertyService {
     return this.http.get<PropertyApprovalQueueItem[]>(`${environment.apiUrl}/admin/property-approvals`);
   }
 
-  approvePropertyReview(id: number): Observable<PropertyApprovalDecisionResponse> {
+  approvePropertyReview(id: number, note?: string): Observable<PropertyApprovalDecisionResponse> {
+    const normalizedNote = note?.trim();
     return this.http.post<PropertyApprovalDecisionResponse>(
       `${environment.apiUrl}/admin/property-approvals/${id}/approve`,
-      {}
+      normalizedNote ? { note: normalizedNote } : {}
     );
   }
 
@@ -164,6 +191,10 @@ export class PropertyService {
 
   getPropertyLifecycleSummaries(): Observable<PropertyLifecycleSummary[]> {
     return this.http.get<PropertyLifecycleSummary[]>(`${environment.apiUrl}/admin/properties/lifecycle`);
+  }
+
+  getAdminPropertyHistory(id: number): Observable<PropertyReviewHistoryEvent[]> {
+    return this.http.get<PropertyReviewHistoryEvent[]>(`${environment.apiUrl}/admin/properties/${id}/history`);
   }
 
   suspendProperty(id: number, reason: string, idempotencyKey: string): Observable<PropertyLifecycleDecisionResponse> {

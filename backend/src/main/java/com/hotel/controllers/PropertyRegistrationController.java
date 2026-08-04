@@ -5,9 +5,11 @@ import com.hotel.dtos.PartnerRegistrationResponse;
 import com.hotel.dtos.PartnerConversionRequest;
 import com.hotel.dtos.PartnerRegistrationStatusResponse;
 import com.hotel.dtos.PropertyApprovalSubmissionResponse;
+import com.hotel.dtos.PropertyReviewHistoryItem;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.services.PropertyApprovalWorkflowService;
 import com.hotel.services.PropertyRegistrationService;
+import com.hotel.services.PropertyReviewHistoryService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -18,6 +20,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 
+import java.util.List;
+
 @RestController
 @RequestMapping({"/api/partner", "/api/v1/partner"})
 @CrossOrigin(origins = "*", maxAge = 3600)
@@ -26,6 +30,7 @@ public class PropertyRegistrationController {
 
     private final PropertyRegistrationService registrationService;
     private final PropertyApprovalWorkflowService propertyApprovalWorkflowService;
+    private final PropertyReviewHistoryService propertyReviewHistoryService;
 
     @PostMapping("/register")
     public ResponseEntity<PartnerRegistrationResponse> registerProperty(
@@ -61,6 +66,16 @@ public class PropertyRegistrationController {
     public ResponseEntity<PartnerRegistrationStatusResponse> registrationStatus(Authentication authentication) {
         CustomUserDetails userDetails = requireAuthoritativePrincipal(authentication);
         return ResponseEntity.ok(registrationService.registrationStatus(userDetails.getUserId()));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/properties/{propertyId}/history")
+    public ResponseEntity<List<PropertyReviewHistoryItem>> propertyHistory(
+            @PathVariable Long propertyId,
+            Authentication authentication) {
+        CustomUserDetails userDetails = requireAuthoritativePrincipal(authentication);
+        return ResponseEntity.ok(propertyReviewHistoryService.ownerHistory(
+                userDetails.getUserId(), propertyId));
     }
 
     private CustomUserDetails requireAuthoritativePrincipal(Authentication authentication) {

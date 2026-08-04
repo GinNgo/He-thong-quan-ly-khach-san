@@ -187,6 +187,34 @@ describe('PropertyManagementComponent', { timeout: 60_000 }, () => {
     expect(component.lifecycleIdempotencyKey).toBe('');
   });
 
+  it('lazy-loads lifecycle history with safe retry and blocks duplicate requests', () => {
+    const row = lifecycleRow();
+    const fixture = createFixture([row]);
+    const component = fixture.componentInstance;
+
+    component.openHistory(row);
+    component.openHistory(row);
+    const first = http.expectOne(`${environment.apiUrl}/admin/properties/7/history`);
+    expect(first.request.method).toBe('GET');
+    first.flush(
+      { message: 'Internal tenant 99 history failure' },
+      { status: 500, statusText: 'Error' }
+    );
+    fixture.detectChanges();
+
+    expect(component.historyDialogVisible).toBe(true);
+    expect(component.historyError).toContain('Không thể tải lịch sử xét duyệt');
+    expect(component.historyError).not.toContain('tenant 99');
+
+    component.retryHistory();
+    http.expectOne(`${environment.apiUrl}/admin/properties/7/history`).flush([historyEvent()]);
+    fixture.detectChanges();
+
+    expect(component.historyEvents).toHaveLength(1);
+    expect(component.historyEvents[0].beforeState).toBeNull();
+    expect(JSON.stringify(component.historyEvents[0])).not.toContain('actorUserId');
+  });
+
   function createFixture(rows: PropertyLifecycleSummary[]): ComponentFixture<PropertyManagementComponent> {
     const fixture = TestBed.createComponent(PropertyManagementComponent);
     fixture.detectChanges();
@@ -229,5 +257,23 @@ function decision(action: PropertyLifecycleAction) {
     status: action === 'REACTIVATE' ? 'ACTIVE' : action === 'SUSPEND' ? 'SUSPENDED' : 'CLOSED',
     approvalStatus: 'APPROVED',
     operationStatus: action === 'REACTIVATE' ? 'ACTIVE' : action === 'SUSPEND' ? 'SUSPENDED' : 'CLOSED'
+  };
+}
+
+function historyEvent() {
+  return {
+    eventId: 71,
+    propertyId: 7,
+    eventType: 'PROPERTY_SUSPENDED',
+    actorKind: 'ADMIN',
+    note: 'Tạm ngừng để kiểm tra an toàn.',
+    beforeState: null,
+    afterState: {
+      status: 'SUSPENDED',
+      approvalStatus: 'APPROVED',
+      operationStatus: 'SUSPENDED',
+      ownershipStatus: null
+    },
+    occurredAt: '2026-08-04T10:00:00Z'
   };
 }

@@ -20,8 +20,10 @@ import {
   PropertyLifecycleDecisionResponse,
   PropertyLifecycleSummary,
   PropertyLocation,
+  PropertyReviewHistoryEvent,
   PropertyService
 } from '../../../core/services/property.service';
+import { PropertyReviewHistoryComponent } from '../../../shared/components/property-review-history/property-review-history.component';
 
 const LIFECYCLE_REASON_MIN_LENGTH = 10;
 const LIFECYCLE_REASON_MAX_LENGTH = 500;
@@ -40,7 +42,8 @@ const LIFECYCLE_REASON_MAX_LENGTH = 500;
     DialogModule,
     InputTextModule,
     SelectModule,
-    TextareaModule
+    TextareaModule,
+    PropertyReviewHistoryComponent
   ],
   providers: [MessageService],
   templateUrl: './property-management.html',
@@ -61,6 +64,7 @@ export class PropertyManagementComponent implements OnInit {
   dialogVisible = false;
   isAdmin = false;
   canManageLifecycle = false;
+  canViewHistory = false;
   formError = '';
   lifecycleDialogVisible = false;
   lifecycleTarget: PropertyLifecycleSummary | null = null;
@@ -69,6 +73,12 @@ export class PropertyManagementComponent implements OnInit {
   lifecycleError = '';
   lifecycleIdempotencyKey = '';
   readonly lifecycleInFlight: Record<number, PropertyLifecycleAction | undefined> = {};
+  historyDialogVisible = false;
+  historyPropertyId: number | null = null;
+  historyPropertyName = '';
+  historyEvents: PropertyReviewHistoryEvent[] = [];
+  historyLoading = false;
+  historyError = '';
 
   readonly propertyTypes = [
     { label: 'Khách sạn', value: 'HOTEL' },
@@ -98,6 +108,10 @@ export class PropertyManagementComponent implements OnInit {
     this.canManageLifecycle = this.permissionService.hasPermission(
       FunctionCode.PROPERTY_LIFECYCLE,
       ActionCode.APPROVE
+    );
+    this.canViewHistory = this.permissionService.hasPermission(
+      FunctionCode.PROPERTY_LIFECYCLE,
+      ActionCode.VIEW
     );
     this.loadProperties();
     if (this.isAdmin) this.loadProvinces();
@@ -326,6 +340,29 @@ export class PropertyManagementComponent implements OnInit {
     return this.lifecycleInFlight[property.propertyId] !== undefined;
   }
 
+  openHistory(property: PropertyLifecycleSummary): void {
+    if (!this.canViewHistory || this.isLifecycleBusy(property) || this.historyLoading) return;
+    this.historyPropertyId = property.propertyId;
+    this.historyPropertyName = property.name;
+    this.historyEvents = [];
+    this.historyError = '';
+    this.historyDialogVisible = true;
+    this.loadHistory(property.propertyId);
+  }
+
+  closeHistoryDialog(): void {
+    if (this.historyLoading) return;
+    this.historyDialogVisible = false;
+    this.historyPropertyId = null;
+    this.historyPropertyName = '';
+    this.historyEvents = [];
+    this.historyError = '';
+  }
+
+  retryHistory(): void {
+    if (this.historyPropertyId !== null) this.loadHistory(this.historyPropertyId);
+  }
+
   lifecycleDialogTitle(): string {
     return this.lifecycleAction ? this.lifecycleActionLabel(this.lifecycleAction) : 'Cập nhật cơ sở';
   }
@@ -392,6 +429,26 @@ export class PropertyManagementComponent implements OnInit {
       return this.propertyService.reactivateProperty(propertyId, reason, idempotencyKey);
     }
     return this.propertyService.closeProperty(propertyId, reason, idempotencyKey);
+  }
+
+  private loadHistory(propertyId: number): void {
+    if (this.historyLoading) return;
+    this.historyLoading = true;
+    this.historyError = '';
+    this.propertyService.getAdminPropertyHistory(propertyId).pipe(
+      timeout(10000),
+      finalize(() => { this.historyLoading = false; })
+    ).subscribe({
+      next: events => {
+        this.historyEvents = Array.isArray(events) ? events : [];
+      },
+      error: error => {
+        this.historyEvents = [];
+        this.historyError = error?.status === 403
+          ? 'Bạn không có quyền xem lịch sử của cơ sở này.'
+          : 'Không thể tải lịch sử xét duyệt. Vui lòng thử lại.';
+      }
+    });
   }
 
   private resetLifecycleDialog(): void {

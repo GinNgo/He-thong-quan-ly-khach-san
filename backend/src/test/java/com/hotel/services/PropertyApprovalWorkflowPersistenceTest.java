@@ -2,6 +2,7 @@ package com.hotel.services;
 
 import com.hotel.entities.Hotel;
 import com.hotel.entities.Notification;
+import com.hotel.entities.OperationalAuditEvent;
 import com.hotel.entities.Role;
 import com.hotel.entities.User;
 import com.hotel.entities.UserProperty;
@@ -10,6 +11,9 @@ import com.hotel.repositories.NotificationRepository;
 import com.hotel.repositories.RoleRepository;
 import com.hotel.repositories.UserPropertyRepository;
 import com.hotel.repositories.UserRepository;
+import com.hotel.propertyreview.PropertyReviewEmailOutboxService;
+import com.hotel.propertyreview.PropertyReviewInAppNotificationService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -31,6 +35,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @DataJpaTest(properties = {
         "spring.flyway.enabled=false",
@@ -40,7 +46,7 @@ import static org.mockito.Mockito.doThrow;
 @Import({
         PropertyApprovalWorkflowService.class,
         PropertyOwnershipLifecycleService.class,
-        NotificationService.class
+        PropertyReviewInAppNotificationService.class
 })
 class PropertyApprovalWorkflowPersistenceTest {
 
@@ -52,8 +58,16 @@ class PropertyApprovalWorkflowPersistenceTest {
     @Autowired private NotificationRepository notificationRepository;
 
     @MockBean private OperationalAuditService operationalAuditService;
+    @MockBean private PropertyReviewEmailOutboxService emailOutboxService;
     @MockBean private SimpMessagingTemplate messagingTemplate;
-    @SpyBean private NotificationService notificationService;
+    @SpyBean private PropertyReviewInAppNotificationService notificationService;
+
+    @BeforeEach
+    void providePersistedAuditIdentity() {
+        OperationalAuditEvent event = mock(OperationalAuditEvent.class);
+        when(event.getId()).thenReturn(900L);
+        when(operationalAuditService.append(any())).thenReturn(event);
+    }
 
     @Test
     void submittedDraftBecomesTypedActionableQueueItem() {
@@ -150,7 +164,7 @@ class PropertyApprovalWorkflowPersistenceTest {
     void notificationPersistenceFailureRollsBackRejectionTransition() {
         SeedData seed = seedPending("notification-rollback@example.test");
         doThrow(new IllegalStateException("notification store unavailable"))
-                .when(notificationService).sendUserNotification(any(), any(), any(), any(), any());
+                .when(notificationService).send(any(), any(), any(), any(), any());
 
         assertThrows(IllegalStateException.class, () -> workflowService.reject(
                 99L, seed.propertyId(), "Required ownership evidence is missing."));

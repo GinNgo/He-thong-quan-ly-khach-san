@@ -104,6 +104,35 @@
                       }
                     </div>
 
+                    @if (isApproving(row)) {
+                      @if (propertyId(row); as reviewPropertyId) {
+                        <div class="review-note-editor">
+                          <label [for]="'approval-note-' + reviewPropertyId">Ghi chú phê duyệt (không bắt buộc)</label>
+                          <textarea
+                            [id]="'approval-note-' + reviewPropertyId"
+                            rows="3"
+                            maxlength="500"
+                            [value]="approvalNotes[reviewPropertyId] || ''"
+                            [disabled]="actionInFlight[reviewPropertyId] !== undefined"
+                            [attr.aria-describedby]="'approval-note-help-' + reviewPropertyId + (rowActionErrors[reviewPropertyId] ? ' approval-note-error-' + reviewPropertyId : '')"
+                            [attr.aria-invalid]="rowActionErrors[reviewPropertyId] ? 'true' : null"
+                            (input)="updateApprovalNote(reviewPropertyId, $any($event.target).value)"
+                          ></textarea>
+                          <div class="review-note-editor-meta" [id]="'approval-note-help-' + reviewPropertyId">
+                            <span>Có thể để trống, tối đa 500 ký tự</span>
+                            <span>{{ (approvalNotes[reviewPropertyId] || '').length }}/500</span>
+                          </div>
+                          <div class="review-note-editor-actions">
+                            <button type="button" class="row-action" [disabled]="actionInFlight[reviewPropertyId] !== undefined" (click)="cancelApproval(row)">Hủy</button>
+                            <button type="button" class="row-action row-action--success" [disabled]="actionInFlight[reviewPropertyId] !== undefined" (click)="confirmApproval(row)">
+                              @if (actionInFlight[reviewPropertyId] === 'approve') { <i class="pi pi-spinner pi-spin" aria-hidden="true"></i> }
+                              Xác nhận phê duyệt
+                            </button>
+                          </div>
+                        </div>
+                      }
+                    }
+
                     @if (isRejecting(row)) {
                       @if (propertyId(row); as reviewPropertyId) {
                         <div class="reject-editor">
@@ -154,3 +183,20 @@
     }
   </div>
 </section>
+
+<p-dialog
+  [(visible)]="historyDialogVisible"
+  [modal]="true"
+  [draggable]="false"
+  [dismissableMask]="false"
+  [closable]="!historyLoading"
+  [style]="{width:'min(760px, 96vw)'}"
+  [header]="'Lịch sử xét duyệt · ' + historyPropertyName"
+  (onHide)="closeHistoryDialog()">
+  <app-property-review-history
+    [events]="historyEvents"
+    [loading]="historyLoading"
+    [error]="historyError"
+    (retry)="retryHistory()"
+  />
+</p-dialog>

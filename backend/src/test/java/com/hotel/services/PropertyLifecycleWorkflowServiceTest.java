@@ -1,6 +1,7 @@
 package com.hotel.services;
 
 import com.hotel.entities.Hotel;
+import com.hotel.entities.User;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.UserPropertyRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,8 +71,8 @@ class PropertyLifecycleWorkflowServiceTest {
         Hotel property = property(7L, "ACTIVE", "APPROVED", "ACTIVE");
         when(hotelRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(property));
         when(hotelRepository.saveAndFlush(property)).thenReturn(property);
-        when(userPropertyRepository.findActiveAssignedUserIdsByHotelId(7L))
-                .thenReturn(List.of(11L, 12L));
+        when(userPropertyRepository.findActiveAssignedUsersByHotelId(7L))
+                .thenReturn(List.of(user(11L), user(12L)));
 
         var result = service.suspend(99L, 7L, "  Safety inspection is required.  ");
 
@@ -105,7 +106,7 @@ class PropertyLifecycleWorkflowServiceTest {
         Hotel suspended = property(8L, "SUSPENDED", "APPROVED", "SUSPENDED");
         when(hotelRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(suspended));
         when(hotelRepository.saveAndFlush(suspended)).thenReturn(suspended);
-        when(userPropertyRepository.findActiveAssignedUserIdsByHotelId(8L)).thenReturn(List.of());
+        when(userPropertyRepository.findActiveAssignedUsersByHotelId(8L)).thenReturn(List.of());
 
         var reactivated = service.reactivate(99L, 8L, "Inspection issues were resolved.");
 
@@ -137,7 +138,7 @@ class PropertyLifecycleWorkflowServiceTest {
         assertFalse(result.changed());
         verify(hotelRepository, never()).saveAndFlush(any());
         verifyNoInteractions(operationalAuditService, notificationService);
-        verify(userPropertyRepository, never()).findActiveAssignedUserIdsByHotelId(any());
+        verify(userPropertyRepository, never()).findActiveAssignedUsersByHotelId(any());
     }
 
     @Test
@@ -205,5 +206,12 @@ class PropertyLifecycleWorkflowServiceTest {
         property.setApprovalStatus(approval);
         property.setOperationStatus(operation);
         return property;
+    }
+
+    private User user(Long id) {
+        User user = new User();
+        user.setId(id);
+        user.setEmail("user" + id + "@example.test");
+        return user;
     }
 }

@@ -4,19 +4,22 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject }
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable } from 'rxjs';
 import { finalize, timeout } from 'rxjs/operators';
+import { DialogModule } from 'primeng/dialog';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth';
-import { PropertyService } from '../../../core/services/property.service';
+import { PropertyReviewHistoryEvent, PropertyService } from '../../../core/services/property.service';
 import { FeedbackStateComponent } from '../../../shared/components/feedback-state/feedback-state.component';
+import { PropertyReviewHistoryComponent } from '../../../shared/components/property-review-history/property-review-history.component';
 
 type PartnerColumnType = 'text' | 'number' | 'status' | 'currency' | 'date' | 'boolean';
-type PartnerActionKey = 'approve' | 'reject' | 'open-properties' | 'open-room-types' | 'open-rooms';
+type PartnerActionKey = 'approve' | 'reject' | 'history' | 'open-properties' | 'open-room-types' | 'open-rooms';
 type LoadFailure = 'forbidden' | 'unauthorized' | 'error' | null;
 
 export type PartnerRow = Record<string, unknown>;
 
 const REJECTION_REASON_MIN_LENGTH = 10;
 const REJECTION_REASON_MAX_LENGTH = 500;
+const APPROVAL_NOTE_MAX_LENGTH = 500;
 
 export interface PartnerColumn {
   key: string;
@@ -160,6 +163,7 @@ export const PARTNER_VIEW_CONFIGS: Record<string, PartnerViewConfig> = {
     actions: [
       { key: 'approve', label: 'Duyệt cơ sở', icon: 'pi pi-check', tone: 'success' },
       { key: 'reject', label: 'Từ chối cơ sở', icon: 'pi pi-times', tone: 'danger' },
+      { key: 'history', label: 'Xem lịch sử', icon: 'pi pi-history' },
     ],
   },
   'property-staff': {
@@ -285,7 +289,7 @@ const FALLBACK_CONFIG: PartnerViewConfig = {
 @Component({
   selector: 'app-partner-overview',
   standalone: true,
-  imports: [CommonModule, FeedbackStateComponent],
+  imports: [CommonModule, DialogModule, FeedbackStateComponent, PropertyReviewHistoryComponent],
   templateUrl: './partner-overview.component.html',
   styleUrl: './partner-overview.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -308,8 +312,16 @@ export class PartnerOverviewComponent implements OnInit {
   failure: LoadFailure = null;
   readonly actionInFlight: Record<number, PartnerActionKey | undefined> = {};
   readonly rowActionErrors: Record<number, string> = {};
+  readonly approvalNotes: Record<number, string> = {};
   readonly rejectionReasons: Record<number, string> = {};
+  approvingPropertyId: number | null = null;
   rejectingPropertyId: number | null = null;
+  historyDialogVisible = false;
+  historyPropertyId: number | null = null;
+  historyPropertyName = '';
+  historyEvents: PropertyReviewHistoryEvent[] = [];
+  historyLoading = false;
+  historyError = '';
   actionFeedback: { type: 'success' | 'error'; message: string } | null = null;
 
   ngOnInit(): void {
@@ -384,6 +396,7 @@ export class PartnerOverviewComponent implements OnInit {
 
   actionVisible(action: PartnerAction, row: PartnerRow): boolean {
     if (!this.canUseActions) return false;
+    if (action.key === 'history') return this.propertyId(row) !== null;
     if (action.key !== 'approve' && action.key !== 'reject') return true;
     const status = this.rawCode(this.value(row, 'approval_status'));
     return status === 'PENDING_APPROVAL';
@@ -392,12 +405,18 @@ export class PartnerOverviewComponent implements OnInit {
   actionDisabled(action: PartnerAction, row: PartnerRow): boolean {
     const propertyId = this.propertyId(row);
     return this.loading || (propertyId !== null && (
-      this.actionInFlight[propertyId] !== undefined || this.rejectingPropertyId === propertyId
+      this.actionInFlight[propertyId] !== undefined
+      || this.approvingPropertyId === propertyId
+      || this.rejectingPropertyId === propertyId
+      || (this.historyLoading && this.historyPropertyId === propertyId)
     ));
   }
 
   actionBusy(action: PartnerAction, row: PartnerRow): boolean {
     const propertyId = this.propertyId(row);
+    if (action.key === 'history') {
+      return propertyId !== null && this.historyPropertyId === propertyId && this.historyLoading;
+    }
     return propertyId !== null && this.actionInFlight[propertyId] === action.key;
   }
 
@@ -423,6 +442,17 @@ export class PartnerOverviewComponent implements OnInit {
       return;
     }
 
+    if (action.key === 'history') {
+      this.openHistory(row, propertyId);
+      return;
+    }
+
+    if (action.key === 'approve') {
+      this.approvingPropertyId = propertyId;
+      delete this.rowActionErrors[propertyId];
+      return;
+    }
+
     if (action.key === 'reject') {
       this.rejectingPropertyId = propertyId;
       delete this.rowActionErrors[propertyId];
@@ -430,6 +460,46 @@ export class PartnerOverviewComponent implements OnInit {
     }
 
     this.executePropertyAction(action, propertyId);
+  }
+
+  isApproving(row: PartnerRow): boolean {
+    const propertyId = this.propertyId(row);
+    return propertyId !== null && this.approvingPropertyId === propertyId;
+  }
+
+  updateApprovalNote(propertyId: number, note: string): void {
+    this.approvalNotes[propertyId] = note;
+    delete this.rowActionErrors[propertyId];
+  }
+
+  approvalNoteError(propertyId: number): string {
+    const note = (this.approvalNotes[propertyId] ?? '').trim();
+    return note.length > APPROVAL_NOTE_MAX_LENGTH
+      ? `Ghi chú không được vượt quá ${APPROVAL_NOTE_MAX_LENGTH} ký tự.`
+      : '';
+  }
+
+  confirmApproval(row: PartnerRow): void {
+    const propertyId = this.propertyId(row);
+    const approveAction = this.config.actions.find(action => action.key === 'approve');
+    if (propertyId === null || !approveAction || !this.actionVisible(approveAction, row) || this.actionInFlight[propertyId]) return;
+
+    const validationError = this.approvalNoteError(propertyId);
+    if (validationError) {
+      this.rowActionErrors[propertyId] = validationError;
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.executePropertyAction(approveAction, propertyId, undefined, this.approvalNotes[propertyId]?.trim());
+  }
+
+  cancelApproval(row: PartnerRow): void {
+    const propertyId = this.propertyId(row);
+    if (propertyId === null || this.actionInFlight[propertyId]) return;
+    this.approvingPropertyId = null;
+    delete this.rowActionErrors[propertyId];
+    delete this.approvalNotes[propertyId];
   }
 
   isRejecting(row: PartnerRow): boolean {
@@ -457,7 +527,7 @@ export class PartnerOverviewComponent implements OnInit {
   confirmRejection(row: PartnerRow): void {
     const propertyId = this.propertyId(row);
     const rejectAction = this.config.actions.find(action => action.key === 'reject');
-    if (propertyId === null || !rejectAction || !this.actionVisible(rejectAction, row)) return;
+    if (propertyId === null || !rejectAction || !this.actionVisible(rejectAction, row) || this.actionInFlight[propertyId]) return;
 
     const validationError = this.rejectionReasonError(propertyId);
     if (validationError) {
@@ -477,9 +547,10 @@ export class PartnerOverviewComponent implements OnInit {
     delete this.rejectionReasons[propertyId];
   }
 
-  private executePropertyAction(action: PartnerAction, propertyId: number, reason?: string): void {
+  private executePropertyAction(action: PartnerAction, propertyId: number, reason?: string, note?: string): void {
+    if (this.actionInFlight[propertyId]) return;
     const request$ = action.key === 'approve'
-      ? this.propertyService.approvePropertyReview(propertyId)
+      ? this.propertyService.approvePropertyReview(propertyId, note)
       : this.propertyService.rejectPropertyReview(propertyId, reason!);
     this.actionInFlight[propertyId] = action.key;
     delete this.rowActionErrors[propertyId];
@@ -492,7 +563,9 @@ export class PartnerOverviewComponent implements OnInit {
       }),
     ).subscribe({
       next: () => {
+        this.approvingPropertyId = null;
         this.rejectingPropertyId = null;
+        delete this.approvalNotes[propertyId];
         delete this.rejectionReasons[propertyId];
         this.actionFeedback = {
           type: 'success',
@@ -507,6 +580,53 @@ export class PartnerOverviewComponent implements OnInit {
         this.rowActionErrors[propertyId] = message;
         this.cdr.markForCheck();
       },
+    });
+  }
+
+  closeHistoryDialog(): void {
+    if (this.historyLoading) return;
+    this.historyDialogVisible = false;
+    this.historyPropertyId = null;
+    this.historyPropertyName = '';
+    this.historyEvents = [];
+    this.historyError = '';
+  }
+
+  retryHistory(): void {
+    if (this.historyPropertyId !== null) this.loadHistory(this.historyPropertyId);
+  }
+
+  private openHistory(row: PartnerRow, propertyId: number): void {
+    this.historyPropertyId = propertyId;
+    this.historyPropertyName = String(this.value(row, 'name') ?? `Cơ sở #${propertyId}`);
+    this.historyEvents = [];
+    this.historyError = '';
+    this.historyDialogVisible = true;
+    this.loadHistory(propertyId);
+  }
+
+  private loadHistory(propertyId: number): void {
+    if (this.historyLoading) return;
+    this.historyLoading = true;
+    this.historyError = '';
+    this.propertyService.getAdminPropertyHistory(propertyId).pipe(
+      timeout(10000),
+      finalize(() => {
+        this.historyLoading = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: events => {
+        this.historyEvents = Array.isArray(events) ? events : [];
+        this.cdr.markForCheck();
+      },
+      error: (error: HttpErrorResponse) => {
+        this.historyEvents = [];
+        this.historyError = error?.status === 403
+          ? 'Bạn không có quyền xem lịch sử của cơ sở này.'
+          : 'Không thể tải lịch sử xét duyệt. Vui lòng thử lại.';
+        this.cdr.markForCheck();
+      }
     });
   }
 

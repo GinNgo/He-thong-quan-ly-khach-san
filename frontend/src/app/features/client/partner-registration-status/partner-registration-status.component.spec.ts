@@ -87,6 +87,54 @@ describe('PartnerRegistrationStatusComponent', () => {
     expect(link.getAttribute('href')).toBe('/partner/register');
   });
 
+  it('lazy-loads history only for the selected property and renders safe event data', () => {
+    loadWith({
+      overallStatus: 'MIXED',
+      propertyCount: 2,
+      properties: [
+        row(6, 'History Hotel', 'APPROVED', 'APPROVED', 'ACTIVE', 'ACTIVE'),
+        row(7, 'Other Hotel', 'PENDING', 'PENDING_APPROVAL', 'INACTIVE', 'PENDING')
+      ]
+    });
+
+    http.expectNone(`${environment.apiUrl}/partner/properties/6/history`);
+    const historyButtons = fixture.nativeElement.querySelectorAll('.history-toggle') as NodeListOf<HTMLButtonElement>;
+    historyButtons[0].click();
+
+    const request = http.expectOne(`${environment.apiUrl}/partner/properties/6/history`);
+    expect(request.request.method).toBe('GET');
+    request.flush([historyEvent(6)]);
+    fixture.detectChanges();
+
+    const history = fixture.nativeElement.querySelector('.property-history-region') as HTMLElement;
+    expect(history.textContent).toContain('Đã phê duyệt');
+    expect(history.textContent).toContain('Hồ sơ đã được xác minh.');
+    expect(history.textContent).not.toContain('actorUserId');
+    http.expectNone(`${environment.apiUrl}/partner/properties/7/history`);
+  });
+
+  it('shows a safe history error and retries the same tenant-scoped request', () => {
+    loadWith({
+      overallStatus: 'APPROVED',
+      propertyCount: 1,
+      properties: [row(12, 'Retry History Hotel', 'APPROVED', 'APPROVED', 'ACTIVE', 'ACTIVE')]
+    });
+
+    (fixture.nativeElement.querySelector('.history-toggle') as HTMLButtonElement).click();
+    http.expectOne(`${environment.apiUrl}/partner/properties/12/history`).flush(
+      { message: 'Internal owner 42 audit storage failure' },
+      { status: 500, statusText: 'Error' }
+    );
+    fixture.detectChanges();
+
+    const error = fixture.nativeElement.querySelector('.property-history-region [role="alert"]') as HTMLElement;
+    expect(error.textContent).toContain('Không thể tải lịch sử xét duyệt');
+    expect(error.textContent).not.toContain('owner 42');
+
+    (error.querySelector('button') as HTMLButtonElement).click();
+    http.expectOne(`${environment.apiUrl}/partner/properties/12/history`).flush([]);
+  });
+
   it('shows submit only for the raw DRAFT owner mapping, blocks duplicates and refreshes mixed status', () => {
     const draftOwner = row(8, 'Draft Owner Hotel', 'PENDING', 'DRAFT', 'INACTIVE', 'PENDING');
     loadWith({
@@ -206,4 +254,21 @@ function row(
     ownershipStatus,
     rejectionReason: null
   };
+}
+
+function historyEvent(propertyId: number) {
+  return {
+    eventId: 71,
+    propertyId,
+    eventType: 'PROPERTY_APPROVED' as const,
+    actorKind: 'ADMIN' as const,
+    note: 'Hồ sơ đã được xác minh.',
+    beforeState: historyState('PENDING_APPROVAL', 'PENDING_APPROVAL', 'INACTIVE', 'PENDING'),
+    afterState: historyState('ACTIVE', 'APPROVED', 'ACTIVE', 'ACTIVE'),
+    occurredAt: '2026-08-04T10:00:00Z'
+  };
+}
+
+function historyState(status: string, approvalStatus: string, operationStatus: string, ownershipStatus: string) {
+  return { status, approvalStatus, operationStatus, ownershipStatus };
 }

@@ -3,11 +3,13 @@ package com.hotel.controllers;
 import com.hotel.dtos.PropertyLifecycleDecisionResponse;
 import com.hotel.dtos.PropertyLifecycleReasonRequest;
 import com.hotel.dtos.PropertyLifecycleSummary;
+import com.hotel.dtos.PropertyReviewHistoryItem;
 import com.hotel.security.ActionCode;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.Permission;
 import com.hotel.services.PropertyLifecycleWorkflowService;
+import com.hotel.services.PropertyReviewHistoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -31,11 +33,18 @@ import java.util.List;
 public class AdminPropertyLifecycleController {
 
     private final PropertyLifecycleWorkflowService workflowService;
+    private final PropertyReviewHistoryService propertyReviewHistoryService;
 
     @GetMapping("/lifecycle")
     @Permission(function = FunctionCode.PROPERTY_LIFECYCLE, action = ActionCode.VIEW)
     public List<PropertyLifecycleSummary> properties() {
         return workflowService.properties();
+    }
+
+    @GetMapping("/{id}/history")
+    @Permission(function = FunctionCode.PROPERTY_LIFECYCLE, action = ActionCode.VIEW)
+    public List<PropertyReviewHistoryItem> history(@PathVariable Long id) {
+        return propertyReviewHistoryService.adminHistory(id);
     }
 
     @PostMapping("/{id}/suspend")

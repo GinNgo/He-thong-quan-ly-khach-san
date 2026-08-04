@@ -47,6 +47,17 @@
           <td><p-tag [severity]="statusSeverity(property.approvalStatus)" [value]="statusLabel(property.approvalStatus)"></p-tag></td>
           <td><p-tag [severity]="statusSeverity(property.operationStatus)" [value]="statusLabel(property.operationStatus)"></p-tag></td>
           <td class="actions">
+            <button
+              *ngIf="canViewHistory"
+              pButton
+              type="button"
+              [icon]="historyLoading && historyPropertyId === property.propertyId ? 'pi pi-spinner pi-spin' : 'pi pi-history'"
+              class="p-button-rounded p-button-text"
+              pTooltip="Lịch sử xét duyệt"
+              (click)="openHistory(property)"
+              [disabled]="isLifecycleBusy(property) || historyLoading"
+              [attr.aria-label]="'Xem lịch sử cơ sở ' + property.name"
+            ></button>
             <ng-container *ngIf="canManageLifecycle">
               <button
                 *ngIf="canRunLifecycle(property, 'SUSPEND')"
@@ -82,7 +93,8 @@
                 [attr.aria-label]="'Đóng cơ sở ' + property.name"
               ></button>
             </ng-container>
-            <span *ngIf="!canManageLifecycle || !property.allowedTransitions.length" class="permission-note">Chỉ xem</span>
+            <span *ngIf="!canManageLifecycle" class="permission-note">Chỉ xem trạng thái</span>
+            <span *ngIf="canManageLifecycle && !property.allowedTransitions.length" class="permission-note">Không có chuyển đổi</span>
           </td>
         </tr>
       </ng-template>
@@ -148,6 +160,23 @@
       [disabled]="!lifecycleTarget || isLifecycleBusy(lifecycleTarget)"
     ></button>
   </ng-template>
+</p-dialog>
+
+<p-dialog
+  [(visible)]="historyDialogVisible"
+  [modal]="true"
+  [draggable]="false"
+  [dismissableMask]="false"
+  [closable]="!historyLoading"
+  [style]="{width:'min(760px, 96vw)'}"
+  [header]="'Lịch sử xét duyệt · ' + historyPropertyName"
+  (onHide)="closeHistoryDialog()">
+  <app-property-review-history
+    [events]="historyEvents"
+    [loading]="historyLoading"
+    [error]="historyError"
+    (retry)="retryHistory()"
+  />
 </p-dialog>
 
 <p-dialog [(visible)]="dialogVisible" [modal]="true" [draggable]="false" [style]="{width:'min(820px, 96vw)'}" header="Thêm cơ sở lưu trú" [closable]="!saving" (onHide)="closeCreate()">
