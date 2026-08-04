@@ -1,7 +1,7 @@
 # T237 Imported Property Claim Request
 
 Date: 2026-08-04
-Implementation commit: `758b425`
+Implementation commits: `758b425`, teardown-race fix `c0eb1a4`
 
 ## Scope
 
@@ -45,6 +45,7 @@ Implementation commit: `758b425`
    - Development build passed.
    - The only warning was the unrelated baseline NG8107 warning in `client-layout.html`.
    - Temporary compatibility-only i18n stubs were removed before commit.
+   - A final lifecycle regression removed explicit change detection from the RxJS finalizer so component teardown cannot trigger view-destroy detection; the same 14 tests and development build passed after the fix.
 
 5. Repository check:
 
