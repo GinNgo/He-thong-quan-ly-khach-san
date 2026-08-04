@@ -1,14 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, inject } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Hotel } from '../../../../../core/services/client-api.service';
 import { HomeSearchStateService } from '../../services/home-search-state.service';
 import { ImageFallbackService } from '../../../../../core/services/image-fallback.service';
+import { FeedbackStateComponent } from '../../../../../shared/components/feedback-state/feedback-state.component';
 
 @Component({
   selector: 'app-featured-properties',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FeedbackStateComponent],
   template: `
     <section class="featured-section" aria-labelledby="featured-title">
       <div class="section-intro">
@@ -23,12 +24,31 @@ import { ImageFallbackService } from '../../../../../core/services/image-fallbac
         <div *ngFor="let item of [1,2,3,4]" class="property-skeleton"><span></span><b></b><i></i></div>
       </div>
 
-      <div *ngIf="!loading && properties.length" class="property-grid">
+      <app-feedback-state
+        *ngIf="!loading && error"
+        state="error"
+        title="Không thể tải cơ sở nổi bật"
+        message="Danh sách cơ sở tạm thời không khả dụng."
+        actionLabel="Thử lại"
+        (actionTriggered)="retry.emit()">
+      </app-feedback-state>
+
+      <app-feedback-state
+        *ngIf="!loading && !error && properties.length === 0"
+        state="empty"
+        title="Chưa có cơ sở nổi bật"
+        message="Các cơ sở đủ điều kiện sẽ hiển thị tại đây.">
+      </app-feedback-state>
+
+      <div *ngIf="!loading && !error && properties.length" class="property-grid">
         <article *ngFor="let property of properties; trackBy: trackByProperty" class="property-card" tabindex="0"
+          [attr.data-property-id]="property.id"
           (click)="openProperty(property.id)" (keydown.enter)="openProperty(property.id)">
           <div class="property-image">
             <img [src]="displayImage(property)"
-              [alt]="property.name" loading="lazy" (error)="handleImageError($event, property.propertyType)">
+              [alt]="property.imageAltText || property.name"
+              [attr.data-image-provenance]="displayProvenance(property)"
+              loading="lazy" (error)="handleImageError($event, property.propertyType)">
             <span>{{ propertyTypeLabel(property.propertyType) }}</span>
           </div>
           <div class="property-body">
@@ -58,6 +78,8 @@ import { ImageFallbackService } from '../../../../../core/services/image-fallbac
 export class FeaturedPropertiesComponent {
   @Input() properties: Hotel[] = [];
   @Input() loading = false;
+  @Input() error = false;
+  @Output() readonly retry = new EventEmitter<void>();
   private readonly router = inject(Router);
   private readonly stateService = inject(HomeSearchStateService);
   private readonly imageFallback = inject(ImageFallbackService);
@@ -78,11 +100,24 @@ export class FeaturedPropertiesComponent {
   }
 
   displayImage(property: Hotel): string {
-    return property.thumbnailUrl || property.mainImageUrl || property.mainImage || this.fallbackImage(property.propertyType);
+    return this.apiImage(property) || this.fallbackImage(property.propertyType);
+  }
+
+  displayProvenance(property: Hotel): string {
+    return this.apiImage(property) ? property.imageProvenance || 'API_UNSPECIFIED' : 'FRONTEND_FALLBACK';
   }
 
   handleImageError(event: Event, type?: string): void {
-    this.imageFallback.replace(event, this.fallbackImage(type));
+    const image = event.target as HTMLImageElement;
+    const fallback = this.fallbackImage(type);
+    if (image.src.endsWith(fallback)) return;
+    image.dataset['imageFallback'] = 'true';
+    this.imageFallback.replace(event, fallback);
+  }
+
+  private apiImage(property: Hotel): string | undefined {
+    return [property.thumbnailUrl, property.mainImageUrl, property.mainImage]
+      .find(value => value?.trim())?.trim();
   }
 
   trackByProperty(_index: number, property: Hotel): number { return property.id; }

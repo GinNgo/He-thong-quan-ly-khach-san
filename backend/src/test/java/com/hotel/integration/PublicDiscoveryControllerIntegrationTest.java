@@ -7,26 +7,35 @@ import com.hotel.entities.RoomType;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.LocationRepository;
 import com.hotel.repositories.RoomTypeRepository;
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
-import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -216,6 +225,74 @@ class PublicDiscoveryControllerIntegrationTest {
     }
 
     @Test
+    void popularDestinations_IsDeterministicClampedFreshAndKeepsStableAssets() throws Exception {
+        secondProvince.setNameVi("Alpha Destination T273");
+        secondProvince = locationRepository.saveAndFlush(secondProvince);
+        Location thirdProvince = location(
+                "TEST-P3-T273", "VN34-68", "Beta Destination T273", "PROVINCE", null);
+
+        // The existing hotel contributes one property to currentProvince.
+        createApprovedHotels(currentProvince, 11, "POPULAR-TOP");
+        createApprovedHotels(secondProvince, 10, "POPULAR-ALPHA");
+        createApprovedHotels(thirdProvince, 10, "POPULAR-BETA");
+
+        MvcResult first = mockMvc.perform(get("/api/public/popular-destinations").param("limit", "3"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, allOf(
+                        containsString("max-age=60"),
+                        containsString("public"),
+                        containsString("must-revalidate"))))
+                .andExpect(header().string("X-LuxeStay-Freshness-Seconds", "60"))
+                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$[*].id", contains(
+                        currentProvince.getId().intValue(),
+                        secondProvince.getId().intValue(),
+                        thirdProvince.getId().intValue())))
+                .andExpect(jsonPath("$[*].propertyCount", contains(12, 10, 10)))
+                .andExpect(jsonPath("$[1].imageUrl").value(expectedDestinationImage(secondProvince)))
+                .andExpect(jsonPath("$[1].imageAltText", containsString(secondProvince.getNameVi())))
+                .andExpect(jsonPath("$[1].imageProvenance")
+                        .value("BUNDLED_DESTINATION:" + expectedDestinationAsset(secondProvince)))
+                .andReturn();
+
+        List<String> firstAlphaImages = JsonPath.read(first.getResponse().getContentAsString(),
+                "$[?(@.id == " + secondProvince.getId() + ")].imageUrl");
+
+        // Changing the count moves Beta ahead of Alpha, but must not change Alpha's image mapping.
+        createApprovedHotels(thirdProvince, 1, "POPULAR-BETA-RANK-CHANGE");
+        MvcResult reranked = mockMvc.perform(get("/api/public/popular-destinations").param("limit", "3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].id", contains(
+                        currentProvince.getId().intValue(),
+                        thirdProvince.getId().intValue(),
+                        secondProvince.getId().intValue())))
+                .andExpect(jsonPath("$[*].propertyCount", contains(12, 11, 10)))
+                .andReturn();
+        List<String> rerankedAlphaImages = JsonPath.read(reranked.getResponse().getContentAsString(),
+                "$[?(@.id == " + secondProvince.getId() + ")].imageUrl");
+        assertEquals(firstAlphaImages, rerankedAlphaImages);
+
+        List<Location> additionalDestinations = List.of(
+                location("TEST-P4-T273", "VN34-01", "Extra Destination 01", "PROVINCE", null),
+                location("TEST-P5-T273", "VN34-04", "Extra Destination 04", "PROVINCE", null),
+                location("TEST-P6-T273", "VN34-08", "Extra Destination 08", "PROVINCE", null),
+                location("TEST-P7-T273", "VN34-11", "Extra Destination 11", "PROVINCE", null),
+                location("TEST-P8-T273", "VN34-12", "Extra Destination 12", "PROVINCE", null),
+                location("TEST-P9-T273", "VN34-14", "Extra Destination 14", "PROVINCE", null));
+        for (int index = 0; index < additionalDestinations.size(); index++) {
+            createApprovedHotels(additionalDestinations.get(index), 1, "POPULAR-EXTRA-" + index);
+        }
+
+        mockMvc.perform(get("/api/public/popular-destinations").param("limit", "99"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(8)));
+        mockMvc.perform(get("/api/public/popular-destinations").param("limit", "0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].id").value(currentProvince.getId()));
+    }
+
+    @Test
     void publicRoomCatalogFiltersInactiveTypesAndRejectsStalePropertyUrls() throws Exception {
         mockMvc.perform(get("/api/public/properties/{hotelId}/room-types", hotel.getId()))
                 .andExpect(status().isOk())
@@ -290,5 +367,33 @@ class PublicDiscoveryControllerIntegrationTest {
         roomType.setBasePrice(new BigDecimal("500000"));
         roomType.setStatus(status);
         return roomType;
+    }
+
+    private void createApprovedHotels(Location destination, int count, String prefix) {
+        for (int index = 0; index < count; index++) {
+            Hotel destinationHotel = new Hotel();
+            destinationHotel.setName(prefix + " Hotel " + index);
+            destinationHotel.setCode("TEST-H-" + prefix + "-" + index);
+            destinationHotel.setSlug((prefix + "-hotel-" + index).toLowerCase());
+            destinationHotel.setAddressLine(index + " Test Street");
+            destinationHotel.setCity(destination.getNameVi());
+            destinationHotel.setCountry("Vietnam");
+            destinationHotel.setProvinceId(destination.getId());
+            destinationHotel.setPropertyType("HOTEL");
+            destinationHotel.setApprovalStatus("APPROVED");
+            destinationHotel.setOperationStatus("ACTIVE");
+            destinationHotel.setStatus("ACTIVE");
+            hotelRepository.save(destinationHotel);
+        }
+        hotelRepository.flush();
+    }
+
+    private String expectedDestinationImage(Location destination) {
+        return "/assets/destinations/" + expectedDestinationAsset(destination);
+    }
+
+    private String expectedDestinationAsset(Location destination) {
+        int assetNumber = Math.floorMod(destination.getSourceCode().hashCode(), 8) + 1;
+        return "destination-" + String.format("%02d", assetNumber) + ".webp";
     }
 }

@@ -24,6 +24,7 @@ export interface Hotel {
   galleryUrls?: string[];
   imageCount?: number;
   imageAltText?: string;
+  imageProvenance?: string;
   propertyType?: string;
   provinceName?: string;
   wardName?: string;
@@ -126,6 +127,8 @@ export interface LocationSuggestion {
   propertyType?: string;
   thumbnailUrl?: string;
   imageUrl?: string;
+  imageAltText?: string;
+  imageProvenance?: string;
   reviewScore?: number;
   distanceKm?: number;
   latitude?: number;
@@ -170,7 +173,11 @@ export interface UserContext {
 export class ClientApiService {
   private http = inject(HttpClient);
   private apiUrl = environment.apiUrl;
-  private readonly popularDestinationsCache = new Map<number, Observable<LocationSuggestion[]>>();
+  private readonly popularDestinationsTtlMs = 60_000;
+  private readonly popularDestinationsCache = new Map<number, {
+    expiresAt: number;
+    response: Observable<LocationSuggestion[]>;
+  }>();
   private hotelApiUrl = `${environment.apiUrl}/v1/hotels`;
 
   searchHotels(paramsObj: any): Observable<PagedResponse<Hotel>> {
@@ -253,10 +260,11 @@ export class ClientApiService {
     return this.http.get<SearchSuggestionGroups>(`${environment.apiUrl}/public/search/suggestions`, { params });
   }
 
-  getPopularDestinations(limit: number = 8): Observable<LocationSuggestion[]> {
-    const safeLimit = Math.min(Math.max(limit, 1), 12);
+  getPopularDestinations(limit: number = 8, forceRefresh = false): Observable<LocationSuggestion[]> {
+    const safeLimit = Math.min(Math.max(limit, 1), 8);
     const cached = this.popularDestinationsCache.get(safeLimit);
-    if (cached) return cached;
+    if (!forceRefresh && cached && cached.expiresAt > Date.now()) return cached.response;
+    this.popularDestinationsCache.delete(safeLimit);
 
     const params = new HttpParams().set('limit', safeLimit.toString());
     const request = this.http.get<LocationSuggestion[]>(
@@ -264,12 +272,25 @@ export class ClientApiService {
       { params }
     ).pipe(
       catchError(error => {
-        this.popularDestinationsCache.delete(safeLimit);
+        if (this.popularDestinationsCache.get(safeLimit)?.response === request) {
+          this.popularDestinationsCache.delete(safeLimit);
+        }
         return throwError(() => error);
       }),
       shareReplay({ bufferSize: 1, refCount: false })
     );
-    this.popularDestinationsCache.set(safeLimit, request);
+    this.popularDestinationsCache.set(safeLimit, {
+      expiresAt: Date.now() + this.popularDestinationsTtlMs,
+      response: request
+    });
     return request;
+  }
+
+  invalidatePopularDestinations(limit?: number): void {
+    if (limit === undefined) {
+      this.popularDestinationsCache.clear();
+      return;
+    }
+    this.popularDestinationsCache.delete(Math.min(Math.max(limit, 1), 8));
   }
 }

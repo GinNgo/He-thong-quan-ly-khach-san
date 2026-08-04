@@ -3,6 +3,48 @@ import { expect, test } from '@playwright/test';
 const backendPort = process.env['PUBLIC_BOOKING_BACKEND_PORT'] || '28743';
 const frontendPort = process.env['PUBLIC_BOOKING_FRONTEND_PORT'] || '42769';
 
+interface PopularDestination {
+  id: number;
+  name: string;
+  displayName: string;
+  propertyCount: number;
+  imageUrl: string;
+  imageAltText: string;
+  imageProvenance: string;
+}
+
+interface FeaturedProperty {
+  id: number;
+  name: string;
+  propertyType?: string;
+  thumbnailUrl?: string;
+  mainImageUrl?: string;
+  mainImage?: string;
+  imageAltText: string;
+  imageProvenance: string;
+  reviewScore?: number;
+  reviewCount?: number;
+}
+
+interface FeaturedPropertyPage {
+  content: FeaturedProperty[];
+}
+
+function localDate(offsetDays: number): string {
+  const value = new Date();
+  value.setHours(0, 0, 0, 0);
+  value.setDate(value.getDate() + offsetDays);
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function compareText(left: string, right: string): number {
+  if (left === right) return 0;
+  return left < right ? -1 : 1;
+}
+
 test.beforeAll(async ({ request }) => {
   await expect.poll(async () => {
     try {
@@ -28,6 +70,117 @@ test.beforeEach(async ({ page }) => {
       headers: { ...response.headers(), 'access-control-allow-origin': `http://localhost:${frontendPort}` }
     });
   });
+});
+
+test('renders deterministic seeded popular and featured discovery with governed image fallback', async ({ page }) => {
+  const featuredApiUrl = new URL(`http://localhost:${backendPort}/api/public/properties/search`);
+  featuredApiUrl.searchParams.set('adultCount', '2');
+  featuredApiUrl.searchParams.set('childCount', '0');
+  featuredApiUrl.searchParams.set('roomCount', '1');
+  featuredApiUrl.searchParams.set('checkInDate', localDate(0));
+  featuredApiUrl.searchParams.set('checkOutDate', localDate(1));
+  featuredApiUrl.searchParams.set('pageNumber', '0');
+  featuredApiUrl.searchParams.set('pageSize', '8');
+  featuredApiUrl.searchParams.set('sortBy', 'RATING');
+
+  const seededFeaturedResponse = await page.request.get(featuredApiUrl.toString());
+  expect(seededFeaturedResponse.ok()).toBe(true);
+  const seededFeatured = await seededFeaturedResponse.json() as FeaturedPropertyPage;
+  expect(seededFeatured.content.length).toBeGreaterThan(0);
+  const brokenAsset = seededFeatured.content[0].thumbnailUrl
+    || seededFeatured.content[0].mainImageUrl
+    || seededFeatured.content[0].mainImage;
+  expect(brokenAsset).toMatch(/^\/assets\/properties\//);
+
+  await page.route(`**${brokenAsset}`, route => route.fulfill({
+    status: 404,
+    contentType: 'text/plain',
+    body: 'T273 intentional missing seeded asset'
+  }));
+
+  const popularResponsePromise = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname.endsWith('/api/public/popular-destinations')
+      && response.request().method() === 'GET';
+  });
+  const featuredResponsePromise = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname.endsWith('/api/public/properties/search')
+      && url.searchParams.get('sortBy') === 'RATING'
+      && response.request().method() === 'GET';
+  });
+
+  await page.goto('/');
+  const [popularResponse, featuredResponse] = await Promise.all([
+    popularResponsePromise,
+    featuredResponsePromise
+  ]);
+
+  expect(popularResponse.status()).toBe(200);
+  expect(popularResponse.headers()['cache-control']).toContain('max-age=60');
+  expect(popularResponse.headers()['cache-control']).toContain('public');
+  expect(popularResponse.headers()['x-luxestay-freshness-seconds']).toBe('60');
+  const popular = await popularResponse.json() as PopularDestination[];
+  expect(popular.length).toBeGreaterThan(0);
+  expect(popular.map(destination => destination.id)).toEqual(
+    [...popular]
+      .sort((left, right) => right.propertyCount - left.propertyCount
+        || compareText(left.displayName, right.displayName)
+        || left.id - right.id)
+      .map(destination => destination.id)
+  );
+
+  const popularCards = page.locator('app-popular-destinations [data-destination-id]');
+  await expect(popularCards).toHaveCount(popular.length);
+  expect(await popularCards.evaluateAll(cards => cards.map(card => Number(card.getAttribute('data-destination-id')))))
+    .toEqual(popular.map(destination => destination.id));
+  for (let index = 0; index < popular.length; index++) {
+    const destination = popular[index];
+    expect(destination.imageAltText.trim()).not.toBe('');
+    expect(destination.imageProvenance).toMatch(/^BUNDLED_DESTINATION:destination-\d{2}\.webp$/);
+    const image = popularCards.nth(index).locator('img');
+    await expect(image).toHaveAttribute('alt', destination.imageAltText);
+    await expect(image).toHaveAttribute('data-image-provenance', destination.imageProvenance);
+  }
+
+  expect(featuredResponse.status()).toBe(200);
+  expect(featuredResponse.headers()['cache-control']).toContain('no-store');
+  expect(featuredResponse.headers()['x-luxestay-freshness']).toBe('LIVE_SEARCH');
+  const featured = await featuredResponse.json() as FeaturedPropertyPage;
+  expect(featured.content.length).toBeGreaterThan(0);
+  expect(featured.content.map(property => property.id)).toEqual(
+    [...featured.content]
+      .sort((left, right) => {
+        const leftReviewed = left.reviewScore !== null && left.reviewScore !== undefined;
+        const rightReviewed = right.reviewScore !== null && right.reviewScore !== undefined;
+        if (leftReviewed !== rightReviewed) return leftReviewed ? -1 : 1;
+        return (right.reviewScore ?? 0) - (left.reviewScore ?? 0)
+          || (right.reviewCount ?? 0) - (left.reviewCount ?? 0)
+          || left.id - right.id;
+      })
+      .map(property => property.id)
+  );
+
+  const featuredCards = page.locator('app-featured-properties [data-property-id]');
+  await expect(featuredCards).toHaveCount(featured.content.length);
+  expect(await featuredCards.evaluateAll(cards => cards.map(card => Number(card.getAttribute('data-property-id')))))
+    .toEqual(featured.content.map(property => property.id));
+  for (let index = 0; index < featured.content.length; index++) {
+    const property = featured.content[index];
+    expect(property.imageAltText.trim()).not.toBe('');
+    expect(['PROPERTY_MEDIA', 'PROPERTY_CATALOG_MAIN']).toContain(property.imageProvenance);
+    const image = featuredCards.nth(index).locator('img');
+    await expect(image).toHaveAttribute('alt', property.imageAltText);
+    await expect(image).toHaveAttribute('data-image-provenance', property.imageProvenance);
+  }
+
+  const firstFeaturedImage = featuredCards.first().locator('img');
+  await firstFeaturedImage.scrollIntoViewIfNeeded();
+  await expect(firstFeaturedImage).toHaveAttribute('src', /\/assets\/fallbacks\/.+-default\.webp$/);
+  await expect.poll(() => firstFeaturedImage.evaluate(image => {
+    const element = image as HTMLImageElement;
+    return element.complete && element.naturalWidth > 0;
+  })).toBe(true);
 });
 
 test('searches seeded API inventory and preserves the trip through detail and back', async ({ page }) => {

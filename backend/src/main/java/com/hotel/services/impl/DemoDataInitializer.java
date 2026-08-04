@@ -134,8 +134,9 @@ public class DemoDataInitializer {
         hotel.setCheckoutTime("12:00");
         hotel.setPhone(String.format("090100%04d", index));
         hotel.setEmail(seed.code().toLowerCase() + "@demo.local");
-        hotel.setAverageRating(null);
-        hotel.setReviewCount(0);
+        boolean unrated = index % 4 == 0;
+        hotel.setAverageRating(unrated ? null : 8.0 + (index % 5) * 0.2);
+        hotel.setReviewCount(unrated ? 0 : 20 + index * 11);
         return hotelRepository.saveAndFlush(hotel);
     }
 

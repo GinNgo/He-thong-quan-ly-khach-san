@@ -36,6 +36,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   featuredProperties: Hotel[] = [];
   isLoadingDestinations = true;
   isLoadingFeatured = true;
+  destinationError = false;
+  featuredError = false;
 
   @ViewChild('heroSearchRef', { static: true }) heroSearchRef!: ElementRef;
 
@@ -67,9 +69,10 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.layoutState.hideMainHeader.set(false);
   }
 
-  private loadPopularDestinations() {
+  loadPopularDestinations(forceRefresh = false) {
     this.isLoadingDestinations = true;
-    this.clientApi.getPopularDestinations(8).subscribe({
+    this.destinationError = false;
+    this.clientApi.getPopularDestinations(8, forceRefresh).subscribe({
       next: (provinces) => {
         this.destinations = provinces;
         this.isLoadingDestinations = false;
@@ -77,14 +80,16 @@ export class HomeComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.destinations = [];
+        this.destinationError = true;
         this.isLoadingDestinations = false;
         this.changeDetector.detectChanges();
       }
     });
   }
 
-  private loadFeaturedProperties() {
+  loadFeaturedProperties() {
     this.isLoadingFeatured = true;
+    this.featuredError = false;
     this.clientApi.searchHotels({
       ...this.searchState.bookingQueryParams(),
       pageNumber: 0,
@@ -98,6 +103,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.featuredProperties = [];
+        this.featuredError = true;
         this.isLoadingFeatured = false;
         this.changeDetector.detectChanges();
       }

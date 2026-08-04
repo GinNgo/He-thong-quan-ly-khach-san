@@ -183,7 +183,9 @@ public class PropertySearchServiceImpl implements PropertySearchService {
             case "NEAREST" -> hasCoordinates ? " ORDER BY distance ASC" : " ORDER BY h.id DESC";
             case "PRICE_ASC" -> " ORDER BY min_price ASC";
             case "PRICE_DESC" -> " ORDER BY min_price DESC";
-            case "RATING" -> " ORDER BY h.average_rating DESC,h.review_count DESC";
+            case "RATING" -> " ORDER BY CASE WHEN h.average_rating IS NULL OR COALESCE(h.review_count,0)<=0 THEN 1 ELSE 0 END,"
+                    + " CASE WHEN h.average_rating IS NULL OR COALESCE(h.review_count,0)<=0 THEN NULL ELSE h.average_rating END DESC,"
+                    + " CASE WHEN h.average_rating IS NULL OR COALESCE(h.review_count,0)<=0 THEN 0 ELSE h.review_count END DESC,h.id ASC";
             default -> " ORDER BY h.review_count DESC,h.id DESC";
         };
 
@@ -276,13 +278,14 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         dto.setSlug((String) row[1]);
         dto.setName((String) row[2]);
         dto.setAddressLine((String) row[3]);
-        dto.setMainImageUrl((String) row[4]);
+        dto.setMainImageUrl(normalizeImageUrl((String) row[4]));
         dto.setStarRating(integer(row[5]));
         dto.setLatitude(decimal(row[6]));
         dto.setLongitude(decimal(row[7]));
         dto.setPropertyType((String) row[8]);
-        dto.setReviewScore(decimal(row[9]));
-        dto.setReviewCount(integer(row[10]) == null ? 0 : integer(row[10]));
+        Integer reviewCount = integer(row[10]) == null ? 0 : integer(row[10]);
+        dto.setReviewScore(reviewCount > 0 ? decimal(row[9]) : null);
+        dto.setReviewCount(reviewCount);
         Long storedProvinceId = row[19] == null ? null : number(row[19]).longValue();
         Location currentProvince = provinceCompatibilityService.currentProvinceForId(storedProvinceId);
         dto.setProvinceName(currentProvince == null ? (String) row[11] : currentProvince.getNameVi());
@@ -318,12 +321,21 @@ public class PropertySearchServiceImpl implements PropertySearchService {
                     tax, BigDecimal.ZERO, total, "VND"));
         }
 
-        List<PropertyImage> images = propertyImageRepository.findByHotelIdOrderBySortOrderAsc(dto.getId());
+        List<PropertyImage> images = propertyImageRepository.findByHotelIdOrderBySortOrderAscIdAsc(dto.getId()).stream()
+                .filter(image -> image.getImageUrl() != null && !image.getImageUrl().isBlank())
+                .toList();
         PropertyImage primary = images.stream().filter(image -> Boolean.TRUE.equals(image.getIsPrimary())).findFirst()
                 .orElse(images.isEmpty() ? null : images.get(0));
-        dto.setThumbnailUrl(primary == null ? null : primary.getImageUrl());
-        dto.setImageAltText(primary == null ? null : primary.getAltTextVi());
-        dto.setGalleryUrls(images.stream().map(PropertyImage::getImageUrl).distinct().toList());
+        String catalogMainImage = dto.getMainImageUrl();
+        dto.setThumbnailUrl(primary == null ? catalogMainImage : primary.getImageUrl().trim());
+        dto.setImageAltText(primary == null || primary.getAltTextVi() == null || primary.getAltTextVi().isBlank()
+                ? dto.getName() : primary.getAltTextVi());
+        dto.setImageProvenance(primary != null ? "PROPERTY_MEDIA"
+                : catalogMainImage != null ? "PROPERTY_CATALOG_MAIN" : "NONE");
+        List<String> gallery = new ArrayList<>(images.stream()
+                .map(image -> image.getImageUrl().trim()).distinct().toList());
+        if (gallery.isEmpty() && catalogMainImage != null) gallery.add(catalogMainImage);
+        dto.setGalleryUrls(List.copyOf(gallery));
         dto.setImageCount(dto.getGalleryUrls().size());
         dto.setAmenities(List.of());
         dto.setBadges(List.of());
@@ -331,6 +343,10 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         dto.setPayAtProperty(false);
         dto.setBreakfastIncluded(false);
         return dto;
+    }
+
+    private String normalizeImageUrl(String imageUrl) {
+        return imageUrl == null || imageUrl.isBlank() ? null : imageUrl.trim();
     }
 
     private boolean canHost(RoomType roomType, int adults, int children, int roomCount) {

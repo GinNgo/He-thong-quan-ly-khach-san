@@ -71,7 +71,11 @@ export class PropertyResultCardComponent {
   @Input({ required: true }) property!: Hotel & any;
   @Output() viewDetails = new EventEmitter<number>();
   private readonly fallback = inject(ImageFallbackService);
-  get imageUrl(): string { return this.property.thumbnailUrl || this.property.mainImageUrl || this.fallback.property(this.property.propertyType); }
+  get imageUrl(): string {
+    return [this.property.thumbnailUrl, this.property.mainImageUrl, this.property.mainImage]
+      .find(value => typeof value === 'string' && value.trim())?.trim()
+      || this.fallback.property(this.property.propertyType);
+  }
   get locationLine(): string {
     const parts = [this.property.addressLine].filter(Boolean) as string[];
     const normalized = (this.property.addressLine || '').toLocaleLowerCase('vi-VN');

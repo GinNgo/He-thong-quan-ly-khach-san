@@ -22,6 +22,8 @@ public class LocationSuggestionDTO {
     private String propertyType;
     private String thumbnailUrl;
     private String imageUrl;
+    private String imageAltText;
+    private String imageProvenance;
     private Double reviewScore;
     private Double distanceKm;
     private Double latitude;

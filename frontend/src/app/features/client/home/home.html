@@ -33,12 +33,16 @@
     <!-- Popular Destinations Component -->
     <app-popular-destinations 
       [destinations]="destinations" 
-      [loading]="isLoadingDestinations">
+      [loading]="isLoadingDestinations"
+      [error]="destinationError"
+      (retry)="loadPopularDestinations(true)">
     </app-popular-destinations>
 
     <app-featured-properties
       [properties]="featuredProperties"
-      [loading]="isLoadingFeatured">
+      [loading]="isLoadingFeatured"
+      [error]="featuredError"
+      (retry)="loadFeaturedProperties()">
     </app-featured-properties>
 
   </div>

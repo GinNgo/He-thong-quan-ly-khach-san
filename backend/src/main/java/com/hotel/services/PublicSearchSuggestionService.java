@@ -113,16 +113,25 @@ public class PublicSearchSuggestionService {
         int safeLimit = Math.min(Math.max(limit, 1), 8);
         List<LocationSuggestionDTO> results = provinceCompatibilityService.currentProvinces()
                 .stream()
-                .map(this::toLocationSuggestion)
+                .map(this::toPopularDestination)
                 .filter(item -> item.getPropertyCount() != null && item.getPropertyCount() > 0)
                 .sorted(Comparator.comparing(LocationSuggestionDTO::getPropertyCount).reversed()
-                        .thenComparing(LocationSuggestionDTO::getDisplayName))
+                        .thenComparing(LocationSuggestionDTO::getDisplayName)
+                        .thenComparing(LocationSuggestionDTO::getId))
                 .limit(safeLimit)
                 .toList();
-        for (int index = 0; index < results.size(); index++) {
-            results.get(index).setImageUrl("/assets/destinations/destination-" + String.format("%02d", index + 1) + ".webp");
-        }
         return results;
+    }
+
+    private LocationSuggestionDTO toPopularDestination(Location location) {
+        LocationSuggestionDTO destination = toLocationSuggestion(location);
+        String stableAssetKey = location.getSourceCode() == null ? location.getCode() : location.getSourceCode();
+        int assetNumber = Math.floorMod(stableAssetKey.hashCode(), 8) + 1;
+        String assetName = "destination-" + String.format("%02d", assetNumber) + ".webp";
+        destination.setImageUrl("/assets/destinations/" + assetName);
+        destination.setImageAltText("Kh\u00E1m ph\u00E1 " + location.getNameVi());
+        destination.setImageProvenance("BUNDLED_DESTINATION:" + assetName);
+        return destination;
     }
 
     private SearchSuggestionGroupsDTO emptyGroups() {
@@ -243,7 +252,7 @@ public class PublicSearchSuggestionService {
     }
 
     private String thumbnailFor(Hotel hotel) {
-        var images = propertyImageRepository.findByHotelIdOrderBySortOrderAsc(hotel.getId());
+        var images = propertyImageRepository.findByHotelIdOrderBySortOrderAscIdAsc(hotel.getId());
         return images.stream().filter(image -> Boolean.TRUE.equals(image.getIsPrimary())).findFirst()
                 .or(() -> images.stream().findFirst())
                 .map(image -> image.getImageUrl()).orElse(null);

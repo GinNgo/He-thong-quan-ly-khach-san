@@ -3,9 +3,11 @@ package com.hotel.integration;
 import com.hotel.BackendApplication;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.Location;
+import com.hotel.entities.PropertyImage;
 import com.hotel.entities.RoomType;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.LocationRepository;
+import com.hotel.repositories.PropertyImageRepository;
 import com.hotel.repositories.RoomTypeRepository;
 import com.hotel.repositories.RoomRepository;
 import com.jayway.jsonpath.JsonPath;
@@ -15,14 +17,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -49,6 +55,9 @@ public class PropertySearchControllerIntegrationTest {
 
     @Autowired
     private LocationRepository locationRepository;
+
+    @Autowired
+    private PropertyImageRepository propertyImageRepository;
 
     private Location primaryProvince;
     private Location legacyPrimaryProvince;
@@ -257,6 +266,71 @@ public class PropertySearchControllerIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void featuredRatingSearch_IsDeterministicLiveAndReturnsGovernedImageFallbacks() throws Exception {
+        Location featuredProvince = saveLocation(
+                "TEST-P-FEATURED-T273", "VN34-04", "Featured Province T273", "PROVINCE", null);
+        Hotel reviewedLeader = saveSearchableHotel(
+                featuredProvince, "Reviewed Leader T273", 9.7, 200, "/catalog/leader.webp", "LEADER");
+        Hotel reviewedTieA = saveSearchableHotel(
+                featuredProvince, "Reviewed Tie A T273", 9.2, 50, "/catalog/tie-a.webp", "TIE-A");
+        Hotel reviewedTieB = saveSearchableHotel(
+                featuredProvince, "Reviewed Tie B T273", 9.2, 50, "/catalog/tie-b.webp", "TIE-B");
+        Hotel unreviewed = saveSearchableHotel(
+                featuredProvince, "Unreviewed T273", null, 0, "/catalog/unreviewed.webp", "UNREVIEWED");
+        Hotel noImage = saveSearchableHotel(
+                featuredProvince, "No Image T273", null, null, "   ", "NO-IMAGE");
+
+        savePropertyImage(reviewedLeader, "   ", true, 0, "Ignored blank image");
+        savePropertyImage(reviewedLeader, "/media/leader-gallery-first.webp", false, 1, "Gallery first");
+        savePropertyImage(reviewedLeader, "/media/leader-primary.webp", true, 2, "Primary leader alt");
+        savePropertyImage(reviewedTieA, "   ", true, 0, "Ignored blank image");
+
+        MvcResult first = mockMvc.perform(get("/api/public/properties/search")
+                        .param("provinceId", featuredProvince.getId().toString())
+                        .param("sortBy", "RATING")
+                        .param("pageSize", "10")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
+                .andExpect(header().string("X-LuxeStay-Freshness", "LIVE_SEARCH"))
+                .andExpect(jsonPath("$.totalElements").value(5))
+                .andExpect(jsonPath("$.content", hasSize(5)))
+                .andExpect(jsonPath("$.content[*].id", contains(
+                        reviewedLeader.getId().intValue(),
+                        reviewedTieA.getId().intValue(),
+                        reviewedTieB.getId().intValue(),
+                        unreviewed.getId().intValue(),
+                        noImage.getId().intValue())))
+                .andExpect(jsonPath("$.content[0].thumbnailUrl").value("/media/leader-primary.webp"))
+                .andExpect(jsonPath("$.content[0].galleryUrls", contains(
+                        "/media/leader-gallery-first.webp", "/media/leader-primary.webp")))
+                .andExpect(jsonPath("$.content[0].imageCount").value(2))
+                .andExpect(jsonPath("$.content[0].imageAltText").value("Primary leader alt"))
+                .andExpect(jsonPath("$.content[0].imageProvenance").value("PROPERTY_MEDIA"))
+                .andExpect(jsonPath("$.content[1].thumbnailUrl").value("/catalog/tie-a.webp"))
+                .andExpect(jsonPath("$.content[1].galleryUrls", contains("/catalog/tie-a.webp")))
+                .andExpect(jsonPath("$.content[1].imageAltText").value("Reviewed Tie A T273"))
+                .andExpect(jsonPath("$.content[1].imageProvenance").value("PROPERTY_CATALOG_MAIN"))
+                .andExpect(jsonPath("$.content[4].thumbnailUrl").value(nullValue()))
+                .andExpect(jsonPath("$.content[4].mainImageUrl").value(nullValue()))
+                .andExpect(jsonPath("$.content[4].galleryUrls", hasSize(0)))
+                .andExpect(jsonPath("$.content[4].imageCount").value(0))
+                .andExpect(jsonPath("$.content[4].imageAltText").value("No Image T273"))
+                .andExpect(jsonPath("$.content[4].imageProvenance").value("NONE"))
+                .andReturn();
+
+        MvcResult repeated = mockMvc.perform(get("/api/public/properties/search")
+                        .param("provinceId", featuredProvince.getId().toString())
+                        .param("sortBy", "RATING")
+                        .param("pageSize", "10"))
+                .andExpect(status().isOk())
+                .andReturn();
+        List<Integer> firstIds = JsonPath.read(first.getResponse().getContentAsString(), "$.content[*].id");
+        List<Integer> repeatedIds = JsonPath.read(repeated.getResponse().getContentAsString(), "$.content[*].id");
+        assertEquals(firstIds, repeatedIds);
+    }
+
     private Location saveLocation(String code, String name, String type, Location parent) {
         return saveLocation(code, code, name, type, parent);
     }
@@ -271,5 +345,47 @@ public class PropertySearchControllerIntegrationTest {
         location.setFullPath(parent == null ? name : name + ", " + parent.getNameVi());
         location.setStatus("ACTIVE");
         return locationRepository.saveAndFlush(location);
+    }
+
+    private Hotel saveSearchableHotel(Location province, String name, Double rating, Integer reviewCount,
+                                      String mainImage, String suffix) {
+        Hotel hotel = new Hotel();
+        hotel.setName(name);
+        hotel.setCode("TEST-FEATURED-" + suffix);
+        hotel.setSlug("test-featured-" + suffix.toLowerCase());
+        hotel.setProvinceId(province.getId());
+        hotel.setAddressLine("1 Featured Street " + suffix);
+        hotel.setCity(province.getNameVi());
+        hotel.setCountry("Vietnam");
+        hotel.setStatus("ACTIVE");
+        hotel.setApprovalStatus("APPROVED");
+        hotel.setOperationStatus("ACTIVE");
+        hotel.setPropertyType("HOTEL");
+        hotel.setAverageRating(rating);
+        hotel.setReviewCount(reviewCount);
+        hotel.setMainImage(mainImage);
+        hotel = hotelRepository.saveAndFlush(hotel);
+
+        RoomType roomType = new RoomType();
+        roomType.setHotel(hotel);
+        roomType.setNameEn("Featured room " + suffix);
+        roomType.setNameVi("Featured room " + suffix);
+        roomType.setCode("FEATURED-ROOM-" + suffix);
+        roomType.setBasePrice(new BigDecimal("600000"));
+        roomType.setMaxGuest(2);
+        roomType.setStatus("ACTIVE");
+        roomType = roomTypeRepository.saveAndFlush(roomType);
+        saveRoom(hotel, roomType, "FEATURED-" + suffix);
+        return hotel;
+    }
+
+    private void savePropertyImage(Hotel hotel, String imageUrl, boolean primary, int sortOrder, String altText) {
+        PropertyImage image = new PropertyImage();
+        image.setHotel(hotel);
+        image.setImageUrl(imageUrl);
+        image.setIsPrimary(primary);
+        image.setSortOrder(sortOrder);
+        image.setAltTextVi(altText);
+        propertyImageRepository.saveAndFlush(image);
     }
 }

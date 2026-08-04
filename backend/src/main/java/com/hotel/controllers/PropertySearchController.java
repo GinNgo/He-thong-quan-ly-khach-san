@@ -6,6 +6,7 @@ import com.hotel.services.PropertySearchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.CacheControl;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +23,9 @@ public class PropertySearchController {
     public ResponseEntity<Page<PropertySearchResponseDTO>> searchProperties(
             @ModelAttribute PropertySearchRequestDTO request) {
         Page<PropertySearchResponseDTO> result = propertySearchService.searchProperties(request);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header("X-LuxeStay-Freshness", "LIVE_SEARCH")
+                .body(result);
     }
 }
