@@ -2,13 +2,18 @@
 
 Status: `COMPLETE_VERIFIED`
 
-Implementation commit: `bcc85e0 feat(T301): complete room assignment lifecycle`
+Implementation commits:
+
+- `bcc85e0 feat(T301): complete room assignment lifecycle`
+- `ada8586 fix(T301): close room assignment safety gaps`
 
 ## Implemented Boundary
 
 - Adds dedicated permissioned assignment/reassignment and release commands backed by persistent
   mutation idempotency. Recovery suppliers replay a business result when the transaction committed
   before the idempotency record was completed.
+- Retires both legacy assignment routes with `410 Gone` and a successor link so authorized callers
+  cannot bypass the required reason and idempotency contract.
 - Locks the reservation, active assignment rows and the sorted union of current/target rooms in a
   stable order. Room locks are property-scoped, and conflicts use immutable assignment stay
   snapshots with the legacy reservation-date fallback.
@@ -19,14 +24,16 @@ Implementation commit: `bcc85e0 feat(T301): complete room assignment lifecycle`
   `ROOMS_RELEASED` audit events with before/after room ids.
 - Extends the responsive Angular picker with current-room preselection, view/update permission
   separation, explicit release confirmation, stable retry keys, `409` refresh/reconfirmation and
-  localized history summaries. Customer booking detail remains read-only and displays room numbers.
+  localized VI/EN copy. Checked-in stays remain readable but not mutable; delayed conflict refresh
+  disables all stale controls. The release alertdialog traps focus, supports Escape and restores
+  focus to its trigger. Customer booking detail remains read-only and displays room numbers.
 
 ## Focused Validation
 
 | Validation | Result |
 |---|---|
-| Backend focused JUnit suite | PASS 37/37 across HTTP serialization, persistent idempotency/recovery, action permission, JPQL contract, H2 overlap persistence, deterministic locking/reassignment/release and tenant IDOR |
-| Frontend focused Angular/Vitest suite | PASS 22/22 across typed client requests, admin view/update masks, picker assignment/reassignment/release/conflict states and customer read-only display |
+| Backend focused JUnit suite | PASS 38/38 across HTTP serialization, persistent idempotency/recovery, legacy-route retirement, action permission, JPQL contract, H2 overlap persistence, deterministic locking/reassignment/release and tenant IDOR |
+| Frontend focused Angular/Vitest suite | PASS 24/24 across typed client requests, admin view/update/state masks, picker assignment/reassignment/release/delayed-conflict/accessibility/localization states and customer read-only display |
 | Isolated backend main compilation | PASS; all T301 production sources compiled before the focused suites |
 | `git diff --cached --check` before source commit | PASS |
 
@@ -38,7 +45,7 @@ room-state transitions and legacy pointer synchronization.
 ## Commands
 
 Backend reports were produced by the isolated Maven run and parsed from
-`target/surefire-reports/TEST-*.xml`: 7 suites, 37 tests, zero failures, errors or skips.
+`target/surefire-reports/TEST-*.xml`: 7 suites, 38 tests, zero failures, errors or skips.
 
 Frontend:
 
@@ -46,7 +53,7 @@ Frontend:
 npm test -- --watch=false --include src/app/shared/physical-room-picker/physical-room-picker.component.spec.ts --include src/app/features/admin/reservation-management/reservation-lifecycle-permissions.spec.ts --include src/app/features/client/profile/profile-booking-read.component.spec.ts --include src/app/core/services/reservation-lifecycle.service.spec.ts
 ```
 
-Result: 4 files passed, 22 tests passed.
+Result: 4 files passed, 24 tests passed.
 
 ## Baseline Isolation
 
