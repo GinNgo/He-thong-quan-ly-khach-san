@@ -24,6 +24,7 @@ below after merging or cherry-picking the task commits.
 |---|---|---|---|
 | T302 | `8834080` | Backend policy/locking/IDOR/HTTP PASS; frontend 16/16 | Authenticated real API/browser journey is blocked because no usable local staff demo credential is configured. Evidence: `docs/testing/evidence/007/remediation/T302-check-in-readiness.md`. |
 | T303 | `c6a8340` | Isolated backend compile; backend 6/6; frontend 10/10; Angular development build PASS | Authenticated real quote/create/assignment journey is blocked by the same missing local staff demo credential. Evidence: `docs/testing/evidence/007/remediation/T303-staff-booking.md`. |
+| T316 | See T316 evidence commit on this branch | Existing mocked browser and real SQL Server backend suites remain separate | No configured E2E fixture variables; seeded receptionist/manager/customer logins timed out; Docker readiness and the Angular Playwright server did not become available within bounded checks. Evidence: `docs/testing/evidence/007/remediation/T316-real-stay-journey-gate.md`. |
 
 ## Blocked Tasks
 
@@ -65,6 +66,8 @@ below after merging or cherry-picking the task commits.
   inventories until the versioned debt/overpayment policy described in the handoff is approved.
 - Keep T315 open and classify STAY-027 as `BLOCKED_EXTERNAL` in the aggregate
   inventories until the versioned OQ-002 through OQ-005 commercial policy is approved.
+- Keep T316/STAY-028 `PARTIAL` until one disposable SQL Server + real backend +
+  non-intercepted Playwright run supplies assignment, denial, timeout/retry and rollback evidence.
 - T310 was not edited because its mandatory invoice backend/customer/admin files overlap
   the active exclusive T309 claim. Re-run it after that claim is released.
 - Mark T313 complete in `specs/007-payment-billing-completion/tasks.md` and promote
