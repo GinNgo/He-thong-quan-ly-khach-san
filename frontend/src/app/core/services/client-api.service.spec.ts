@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../../environments/environment';
-import { ClientApiService, LocationSuggestion } from './client-api.service';
+import { ClientApiService, LocationSuggestion, PropertySearchParams } from './client-api.service';
 
 describe('ClientApiService popular destinations cache', () => {
   let service: ClientApiService;
@@ -129,4 +129,71 @@ describe('ClientApiService popular destinations cache', () => {
     expect(request.request.params.get('limit')).toBe(String(limit));
     return request;
   }
+});
+
+describe('ClientApiService property search query serialization', () => {
+  let service: ClientApiService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [ClientApiService, provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(ClientApiService);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('serializes every recognized query parameter including gated arrays and false policy flags', () => {
+    const params: PropertySearchParams = {
+      keyword: 'river',
+      provinceId: 82,
+      wardId: 8201,
+      landmarkId: 44,
+      checkInDate: '2026-08-10',
+      checkOutDate: '2026-08-12',
+      adultCount: 2,
+      childCount: 1,
+      roomCount: 1,
+      latitude: 10.36,
+      longitude: 106.36,
+      radiusKm: 8,
+      sortBy: 'NEAREST',
+      pageNumber: 1,
+      pageSize: 20,
+      propertyTypes: ['HOTEL', 'HOMESTAY'],
+      stayType: 'OVERNIGHT',
+      minPrice: 300000,
+      maxPrice: 1500000,
+      starRatings: [4, 5],
+      minReviewScore: 8,
+      amenityIds: [3, 7],
+      freeCancellation: false,
+      payAtProperty: false,
+      breakfastIncluded: false,
+    };
+
+    service.searchHotels(params).subscribe();
+    const request = http.expectOne(candidate =>
+      candidate.url === `${environment.apiUrl}/public/properties/search`,
+    );
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.keys().sort()).toEqual(Object.keys(params).sort());
+    expect(request.request.params.get('propertyTypes')).toBe('HOTEL,HOMESTAY');
+    expect(request.request.params.get('starRatings')).toBe('4,5');
+    expect(request.request.params.get('amenityIds')).toBe('3,7');
+    expect(request.request.params.get('freeCancellation')).toBe('false');
+    expect(request.request.params.get('payAtProperty')).toBe('false');
+    expect(request.request.params.get('breakfastIncluded')).toBe('false');
+    request.flush({ content: [], totalElements: 0, totalPages: 0, number: 1, size: 20 });
+  });
+
+  it('omits blank strings and empty arrays instead of leaking empty API parameters', () => {
+    service.searchHotels({ keyword: '   ', propertyTypes: [], starRatings: [], amenityIds: [] }).subscribe();
+    const request = http.expectOne(`${environment.apiUrl}/public/properties/search`);
+    expect(request.request.params.keys()).toEqual([]);
+    request.flush({ content: [], totalElements: 0, totalPages: 0, number: 1, size: 20 });
+  });
 });

@@ -13,6 +13,7 @@ import org.springframework.mock.env.MockEnvironment;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
@@ -41,6 +42,21 @@ class PublicInventoryEligibilityPolicyTest {
         assertThrows(ResourceNotFoundException.class,
                 () -> policy(false, "production").requirePublicProperty(10L));
         assertDoesNotThrow(() -> policy(true, "production").requirePublicProperty(10L));
+    }
+
+    @Test
+    void searchAndDetailUseTheSameProfileAwareEligibilityContract() {
+        assertEquals(
+                "h.approval_status='APPROVED' AND h.operation_status='ACTIVE'",
+                policy(false, "test").publicSearchPredicate("h"));
+        assertEquals(
+                "h.approval_status='APPROVED' AND h.operation_status='ACTIVE' AND COALESCE(h.is_demo,0)=0",
+                policy(false, "production").publicSearchPredicate("h"));
+        assertEquals(
+                "hotel.approval_status='APPROVED' AND hotel.operation_status='ACTIVE'",
+                policy(true, "production").publicSearchPredicate("hotel"));
+        assertThrows(IllegalArgumentException.class,
+                () -> policy(false, "production").publicSearchPredicate("h; DELETE"));
     }
 
     @Test

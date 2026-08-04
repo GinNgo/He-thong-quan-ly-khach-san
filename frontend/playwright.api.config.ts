@@ -18,7 +18,7 @@ const frontendPort = process.env['PUBLIC_BOOKING_FRONTEND_PORT'] || '42769';
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: 'home-search.api.spec.ts',
+  testMatch: ['home-search.api.spec.ts', 'property-search-eligibility.api.spec.ts'],
   fullyParallel: false,
   workers: 1,
   retries: 0,

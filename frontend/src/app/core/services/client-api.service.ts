@@ -55,6 +55,34 @@ export interface PagedResponse<T> {
   size: number;
 }
 
+export interface PropertySearchParams {
+  keyword?: string;
+  provinceId?: number;
+  wardId?: number;
+  landmarkId?: number;
+  checkInDate?: string;
+  checkOutDate?: string;
+  adultCount?: number;
+  childCount?: number;
+  roomCount?: number;
+  latitude?: number;
+  longitude?: number;
+  radiusKm?: number;
+  sortBy?: string;
+  pageNumber?: number;
+  pageSize?: number;
+  propertyTypes?: string[];
+  stayType?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  starRatings?: number[];
+  minReviewScore?: number;
+  amenityIds?: number[];
+  freeCancellation?: boolean;
+  payAtProperty?: boolean;
+  breakfastIncluded?: boolean;
+}
+
 export interface RoomType {
   id: number;
   hotelId?: number;
@@ -180,13 +208,16 @@ export class ClientApiService {
   }>();
   private hotelApiUrl = `${environment.apiUrl}/v1/hotels`;
 
-  searchHotels(paramsObj: any): Observable<PagedResponse<Hotel>> {
+  searchHotels(paramsObj: PropertySearchParams): Observable<PagedResponse<Hotel>> {
     let params = new HttpParams();
-    Object.keys(paramsObj).forEach(key => {
-      if (paramsObj[key] !== null && paramsObj[key] !== undefined) {
-        params = params.set(key, String(paramsObj[key]));
-      }
-    });
+    for (const key of Object.keys(paramsObj) as Array<keyof PropertySearchParams>) {
+      const value = paramsObj[key];
+      if (value === null || value === undefined) continue;
+      const serialized = Array.isArray(value)
+        ? value.join(',')
+        : typeof value === 'string' ? value.trim() : String(value);
+      if (serialized) params = params.set(key, serialized);
+    }
 
     return this.http.get<PagedResponse<Hotel>>(`${environment.apiUrl}/public/properties/search`, { params });
   }

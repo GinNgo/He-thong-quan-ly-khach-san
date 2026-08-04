@@ -71,6 +71,15 @@ public class DemoDataInitializer {
                     BigDecimal.valueOf(850000L + (i % 6) * 125000L), List.of("301"));
             seedService(hotel);
         }
+
+        seedEligibilitySentinel(
+                new PropertySeed("E2E-T274-DRAFT", "T274 Draft Sentinel", "T274 Draft Sentinel",
+                        "HOTEL", "274 Draft Street", 16.0620, 108.2280, 3, 1, 0),
+                provinces.get(1), "PENDING", "ACTIVE", 100);
+        seedEligibilitySentinel(
+                new PropertySeed("E2E-T274-SUSPENDED", "T274 Suspended Sentinel", "T274 Suspended Sentinel",
+                        "HOTEL", "274 Suspended Street", 16.0630, 108.2290, 3, 1, 0),
+                provinces.get(1), "APPROVED", "SUSPENDED", 101);
     }
 
     private ProvinceSeed province(String sourceCode, String city) {
@@ -137,7 +146,20 @@ public class DemoDataInitializer {
         boolean unrated = index % 4 == 0;
         hotel.setAverageRating(unrated ? null : 8.0 + (index % 5) * 0.2);
         hotel.setReviewCount(unrated ? 0 : 20 + index * 11);
+        hotel.setIsDemo(true);
+        hotel.setDataSource("DEMO");
         return hotelRepository.saveAndFlush(hotel);
+    }
+
+    private void seedEligibilitySentinel(PropertySeed seed, ProvinceSeed province, String approvalStatus,
+                                         String operationStatus, int index) {
+        Location ward = province.wards().get(seed.wardIndex() % province.wards().size());
+        Hotel hotel = upsertHotel(seed, province.province(), ward, index);
+        hotel.setApprovalStatus(approvalStatus);
+        hotel.setOperationStatus(operationStatus);
+        hotel = hotelRepository.saveAndFlush(hotel);
+        seedRoomType(hotel, "T274-SENTINEL", "Phòng kiểm thử T274", "T274 test room",
+                "DOUBLE", 1, 2, 1, 3, new BigDecimal("500000"), List.of("901"));
     }
 
     private void seedRoomType(Hotel hotel, String code, String nameVi, String nameEn, String bedType,

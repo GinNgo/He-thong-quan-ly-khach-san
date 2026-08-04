@@ -9,6 +9,8 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Service;
 
+import java.util.Objects;
+
 @Service
 public class PublicInventoryEligibilityPolicy {
 
@@ -46,6 +48,20 @@ public class PublicInventoryEligibilityPolicy {
         }
     }
 
+    public String publicSearchPredicate(String hotelAlias) {
+        String alias = Objects.requireNonNull(hotelAlias, "hotelAlias");
+        if (!alias.matches("[A-Za-z][A-Za-z0-9_]*")) {
+            throw new IllegalArgumentException("hotelAlias must be a simple SQL alias.");
+        }
+
+        String predicate = alias + ".approval_status='APPROVED' AND "
+                + alias + ".operation_status='ACTIVE'";
+        if (hidesDemoInventory()) {
+            predicate += " AND COALESCE(" + alias + ".is_demo,0)=0";
+        }
+        return predicate;
+    }
+
     private boolean isPublicProperty(Hotel hotel) {
         if (hotel == null
                 || !"APPROVED".equals(hotel.getApprovalStatus())
@@ -53,7 +69,10 @@ public class PublicInventoryEligibilityPolicy {
             return false;
         }
         return !Boolean.TRUE.equals(hotel.getIsDemo())
-                || allowPublicDemo
-                || !environment.acceptsProfiles(Profiles.of("production"));
+                || !hidesDemoInventory();
+    }
+
+    private boolean hidesDemoInventory() {
+        return !allowPublicDemo && environment.acceptsProfiles(Profiles.of("production"));
     }
 }

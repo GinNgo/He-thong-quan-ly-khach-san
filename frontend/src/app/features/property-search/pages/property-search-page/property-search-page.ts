@@ -6,11 +6,16 @@ import { SelectModule } from 'primeng/select';
 import { PaginatorModule } from 'primeng/paginator';
 import { SkeletonModule } from 'primeng/skeleton';
 import { Subject, catchError, of, switchMap, takeUntil, tap } from 'rxjs';
-import { ClientApiService, Hotel } from '../../../../core/services/client-api.service';
+import { ClientApiService, Hotel, PropertySearchParams } from '../../../../core/services/client-api.service';
 import { StickySearchBarComponent } from '../../../client/home/components/sticky-search-bar/sticky-search-bar.component';
 import { HomeSearchStateService } from '../../../client/home/services/home-search-state.service';
 import { PropertyResultCardComponent } from '../../components/property-result-card/property-result-card';
 import { FilterState, SearchFilterSidebarComponent } from '../../components/search-filter-sidebar/search-filter-sidebar';
+import {
+  propertySearchErrorState,
+  propertySearchParamsFromRoute,
+  validSearchStayDates,
+} from './property-search-query';
 
 @Component({
   selector: 'app-property-search-page', standalone: true,
@@ -46,8 +51,11 @@ import { FilterState, SearchFilterSidebarComponent } from '../../components/sear
               <div *ngFor="let _ of [1,2,3,4]" class="skeleton-card"><p-skeleton width="245px" height="224px"></p-skeleton><div><p-skeleton width="65%" height="24px"></p-skeleton><p-skeleton width="90%" height="16px"></p-skeleton><p-skeleton width="55%" height="42px"></p-skeleton></div></div>
             </div>
 
-            <div *ngIf="!isLoading() && errorMessage()" class="state-panel error-state">
-              <i class="pi pi-exclamation-circle"></i><h2>Không thể tải kết quả</h2><p>{{ errorMessage() }}</p><button type="button" (click)="retry()">Thử lại</button>
+            <div *ngIf="!isLoading() && errorMessage()" class="state-panel error-state" role="alert"
+              aria-live="assertive" data-search-api-error [attr.data-error-code]="errorCode()">
+              <i class="pi pi-exclamation-circle"></i><h2>{{ errorTitle() }}</h2><p>{{ errorMessage() }}</p>
+              <button *ngIf="errorRetryable(); else editSearchAction" type="button" (click)="retry()">Thử lại</button>
+              <ng-template #editSearchAction><button type="button" (click)="editSearch()">Chỉnh sửa tìm kiếm</button></ng-template>
             </div>
 
             <ng-container *ngIf="!isLoading() && !errorMessage() && properties().length">
@@ -77,23 +85,23 @@ import { FilterState, SearchFilterSidebarComponent } from '../../components/sear
 export class PropertySearchPageComponent implements OnInit, OnDestroy {
   private readonly route=inject(ActivatedRoute); private readonly router=inject(Router); private readonly api=inject(ClientApiService);
   readonly stateService=inject(HomeSearchStateService); private readonly destroy$=new Subject<void>(); private lastParams:Params={};
-  properties=signal<Hotel[]>([]); totalItems=signal(0); isLoading=signal(true); errorMessage=signal(''); pageNumber=signal(1); pageSize=signal(20); displayLocation=signal(''); mobileFilterVisible=false;
+  properties=signal<Hotel[]>([]); totalItems=signal(0); isLoading=signal(true); errorMessage=signal(''); errorTitle=signal('Không thể tải kết quả'); errorCode=signal(''); errorRetryable=signal(true); pageNumber=signal(1); pageSize=signal(20); displayLocation=signal(''); mobileFilterVisible=false;
   currentFilterState:FilterState={minPrice:0,maxPrice:10000000,propertyTypes:[],starRatings:[],minReviewScore:null,amenityIds:[]};
   selectedSort='POPULAR'; readonly sortOptions=[{label:'Được đề xuất',value:'POPULAR'},{label:'Giá thấp nhất',value:'PRICE_ASC'},{label:'Giá cao nhất',value:'PRICE_DESC'},{label:'Đánh giá cao',value:'RATING'},{label:'Gần nhất',value:'NEAREST'}];
 
-  ngOnInit():void{this.route.queryParams.pipe(takeUntil(this.destroy$),tap(params=>{this.lastParams=params;this.syncFromUrl(params);this.isLoading.set(true);this.errorMessage.set('');}),switchMap(params=>this.api.searchHotels(this.request(params)).pipe(catchError(()=>{this.errorMessage.set('Không thể kết nối dịch vụ tìm kiếm. Trạng thái của bạn vẫn được giữ nguyên.');return of({content:[],totalElements:0,totalPages:0,number:0,size:this.pageSize()});})))).subscribe(res=>{this.properties.set(res.content||[]);this.totalItems.set(res.totalElements||0);this.isLoading.set(false);});}
-  get staySummary():string{const s=this.stateService.state();return `${this.formatDateDisplay(s.checkInDate)} - ${this.formatDateDisplay(s.checkOutDate)}`;}
+  ngOnInit():void{this.route.queryParams.pipe(takeUntil(this.destroy$),tap(params=>{this.lastParams=params;this.syncFromUrl(params);this.isLoading.set(true);this.errorMessage.set('');this.errorCode.set('');}),switchMap(params=>this.api.searchHotels(this.request(params)).pipe(catchError(error=>{const state=propertySearchErrorState(error);this.errorTitle.set(state.title);this.errorMessage.set(state.message);this.errorCode.set(state.code);this.errorRetryable.set(state.retryable);return of({content:[],totalElements:0,totalPages:0,number:0,size:this.pageSize()});})))).subscribe(res=>{this.properties.set(res.content||[]);this.totalItems.set(res.totalElements||0);this.isLoading.set(false);});}
+  get staySummary():string{const routeDates=validSearchStayDates(this.lastParams);if(routeDates)return `${this.formatDateDisplay(routeDates.checkIn)} - ${this.formatDateDisplay(routeDates.checkOut)}`;if(this.lastParams['checkInDate']||this.lastParams['checkOutDate'])return 'Ngày lưu trú không hợp lệ';const s=this.stateService.state();return `${this.formatDateDisplay(s.checkInDate)} - ${this.formatDateDisplay(s.checkOutDate)}`;}
   get activeFilterCount():number{return this.currentFilterState.propertyTypes.length+this.currentFilterState.starRatings.length+(this.currentFilterState.minReviewScore?1:0)+(this.hasPriceFilter?1:0);}
   get hasPriceFilter():boolean{return this.currentFilterState.minPrice>0||this.currentFilterState.maxPrice<10000000;}
   get priceChip():string{return `${this.vnd(this.currentFilterState.minPrice)} - ${this.currentFilterState.maxPrice>=10000000?'10.000.000 ₫+':this.vnd(this.currentFilterState.maxPrice)}`;}
   onFiltersChanged(f:FilterState):void{this.updateRoute({minPrice:f.minPrice>0?f.minPrice:null,maxPrice:f.maxPrice<10000000?f.maxPrice:null,propertyTypes:f.propertyTypes.length?f.propertyTypes.join(','):null,starRatings:f.starRatings.length?f.starRatings.join(','):null,minReviewScore:f.minReviewScore,pageNumber:1});}
   onSortChange():void{this.updateRoute({sortBy:this.selectedSort,pageNumber:1});} onPageChange(e:any):void{this.updateRoute({pageNumber:e.page+1,pageSize:e.rows});window.scrollTo({top:0,behavior:'smooth'});}
   removePropertyType(t:string):void{const v=this.currentFilterState.propertyTypes.filter(x=>x!==t);this.updateRoute({propertyTypes:v.length?v.join(','):null,pageNumber:1});} removeStarRatings():void{this.updateRoute({starRatings:null,pageNumber:1});} removeReviewScore():void{this.updateRoute({minReviewScore:null,pageNumber:1});} removePriceFilter():void{this.updateRoute({minPrice:null,maxPrice:null,pageNumber:1});}
-  clearAllFilters():void{this.updateRoute({minPrice:null,maxPrice:null,propertyTypes:null,starRatings:null,minReviewScore:null,amenityIds:null,pageNumber:1});} retry():void{this.updateRoute({_retry:Date.now()});}
+  clearAllFilters():void{this.updateRoute({minPrice:null,maxPrice:null,propertyTypes:null,starRatings:null,minReviewScore:null,amenityIds:null,pageNumber:1});} retry():void{this.updateRoute({_retry:Date.now()});} editSearch():void{this.router.navigate(['/']);}
   goToDetails(id:number):void{this.router.navigate(['/hotel',id],{queryParams:{...this.stateService.bookingQueryParams()},fragment:'rooms'});} trackProperty(_:number,p:Hotel):number{return p.id;}
   propertyTypeLabel(t:string):string{return ({HOTEL:'Khách sạn',RESORT:'Khu nghỉ dưỡng',APARTMENT:'Căn hộ',VILLA:'Biệt thự',HOMESTAY:'Homestay',MOTEL:'Nhà nghỉ',GUEST_HOUSE:'Nhà khách',HOSTEL:'Hostel'} as Record<string,string>)[t]||t;}
-  private syncFromUrl(p:Params):void{const name=p['displayLocation']||p['keyword']||'Tất cả chỗ nghỉ';this.displayLocation.set(name);this.stateService.updateLocation(p['keyword']||'',name,p['provinceId']?Number(p['provinceId']):null,p['wardId']?Number(p['wardId']):null,p['landmarkId']?Number(p['landmarkId']):null,p['latitude']?Number(p['latitude']):null,p['longitude']?Number(p['longitude']):null,p['radiusKm']?Number(p['radiusKm']):null);if(p['checkInDate'])this.stateService.updateDates(new Date(`${p['checkInDate']}T00:00:00`),p['checkOutDate']?new Date(`${p['checkOutDate']}T00:00:00`):null);if(p['adultCount']||p['roomCount'])this.stateService.updateGuests(Number(p['adultCount'])||1,Number(p['childCount'])||0,Number(p['roomCount'])||1);this.pageNumber.set(Number(p['pageNumber'])||1);this.pageSize.set(Number(p['pageSize'])||20);this.selectedSort=p['sortBy']||'POPULAR';this.currentFilterState={minPrice:Number(p['minPrice'])||0,maxPrice:p['maxPrice']?Number(p['maxPrice']):10000000,propertyTypes:this.list(p['propertyTypes']),starRatings:this.list(p['starRatings']).map(Number),minReviewScore:p['minReviewScore']?Number(p['minReviewScore']):null,amenityIds:[]};}
-  private request(p:Params):any{const r:any={...p,pageNumber:this.pageNumber(),pageSize:this.pageSize(),sortBy:this.selectedSort,propertyTypes:this.currentFilterState.propertyTypes,starRatings:this.currentFilterState.starRatings,minReviewScore:this.currentFilterState.minReviewScore,minPrice:this.currentFilterState.minPrice||null,maxPrice:this.currentFilterState.maxPrice<10000000?this.currentFilterState.maxPrice:null};delete r['_retry'];delete r['stayType'];if(!r.propertyTypes.length)delete r.propertyTypes;if(!r.starRatings.length)delete r.starRatings;return r;}
-  private updateRoute(q:Params):void{this.router.navigate([],{relativeTo:this.route,queryParams:q,queryParamsHandling:'merge'});} private list(v:any):string[]{return v?String(v).split(',').filter(Boolean):[];} private vnd(v:number):string{return `${new Intl.NumberFormat('vi-VN').format(v)} ₫`;} private formatDateDisplay(v:Date|null):string{return v?new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'}).format(v):'Chưa chọn';}
+  private syncFromUrl(p:Params):void{const name=p['displayLocation']||p['keyword']||'Tất cả chỗ nghỉ';this.displayLocation.set(name);this.stateService.updateLocation(p['keyword']||'',name,p['provinceId']?Number(p['provinceId']):null,p['wardId']?Number(p['wardId']):null,p['landmarkId']?Number(p['landmarkId']):null,p['latitude']?Number(p['latitude']):null,p['longitude']?Number(p['longitude']):null,p['radiusKm']?Number(p['radiusKm']):null);const routeDates=validSearchStayDates(p);if(routeDates)this.stateService.updateDates(routeDates.checkIn,routeDates.checkOut);if(p['adultCount']||p['roomCount'])this.stateService.updateGuests(Number(p['adultCount'])||1,Number(p['childCount'])||0,Number(p['roomCount'])||1);this.pageNumber.set(Number(p['pageNumber'])||1);this.pageSize.set(Number(p['pageSize'])||20);this.selectedSort=p['sortBy']||'POPULAR';this.currentFilterState={minPrice:Number(p['minPrice'])||0,maxPrice:p['maxPrice']?Number(p['maxPrice']):10000000,propertyTypes:this.list(p['propertyTypes']),starRatings:this.list(p['starRatings']).map(Number),minReviewScore:p['minReviewScore']?Number(p['minReviewScore']):null,amenityIds:this.list(p['amenityIds']).map(Number)};}
+  private request(p:Params):PropertySearchParams{const r=propertySearchParamsFromRoute(p);return{...r,pageNumber:this.pageNumber(),pageSize:this.pageSize(),sortBy:this.selectedSort,propertyTypes:this.currentFilterState.propertyTypes.length?this.currentFilterState.propertyTypes:undefined,starRatings:this.currentFilterState.starRatings.length?this.currentFilterState.starRatings:undefined,minReviewScore:this.currentFilterState.minReviewScore??undefined,minPrice:this.currentFilterState.minPrice||undefined,maxPrice:this.currentFilterState.maxPrice<10000000?this.currentFilterState.maxPrice:undefined};}
+  private updateRoute(q:Params):void{this.router.navigate([],{relativeTo:this.route,queryParams:q,queryParamsHandling:'merge'});} private list(v:unknown):string[]{return v?String(v).split(',').filter(Boolean):[];} private vnd(v:number):string{return `${new Intl.NumberFormat('vi-VN').format(v)} ₫`;} private formatDateDisplay(v:Date|null):string{return v?new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'}).format(v):'Chưa chọn';}
   ngOnDestroy():void{this.destroy$.next();this.destroy$.complete();}
 }

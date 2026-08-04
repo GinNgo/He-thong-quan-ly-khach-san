@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.hamcrest.Matchers.*;
@@ -63,6 +64,7 @@ public class PropertySearchControllerIntegrationTest {
     private Location legacyPrimaryProvince;
     private Location secondaryProvince;
     private Location landmark;
+    private Hotel primaryHotel;
 
     @BeforeEach
     void setUp() {
@@ -88,7 +90,7 @@ public class PropertySearchControllerIntegrationTest {
         hotel.setOperationStatus("ACTIVE");
         hotel.setLatitude(16.0612);
         hotel.setLongitude(108.2278);
-        hotelRepository.saveAndFlush(hotel);
+        primaryHotel = hotelRepository.saveAndFlush(hotel);
 
         RoomType roomType = new RoomType();
         roomType.setHotel(hotel);
@@ -164,11 +166,125 @@ public class PropertySearchControllerIntegrationTest {
     }
 
     @Test
-    void searchProperties_WithRoomQuantity_ShouldCalculateStayPricing() throws Exception {
+    void searchProperties_RequiresApprovedActiveInventoryAndAllowsDemoOutsideProduction() throws Exception {
+        Hotel visible = saveEligibilityHotel("Visible T274", primaryProvince, "APPROVED", "ACTIVE", false);
+        Hotel demo = saveEligibilityHotel("Demo T274", primaryProvince, "APPROVED", "ACTIVE", true);
+        saveEligibilityHotel("Pending T274", primaryProvince, "PENDING", "ACTIVE", false);
+        saveEligibilityHotel("Rejected T274", primaryProvince, "REJECTED", "ACTIVE", false);
+        saveEligibilityHotel("Suspended T274", primaryProvince, "APPROVED", "SUSPENDED", false);
+        saveEligibilityHotel("Inactive T274", primaryProvince, "APPROVED", "INACTIVE", false);
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("keyword", "T274")
+                        .param("pageSize", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.content[*].id", containsInAnyOrder(
+                        visible.getId().intValue(), demo.getId().intValue())))
+                .andExpect(jsonPath("$.content[*].name", not(hasItems(
+                        "Pending T274", "Rejected T274", "Suspended T274", "Inactive T274"))));
+    }
+
+    @Test
+    void searchProperties_CurrentAndLegacyProvinceIdsReturnTheSameCompatibilityScope() throws Exception {
+        Hotel currentStored = saveEligibilityHotel(
+                "Current Province T274", primaryProvince, "APPROVED", "ACTIVE", false);
+
         mockMvc.perform(get("/api/public/properties/search")
                         .param("provinceId", primaryProvince.getId().toString())
-                        .param("checkInDate", "2026-08-01")
-                        .param("checkOutDate", "2026-08-03")
+                        .param("pageSize", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].id", hasItems(
+                        primaryHotel.getId().intValue(), currentStored.getId().intValue())));
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("provinceId", legacyPrimaryProvince.getId().toString())
+                        .param("pageSize", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].id", hasItems(
+                        primaryHotel.getId().intValue(), currentStored.getId().intValue())));
+    }
+
+    @Test
+    void searchProperties_RejectsInvalidMissingAndInvertedDateRanges() throws Exception {
+        String futureCheckIn = LocalDate.now().plusDays(2).toString();
+        String futureCheckOut = LocalDate.now().plusDays(4).toString();
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("checkInDate", "04-08-2026")
+                        .param("checkOutDate", futureCheckOut))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("checkInDate", futureCheckIn))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("checkOutDate", futureCheckOut))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("checkInDate", futureCheckIn)
+                        .param("checkOutDate", futureCheckIn))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Ngày trả phòng phải sau ngày nhận phòng."));
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("checkInDate", futureCheckOut)
+                        .param("checkOutDate", futureCheckIn))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Ngày trả phòng phải sau ngày nhận phòng."));
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("checkInDate", "2000-01-01")
+                        .param("checkOutDate", "2000-01-02"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("checkInDate cannot be in the past."));
+
+        mockMvc.perform(get("/api/public/properties/search"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void searchProperties_RejectsUnknownAndNotYetSupportedFilters() throws Exception {
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("displayLocation", "Da Nang"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("stayType", "DAY_USE"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("amenityIds", "1"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("freeCancellation", "true"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("payAtProperty", "true"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("breakfastIncluded", "true"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("stayType", "OVERNIGHT")
+                        .param("freeCancellation", "false")
+                        .param("payAtProperty", "false")
+                        .param("breakfastIncluded", "false"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void searchProperties_WithRoomQuantity_ShouldCalculateStayPricing() throws Exception {
+        String checkInDate = LocalDate.now().plusDays(10).toString();
+        String checkOutDate = LocalDate.now().plusDays(12).toString();
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("provinceId", primaryProvince.getId().toString())
+                        .param("checkInDate", checkInDate)
+                        .param("checkOutDate", checkOutDate)
                         .param("adultCount", "2")
                         .param("roomCount", "2")
                         .param("minPrice", "400000")
@@ -376,6 +492,38 @@ public class PropertySearchControllerIntegrationTest {
         roomType.setStatus("ACTIVE");
         roomType = roomTypeRepository.saveAndFlush(roomType);
         saveRoom(hotel, roomType, "FEATURED-" + suffix);
+        return hotel;
+    }
+
+    private Hotel saveEligibilityHotel(String name, Location province, String approvalStatus,
+                                       String operationStatus, boolean demo) {
+        String suffix = name.replaceAll("[^A-Za-z0-9]", "-").toLowerCase();
+        Hotel hotel = new Hotel();
+        hotel.setName(name);
+        hotel.setCode("TEST-ELIGIBILITY-" + suffix);
+        hotel.setSlug("test-eligibility-" + suffix);
+        hotel.setNormalizedName(name.toLowerCase());
+        hotel.setProvinceId(province.getId());
+        hotel.setAddressLine("1 Eligibility Street");
+        hotel.setCity(province.getNameVi());
+        hotel.setCountry("Vietnam");
+        hotel.setStatus("ACTIVE");
+        hotel.setApprovalStatus(approvalStatus);
+        hotel.setOperationStatus(operationStatus);
+        hotel.setPropertyType("HOTEL");
+        hotel.setIsDemo(demo);
+        hotel = hotelRepository.saveAndFlush(hotel);
+
+        RoomType roomType = new RoomType();
+        roomType.setHotel(hotel);
+        roomType.setNameEn("Eligibility room " + suffix);
+        roomType.setNameVi("Eligibility room " + suffix);
+        roomType.setCode("ELIGIBILITY-ROOM-" + suffix);
+        roomType.setBasePrice(new BigDecimal("550000"));
+        roomType.setMaxGuest(2);
+        roomType.setStatus("ACTIVE");
+        roomType = roomTypeRepository.saveAndFlush(roomType);
+        saveRoom(hotel, roomType, "ELIGIBILITY-" + hotel.getId());
         return hotel;
     }
 

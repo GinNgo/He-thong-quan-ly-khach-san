@@ -9,6 +9,7 @@ import com.hotel.repositories.LocationRepository;
 import com.hotel.repositories.PropertyImageRepository;
 import com.hotel.repositories.RoomTypeRepository;
 import com.hotel.services.PropertySearchService;
+import com.hotel.services.PublicInventoryEligibilityPolicy;
 import com.hotel.services.ProvinceCompatibilityService;
 import com.hotel.services.RoomAvailabilityService;
 import com.hotel.util.VietnameseTextNormalizer;
@@ -18,9 +19,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.env.Environment;
-import org.springframework.core.env.Profiles;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -42,33 +40,35 @@ public class PropertySearchServiceImpl implements PropertySearchService {
     private final RoomTypeRepository roomTypeRepository;
     private final PropertyImageRepository propertyImageRepository;
     private final RoomAvailabilityService roomAvailabilityService;
-    private final Environment environment;
     private final ProvinceCompatibilityService provinceCompatibilityService;
-
-    @Value("${app.demo-data.allow-public-demo:false}")
-    private boolean allowPublicDemo;
+    private final PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
 
     public PropertySearchServiceImpl(EntityManager entityManager, LocationRepository locationRepository,
                                      RoomTypeRepository roomTypeRepository,
                                      PropertyImageRepository propertyImageRepository,
-                                     RoomAvailabilityService roomAvailabilityService, Environment environment,
-                                     ProvinceCompatibilityService provinceCompatibilityService) {
+                                     RoomAvailabilityService roomAvailabilityService,
+                                     ProvinceCompatibilityService provinceCompatibilityService,
+                                     PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy) {
         this.entityManager = entityManager;
         this.locationRepository = locationRepository;
         this.roomTypeRepository = roomTypeRepository;
         this.propertyImageRepository = propertyImageRepository;
         this.roomAvailabilityService = roomAvailabilityService;
-        this.environment = environment;
         this.provinceCompatibilityService = provinceCompatibilityService;
+        this.publicInventoryEligibilityPolicy = publicInventoryEligibilityPolicy;
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public Page<PropertySearchResponseDTO> searchProperties(PropertySearchRequestDTO request) {
+        validateSupportedRequestContract(request);
         LocalDate checkIn = parseDate(request.getCheckInDate(), "checkInDate");
         LocalDate checkOut = parseDate(request.getCheckOutDate(), "checkOutDate");
         if ((checkIn == null) != (checkOut == null)) {
             throw new IllegalArgumentException("Ngày nhận và trả phòng phải được cung cấp cùng nhau.");
+        }
+        if (checkIn != null && checkIn.isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("checkInDate cannot be in the past.");
         }
         if (checkIn != null && !checkOut.isAfter(checkIn)) {
             throw new IllegalArgumentException("Ngày trả phòng phải sau ngày nhận phòng.");
@@ -105,10 +105,9 @@ public class PropertySearchServiceImpl implements PropertySearchService {
                        p.id AS province_id
                 """;
         String from = " FROM hotels h LEFT JOIN locations p ON p.id=h.province_id LEFT JOIN locations w ON w.id=h.ward_id ";
-        StringBuilder where = new StringBuilder(" WHERE h.approval_status='APPROVED' AND h.operation_status='ACTIVE' ");
-        if (!allowPublicDemo && environment.acceptsProfiles(Profiles.of("production"))) {
-            where.append(" AND COALESCE(h.is_demo,0)=0 ");
-        }
+        StringBuilder where = new StringBuilder(" WHERE ")
+                .append(publicInventoryEligibilityPolicy.publicSearchPredicate("h"))
+                .append(' ');
 
         if (request.getProvinceId() != null) {
             Set<Long> provinceIds = provinceCompatibilityService.provinceScopeIds(request.getProvinceId());
@@ -360,6 +359,24 @@ public class PropertySearchServiceImpl implements PropertySearchService {
     private int value(Integer preferred, Integer fallback) { return preferred != null ? preferred : fallback != null ? fallback : Integer.MAX_VALUE; }
     private String firstNotBlank(String preferred, String fallback) {
         return preferred != null && !preferred.isBlank() ? preferred : fallback;
+    }
+    private void validateSupportedRequestContract(PropertySearchRequestDTO request) {
+        if (request.getStayType() != null && !request.getStayType().isBlank()
+                && !"OVERNIGHT".equalsIgnoreCase(request.getStayType().trim())) {
+            throw new IllegalArgumentException("Only OVERNIGHT stayType is supported by property search.");
+        }
+        if (request.getAmenityIds() != null && !request.getAmenityIds().isEmpty()) {
+            throw new IllegalArgumentException("amenityIds filtering is not available yet.");
+        }
+        if (Boolean.TRUE.equals(request.getFreeCancellation())) {
+            throw new IllegalArgumentException("freeCancellation filtering is not available yet.");
+        }
+        if (Boolean.TRUE.equals(request.getPayAtProperty())) {
+            throw new IllegalArgumentException("payAtProperty filtering is not available yet.");
+        }
+        if (Boolean.TRUE.equals(request.getBreakfastIncluded())) {
+            throw new IllegalArgumentException("breakfastIncluded filtering is not available yet.");
+        }
     }
     private LocalDate parseDate(String value, String field) {
         if (value == null || value.isBlank()) return null;
