@@ -82,4 +82,58 @@ describe('ManagementDashboardComponent', () => {
     expect(text).toContain('PENDING_APPROVAL');
     expect(text).not.toContain('Phòng trống');
   });
+
+  it.each([
+    ['SUSPENDED', 'Cơ sở đang tạm ngừng hoạt động', 'đặt phòng lịch sử vẫn được giữ nguyên'],
+    ['CLOSED', 'Cơ sở đã đóng', 'chế độ chỉ đọc']
+  ])('keeps a %s property selectable with read-only guidance', async (state, title, guidance) => {
+    const context$ = new Subject<ManagementContext>();
+    await TestBed.configureTestingModule({
+      imports: [ManagementDashboardComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ManagementApiService, useValue: { context: () => context$ } },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManagementDashboardComponent);
+    fixture.detectChanges();
+    context$.next({
+      properties: [{
+        id: 3,
+        code: `${state}-3`,
+        nameVi: 'Cơ sở lịch sử',
+        propertyType: 'HOTEL',
+        address: 'Đà Nẵng',
+        status: state,
+        approvalStatus: 'APPROVED',
+        operationStatus: state,
+        operational: false,
+        lifecycleAction: state === 'SUSPENDED' ? 'SUSPEND' : 'CLOSE',
+        lifecycleReason: 'Quyết định quản trị đã được xác minh.',
+        isDemo: false,
+      }],
+      activePropertyId: 3,
+      activePropertyOperational: false,
+      planCode: 'STANDARD',
+      subscriptionStatus: 'ACTIVE',
+      subscriptionSource: 'PLATFORM',
+      lifetime: false,
+      limits: { MAX_PROPERTIES: 1 },
+      usage: { properties: 1 },
+      upgradeRequired: false,
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const text = element.textContent || '';
+    expect(text).toContain('Cơ sở lịch sử');
+    expect(text).toContain(title);
+    expect(text).toContain(guidance);
+    expect(text).toContain('Quản lý gói');
+    expect(text).not.toContain('Hoàn thiện hồ sơ');
+    expect(text).not.toContain('Phòng trống');
+    expect(element.querySelector('button[aria-label*="Tạm ngừng"]')).toBeNull();
+  });
 });

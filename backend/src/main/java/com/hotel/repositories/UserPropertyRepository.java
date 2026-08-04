@@ -73,6 +73,15 @@ public interface UserPropertyRepository extends JpaRepository<UserProperty, Long
             """)
     List<UserProperty> findPendingOwnerMappingsForUpdate(@Param("hotelId") Long hotelId);
 
+    @Query("""
+            select distinct up.user.id
+            from UserProperty up
+            where up.hotel.id = :hotelId
+              and up.status = 'ACTIVE'
+            order by up.user.id
+            """)
+    List<Long> findActiveAssignedUserIdsByHotelId(@Param("hotelId") Long hotelId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select up

@@ -31,6 +31,10 @@ class PublicInventoryEligibilityPolicyTest {
 
         hotel.setOperationStatus("SUSPENDED");
         assertThrows(ResourceNotFoundException.class, () -> policy.requirePublicProperty(10L));
+
+        hotel.setStatus("CLOSED");
+        hotel.setOperationStatus("CLOSED");
+        assertThrows(ResourceNotFoundException.class, () -> policy.requirePublicProperty(10L));
     }
 
     @Test

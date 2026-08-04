@@ -105,6 +105,18 @@ public class Hotel extends AuditableEntity {
     @Column(name = "review_reason", length = 500, columnDefinition = "nvarchar(500)")
     private String reviewReason;
 
+    @Column(name = "lifecycle_action", length = 30)
+    private String lifecycleAction;
+
+    @Column(name = "lifecycle_reason", length = 500, columnDefinition = "nvarchar(500)")
+    private String lifecycleReason;
+
+    @Column(name = "lifecycle_changed_by_user_id")
+    private Long lifecycleChangedByUserId;
+
+    @Column(name = "lifecycle_changed_at")
+    private LocalDateTime lifecycleChangedAt;
+
     @Column(name = "external_provider")
     private String externalProvider;
 

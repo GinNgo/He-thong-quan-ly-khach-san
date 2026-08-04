@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { Observable } from 'rxjs';
 import { finalize, timeout } from 'rxjs/operators';
 import { MessageService } from 'primeng/api';
 import { TableModule } from 'primeng/table';
@@ -12,15 +13,18 @@ import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TextareaModule } from 'primeng/textarea';
-import { AuthService } from '../../../core/services/auth';
+import { ActionCode, FunctionCode, PermissionService } from '../../../core/services/permission.service';
 import {
-  AdminProperty,
   CreatePropertyRequest,
+  PropertyLifecycleAction,
+  PropertyLifecycleDecisionResponse,
+  PropertyLifecycleSummary,
   PropertyLocation,
   PropertyService
 } from '../../../core/services/property.service';
 
-type PropertyStatus = 'DRAFT' | 'PENDING' | 'ACTIVE' | 'INACTIVE' | 'REJECTED';
+const LIFECYCLE_REASON_MIN_LENGTH = 10;
+const LIFECYCLE_REASON_MAX_LENGTH = 500;
 
 @Component({
   selector: 'app-property-management',
@@ -46,9 +50,9 @@ export class PropertyManagementComponent implements OnInit {
   private readonly propertyService = inject(PropertyService);
   private readonly messageService = inject(MessageService);
   private readonly formBuilder = inject(FormBuilder);
-  public readonly authService = inject(AuthService);
+  private readonly permissionService = inject(PermissionService);
 
-  properties: AdminProperty[] = [];
+  properties: PropertyLifecycleSummary[] = [];
   provinces: PropertyLocation[] = [];
   wards: PropertyLocation[] = [];
   loading = false;
@@ -56,7 +60,15 @@ export class PropertyManagementComponent implements OnInit {
   saving = false;
   dialogVisible = false;
   isAdmin = false;
+  canManageLifecycle = false;
   formError = '';
+  lifecycleDialogVisible = false;
+  lifecycleTarget: PropertyLifecycleSummary | null = null;
+  lifecycleAction: PropertyLifecycleAction | null = null;
+  lifecycleReason = '';
+  lifecycleError = '';
+  lifecycleIdempotencyKey = '';
+  readonly lifecycleInFlight: Record<number, PropertyLifecycleAction | undefined> = {};
 
   readonly propertyTypes = [
     { label: 'Khách sạn', value: 'HOTEL' },
@@ -82,21 +94,28 @@ export class PropertyManagementComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.isAdmin = this.authService.getRoles().includes('SUPER_ADMIN');
+    this.isAdmin = this.permissionService.isSuperAdmin();
+    this.canManageLifecycle = this.permissionService.hasPermission(
+      FunctionCode.PROPERTY_LIFECYCLE,
+      ActionCode.APPROVE
+    );
     this.loadProperties();
-    this.loadProvinces();
+    if (this.isAdmin) this.loadProvinces();
   }
 
   loadProperties(): void {
     this.loading = true;
-    this.propertyService.getAllProperties().pipe(
+    this.propertyService.getPropertyLifecycleSummaries().pipe(
       timeout(10000),
       finalize(() => { this.loading = false; })
     ).subscribe({
       next: data => { this.properties = data; },
-      error: error => {
-        const detail = error?.error?.message || 'Không thể tải danh sách cơ sở.';
-        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
+      error: () => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Không thể tải dữ liệu',
+          detail: 'Không thể tải danh sách trạng thái cơ sở. Vui lòng thử lại.'
+        });
       }
     });
   }
@@ -217,69 +236,176 @@ export class PropertyManagementComponent implements OnInit {
     });
   }
 
-  submit(property: AdminProperty): void {
-    this.propertyService.submitProperty(property.id).pipe(timeout(10000)).subscribe({
-      next: () => {
-        this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã gửi yêu cầu duyệt.' });
+  canRunLifecycle(property: PropertyLifecycleSummary, action: PropertyLifecycleAction): boolean {
+    return this.canManageLifecycle && (property.allowedTransitions ?? []).includes(action);
+  }
+
+  openLifecycle(property: PropertyLifecycleSummary, action: PropertyLifecycleAction): void {
+    if (!this.canRunLifecycle(property, action) || this.isLifecycleBusy(property)) return;
+    this.lifecycleTarget = property;
+    this.lifecycleAction = action;
+    this.lifecycleReason = '';
+    this.lifecycleError = '';
+    this.lifecycleIdempotencyKey = this.requestId();
+    this.lifecycleDialogVisible = true;
+  }
+
+  closeLifecycleDialog(): void {
+    if (this.lifecycleTarget && this.isLifecycleBusy(this.lifecycleTarget)) return;
+    this.resetLifecycleDialog();
+  }
+
+  updateLifecycleReason(reason: string): void {
+    this.lifecycleReason = reason;
+    this.lifecycleError = '';
+  }
+
+  lifecycleReasonError(): string {
+    const reason = this.lifecycleReason.trim();
+    if (!reason) return 'Vui lòng nhập lý do thực hiện thay đổi.';
+    if (reason.length < LIFECYCLE_REASON_MIN_LENGTH) {
+      return `Lý do phải có ít nhất ${LIFECYCLE_REASON_MIN_LENGTH} ký tự.`;
+    }
+    if (reason.length > LIFECYCLE_REASON_MAX_LENGTH) {
+      return `Lý do không được vượt quá ${LIFECYCLE_REASON_MAX_LENGTH} ký tự.`;
+    }
+    return '';
+  }
+
+  submitLifecycle(): void {
+    const property = this.lifecycleTarget;
+    const action = this.lifecycleAction;
+    if (!property || !action || !this.canRunLifecycle(property, action) || this.isLifecycleBusy(property)) return;
+
+    const validationError = this.lifecycleReasonError();
+    if (validationError) {
+      this.lifecycleError = validationError;
+      return;
+    }
+
+    const reason = this.lifecycleReason.trim();
+    const idempotencyKey = this.lifecycleIdempotencyKey || this.requestId();
+    this.lifecycleIdempotencyKey = idempotencyKey;
+    this.lifecycleInFlight[property.propertyId] = action;
+    this.lifecycleError = '';
+
+    this.lifecycleRequest(property.propertyId, action, reason, idempotencyKey).pipe(
+      timeout(10000),
+      finalize(() => { delete this.lifecycleInFlight[property.propertyId]; })
+    ).subscribe({
+      next: decision => {
+        this.resetLifecycleDialog();
+        this.messageService.add({
+          severity: action === 'CLOSE' ? 'warn' : 'success',
+          summary: this.lifecycleActionLabel(action),
+          detail: decision.changed
+            ? `Đã cập nhật trạng thái của ${property.name}.`
+            : `Cơ sở ${property.name} đã ở trạng thái yêu cầu.`
+        });
         this.loadProperties();
       },
       error: error => {
-        const detail = error?.error?.message || 'Không thể gửi yêu cầu duyệt.';
-        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
+        if (error?.status === 409) {
+          this.messageService.add({
+            severity: 'warn',
+            summary: 'Trạng thái đã thay đổi',
+            detail: 'Dữ liệu cơ sở đã được cập nhật ở phiên khác. Danh sách sẽ được tải lại.'
+          });
+          this.resetLifecycleDialog();
+          this.loadProperties();
+          return;
+        }
+        this.lifecycleError = error?.status === 403
+          ? 'Bạn không có quyền thực hiện thay đổi này.'
+          : 'Không thể cập nhật trạng thái cơ sở. Vui lòng thử lại an toàn.';
       }
     });
   }
 
-  approve(property: AdminProperty): void {
-    this.propertyService.approveProperty(property.id).pipe(timeout(10000)).subscribe({
-      next: () => {
-        this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã duyệt cơ sở.' });
-        this.loadProperties();
-      },
-      error: error => {
-        const detail = error?.error?.message || 'Không thể duyệt cơ sở.';
-        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
-      }
-    });
+  isLifecycleBusy(property: PropertyLifecycleSummary): boolean {
+    return this.lifecycleInFlight[property.propertyId] !== undefined;
   }
 
-  reject(property: AdminProperty): void {
-    this.propertyService.rejectProperty(property.id).pipe(timeout(10000)).subscribe({
-      next: () => {
-        this.messageService.add({ severity: 'warn', summary: 'Đã từ chối', detail: 'Cơ sở đã được chuyển sang trạng thái từ chối.' });
-        this.loadProperties();
-      },
-      error: error => {
-        const detail = error?.error?.message || 'Không thể từ chối cơ sở.';
-        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
-      }
-    });
+  lifecycleDialogTitle(): string {
+    return this.lifecycleAction ? this.lifecycleActionLabel(this.lifecycleAction) : 'Cập nhật cơ sở';
   }
 
-  statusCode(property: AdminProperty): PropertyStatus {
-    const status = property.status || property.approvalStatus || property.operationStatus;
-    return ['DRAFT', 'PENDING', 'ACTIVE', 'INACTIVE', 'REJECTED'].includes(status || '')
-      ? status as PropertyStatus
-      : 'DRAFT';
-  }
-
-  statusLabel(property: AdminProperty): string {
+  lifecycleActionLabel(action: PropertyLifecycleAction): string {
     return {
-      DRAFT: 'Bản nháp', PENDING: 'Chờ duyệt', ACTIVE: 'Hoạt động',
-      INACTIVE: 'Tạm ngưng', REJECTED: 'Từ chối'
-    }[this.statusCode(property)];
+      SUSPEND: 'Tạm ngừng cơ sở',
+      REACTIVATE: 'Kích hoạt lại cơ sở',
+      CLOSE: 'Đóng cơ sở'
+    }[action];
   }
 
-  statusSeverity(property: AdminProperty): 'success' | 'info' | 'warn' | 'danger' {
-    const status = this.statusCode(property);
-    if (status === 'ACTIVE') return 'success';
-    if (status === 'REJECTED' || status === 'INACTIVE') return 'danger';
-    if (status === 'PENDING') return 'warn';
+  lifecycleWarning(): string {
+    if (this.lifecycleAction === 'SUSPEND') {
+      return 'Cơ sở sẽ ngừng hiển thị công khai và ngừng các thao tác vận hành. Dữ liệu và đặt phòng lịch sử vẫn được giữ nguyên.';
+    }
+    if (this.lifecycleAction === 'REACTIVATE') {
+      return 'Cơ sở sẽ được mở lại quyền vận hành và hiển thị công khai theo điều kiện hệ thống.';
+    }
+    if (this.lifecycleAction === 'CLOSE') {
+      return 'Đây là chuyển đổi kết thúc. Cơ sở sẽ không còn hiển thị công khai hoặc vận hành; dữ liệu và đặt phòng lịch sử không bị xóa.';
+    }
+    return '';
+  }
+
+  statusLabel(status: string | null | undefined): string {
+    const normalized = String(status ?? '').trim().toUpperCase();
+    return ({
+      DRAFT: 'Bản nháp',
+      PENDING: 'Chờ xử lý',
+      PENDING_APPROVAL: 'Chờ duyệt',
+      ACTIVE: 'Hoạt động',
+      APPROVED: 'Đã duyệt',
+      INACTIVE: 'Chưa hoạt động',
+      SUSPENDED: 'Tạm ngừng',
+      CLOSED: 'Đã đóng',
+      REJECTED: 'Từ chối'
+    } as Record<string, string>)[normalized] ?? (normalized.replaceAll('_', ' ') || 'Chưa xác định');
+  }
+
+  statusSeverity(status: string | null | undefined): 'success' | 'info' | 'warn' | 'danger' {
+    const normalized = String(status ?? '').trim().toUpperCase();
+    if (normalized === 'ACTIVE' || normalized === 'APPROVED') return 'success';
+    if (normalized === 'REJECTED' || normalized === 'CLOSED') return 'danger';
+    if (normalized === 'PENDING' || normalized === 'PENDING_APPROVAL' || normalized === 'SUSPENDED') return 'warn';
     return 'info';
   }
 
   isInvalid(controlName: keyof typeof this.form.controls): boolean {
     const control = this.form.controls[controlName];
     return control.invalid && (control.dirty || control.touched);
+  }
+
+  private lifecycleRequest(
+    propertyId: number,
+    action: PropertyLifecycleAction,
+    reason: string,
+    idempotencyKey: string
+  ): Observable<PropertyLifecycleDecisionResponse> {
+    if (action === 'SUSPEND') {
+      return this.propertyService.suspendProperty(propertyId, reason, idempotencyKey);
+    }
+    if (action === 'REACTIVATE') {
+      return this.propertyService.reactivateProperty(propertyId, reason, idempotencyKey);
+    }
+    return this.propertyService.closeProperty(propertyId, reason, idempotencyKey);
+  }
+
+  private resetLifecycleDialog(): void {
+    this.lifecycleDialogVisible = false;
+    this.lifecycleTarget = null;
+    this.lifecycleAction = null;
+    this.lifecycleReason = '';
+    this.lifecycleError = '';
+    this.lifecycleIdempotencyKey = '';
+  }
+
+  private requestId(): string {
+    const cryptoApi = globalThis.crypto as Crypto | undefined;
+    if (cryptoApi?.randomUUID) return cryptoApi.randomUUID();
+    return `property-lifecycle-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 }

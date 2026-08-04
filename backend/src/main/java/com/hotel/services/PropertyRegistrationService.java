@@ -226,6 +226,9 @@ public class PropertyRegistrationService {
             if (reason == null && property != null) {
                 reason = rejectedClaimReasons.get(property.getId());
             }
+        } else if (("SUSPENDED".equals(status) || "CANCELLED".equals(status))
+                && property != null) {
+            reason = normalizeOptionalReason(property.getLifecycleReason());
         }
         return new PartnerRegistrationStatusResponse.PropertyStatus(
                 property == null ? null : property.getId(),

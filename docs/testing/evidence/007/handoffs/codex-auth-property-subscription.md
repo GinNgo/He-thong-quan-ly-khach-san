@@ -15,6 +15,7 @@ Base: `origin/codex/ui-functional-audit-polish`
 | T232 | COMPLETE_VERIFIED | `9c774a1` | Backend 33/33; frontend 6/6; `git diff --check` | Mark T232 complete in Feature 007 `tasks.md`; merge PROP-SUB-004 status/evidence into the two shared aggregate inventories. |
 | T233 | COMPLETE_VERIFIED | `c188a92` | Backend compile 432 sources and 46/46 focused tests; frontend 9/9; `git diff --check` | Mark T233 complete in Feature 007 `tasks.md`; merge PROP-SUB-005 status/evidence into the two shared aggregate inventories. |
 | T234 | COMPLETE_VERIFIED | `be7346b`; migration namespace fix `b93491d` | Backend compile 435 sources and 78/78 focused tests; frontend 10/10 plus development build; `git diff --check` | Mark T234 complete in Feature 007 `tasks.md`; merge PROP-SUB-006 status/evidence into the two shared aggregate inventories; preserve the branch-reserved V70 migration range. |
+| T235 | COMPLETE_VERIFIED | `PENDING_THIS_COMMIT` | Backend compile 440 sources and 98/98 regressions; frontend 15/15 plus development build; `git diff --check` | Mark T235 complete in Feature 007 `tasks.md`; merge PROP-SUB-007 status/evidence into the two shared aggregate inventories; preserve the branch-reserved V71 migration range. |
 
 ## Shared files intentionally not edited
 

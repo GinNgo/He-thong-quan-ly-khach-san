@@ -144,6 +144,26 @@ class PropertyRegistrationStatusServiceTest {
     }
 
     @Test
+    void suspendedAndClosedPropertiesExposeOnlyTheirOwnLifecycleReason() {
+        UserProperty suspended = ownerMapping(11L, "Suspended", "APPROVED", "SUSPENDED", "ACTIVE");
+        suspended.getHotel().setStatus("SUSPENDED");
+        suspended.getHotel().setLifecycleReason("  Safety inspection is required.  ");
+        UserProperty closed = ownerMapping(12L, "Closed", "APPROVED", "CLOSED", "ACTIVE");
+        closed.getHotel().setStatus("CLOSED");
+        closed.getHotel().setLifecycleReason("  Property operations ended permanently.  ");
+        when(userPropertyRepository.findOwnerMappingsWithHotelByUserId(42L))
+                .thenReturn(List.of(suspended, closed));
+        when(propertyClaimRequestRepository.findByRequesterAndPropertiesAndStatus(
+                42L, List.of(11L, 12L), "REJECTED"))
+                .thenReturn(List.of());
+
+        PartnerRegistrationStatusResponse result = registrationService.registrationStatus(42L);
+
+        assertEquals("Safety inspection is required.", result.properties().get(0).rejectionReason());
+        assertEquals("Property operations ended permanently.", result.properties().get(1).rejectionReason());
+    }
+
+    @Test
     void inconsistentCombinationFallsBackToCancelledAndNeverApproved() {
         UserProperty mapping = ownerMapping(11L, "Inconsistent", "APPROVED", "INACTIVE", "ACTIVE");
         when(userPropertyRepository.findOwnerMappingsWithHotelByUserId(42L)).thenReturn(List.of(mapping));
