@@ -476,6 +476,7 @@ public class ChatService {
         authorizeAcknowledgement(actor, message, conversation);
         String state = normalizeDeliveryState(requestedState);
         Instant now = Instant.now();
+        String previousState = message.getDeliveryStatus();
         if ("READ".equals(state)) {
             if (message.getDeliveredAt() == null) message.setDeliveredAt(now);
             if (message.getReadAt() == null) message.setReadAt(now);
@@ -485,8 +486,21 @@ public class ChatService {
             message.setDeliveredAt(now);
             message.setDeliveryStatus("DELIVERED");
         }
-        return mapToDTO(chatMessageRepository.saveAndFlush(message));
+        ChatMessageDTO saved = mapToDTO(chatMessageRepository.saveAndFlush(message));
+        if (!state.equals(previousState)) {
+            auditService.record(conversation, actor.getUserId(), "MESSAGE_" + state,
+                    "Message " + message.getId() + " changed from " + previousState + " to " + state);
+        }
+        return saved;
     }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<com.hotel.dtos.SupportConversationEventDTO> supportAuditHistory(
+            Long conversationId, int page, int size) {
+        return auditService.history(conversationId, page, size);
+    }
+
+    public java.util.Map<String, Object> supportAuditPolicy() { return auditService.policy(); }
 
     private ChatMessageDTO persistCustomerMessage(
             CustomUserDetails sender,

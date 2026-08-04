@@ -102,6 +102,22 @@ class ChatServiceTest {
     }
 
     @Test
+    void readAcknowledgementAddsImmutableConversationAuditEvent() {
+        CustomUserDetails customer = user(42L, Map.of(), "CUSTOMER");
+        SupportConversation conversation = scopedConversation(9L, 42L, 5L);
+        ChatMessage message = message(77L, 9L, 7L, 42L, "Support reply", "2026-08-04T10:00:00Z");
+        message.setDeliveryStatus("DELIVERED");
+        when(chatMessageRepository.findLockedById(77L)).thenReturn(Optional.of(message));
+        when(conversationRepository.findById(9L)).thenReturn(Optional.of(conversation));
+        when(chatMessageRepository.saveAndFlush(message)).thenReturn(message);
+
+        ChatMessageDTO result = chatService.acknowledgeMessage(customer, 77L, "READ");
+
+        assertEquals("READ", result.getDeliveryStatus());
+        verify(auditService).record(conversation, 42L, "MESSAGE_READ", "Message 77 changed from DELIVERED to READ");
+    }
+
+    @Test
     void firstCustomerMessageCreatesAConversationAndUsesAuthenticatedSender() {
         CustomUserDetails customer = user(42L, Map.of(), "CUSTOMER");
         when(userRepository.findById(42L)).thenReturn(Optional.of(customerEntity(42L)));

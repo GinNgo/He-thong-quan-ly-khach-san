@@ -170,6 +170,53 @@
         <p *ngIf="mutationError()" class="action-feedback is-error" role="alert">{{ mutationError() }}</p>
       </div>
 
+      <section class="conversation-audit" aria-labelledby="support-audit-title">
+        <div class="audit-heading">
+          <div>
+            <p class="eyebrow">IMMUTABLE AUDIT</p>
+            <h3 id="support-audit-title">Lich su su kien</h3>
+          </div>
+          <p *ngIf="auditPolicy() as policy" class="audit-policy">
+            Chi ghi them / luu {{ policy.retentionDays }} ngay
+          </p>
+        </div>
+
+        <div *ngIf="auditState() === 'loading'" class="audit-state" aria-label="Dang tai lich su su kien">
+          <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+          <span>Dang tai lich su bat bien...</span>
+        </div>
+        <div *ngIf="auditState() === 'error'" class="audit-state dashboard-error" role="alert">
+          <span>{{ auditError() }}</span>
+          <button type="button" class="text-action" (click)="loadAuditEvents(selectedId, auditPage())">
+            Thu lai
+          </button>
+        </div>
+        <p *ngIf="auditState() === 'ready' && auditEvents().length === 0" class="audit-state">
+          Chua co su kien duoc ghi nhan.
+        </p>
+
+        <ol *ngIf="auditEvents().length" class="audit-list" aria-label="Su kien moi nhat truoc">
+          <li *ngFor="let event of auditEvents()" [attr.data-event-type]="event.eventType">
+            <span class="audit-marker" aria-hidden="true"></span>
+            <div>
+              <strong>{{ auditEventLabel(event.eventType) }}</strong>
+              <p>{{ event.details }}</p>
+              <small>
+                <time [attr.datetime]="event.occurredAt">{{ event.occurredAt | date:'dd/MM/yyyy HH:mm:ss' }}</time>
+                <span *ngIf="event.actorUserId"> / Tac nhan #{{ event.actorUserId }}</span>
+              </small>
+            </div>
+          </li>
+        </ol>
+
+        <nav *ngIf="auditTotalPages() > 1" class="audit-pagination" aria-label="Phan trang lich su su kien">
+          <button type="button" (click)="changeAuditPage(-1)" [disabled]="auditPage() === 0">Trang truoc</button>
+          <span>Trang {{ auditPage() + 1 }} / {{ auditTotalPages() }}</span>
+          <button type="button" (click)="changeAuditPage(1)"
+            [disabled]="auditPage() + 1 >= auditTotalPages()">Trang sau</button>
+        </nav>
+      </section>
+
       <section class="attachment-panel" aria-labelledby="support-attachments-title"
         style="padding: .75rem 1.5rem; border-bottom: 1px solid var(--hotel-border)">
         <div class="attachment-heading"

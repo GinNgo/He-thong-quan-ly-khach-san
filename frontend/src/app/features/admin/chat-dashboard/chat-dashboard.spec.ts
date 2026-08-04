@@ -15,6 +15,7 @@ describe('ChatDashboard', () => {
   let getConversations: ReturnType<typeof vi.fn>;
   let claimConversation: ReturnType<typeof vi.fn>;
   let closeConversation: ReturnType<typeof vi.fn>;
+  let getAuditEvents: ReturnType<typeof vi.fn>;
 
   const conversation: ChatConversation = {
     conversationId: 21,
@@ -38,6 +39,23 @@ describe('ChatDashboard', () => {
     }));
     closeConversation = vi.fn(() => of({
       ...conversation, status: 'CLOSED' as const, closedReason: 'Da xu ly', version: 4
+    }));
+    getAuditEvents = vi.fn(() => of({
+      content: [{
+        id: 91,
+        conversationId: 21,
+        hotelId: 5,
+        actorUserId: 7,
+        eventType: 'CLOSED',
+        details: 'Da xu ly',
+        occurredAt: '2026-08-04T10:00:00Z',
+      }],
+      totalElements: 1,
+      totalPages: 1,
+      number: 0,
+      size: 20,
+      first: true,
+      last: true,
     }));
     sendSupportMessage = vi.fn(() => of({
       id: 10, conversationId: 21, senderId: 7, receiverId: 42, content: 'Da tiep nhan'
@@ -73,6 +91,13 @@ describe('ChatDashboard', () => {
             escalateSupportConversation: vi.fn(),
             reopenSupportConversation: vi.fn(),
             closeSupportConversation: closeConversation,
+            getSupportConversationEvents: getAuditEvents,
+            getSupportAuditPolicy: vi.fn(() => of({
+              appendOnly: true,
+              retentionDays: 730,
+              pageMaxRows: 100,
+              events: ['CLOSED', 'REOPENED', 'MESSAGE_READ'],
+            })),
             getSupportAttachments: vi.fn(() => of([])),
             uploadSupportAttachment: vi.fn(),
             downloadAttachment: vi.fn(),
@@ -154,6 +179,16 @@ describe('ChatDashboard', () => {
     expect(closeConversation).toHaveBeenCalledWith(21, 'Da xu ly', 3);
     expect(component.getConversation(21)?.status).toBe('CLOSED');
     expect(component.lifecycleReason).toBe('');
+  });
+
+  it('shows the immutable support event history and retention policy', () => {
+    component.selectConversation(conversation);
+    fixture.detectChanges();
+
+    expect(getAuditEvents).toHaveBeenCalledWith(21, 0, 20);
+    expect(component.auditEvents()[0].eventType).toBe('CLOSED');
+    expect(fixture.nativeElement.querySelector('.audit-policy')?.textContent).toContain('730 ngay');
+    expect(fixture.nativeElement.querySelector('.audit-list')?.textContent).toContain('Da dong hoi thoai');
   });
 
   it('sends the search query with existing queue filters', () => {

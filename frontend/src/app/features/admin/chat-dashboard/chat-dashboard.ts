@@ -20,7 +20,9 @@ import {
   ChatConversation,
   ChatMessage,
   ChatService,
-  SupportAttachment
+  SupportAttachment,
+  SupportConversationAuditPolicy,
+  SupportConversationEvent
 } from '../../../core/services/chat.service';
 import { AuthService } from '../../../core/services/auth';
 
@@ -61,6 +63,12 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
   readonly attachmentsState = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
   readonly attachmentError = signal('');
   readonly isUploadingAttachment = signal(false);
+  readonly auditEvents = signal<SupportConversationEvent[]>([]);
+  readonly auditPolicy = signal<SupportConversationAuditPolicy | null>(null);
+  readonly auditState = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  readonly auditError = signal('');
+  readonly auditPage = signal(0);
+  readonly auditTotalPages = signal(0);
 
   newMessage = '';
   searchQuery = '';
@@ -88,6 +96,7 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
       .subscribe(error => this.connectionError.set(error));
 
     this.chatService.connect('support');
+    this.loadAuditPolicy();
     this.loadConversations();
   }
 
@@ -166,6 +175,7 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
       }
     });
     this.loadAttachments(conversation.conversationId);
+    this.loadAuditEvents(conversation.conversationId, 0);
   }
 
   loadOlderMessages(): void {
@@ -267,6 +277,48 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
     }
     this.runMutation(conversation => this.chatService.closeSupportConversation(
       conversation.conversationId, reason, conversation.version));
+  }
+
+  loadAuditEvents(conversationId: number, page: number): void {
+    this.auditState.set('loading');
+    this.auditError.set('');
+    this.chatService.getSupportConversationEvents(conversationId, page, 20).subscribe({
+      next: result => {
+        if (this.selectedConversationId() !== conversationId) return;
+        this.auditEvents.set(result.content);
+        this.auditPage.set(result.number);
+        this.auditTotalPages.set(result.totalPages);
+        this.auditState.set('ready');
+      },
+      error: () => {
+        if (this.selectedConversationId() !== conversationId) return;
+        this.auditState.set('error');
+        this.auditError.set('Khong the tai lich su su kien bat bien.');
+      }
+    });
+  }
+
+  changeAuditPage(delta: number): void {
+    const conversationId = this.selectedConversationId();
+    const nextPage = this.auditPage() + delta;
+    if (!conversationId || nextPage < 0 || nextPage >= this.auditTotalPages()) return;
+    this.loadAuditEvents(conversationId, nextPage);
+  }
+
+  auditEventLabel(eventType: string): string {
+    switch (eventType) {
+      case 'CLOSED': return 'Da dong hoi thoai';
+      case 'REOPENED': return 'Da mo lai hoi thoai';
+      case 'MESSAGE_READ': return 'Tin nhan da doc';
+      case 'MESSAGE_DELIVERED': return 'Tin nhan da nhan';
+      case 'ASSIGNED': return 'Da nhan xu ly';
+      case 'UNASSIGNED': return 'Da tra lai hang doi';
+      case 'ESCALATED': return 'Da chuyen cap';
+      case 'CREATED': return 'Da tao hoi thoai';
+      case 'REPLIED': return 'Nhan vien da phan hoi';
+      case 'CUSTOMER_MESSAGE': return 'Khach hang da gui tin';
+      default: return eventType.replaceAll('_', ' ');
+    }
   }
 
   uploadAttachment(event: Event): void {
@@ -410,6 +462,7 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
         if (message.conversationId === this.selectedConversationId()
             && updated.conversationId === message.conversationId) {
           this.mergeMessage(updated);
+          this.loadAuditEvents(message.conversationId, 0);
         }
       },
       error: () => undefined,
@@ -439,6 +492,7 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
           item.conversationId === updated.conversationId ? updated : item));
         this.isMutating.set(false);
         this.lifecycleReason = '';
+        this.loadAuditEvents(updated.conversationId, 0);
       },
       error: error => {
         this.isMutating.set(false);
@@ -475,6 +529,13 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
         this.attachmentsState.set('error');
         this.attachmentError.set('Khong the tai danh sach tep dinh kem.');
       }
+    });
+  }
+
+  private loadAuditPolicy(): void {
+    this.chatService.getSupportAuditPolicy().subscribe({
+      next: policy => this.auditPolicy.set(policy),
+      error: () => this.auditPolicy.set(null),
     });
   }
 }

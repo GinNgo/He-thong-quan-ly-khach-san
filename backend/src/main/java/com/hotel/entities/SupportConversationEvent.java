@@ -9,6 +9,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PreRemove;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
@@ -54,4 +56,8 @@ public class SupportConversationEvent {
     public void setDetails(String details) { this.details = details; }
     public Instant getOccurredAt() { return occurredAt; }
     public void setOccurredAt(Instant occurredAt) { this.occurredAt = occurredAt; }
+
+    @PreUpdate
+    @PreRemove
+    void rejectMutation() { throw new IllegalStateException("Support conversation events are append-only"); }
 }

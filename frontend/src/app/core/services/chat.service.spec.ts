@@ -89,6 +89,21 @@ describe('ChatService', () => {
       first: false, last: true, retentionDays: 365 });
   });
 
+  it('loads paginated immutable support events and their retention policy', () => {
+    service.getSupportConversationEvents(33, 2, 20).subscribe();
+    const events = http.expectOne(item => item.url.endsWith('/api/chat/support/conversations/33/events'));
+    expect(events.request.method).toBe('GET');
+    expect(events.request.params.get('page')).toBe('2');
+    expect(events.request.params.get('size')).toBe('20');
+    events.flush({ content: [], totalElements: 0, totalPages: 0, number: 2, size: 20,
+      first: false, last: true });
+
+    service.getSupportAuditPolicy().subscribe();
+    const policy = http.expectOne('http://localhost:8080/api/chat/support/audit-policy');
+    expect(policy.request.method).toBe('GET');
+    policy.flush({ appendOnly: true, retentionDays: 730, pageMaxRows: 100, events: [] });
+  });
+
   it('persists support replies through the selected conversation endpoint', () => {
     service.sendSupportConversationMessage(33, 'Da tiep nhan', 4, 'support-1').subscribe();
 

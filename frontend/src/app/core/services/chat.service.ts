@@ -81,6 +81,33 @@ export interface SupportAttachment {
   uploadedAt: string;
 }
 
+export interface SupportConversationEvent {
+  id: number;
+  conversationId: number;
+  hotelId?: number;
+  actorUserId?: number;
+  eventType: string;
+  details: string;
+  occurredAt: string;
+}
+
+export interface SupportConversationAuditPolicy {
+  appendOnly: boolean;
+  retentionDays: number;
+  pageMaxRows: number;
+  events: string[];
+}
+
+export interface SupportConversationEventPage {
+  content: SupportConversationEvent[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+  first: boolean;
+  last: boolean;
+}
+
 export type ChatMode = 'customer' | 'support';
 export type ChatConnectionState = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error';
 
@@ -244,6 +271,17 @@ export class ChatService {
   getSupportConversationMessages(conversationId: number, page = 0, size = 50): Observable<ChatPage<ChatMessage>> {
     return this.http.get<ChatPage<ChatMessage>>(
       `${this.apiUrl}/support/conversations/${conversationId}/messages`, { params: { page, size } });
+  }
+
+  getSupportConversationEvents(
+    conversationId: number, page = 0, size = 20
+  ): Observable<SupportConversationEventPage> {
+    return this.http.get<SupportConversationEventPage>(
+      `${this.apiUrl}/support/conversations/${conversationId}/events`, { params: { page, size } });
+  }
+
+  getSupportAuditPolicy(): Observable<SupportConversationAuditPolicy> {
+    return this.http.get<SupportConversationAuditPolicy>(`${this.apiUrl}/support/audit-policy`);
   }
 
   sendSupportConversationMessage(

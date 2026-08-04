@@ -157,6 +157,20 @@ public class ChatController {
                 authorizationService.requireUser(principal), conversationId, page, size));
     }
 
+    @GetMapping("/api/chat/support/conversations/{conversationId}/events")
+    @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.VIEW)
+    public ResponseEntity<org.springframework.data.domain.Page<com.hotel.dtos.SupportConversationEventDTO>> getSupportAuditHistory(
+            @PathVariable Long conversationId, @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return ResponseEntity.ok(chatService.supportAuditHistory(conversationId, page, size));
+    }
+
+    @GetMapping("/api/chat/support/audit-policy")
+    @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.VIEW)
+    public ResponseEntity<java.util.Map<String, Object>> getSupportAuditPolicy() {
+        return ResponseEntity.ok(chatService.supportAuditPolicy());
+    }
+
     @PostMapping("/api/chat/support/conversations/{conversationId}/messages")
     @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.CREATE)
     public ResponseEntity<ChatMessageDTO> sendSupportConversationMessage(
