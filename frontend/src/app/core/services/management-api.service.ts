@@ -6,7 +6,7 @@ import { PropertyProfile, PropertyProfileUpdateRequest } from '../models/propert
 export type ManagedProperty = PropertyProfile;
 export interface ManagementLocation { id: number; nameVi: string; locationType: 'PROVINCE' | 'WARD'; }
 export interface ManagementUsage { properties?: number; roomTypes?: number; rooms?: number; staff?: number; images?: number; }
-export interface ManagementContext { properties: ManagedProperty[]; activePropertyId?: number; activePropertyOperational?: boolean; planCode: string; subscriptionStatus: string; subscriptionSource?: string; endAt?: string; lifetime: boolean; limits: Record<string, number>; usage: ManagementUsage; upgradeRequired: boolean; dashboard?: Record<string, number>; }
+export interface ManagementContext { properties: ManagedProperty[]; activePropertyId?: number; activePropertyOperational?: boolean; planCode: string; subscriptionStatus: string; subscriptionSource?: string; endAt?: string; lifetime: boolean; limits: Record<string, number>; usage: ManagementUsage; upgradeRequired: boolean; generatedAt?: string; dataStatus?: 'COMPLETE' | 'DEGRADED'; errors?: string[]; usageScope?: 'PROPERTY' | 'NONE'; dashboard?: Record<string, number | boolean>; }
 
 @Injectable({ providedIn: 'root' })
 export class ManagementApiService {

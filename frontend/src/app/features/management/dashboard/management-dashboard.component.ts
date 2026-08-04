@@ -26,16 +26,24 @@ export class ManagementDashboardComponent implements OnInit {
   profileDraft: PropertyProfile & { reason: string } = this.emptyProfile();
   profileProvinces: ManagementLocation[] = [];
   profileWards: ManagementLocation[] = [];
+  private loadRequestId = 0;
 
   ngOnInit(): void { this.load(); }
   load(propertyId?: number): void {
+    const requestId = ++this.loadRequestId;
     this.loading = true;
     this.error = '';
     this.profileEditing = false;
     this.profileError = '';
     this.api.context(propertyId).subscribe({
-      next: context => { this.context = context; this.selectedPropertyId = context.activePropertyId; this.loading = false; this.cdr.markForCheck(); },
-      error: error => { this.error = error?.error?.message || 'Không thể tải tổng quan.'; this.loading = false; this.cdr.markForCheck(); }
+      next: context => {
+        if (requestId !== this.loadRequestId) return;
+        this.context = context; this.selectedPropertyId = context.activePropertyId; this.loading = false; this.cdr.markForCheck();
+      },
+      error: error => {
+        if (requestId !== this.loadRequestId) return;
+        this.error = error?.error?.message || 'Không thể tải tổng quan.'; this.loading = false; this.cdr.markForCheck();
+      }
     });
   }
   selectProperty(): void { this.load(this.selectedPropertyId); }
@@ -97,7 +105,7 @@ export class ManagementDashboardComponent implements OnInit {
       }
     });
   }
-  value(name: string): number { return this.context?.dashboard?.[name] || 0; }
+  value(name: string): number { const value = this.context?.dashboard?.[name]; return typeof value === 'number' ? value : 0; }
   limit(name: string): string { const value = this.context?.limits?.[name]; return value === -1 ? 'Không giới hạn' : String(value ?? 0); }
 
   private emptyProfile(): PropertyProfile & { reason: string } {

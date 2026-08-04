@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 
 @Service
@@ -47,7 +48,8 @@ public class ManagementPortalService {
                 : propertyEntitlementService.getCurrent(selectedId);
         Map<String, Integer> limits = entitlement.limits();
         boolean activePropertyOperational = propertyAccessService.isOperational(selectedProperty);
-        Map<String, Long> usage = usage(user.getId(), selectedId);
+        DashboardSnapshot dashboardSnapshot = selectedId == null ? DashboardSnapshot.empty() : dashboardSnapshot(selectedId);
+        Map<String, Long> usage = usage(selectedId, dashboardSnapshot);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("userId", user.getId());
         result.put("fullName", user.getFullName());
@@ -63,7 +65,11 @@ public class ManagementPortalService {
         result.put("limits", limits);
         result.put("usage", usage);
         result.put("upgradeRequired", limits.isEmpty() || !"ACTIVE".equals(entitlement.status()));
-        if (activePropertyOperational) result.put("dashboard", dashboard(selectedId));
+        result.put("generatedAt", Instant.now().toString());
+        result.put("dataStatus", "COMPLETE");
+        result.put("errors", List.of());
+        result.put("usageScope", selectedId == null ? "NONE" : "PROPERTY");
+        if (activePropertyOperational) result.put("dashboard", dashboard(selectedId, dashboardSnapshot));
         return result;
     }
 
@@ -222,10 +228,10 @@ public class ManagementPortalService {
         subscriptionFeatureService.checkFeatureLimitForProperty(hotelId, code, current, addition);
     }
 
-    private Map<String, Long> usage(Long userId, Long hotelId) {
-        long properties = userPropertyRepository.countActiveOwnedPropertiesByUserId(userId);
+    private Map<String, Long> usage(Long hotelId, DashboardSnapshot snapshot) {
+        long properties = hotelId == null ? 0 : 1;
         long roomTypes = hotelId == null ? 0 : roomTypeRepository.countByHotelId(hotelId);
-        long rooms = hotelId == null ? 0 : roomRepository.countByHotelId(hotelId);
+        long rooms = snapshot.totalRooms();
         long staff = hotelId == null ? 0 : userPropertyRepository.countActiveStaffByHotelId(hotelId);
         long images = hotelId == null ? 0 : propertyImageRepository.countByHotelId(hotelId)
                 + roomTypeImageRepository.countByRoomTypeHotelId(hotelId)
@@ -233,16 +239,43 @@ public class ManagementPortalService {
         return Map.of("properties", properties, "roomTypes", roomTypes, "rooms", rooms, "staff", staff, "images", images);
     }
 
-    private Map<String, Object> dashboard(Long hotelId) {
+    private DashboardSnapshot dashboardSnapshot(Long hotelId) {
+        List<Room> rooms = roomRepository.findByHotelId(hotelId);
+        Map<String, Long> byStatus = rooms.stream().collect(java.util.stream.Collectors.groupingBy(
+                room -> normalizeStatus(room.getStatus()), LinkedHashMap::new, java.util.stream.Collectors.counting()));
+        long dirtyRooms = rooms.stream().filter(room -> "DIRTY".equals(normalizeStatus(room.getHousekeepingStatus()))).count();
+        return new DashboardSnapshot(rooms.size(), byStatus, dirtyRooms);
+    }
+
+    private Map<String, Object> dashboard(Long hotelId, DashboardSnapshot snapshot) {
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("totalRooms", roomRepository.countByHotelId(hotelId));
-        data.put("availableRooms", roomRepository.countByHotelIdAndStatus(hotelId, "AVAILABLE"));
-        data.put("reservedRooms", roomRepository.countByHotelIdAndStatus(hotelId, "RESERVED"));
-        data.put("occupiedRooms", roomRepository.countByHotelIdAndStatus(hotelId, "OCCUPIED"));
-        data.put("dirtyRooms", roomRepository.countByHotelIdAndHousekeepingStatus(hotelId, "DIRTY"));
-        data.put("maintenanceRooms", roomRepository.countByHotelIdAndStatus(hotelId, "MAINTENANCE"));
+        long available = snapshot.status("AVAILABLE");
+        long reserved = snapshot.status("RESERVED");
+        long occupied = snapshot.status("OCCUPIED");
+        long maintenance = snapshot.status("MAINTENANCE");
+        long classified = available + reserved + occupied + maintenance;
+        long statusCountTotal = snapshot.byStatus().values().stream().mapToLong(Long::longValue).sum();
+        data.put("totalRooms", snapshot.totalRooms());
+        data.put("availableRooms", available);
+        data.put("reservedRooms", reserved);
+        data.put("occupiedRooms", occupied);
+        data.put("dirtyRooms", snapshot.dirtyRooms());
+        data.put("maintenanceRooms", maintenance);
+        data.put("classifiedRooms", classified);
+        data.put("unclassifiedRooms", snapshot.totalRooms() - classified);
+        data.put("statusCountTotal", statusCountTotal);
+        data.put("reconciled", statusCountTotal == snapshot.totalRooms());
         data.put("pendingHousekeeping", housekeepingTaskRepository.countByHotelIdAndStatus(hotelId, "PENDING"));
         return data;
+    }
+
+    private String normalizeStatus(String value) {
+        return value == null ? "UNKNOWN" : value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private record DashboardSnapshot(long totalRooms, Map<String, Long> byStatus, long dirtyRooms) {
+        private static DashboardSnapshot empty() { return new DashboardSnapshot(0, Map.of(), 0); }
+        private long status(String value) { return byStatus.getOrDefault(value, 0L); }
     }
 
     private RoomTypeDTO roomTypeDto(RoomType entity) {

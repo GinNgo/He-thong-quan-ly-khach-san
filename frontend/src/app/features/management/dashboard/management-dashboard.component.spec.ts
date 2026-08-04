@@ -97,6 +97,10 @@ describe('ManagementDashboardComponent', () => {
       limits: { MAX_ROOMS: 50, MAX_PROPERTIES: 1 },
       usage: { rooms: 9, properties: 1 },
       upgradeRequired: false,
+      generatedAt: '2026-08-04T10:00:00Z',
+      dataStatus: 'COMPLETE',
+      errors: [],
+      usageScope: 'PROPERTY',
       dashboard: { availableRooms: 6, occupiedRooms: 3 },
     });
     await fixture.whenStable();
@@ -106,6 +110,36 @@ describe('ManagementDashboardComponent', () => {
     expect(element.textContent).toContain('LuxeStay Hà Nội');
     expect(element.textContent).toContain('STANDARD');
     expect(element.textContent).toContain('Entitlement source: PLATFORM');
+    expect(element.textContent).toContain('Updated');
+  });
+
+  it('ignores an older property response after the user switches properties', async () => {
+    const first$ = new Subject<ManagementContext>();
+    const second$ = new Subject<ManagementContext>();
+    const api = { context: vi.fn((propertyId?: number) => propertyId === 2 ? second$ : first$) };
+    await TestBed.configureTestingModule({
+      imports: [ManagementDashboardComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ManagementApiService, useValue: api },
+        { provide: PropertyGalleryService, useValue: galleryApi },
+        { provide: AmenityService, useValue: amenityApi },
+        { provide: OperationalPolicyService, useValue: policyApi },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(ManagementDashboardComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    component.load(2);
+    second$.next(contextFor(2, 'PLAN-B', 8));
+    first$.next(contextFor(1, 'PLAN-A', 99));
+    await fixture.whenStable();
+
+    expect(component.context?.activePropertyId).toBe(2);
+    expect(component.context?.planCode).toBe('PLAN-B');
+    expect(component.context?.usage.rooms).toBe(8);
+    expect(component.loading).toBe(false);
   });
 
   it('shows approval guidance instead of operational metrics for a pending property', async () => {
@@ -155,4 +189,15 @@ describe('ManagementDashboardComponent', () => {
     expect(text).toContain('PENDING_APPROVAL');
     expect(text).not.toContain('Phòng trống');
   });
+
+  function contextFor(propertyId: number, planCode: string, rooms: number): ManagementContext {
+    return {
+      properties: [{ id: propertyId, code: `HOTEL-${propertyId}`, nameVi: `Hotel ${propertyId}`, propertyType: 'HOTEL', addressLine: 'Address', provinceId: 1, wardId: 2, approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', operational: true, isDemo: false }],
+      activePropertyId: propertyId, activePropertyOperational: true, planCode,
+      subscriptionStatus: 'ACTIVE', subscriptionSource: 'PLATFORM', lifetime: true,
+      limits: { MAX_ROOMS: 100 }, usage: { properties: 1, rooms }, upgradeRequired: false,
+      generatedAt: '2026-08-04T10:00:00Z', dataStatus: 'COMPLETE', errors: [], usageScope: 'PROPERTY',
+      dashboard: { totalRooms: rooms, reconciled: true }
+    };
+  }
 });
