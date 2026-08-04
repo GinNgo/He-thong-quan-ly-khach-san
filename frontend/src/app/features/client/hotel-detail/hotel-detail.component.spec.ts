@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, ParamMap, Params, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject, of, Subject, throwError } from 'rxjs';
-import { ClientApiService } from '../../../core/services/client-api.service';
+import { ClientApiService, Hotel, RoomType } from '../../../core/services/client-api.service';
 import { HotelDetailComponent } from './hotel-detail.component';
 
 describe('HotelDetailComponent', () => {
@@ -102,6 +102,80 @@ describe('HotelDetailComponent', () => {
     expect((fixture.nativeElement.querySelector('[data-room-quantity="1"]') as HTMLSelectElement).disabled).toBe(false);
     expect((fixture.nativeElement.querySelector('[data-room-quantity="2"]') as HTMLSelectElement).disabled).toBe(true);
     expect((fixture.nativeElement.querySelector('[data-room-quantity="3"]') as HTMLSelectElement).disabled).toBe(true);
+  });
+
+  it('cancels the previous property request so the latest route wins', () => {
+    const firstHotel$ = new Subject<Hotel>();
+    const latestHotel$ = new Subject<Hotel>();
+    api.getHotelById.mockImplementation((id: number) => id === 44 ? firstHotel$ : latestHotel$);
+
+    params$.next(convertToParamMap({ id: '44' }));
+    expect(firstHotel$.observed).toBe(true);
+    params$.next(convertToParamMap({ id: '45' }));
+
+    expect(firstHotel$.observed).toBe(false);
+    firstHotel$.next({ id: 44, name: 'Stale property' } as Hotel);
+    latestHotel$.next({ id: 45, name: 'Latest property' } as Hotel);
+    fixture.detectChanges();
+
+    expect(component.hotel?.id).toBe(45);
+    expect(api.getRoomTypesByHotel).toHaveBeenCalledWith(45, undefined, undefined, 2);
+  });
+
+  it('clears stale rooms and only renders the latest query response', () => {
+    const firstRooms$ = new Subject<RoomType[]>();
+    const latestRooms$ = new Subject<RoomType[]>();
+    api.getHotelById.mockReturnValue(of({ id: 44, name: 'Query hotel' } as Hotel));
+    api.getRoomTypesByHotel.mockReturnValueOnce(firstRooms$).mockReturnValueOnce(latestRooms$);
+
+    params$.next(convertToParamMap({ id: '44' }));
+    firstRooms$.next([roomType(1, 2)]);
+    firstRooms$.complete();
+    fixture.detectChanges();
+    expect(component.roomTypes[0]?.id).toBe(1);
+
+    queryParams$.next({ checkIn: '2026-08-20', checkOut: '2026-08-22', adultCount: '3', childCount: '0', roomCount: '1' });
+    fixture.detectChanges();
+
+    expect(component.roomTypes).toEqual([]);
+    expect(component.isRoomLoading).toBe(true);
+    latestRooms$.next([roomType(2, 1)]);
+    latestRooms$.complete();
+    fixture.detectChanges();
+
+    expect(component.roomTypes.map(room => room.id)).toEqual([2]);
+    expect(component.isRoomLoading).toBe(false);
+  });
+
+  it('retries a transient room error using the latest route and query', () => {
+    api.getHotelById.mockReturnValue(of({ id: 44, name: 'Retry hotel' } as Hotel));
+    api.getRoomTypesByHotel
+      .mockReturnValueOnce(throwError(() => ({ status: 503 })))
+      .mockReturnValueOnce(of([roomType(3, 1)]));
+    queryParams$.next({ checkIn: '2026-08-20', checkOut: '2026-08-22', adultCount: '2', childCount: '1', roomCount: '1' });
+
+    params$.next(convertToParamMap({ id: '44' }));
+    fixture.detectChanges();
+    const retry = fixture.nativeElement.querySelector('[data-room-retry]') as HTMLButtonElement;
+    expect(retry).not.toBeNull();
+
+    retry.click();
+    fixture.detectChanges();
+
+    expect(api.getRoomTypesByHotel).toHaveBeenLastCalledWith(44, '2026-08-20', '2026-08-22', 3);
+    expect(component.roomError).toBe('');
+    expect(component.roomTypes[0]?.id).toBe(3);
+  });
+
+  it('cancels in-flight requests when the component is destroyed', () => {
+    const hotel$ = new Subject<Hotel>();
+    api.getHotelById.mockReturnValue(hotel$);
+
+    params$.next(convertToParamMap({ id: '44' }));
+    expect(hotel$.observed).toBe(true);
+    fixture.destroy();
+
+    expect(hotel$.observed).toBe(false);
   });
 });
 

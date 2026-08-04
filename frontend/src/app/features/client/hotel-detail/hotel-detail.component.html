@@ -19,9 +19,10 @@
       <section class="description"><h2>Thông tin chỗ nghỉ</h2><p>{{ hotel.description || 'Cơ sở chưa cập nhật mô tả chi tiết.' }}</p></section>
       <section id="rooms" class="rooms-section">
         <header><div><span class="eyebrow">Availability theo thời gian thực</span><h2>Chọn phòng</h2><p>{{ bookingQueryParams.checkIn }} - {{ bookingQueryParams.checkOut }} · {{ guests }} khách · cần {{ bookingQueryParams.roomCount }} phòng</p></div></header>
-        <div *ngIf="roomError" class="message error" data-availability-error role="alert">{{ roomError }}</div>
-        <div *ngIf="!roomError && !roomTypes.length" class="message" data-availability-empty>Không còn loại phòng phù hợp với ngày và số khách đã chọn.</div>
-        <div class="booking-layout" *ngIf="roomTypes.length">
+        <div *ngIf="isRoomLoading" class="message availability-refresh" data-availability-refresh aria-live="polite"><i class="pi pi-spin pi-spinner"></i> Đang làm mới tình trạng phòng...</div>
+        <div *ngIf="!isRoomLoading && roomError" class="message error" data-availability-error role="alert">{{ roomError }} <button type="button" data-room-retry (click)="retryRooms()"><i class="pi pi-refresh"></i> Thử lại</button></div>
+        <div *ngIf="!isRoomLoading && !roomError && !roomTypes.length" class="message" data-availability-empty>Không còn loại phòng phù hợp với ngày và số khách đã chọn.</div>
+        <div class="booking-layout" *ngIf="!isRoomLoading && roomTypes.length">
           <div class="room-list">
             <article *ngFor="let room of roomTypes" class="room-card" [class.selected]="selectedRoomType?.id===room.id">
               <img [src]="roomImage(room)" [alt]="room.nameVi" loading="lazy" (error)="handleRoomImageError($event,room)">
