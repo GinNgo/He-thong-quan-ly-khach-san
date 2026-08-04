@@ -15,6 +15,12 @@ below after merging or cherry-picking the task commits.
 | T300 | `29338ee` | Isolated backend compile; backend 20/20; frontend 12/12 | `docs/testing/evidence/007/remediation/T300-available-physical-room-picker.md` |
 | T301 | `bcc85e0`, `ada8586`, `3bed3ba` | Isolated backend compile; backend 38/38; frontend 24/24; final picker 10/10 | `docs/testing/evidence/007/remediation/T301-room-assignment-lifecycle.md` |
 
+## Partial Tasks
+
+| Task | Commit | Focused validation | Remaining gate |
+|---|---|---|---|
+| T302 | `8834080` | Backend policy/locking/IDOR/HTTP PASS; frontend 16/16 | Authenticated real API/browser journey is blocked because no usable local staff demo credential is configured. Evidence: `docs/testing/evidence/007/remediation/T302-check-in-readiness.md`. |
+
 ## Coordinator Updates
 
 - Mark T295 complete in `specs/007-payment-billing-completion/tasks.md`.
