@@ -28,4 +28,7 @@
     <app-amenity-assignment scope="roomType" [entityId]="selectedAmenityRoomTypeId"
       [editable]="true" title="Tiện nghi của loại phòng"></app-amenity-assignment>
   }
+  @if (mode === 'room-types' && selectedGalleryRoomTypeId) {
+    <app-property-gallery [roomTypeId]="selectedGalleryRoomTypeId" [editable]="canUpdateRoomType"></app-property-gallery>
+  }
 </section>

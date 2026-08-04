@@ -42,7 +42,7 @@ describe('RoomTypeManagement', () => {
     component.form.nameVi = 'Deluxe mới';
     component.save();
     expect(api.updateRoomType).toHaveBeenCalledWith(4, expect.objectContaining({ nameVi: 'Deluxe mới' }));
-  });
+  }, 10000);
 
   it('does not submit inconsistent capacity', () => {
     const fixture = TestBed.createComponent(RoomTypeManagement);

@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnChanges, SimpleChanges, inject } from '@angular/core';
+import { Component, Injector, Input, OnChanges, SimpleChanges, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs/operators';
 import {
   PropertyGalleryImage,
   PropertyGalleryService
 } from '../../../core/services/property-gallery.service';
+import { RoomTypeGalleryService } from '../../../core/services/room-type-gallery.service';
 
 @Component({
   selector: 'app-property-gallery',
@@ -16,8 +17,10 @@ import {
 })
 export class PropertyGalleryComponent implements OnChanges {
   private readonly galleryService = inject(PropertyGalleryService);
+  private readonly injector = inject(Injector);
 
-  @Input({ required: true }) propertyId!: number;
+  @Input() propertyId?: number;
+  @Input() roomTypeId?: number;
   @Input() editable = true;
 
   images: PropertyGalleryImage[] = [];
@@ -31,14 +34,14 @@ export class PropertyGalleryComponent implements OnChanges {
   selectedFile?: File;
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['propertyId'] && this.propertyId) this.load();
+    if ((changes['propertyId'] || changes['roomTypeId']) && this.entityId) this.load();
   }
 
   load(): void {
-    if (!this.propertyId) return;
+    if (!this.entityId) return;
     this.loading = true;
     this.error = '';
-    this.galleryService.list(this.propertyId).pipe(
+    this.api.list(this.entityId).pipe(
       finalize(() => { this.loading = false; })
     ).subscribe({
       next: images => { this.images = images; },
@@ -59,8 +62,8 @@ export class PropertyGalleryComponent implements OnChanges {
     }
     this.saving = true;
     this.error = '';
-    this.galleryService.upload(
-      this.propertyId,
+    this.api.upload(
+      this.entityId,
       this.selectedFile,
       this.altTextVi,
       this.altTextEn,
@@ -83,7 +86,7 @@ export class PropertyGalleryComponent implements OnChanges {
     }
     this.saving = true;
     this.error = '';
-    this.galleryService.addLink(this.propertyId, {
+    this.api.addLink(this.entityId, {
       imageUrl,
       altTextVi: this.altTextVi.trim() || undefined,
       altTextEn: this.altTextEn.trim() || undefined,
@@ -106,7 +109,7 @@ export class PropertyGalleryComponent implements OnChanges {
     this.images = reordered.map((image, sortOrder) => ({ ...image, sortOrder }));
     this.saving = true;
     this.error = '';
-    this.galleryService.reorder(this.propertyId, this.images.map(image => image.id)).pipe(
+    this.api.reorder(this.entityId, this.images.map(image => image.id)).pipe(
       finalize(() => { this.saving = false; })
     ).subscribe({
       next: images => { this.images = images; },
@@ -121,7 +124,7 @@ export class PropertyGalleryComponent implements OnChanges {
     if (!this.editable || image.primary || this.saving) return;
     this.saving = true;
     this.error = '';
-    this.galleryService.setPrimary(this.propertyId, image.id).pipe(
+    this.api.setPrimary(this.entityId, image.id).pipe(
       finalize(() => { this.saving = false; })
     ).subscribe({
       next: selected => {
@@ -138,7 +141,7 @@ export class PropertyGalleryComponent implements OnChanges {
     if (!this.editable || this.saving) return;
     this.saving = true;
     this.error = '';
-    this.galleryService.delete(this.propertyId, image.id).pipe(
+    this.api.delete(this.entityId, image.id).pipe(
       finalize(() => { this.saving = false; })
     ).subscribe({
       next: images => { this.images = images; },
@@ -151,6 +154,12 @@ export class PropertyGalleryComponent implements OnChanges {
       ? this.images.map(image => ({ ...image, primary: false }))
       : this.images;
     return [...existing, created].sort((left, right) => left.sortOrder - right.sortOrder);
+  }
+
+  get galleryLabel(): string { return this.roomTypeId ? 'loai phong' : 'co so'; }
+  private get entityId(): number { return this.roomTypeId || this.propertyId || 0; }
+  private get api(): PropertyGalleryService | RoomTypeGalleryService {
+    return this.roomTypeId ? this.injector.get(RoomTypeGalleryService) : this.galleryService;
   }
 
   private resetComposer(): void {

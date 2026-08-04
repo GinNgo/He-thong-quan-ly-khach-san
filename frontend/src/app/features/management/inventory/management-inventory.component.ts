@@ -6,11 +6,12 @@ import { ManagementApiService, ManagedProperty } from '../../../core/services/ma
 import { FeedbackStateComponent } from '../../../shared/components/feedback-state/feedback-state.component';
 import { AmenityAssignmentComponent } from '../../../shared/components/amenity-assignment/amenity-assignment.component';
 import { ActionCode, FunctionCode, PermissionService } from '../../../core/services/permission.service';
+import { PropertyGalleryComponent } from '../../../shared/components/property-gallery/property-gallery.component';
 
-@Component({ selector: 'app-management-inventory', standalone: true, imports: [CommonModule, FormsModule, FeedbackStateComponent, AmenityAssignmentComponent], templateUrl: './management-inventory.component.html', styleUrl: './management-inventory.component.css' })
+@Component({ selector: 'app-management-inventory', standalone: true, imports: [CommonModule, FormsModule, FeedbackStateComponent, AmenityAssignmentComponent, PropertyGalleryComponent], templateUrl: './management-inventory.component.html', styleUrl: './management-inventory.component.css' })
 export class ManagementInventoryComponent implements OnInit {
   private api = inject(ManagementApiService); private route = inject(ActivatedRoute); private cdr = inject(ChangeDetectorRef); private permissions = inject(PermissionService);
-  mode: 'room-types' | 'rooms' = 'room-types'; properties: ManagedProperty[] = []; propertyId?: number; rows: any[] = []; roomTypes: any[] = []; loading = true; saving = false; error = ''; showForm = false; changingRoomId?: number; selectedAmenityRoomTypeId?: number; editingRoomTypeId?: number;
+  mode: 'room-types' | 'rooms' = 'room-types'; properties: ManagedProperty[] = []; propertyId?: number; rows: any[] = []; roomTypes: any[] = []; loading = true; saving = false; error = ''; showForm = false; changingRoomId?: number; selectedAmenityRoomTypeId?: number; selectedGalleryRoomTypeId?: number; editingRoomTypeId?: number;
   roomTypeForm: any = { code: '', nameVi: '', nameEn: '', bedType: 'DOUBLE', bedCount: 1, maxAdults: 2, maxChildren: 1, maxGuests: 3, basePrice: 0, status: 'ACTIVE' };
   bulkForm: any = { roomTypeId: undefined, fromNumber: 101, toNumber: 105, floor: 1, status: 'AVAILABLE' };
   canCreateRoomType = this.permissions.hasPermission(FunctionCode.ROOM_TYPE, ActionCode.CREATE);
@@ -48,6 +49,10 @@ export class ManagementInventoryComponent implements OnInit {
     this.selectedAmenityRoomTypeId = this.selectedAmenityRoomTypeId === roomTypeId ? undefined : roomTypeId;
   }
 
+  manageGallery(roomTypeId: number): void {
+    this.selectedGalleryRoomTypeId = this.selectedGalleryRoomTypeId === roomTypeId ? undefined : roomTypeId;
+  }
+
   openCreate(): void {
     this.editingRoomTypeId = undefined;
     this.roomTypeForm = { code: '', nameVi: '', nameEn: '', bedType: 'DOUBLE', bedCount: 1, maxAdults: 2, maxChildren: 1, maxGuests: 3, basePrice: 0, status: 'ACTIVE' };
@@ -57,6 +62,7 @@ export class ManagementInventoryComponent implements OnInit {
   editRoomType(row: any): void {
     if (!this.canUpdateRoomType) return;
     this.editingRoomTypeId = row.id;
+    this.selectedGalleryRoomTypeId = row.id;
     this.roomTypeForm = { ...row };
     this.showForm = true;
   }

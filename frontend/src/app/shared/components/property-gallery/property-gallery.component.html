@@ -1,7 +1,7 @@
 <section class="property-gallery" aria-labelledby="property-gallery-title">
   <header>
     <div>
-      <p class="eyebrow">Hinh anh co so</p>
+      <p class="eyebrow">Hinh anh {{ galleryLabel }}</p>
       <h3 id="property-gallery-title">Thu vien anh</h3>
       <p>Anh dau tien tu dong tro thanh anh dai dien. Thu tu nay cung duoc dung tren trang tim kiem.</p>
     </div>
@@ -45,7 +45,7 @@
   @if (loading) {
     <p class="gallery-state" role="status">Dang tai thu vien anh...</p>
   } @else if (!images.length) {
-    <p class="gallery-state">Chua co anh nao cho co so nay.</p>
+    <p class="gallery-state">Chua co anh nao cho {{ galleryLabel }} nay.</p>
   } @else {
     <ol class="gallery-grid">
       @for (image of images; track image.id; let index = $index) {
