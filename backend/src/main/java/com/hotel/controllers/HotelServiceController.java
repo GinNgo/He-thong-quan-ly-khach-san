@@ -24,7 +24,7 @@ public class HotelServiceController {
     private final HotelServiceLogic hotelServiceLogic;
 
     @GetMapping
-    @Permission(function = FunctionCode.HOTEL, action = ActionCode.VIEW)
+    @Permission(function = FunctionCode.HOTEL_SERVICE, action = ActionCode.VIEW)
     @Operation(summary = "Get all services")
     public ResponseEntity<List<HotelServiceDTO>> getAllServices(
             @RequestParam(required = false) Long hotelId) {
@@ -32,14 +32,14 @@ public class HotelServiceController {
     }
 
     @GetMapping("/{id}")
-    @Permission(function = FunctionCode.HOTEL, action = ActionCode.VIEW)
+    @Permission(function = FunctionCode.HOTEL_SERVICE, action = ActionCode.VIEW)
     @Operation(summary = "Get service by ID")
     public ResponseEntity<HotelServiceDTO> getServiceById(@PathVariable Long id) {
         return ResponseEntity.ok(hotelServiceLogic.getServiceById(id));
     }
 
     @PostMapping
-    @Permission(function = FunctionCode.HOTEL, action = ActionCode.CREATE)
+    @Permission(function = FunctionCode.HOTEL_SERVICE, action = ActionCode.CREATE)
     @Operation(summary = "Create new service")
     public ResponseEntity<HotelServiceDTO> createService(
             @RequestParam(required = false) Long hotelId,
@@ -48,14 +48,14 @@ public class HotelServiceController {
     }
 
     @PutMapping("/{id}")
-    @Permission(function = FunctionCode.HOTEL, action = ActionCode.UPDATE)
+    @Permission(function = FunctionCode.HOTEL_SERVICE, action = ActionCode.UPDATE)
     @Operation(summary = "Update service")
     public ResponseEntity<HotelServiceDTO> updateService(@PathVariable Long id, @RequestBody HotelServiceDTO dto) {
         return ResponseEntity.ok(hotelServiceLogic.updateService(id, dto));
     }
 
     @DeleteMapping("/{id}")
-    @Permission(function = FunctionCode.HOTEL, action = ActionCode.DELETE)
+    @Permission(function = FunctionCode.HOTEL_SERVICE, action = ActionCode.DELETE)
     @Operation(summary = "Delete service")
     public ResponseEntity<Void> deleteService(@PathVariable Long id) {
         hotelServiceLogic.deleteService(id);
