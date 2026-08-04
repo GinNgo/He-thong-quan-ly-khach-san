@@ -1,7 +1,7 @@
 # Property operations handoff
 
-Branch: `codex/property-operations`  
-Base: `origin/codex/ui-functional-audit-polish`  
+Branch: `codex/property-operations`
+Base: `origin/codex/ui-functional-audit-polish`
 Scope: T245-T268, excluding T262-T263 already completed by the coordinator.
 
 ## Completed task commits
