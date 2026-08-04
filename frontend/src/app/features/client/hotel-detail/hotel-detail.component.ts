@@ -91,7 +91,7 @@ export class HotelDetailComponent implements OnInit, AfterViewChecked {
       verificationData,
       ...(note?{note}:{})
     }).pipe(
-      finalize(()=>{this.claimSubmitting=false;this.changeDetector.detectChanges();}),
+      finalize(()=>this.claimSubmitting=false),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next:()=>{
