@@ -77,7 +77,10 @@ below after merging or cherry-picking the task commits.
   inventories until the versioned OQ-002 through OQ-005 commercial policy is approved.
 - Keep T316/STAY-028 `PARTIAL` until one disposable SQL Server + real backend +
   non-intercepted Playwright run supplies assignment, denial, timeout/retry and rollback evidence.
+- T309 remains owned by `/root/t309_itemized_invoice` with an `IN_PROGRESS` exclusive
+  claim; this branch did not edit its invoice package, controller or customer/admin UI.
 - T310 was not edited because its mandatory invoice backend/customer/admin files overlap
-  the active exclusive T309 claim. Re-run it after that claim is released.
+  the active exclusive T309 claim. Re-run it after that claim is released and inspect the
+  merged T309 state before changing post-finalization credit-note behavior.
 - Mark T313 complete in `specs/007-payment-billing-completion/tasks.md` and promote
   STAY-025 in both aggregate inventory files using the T313 evidence and commit.
