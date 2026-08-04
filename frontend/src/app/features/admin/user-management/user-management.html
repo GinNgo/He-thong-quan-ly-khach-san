@@ -67,6 +67,7 @@
           <td class="text-center">
             <div class="d-flex justify-content-center gap-1">
               <button pButton icon="pi pi-pencil" class="p-button-text p-button-secondary p-button-sm" title="Sửa" (click)="editUser(user)" [disabled]="saving"></button>
+              <button *ngIf="userType === 'STAFF' && canViewAudit" pButton icon="pi pi-history" class="p-button-text p-button-help p-button-sm" title="Lịch sử thay đổi" (click)="openHistory(user)" [disabled]="saving"></button>
               <button *ngIf="userType === 'STAFF' && hasAssignment(user, 'ACTIVE')" pButton icon="pi pi-ban" class="p-button-text p-button-danger p-button-sm" title="Ngừng quyền truy cập" (click)="openLifecycle(user, 'deactivate')" [disabled]="saving"></button>
               <button *ngIf="userType === 'STAFF' && hasAssignment(user, 'INACTIVE')" pButton icon="pi pi-user-plus" class="p-button-text p-button-success p-button-sm" title="Tuyển lại" (click)="openLifecycle(user, 'reactivate')" [disabled]="saving"></button>
             </div>
@@ -126,6 +127,11 @@
         <label class="fw-bold mb-1" for="staff-move-reason">Lý do chuyển cơ sở <span class="text-danger">*</span></label>
         <textarea id="staff-move-reason" pInputTextarea [(ngModel)]="userForm.assignmentReason" rows="3" maxlength="500" class="w-100" [disabled]="saving" placeholder="Ví dụ: Điều chuyển nhân sự theo quyết định quản lý"></textarea>
         <small class="text-muted">Kỳ phân công cũ được đóng và giữ lại trong lịch sử; hệ thống tạo một kỳ phân công mới tại cơ sở đích.</small>
+      </div>
+      <div *ngIf="userDialogMode === 'edit'" class="col-12 mb-3 field">
+        <label class="fw-bold mb-1" for="staff-change-reason">Lý do thay đổi <span class="text-danger">*</span></label>
+        <textarea id="staff-change-reason" pInputTextarea [(ngModel)]="userForm.changeReason" rows="3" minlength="3" maxlength="500" class="w-100" [disabled]="saving" placeholder="Ví dụ: Cập nhật vai trò theo quyết định phân công"></textarea>
+        <small class="text-muted">Lý do, người thực hiện, phiên bản và trạng thái trước/sau được lưu trong nhật ký vận hành.</small>
       </div>
     </ng-container>
   </div>

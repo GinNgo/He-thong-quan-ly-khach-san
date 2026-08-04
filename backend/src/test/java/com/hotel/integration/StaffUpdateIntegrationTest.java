@@ -7,6 +7,7 @@ import com.hotel.entities.Role;
 import com.hotel.entities.User;
 import com.hotel.entities.UserProperty;
 import com.hotel.repositories.HotelRepository;
+import com.hotel.repositories.OperationalAuditEventRepository;
 import com.hotel.repositories.RoleRepository;
 import com.hotel.repositories.UserPropertyRepository;
 import com.hotel.repositories.UserRepository;
@@ -37,6 +38,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -55,6 +57,7 @@ class StaffUpdateIntegrationTest {
     @Autowired private RoleRepository roleRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private UserPropertyRepository userPropertyRepository;
+    @Autowired private OperationalAuditEventRepository auditRepository;
 
     @MockBean private PropertyAccessService propertyAccessService;
     @MockBean private PropertySubscriptionEntitlementService propertyEntitlementService;
@@ -144,6 +147,17 @@ class StaffUpdateIntegrationTest {
                     assertThat(item.getStatus()).isEqualTo("ACTIVE");
                     assertThat(item.getStatusReason()).isEqualTo("Operational transfer");
                 });
+        assertThat(auditRepository.findAll().stream()
+                .filter(event -> "STAFF_PROPERTY_MOVED".equals(event.getEventType()))
+                .filter(event -> String.valueOf(staff.getId()).equals(event.getAggregateId()))
+                .toList())
+                .singleElement()
+                .satisfies(event -> {
+                    assertThat(event.getActorId()).isEqualTo(owner.getId());
+                    assertThat(event.getReason()).isEqualTo("Operational transfer");
+                    assertThat(event.getBeforeStateJson()).contains("assignments", "version");
+                    assertThat(event.getAfterStateJson()).contains("assignments", "version");
+                });
         verify(subscriptionFeatureService).checkFeatureLimitForProperty(
                 targetProperty.getId(), "MAX_STAFF", 0L, 1L);
     }
@@ -214,12 +228,32 @@ class StaffUpdateIntegrationTest {
                 .containsExactly("RECEPTIONIST");
     }
 
+    @Test
+    void lifecycleMutationRequiresAnExpectedVersion() throws Exception {
+        mockMvc.perform(post("/api/users/{id}/deactivate", staff.getId())
+                        .with(user(principal()))
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsBytes(Map.of(
+                                "hotelId", sourceProperty.getId(),
+                                "reason", "End of assignment"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors.expectedVersion").exists());
+
+        assertThat(userRepository.findById(staff.getId()).orElseThrow().getStatus()).isEqualTo("ACTIVE");
+        assertThat(userPropertyRepository.findByUserIdAndRelationshipType(staff.getId(), "STAFF"))
+                .singleElement()
+                .satisfies(item -> assertThat(item.getStatus()).isEqualTo("ACTIVE"));
+    }
+
     private byte[] updatePayload(Long hotelId, String reason, Set<Long> roleIds, String password) throws Exception {
         Map<String, Object> payload = new java.util.LinkedHashMap<>();
         payload.put("fullName", "  Updated   Staff  ");
         payload.put("phone", "0901000000");
         payload.put("roleIds", roleIds);
         payload.put("hotelId", hotelId);
+        payload.put("expectedVersion", staff.getVersion());
+        payload.put("changeReason", reason == null ? "Staff profile governance update" : reason);
         if (reason != null) payload.put("assignmentReason", reason);
         if (password != null) payload.put("password", password);
         return objectMapper.writeValueAsBytes(payload);
@@ -227,7 +261,7 @@ class StaffUpdateIntegrationTest {
 
     private CustomUserDetails principal() {
         Map<FunctionCode, Integer> permissions = new HashMap<>();
-        permissions.put(FunctionCode.USER, ActionCode.UPDATE);
+        permissions.put(FunctionCode.USER, ActionCode.UPDATE | ActionCode.DELETE);
         return new CustomUserDetails(
                 owner.getUsername(), owner.getPasswordHash(),
                 Set.of(new SimpleGrantedAuthority("PROPERTY_OWNER")), permissions,

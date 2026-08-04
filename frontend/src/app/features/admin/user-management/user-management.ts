@@ -2,9 +2,10 @@ import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { SharedModule } from '@app/shared/shared.module';
 import { PropertyOption, StaffAssignment, StaffCreateRequest, StaffUpdateRequest, UserService, User } from '@app/core/services/user';
 import { RoleService, Role } from '@app/core/services/role.service';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { finalize, timeout } from 'rxjs/operators';
+import { ActionCode, FunctionCode, PermissionService } from '@app/core/services/permission.service';
 
 @Component({
   selector: 'app-user-management',
@@ -31,14 +32,18 @@ export class UserManagement implements OnInit {
   lifecycleUser: User | null = null;
   lifecycleHotelId: number | null = null;
   lifecycleReason = '';
+  canViewAudit = false;
 
   private userService = inject(UserService);
   private roleService = inject(RoleService);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private permissionService = inject(PermissionService);
   private messageService = inject(MessageService);
   private cdr = inject(ChangeDetectorRef);
 
   ngOnInit(): void {
+    this.canViewAudit = this.permissionService.hasPermission(FunctionCode.AUDIT_LOG, ActionCode.VIEW);
     this.userType = this.route.snapshot.data['userType'] || 'STAFF';
     this.loadUsers();
 
@@ -120,6 +125,7 @@ export class UserManagement implements OnInit {
     const activeAssignment = user.staffAssignments?.find(item => item.status === 'ACTIVE');
     this.userForm = {
       id: user.id,
+      expectedVersion: user.version,
       username: user.username,
       email: user.email,
       password: '',
@@ -130,6 +136,7 @@ export class UserManagement implements OnInit {
       hotelId: activeAssignment?.hotelId ?? user.hotel?.id ?? null,
       originalHotelId: activeAssignment?.hotelId ?? user.hotel?.id ?? null,
       assignmentReason: '',
+      changeReason: '',
     };
     this.userDialogMode = 'edit';
     this.displayDialog = true;
@@ -176,6 +183,8 @@ export class UserManagement implements OnInit {
         roleIds: payload.roleIds,
         hotelId: payload.hotelId,
         assignmentReason: String(payload.assignmentReason || '').trim() || null,
+        expectedVersion: payload.expectedVersion,
+        changeReason: String(payload.changeReason || '').trim(),
       };
       request = this.userService.updateStaff(this.userForm.id, staffRequest);
     } else {
@@ -228,6 +237,9 @@ export class UserManagement implements OnInit {
       return 'Select at least one staff role.';
     }
     if (!this.userForm.hotelId) return 'Select a property.';
+    if (String(this.userForm.changeReason || '').trim().length < 3) {
+      return 'Enter a change reason of at least 3 characters.';
+    }
     if (this.userForm.hotelId !== this.userForm.originalHotelId
         && String(this.userForm.assignmentReason || '').trim().length < 3) {
       return 'Enter a property move reason of at least 3 characters.';
@@ -265,8 +277,16 @@ export class UserManagement implements OnInit {
     }
 
     const request = this.lifecycleMode === 'deactivate'
-      ? this.userService.deactivateStaff(this.lifecycleUser.id, { hotelId: this.lifecycleHotelId, reason })
-      : this.userService.reactivateStaff(this.lifecycleUser.id, { hotelId: this.lifecycleHotelId, reason });
+      ? this.userService.deactivateStaff(this.lifecycleUser.id, {
+          hotelId: this.lifecycleHotelId,
+          reason,
+          expectedVersion: this.lifecycleUser.version
+        })
+      : this.userService.reactivateStaff(this.lifecycleUser.id, {
+          hotelId: this.lifecycleHotelId,
+          reason,
+          expectedVersion: this.lifecycleUser.version
+        });
 
     this.saving = true;
     request.pipe(
@@ -316,9 +336,17 @@ export class UserManagement implements OnInit {
     return roles.map(r => r.name).join(', ');
   }
 
+  openHistory(user: User): void {
+    const base = this.router.url.startsWith('/management') ? '/management/audit-log' : '/admin/audit-log';
+    this.router.navigate([base], {
+      queryParams: { domain: 'STAFF', aggregateType: 'USER', aggregateId: user.id }
+    });
+  }
+
   private createEmptyForm(): any {
     return {
       id: null,
+      expectedVersion: 0,
       username: '',
       email: '',
       password: '',
@@ -329,6 +357,7 @@ export class UserManagement implements OnInit {
       hotelId: null,
       originalHotelId: null,
       assignmentReason: '',
+      changeReason: '',
     };
   }
 }

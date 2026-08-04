@@ -2,6 +2,7 @@ package com.hotel.controllers;
 
 import com.hotel.dtos.RoleDto;
 import com.hotel.dtos.RoleCreateRequest;
+import com.hotel.dtos.RoleLifecycleRequest;
 import com.hotel.dtos.RoleUpdateRequest;
 import com.hotel.security.ActionCode;
 import com.hotel.security.FunctionCode;
@@ -50,14 +51,18 @@ public class RoleController {
 
     @DeleteMapping("/{id}")
     @Permission(function = FunctionCode.ROLE, action = ActionCode.DELETE)
-    public ResponseEntity<Void> deleteRole(@PathVariable Long id) {
-        roleService.deactivateRole(id);
+    public ResponseEntity<Void> deleteRole(
+            @PathVariable Long id,
+            @Valid @RequestBody RoleLifecycleRequest request) {
+        roleService.deactivateRole(id, request);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}/reactivate")
     @Permission(function = FunctionCode.ROLE, action = ActionCode.UPDATE)
-    public ResponseEntity<RoleDto> reactivateRole(@PathVariable Long id) {
-        return ResponseEntity.ok(roleService.reactivateRole(id));
+    public ResponseEntity<RoleDto> reactivateRole(
+            @PathVariable Long id,
+            @Valid @RequestBody RoleLifecycleRequest request) {
+        return ResponseEntity.ok(roleService.reactivateRole(id, request));
     }
 }

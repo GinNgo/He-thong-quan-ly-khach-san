@@ -5,6 +5,7 @@ import java.util.List;
 
 public record StaffListItemDto(
         Long id,
+        Long version,
         String username,
         String email,
         String fullName,

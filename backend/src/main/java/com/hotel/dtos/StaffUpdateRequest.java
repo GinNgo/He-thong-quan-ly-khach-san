@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 import java.util.Set;
@@ -34,6 +35,14 @@ public class StaffUpdateRequest {
     @Size(max = 500, message = "Assignment reason must not exceed 500 characters")
     private String assignmentReason;
 
+    @NotNull(message = "Expected version is required")
+    @PositiveOrZero(message = "Expected version is invalid")
+    private Long expectedVersion;
+
+    @NotBlank(message = "Change reason is required")
+    @Size(min = 3, max = 500, message = "Change reason must contain between 3 and 500 characters")
+    private String changeReason;
+
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
     public String getPhone() { return phone; }
@@ -46,4 +55,8 @@ public class StaffUpdateRequest {
     public void setHotelId(Long hotelId) { this.hotelId = hotelId; }
     public String getAssignmentReason() { return assignmentReason; }
     public void setAssignmentReason(String assignmentReason) { this.assignmentReason = assignmentReason; }
+    public Long getExpectedVersion() { return expectedVersion; }
+    public void setExpectedVersion(Long expectedVersion) { this.expectedVersion = expectedVersion; }
+    public String getChangeReason() { return changeReason; }
+    public void setChangeReason(String changeReason) { this.changeReason = changeReason; }
 }

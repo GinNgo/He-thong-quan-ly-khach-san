@@ -22,7 +22,8 @@ describe('RoleService', () => {
     const payload: CreateRoleRequest = {
       code: 'NIGHT_AUDITOR',
       name: 'Night auditor',
-      description: 'Night shift'
+      description: 'Night shift',
+      reason: 'Night coverage'
     };
 
     service.createRole(payload).subscribe(role => expect(role.status).toBe('ACTIVE'));
@@ -37,7 +38,9 @@ describe('RoleService', () => {
     const payload: UpdateRoleRequest = {
       code: 'NIGHT_AUDITOR',
       name: 'Night operations',
-      description: 'Updated'
+      description: 'Updated',
+      expectedVersion: 3,
+      reason: 'Operations restructure'
     };
 
     service.updateRole(20, payload).subscribe(role => expect(role.name).toBe('Night operations'));
@@ -50,15 +53,17 @@ describe('RoleService', () => {
   });
 
   it('uses separate endpoints for soft deactivation and reactivation', () => {
-    service.deleteRole(20).subscribe();
+    service.deleteRole(20, { expectedVersion: 3, reason: 'Role retired' }).subscribe();
     const deactivate = http.expectOne(`${environment.apiUrl}/roles/20`);
     expect(deactivate.request.method).toBe('DELETE');
+    expect(deactivate.request.body).toEqual({ expectedVersion: 3, reason: 'Role retired' });
     deactivate.flush(null);
 
-    service.reactivateRole(20).subscribe(role => expect(role.status).toBe('ACTIVE'));
+    service.reactivateRole(20, { expectedVersion: 4, reason: 'Role restored' })
+      .subscribe(role => expect(role.status).toBe('ACTIVE'));
     const reactivate = http.expectOne(`${environment.apiUrl}/roles/20/reactivate`);
     expect(reactivate.request.method).toBe('POST');
-    expect(reactivate.request.body).toEqual({});
+    expect(reactivate.request.body).toEqual({ expectedVersion: 4, reason: 'Role restored' });
     reactivate.flush({ id: 20, code: 'NIGHT_AUDITOR', name: 'Night auditor', status: 'ACTIVE' });
   });
 

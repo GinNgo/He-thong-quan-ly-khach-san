@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 
 export interface User {
   id: number;
+  version: number;
   username: string;
   email: string;
   fullName?: string;
@@ -45,6 +46,8 @@ export interface StaffUpdateRequest {
   roleIds: number[];
   hotelId: number;
   assignmentReason?: string | null;
+  expectedVersion: number;
+  changeReason: string;
 }
 
 export interface StaffAssignment {
@@ -60,6 +63,7 @@ export interface StaffAssignment {
 export interface StaffLifecycleRequest {
   hotelId: number;
   reason: string;
+  expectedVersion: number;
 }
 
 export interface ChangePasswordRequest {

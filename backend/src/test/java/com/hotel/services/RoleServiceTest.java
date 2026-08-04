@@ -2,6 +2,7 @@ package com.hotel.services;
 
 import com.hotel.dtos.RoleCreateRequest;
 import com.hotel.dtos.RoleDto;
+import com.hotel.dtos.RoleLifecycleRequest;
 import com.hotel.dtos.RoleUpdateRequest;
 import com.hotel.entities.Role;
 import com.hotel.repositories.RolePermissionRepository;
@@ -54,7 +55,7 @@ class RoleServiceTest {
     void createRole_NormalizesGlobalTemplateAndOwnsLifecycleFields() {
         RoleCreateRequest request = createRequest(" night_auditor ", "  Night auditor  ", "  Night shift  ");
         when(roleRepository.findByCodeIgnoreCase("NIGHT_AUDITOR")).thenReturn(Optional.empty());
-        when(roleRepository.save(any(Role.class))).thenAnswer(invocation -> {
+        when(roleRepository.saveAndFlush(any(Role.class))).thenAnswer(invocation -> {
             Role saved = invocation.getArgument(0);
             saved.setId(20L);
             saved.setVersion(0L);
@@ -82,7 +83,7 @@ class RoleServiceTest {
                 () -> roleService.createRole(request));
 
         assertEquals("Mã vai trò đã tồn tại.", error.getMessage());
-        verify(roleRepository, never()).save(any());
+        verify(roleRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -95,7 +96,7 @@ class RoleServiceTest {
 
         assertEquals("Mã vai trò hệ thống được dành riêng.", error.getMessage());
         verify(roleRepository, never()).findByCodeIgnoreCase(any());
-        verify(roleRepository, never()).save(any());
+        verify(roleRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -104,7 +105,7 @@ class RoleServiceTest {
         RoleUpdateRequest request = updateRequest(" night_auditor ", "  Night operations  ", "  Updated  ");
         when(roleRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(customRole));
         when(roleRepository.findByCodeIgnoreCase("NIGHT_AUDITOR")).thenReturn(Optional.of(customRole));
-        when(roleRepository.save(customRole)).thenReturn(customRole);
+        when(roleRepository.saveAndFlush(customRole)).thenReturn(customRole);
 
         RoleDto result = roleService.updateRole(20L, request);
 
@@ -121,21 +122,21 @@ class RoleServiceTest {
 
         IllegalStateException error = assertThrows(
                 IllegalStateException.class,
-                () -> roleService.deactivateRole(20L));
+                () -> roleService.deactivateRole(20L, lifecycleRequest(0L, "Role no longer used")));
 
         assertEquals("Không thể ngừng sử dụng vai trò đang được gán cho người dùng.", error.getMessage());
         assertEquals("ACTIVE", customRole.getStatus());
-        verify(roleRepository, never()).save(any());
+        verify(roleRepository, never()).saveAndFlush(any());
     }
 
     @Test
     void deactivateAndReactivateRole_UseSoftLifecycleWithoutDeleting() {
         when(roleRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(customRole));
         when(userRepository.countByRoleId(20L)).thenReturn(0L);
-        when(roleRepository.save(customRole)).thenReturn(customRole);
+        when(roleRepository.saveAndFlush(customRole)).thenReturn(customRole);
 
-        roleService.deactivateRole(20L);
-        RoleDto reactivated = roleService.reactivateRole(20L);
+        roleService.deactivateRole(20L, lifecycleRequest(0L, "Role no longer used"));
+        RoleDto reactivated = roleService.reactivateRole(20L, lifecycleRequest(0L, "Role needed again"));
 
         assertEquals("ACTIVE", reactivated.getStatus());
         verify(roleRepository, never()).delete(any());
@@ -148,10 +149,11 @@ class RoleServiceTest {
         customRole.setSystemRole(false);
         when(roleRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(customRole));
 
-        assertThrows(IllegalStateException.class, () -> roleService.deactivateRole(20L));
+        assertThrows(IllegalStateException.class,
+                () -> roleService.deactivateRole(20L, lifecycleRequest(0L, "Invalid system mutation")));
 
         verify(userRepository, never()).countByRoleId(any());
-        verify(roleRepository, never()).save(any());
+        verify(roleRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -168,7 +170,7 @@ class RoleServiceTest {
 
         assertEquals("Mã, tên, mô tả và trạng thái vai trò hệ thống là bất biến.", error.getMessage());
         verify(roleRepository, never()).findByCodeIgnoreCase(any());
-        verify(roleRepository, never()).save(any());
+        verify(roleRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -180,7 +182,7 @@ class RoleServiceTest {
 
         assertThrows(IllegalStateException.class, () -> roleService.updateRole(20L, request));
 
-        verify(roleRepository, never()).save(any());
+        verify(roleRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -202,6 +204,7 @@ class RoleServiceTest {
         request.setCode(code);
         request.setName(name);
         request.setDescription(description);
+        request.setReason("Catalog governance change");
         return request;
     }
 
@@ -210,6 +213,15 @@ class RoleServiceTest {
         request.setCode(code);
         request.setName(name);
         request.setDescription(description);
+        request.setExpectedVersion(0L);
+        request.setReason("Catalog governance change");
+        return request;
+    }
+
+    private RoleLifecycleRequest lifecycleRequest(Long expectedVersion, String reason) {
+        RoleLifecycleRequest request = new RoleLifecycleRequest();
+        request.setExpectedVersion(expectedVersion);
+        request.setReason(reason);
         return request;
     }
 }

@@ -2,6 +2,7 @@ package com.hotel.services;
 
 import com.hotel.dtos.RoleCreateRequest;
 import com.hotel.dtos.RoleDto;
+import com.hotel.dtos.RoleLifecycleRequest;
 import com.hotel.dtos.RoleUpdateRequest;
 import com.hotel.entities.Role;
 import com.hotel.exceptions.ResourceNotFoundException;
@@ -9,11 +10,13 @@ import com.hotel.repositories.RolePermissionRepository;
 import com.hotel.repositories.RoleRepository;
 import com.hotel.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -50,8 +53,8 @@ public class RoleService {
         role.setDescription(input.description());
         role.setStatus("ACTIVE");
         role.setSystemRole(false);
-        Role saved = roleRepository.save(role);
-        audit("ROLE_CREATED", saved, null, roleSnapshot(saved), "Custom role created");
+        Role saved = roleRepository.saveAndFlush(role);
+        audit("ROLE_CREATED", saved, null, roleSnapshot(saved), normalizeReason(request.getReason()));
         return convertToDto(saved);
     }
 
@@ -60,34 +63,46 @@ public class RoleService {
         Role role = roleRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found."));
         rejectSystemRoleMutation(role);
+        requireExpectedVersion(request.getExpectedVersion(), role.getVersion());
         java.util.Map<String, Object> before = roleSnapshot(role);
         NormalizedRoleInput input = normalizeAndValidate(
                 request.getCode(), request.getName(), request.getDescription(), id);
         role.setCode(input.code());
         role.setName(input.name());
         role.setDescription(input.description());
-        Role saved = roleRepository.save(role);
-        audit("ROLE_UPDATED", saved, before, roleSnapshot(saved), "Role metadata updated");
+        role.setUpdatedAt(java.time.LocalDateTime.now());
+        Role saved = roleRepository.saveAndFlush(role);
+        audit("ROLE_UPDATED", saved, before, roleSnapshot(saved), normalizeReason(request.getReason()));
         return convertToDto(saved);
     }
 
     @Transactional
-    public void deactivateRole(Long id) {
+    public void deactivateRole(Long id, RoleLifecycleRequest request) {
         Role role = customRoleForUpdate(id);
+        requireExpectedVersion(request.getExpectedVersion(), role.getVersion());
+        if ("INACTIVE".equalsIgnoreCase(role.getStatus())) {
+            throw new IllegalStateException("Vai trò đã ngừng hoạt động.");
+        }
         ensureUnassigned(role);
         java.util.Map<String, Object> before = roleSnapshot(role);
         role.setStatus("INACTIVE");
-        Role saved = roleRepository.save(role);
-        audit("ROLE_DEACTIVATED", saved, before, roleSnapshot(saved), "Custom role deactivated");
+        role.setUpdatedAt(java.time.LocalDateTime.now());
+        Role saved = roleRepository.saveAndFlush(role);
+        audit("ROLE_DEACTIVATED", saved, before, roleSnapshot(saved), normalizeReason(request.getReason()));
     }
 
     @Transactional
-    public RoleDto reactivateRole(Long id) {
+    public RoleDto reactivateRole(Long id, RoleLifecycleRequest request) {
         Role role = customRoleForUpdate(id);
+        requireExpectedVersion(request.getExpectedVersion(), role.getVersion());
+        if (!"INACTIVE".equalsIgnoreCase(role.getStatus())) {
+            throw new IllegalStateException("Vai trò đang hoạt động.");
+        }
         java.util.Map<String, Object> before = roleSnapshot(role);
         role.setStatus("ACTIVE");
-        Role saved = roleRepository.save(role);
-        audit("ROLE_REACTIVATED", saved, before, roleSnapshot(saved), "Custom role reactivated");
+        role.setUpdatedAt(java.time.LocalDateTime.now());
+        Role saved = roleRepository.saveAndFlush(role);
+        audit("ROLE_REACTIVATED", saved, before, roleSnapshot(saved), normalizeReason(request.getReason()));
         return convertToDto(saved);
     }
 
@@ -128,6 +143,21 @@ public class RoleService {
         if (Role.isSystemCode(code)) {
             throw new IllegalArgumentException("Mã vai trò hệ thống được dành riêng.");
         }
+    }
+
+    private void requireExpectedVersion(Long expectedVersion, Long currentVersion) {
+        if (!Objects.equals(expectedVersion, currentVersion)) {
+            throw new OptimisticLockingFailureException(
+                    "Vai trò đã được thay đổi. Hãy tải lại dữ liệu trước khi thử lại.");
+        }
+    }
+
+    private String normalizeReason(String value) {
+        String reason = value == null ? "" : value.trim();
+        if (reason.length() < 3 || reason.length() > 500) {
+            throw new IllegalArgumentException("Lý do thay đổi phải có từ 3 đến 500 ký tự.");
+        }
+        return reason;
     }
 
     private void ensureUnassigned(Role role) {

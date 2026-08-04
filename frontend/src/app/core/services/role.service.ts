@@ -32,9 +32,17 @@ export interface CreateRoleRequest {
   code: string;
   name: string;
   description?: string;
+  reason: string;
 }
 
-export interface UpdateRoleRequest extends CreateRoleRequest {}
+export interface UpdateRoleRequest extends CreateRoleRequest {
+  expectedVersion: number;
+}
+
+export interface RoleLifecycleRequest {
+  expectedVersion: number;
+  reason: string;
+}
 
 export interface AppModule {
   id: number;
@@ -94,12 +102,12 @@ export class RoleService {
     );
   }
 
-  deleteRole(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  deleteRole(id: number, request: RoleLifecycleRequest): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`, { body: request });
   }
 
-  reactivateRole(id: number): Observable<Role> {
-    return this.http.post<any>(`${this.apiUrl}/${id}/reactivate`, {}).pipe(
+  reactivateRole(id: number, request: RoleLifecycleRequest): Observable<Role> {
+    return this.http.post<any>(`${this.apiUrl}/${id}/reactivate`, request).pipe(
       map(response => response?.data ?? response)
     );
   }

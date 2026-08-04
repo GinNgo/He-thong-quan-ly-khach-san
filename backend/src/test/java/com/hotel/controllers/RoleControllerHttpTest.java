@@ -2,6 +2,7 @@ package com.hotel.controllers;
 
 import com.hotel.dtos.RoleCreateRequest;
 import com.hotel.dtos.RoleDto;
+import com.hotel.dtos.RoleLifecycleRequest;
 import com.hotel.security.ActionCode;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.Permission;
@@ -53,7 +54,7 @@ class RoleControllerHttpTest {
     void createRole_InvalidPayload_ReturnsStructuredValidationError() throws Exception {
         mockMvc.perform(post("/api/roles")
                         .contentType("application/json")
-                        .content("{\"code\":\"bad code\",\"name\":\"\"}"))
+                        .content("{\"code\":\"bad code\",\"name\":\"\",\"reason\":\"\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.fieldErrors.code").exists())
@@ -69,7 +70,7 @@ class RoleControllerHttpTest {
 
         mockMvc.perform(post("/api/roles")
                         .contentType("application/json")
-                        .content("{\"code\":\"NIGHT_AUDITOR\",\"name\":\"Night auditor\",\"status\":\"INACTIVE\",\"systemRole\":true}"))
+                        .content("{\"code\":\"NIGHT_AUDITOR\",\"name\":\"Night auditor\",\"reason\":\"Night coverage\",\"status\":\"INACTIVE\",\"systemRole\":true}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.systemRole").value(false));
@@ -83,7 +84,7 @@ class RoleControllerHttpTest {
     void updateRole_InvalidPayload_Returns400BeforeService() throws Exception {
         mockMvc.perform(put("/api/roles/20")
                         .contentType("application/json")
-                        .content("{\"code\":\"\",\"name\":\"Night auditor\"}"))
+                        .content("{\"code\":\"\",\"name\":\"Night auditor\",\"expectedVersion\":0,\"reason\":\"Update role\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 
@@ -93,9 +94,11 @@ class RoleControllerHttpTest {
     @Test
     void deactivateAssignedRole_Returns409AndPreservesMessage() throws Exception {
         org.mockito.Mockito.doThrow(new IllegalStateException("Role is assigned."))
-                .when(roleService).deactivateRole(20L);
+                .when(roleService).deactivateRole(org.mockito.ArgumentMatchers.eq(20L), any());
 
-        mockMvc.perform(delete("/api/roles/20"))
+        mockMvc.perform(delete("/api/roles/20")
+                        .contentType("application/json")
+                        .content("{\"expectedVersion\":0,\"reason\":\"Role retired\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"))
                 .andExpect(jsonPath("$.message").value("Role is assigned."));
@@ -109,7 +112,7 @@ class RoleControllerHttpTest {
 
         mockMvc.perform(put("/api/roles/7")
                         .contentType("application/json")
-                        .content("{\"code\":\"RECEPTIONIST\",\"name\":\"Tampered\",\"description\":\"Tampered\"}"))
+                        .content("{\"code\":\"RECEPTIONIST\",\"name\":\"Tampered\",\"description\":\"Tampered\",\"expectedVersion\":0,\"reason\":\"Tampering attempt\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"))
                 .andExpect(jsonPath("$.message").value(
@@ -118,8 +121,8 @@ class RoleControllerHttpTest {
 
     @Test
     void lifecycleRoutes_UseDeleteForDeactivationAndUpdateForReactivation() throws Exception {
-        Method deactivate = RoleController.class.getMethod("deleteRole", Long.class);
-        Method reactivate = RoleController.class.getMethod("reactivateRole", Long.class);
+        Method deactivate = RoleController.class.getMethod("deleteRole", Long.class, RoleLifecycleRequest.class);
+        Method reactivate = RoleController.class.getMethod("reactivateRole", Long.class, RoleLifecycleRequest.class);
 
         Permission deactivatePermission = deactivate.getAnnotation(Permission.class);
         Permission reactivatePermission = reactivate.getAnnotation(Permission.class);

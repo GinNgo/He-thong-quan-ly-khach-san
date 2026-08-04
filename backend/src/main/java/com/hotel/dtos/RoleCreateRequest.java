@@ -21,4 +21,8 @@ public class RoleCreateRequest {
 
     @Size(max = 500, message = "Role description must not exceed 500 characters.")
     private String description;
+
+    @NotBlank(message = "Change reason is required.")
+    @Size(min = 3, max = 500, message = "Change reason must contain between 3 and 500 characters.")
+    private String reason;
 }

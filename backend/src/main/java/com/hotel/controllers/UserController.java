@@ -107,7 +107,7 @@ public class UserController {
     @Permission(function = FunctionCode.USER, action = ActionCode.DELETE)
     public ResponseEntity<UserDto> deactivateStaff(
             @PathVariable Long id,
-            @RequestBody com.hotel.dtos.StaffLifecycleRequest request) {
+            @Valid @RequestBody com.hotel.dtos.StaffLifecycleRequest request) {
         return ResponseEntity.ok(userService.deactivateStaff(id, request));
     }
 
@@ -115,7 +115,7 @@ public class UserController {
     @Permission(function = FunctionCode.USER, action = ActionCode.UPDATE)
     public ResponseEntity<UserDto> reactivateStaff(
             @PathVariable Long id,
-            @RequestBody com.hotel.dtos.StaffLifecycleRequest request) {
+            @Valid @RequestBody com.hotel.dtos.StaffLifecycleRequest request) {
         return ResponseEntity.ok(userService.reactivateStaff(id, request));
     }
 

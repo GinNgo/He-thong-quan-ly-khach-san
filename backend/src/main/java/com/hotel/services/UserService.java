@@ -13,6 +13,7 @@ import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 import java.net.URI;
 import java.text.Normalizer;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 @Service
@@ -230,6 +232,7 @@ public class UserService {
         User user = userRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Staff account not found."));
         requireStaffUpdateAuthority(user, systemAdministrator);
+        String changeReason = requireMutationReason(request.getChangeReason());
 
         List<com.hotel.entities.UserProperty> assignments =
                 userPropertyRepository.findStaffAssignmentsForUpdate(id);
@@ -256,6 +259,7 @@ public class UserService {
                 || !propertyAccessService.accessibleHotelIds().contains(item.getHotel().getId()))) {
             throw new SecurityException("A shared staff account requires system administrator review.");
         }
+        requireExpectedUserVersion(request.getExpectedVersion(), user.getVersion());
 
         com.hotel.entities.UserProperty targetActiveAssignment = activeAssignments.stream()
                 .filter(item -> item.getHotel() != null
@@ -283,6 +287,7 @@ public class UserService {
         }
         user.setRoles(roles);
         user.setHotel(targetHotel);
+        user.setUpdatedAt(java.time.LocalDateTime.now());
 
         if (propertyMove) {
             java.time.LocalDateTime now = java.time.LocalDateTime.now();
@@ -309,8 +314,7 @@ public class UserService {
 
         User saved = userRepository.saveAndFlush(user);
         auditStaff(propertyMove ? "STAFF_PROPERTY_MOVED" : "STAFF_UPDATED", saved, targetHotel,
-                before, staffSnapshot(saved, targetHotel),
-                propertyMove ? assignmentReason : "Staff profile and roles updated");
+                before, staffSnapshot(saved, targetHotel), changeReason);
         return convertToDto(saved, systemAdministrator ? null : propertyAccessService.accessibleHotelIds());
     }
 
@@ -448,15 +452,16 @@ public class UserService {
     @Transactional
     public UserDto deactivateStaff(Long id, StaffLifecycleRequest request) {
         boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        java.util.Map<String, Object> before = staffSnapshot(user, user.getHotel());
+        User user = userRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Staff account not found."));
         User actor = propertyAccessService.currentUser();
         String reason = requireLifecycleReason(request);
         com.hotel.entities.Hotel hotel = requireLifecycleHotel(request, systemAdministrator);
         List<com.hotel.entities.UserProperty> assignments =
                 userPropertyRepository.findStaffAssignmentsForUpdate(id);
         requireLifecycleAuthority(user, actor, assignments, hotel.getId(), systemAdministrator);
+        requireExpectedUserVersion(request.getExpectedVersion(), user.getVersion());
+        java.util.Map<String, Object> before = staffSnapshot(user, user.getHotel());
 
         com.hotel.entities.UserProperty assignment = assignments.stream()
                 .filter(item -> item.getHotel() != null
@@ -475,24 +480,26 @@ public class UserService {
 
         if (userPropertyRepository.countByUserIdAndStatus(id, "ACTIVE") == 0) {
             user.setStatus("INACTIVE");
-            userRepository.save(user);
         }
-        auditStaff("STAFF_DEACTIVATED", user, hotel, before, staffSnapshot(user, hotel), reason);
-        return convertToDto(user, systemAdministrator ? null : propertyAccessService.accessibleHotelIds());
+        user.setUpdatedAt(now);
+        User saved = userRepository.saveAndFlush(user);
+        auditStaff("STAFF_DEACTIVATED", saved, hotel, before, staffSnapshot(saved, hotel), reason);
+        return convertToDto(saved, systemAdministrator ? null : propertyAccessService.accessibleHotelIds());
     }
 
     @Transactional
     public UserDto reactivateStaff(Long id, StaffLifecycleRequest request) {
         boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        java.util.Map<String, Object> before = staffSnapshot(user, user.getHotel());
+        User user = userRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Staff account not found."));
         User actor = propertyAccessService.currentUser();
         String reason = requireLifecycleReason(request);
         com.hotel.entities.Hotel hotel = requireLifecycleHotel(request, systemAdministrator);
         List<com.hotel.entities.UserProperty> assignments =
                 userPropertyRepository.findStaffAssignmentsForUpdate(id);
         requireLifecycleAuthority(user, actor, assignments, hotel.getId(), systemAdministrator);
+        requireExpectedUserVersion(request.getExpectedVersion(), user.getVersion());
+        java.util.Map<String, Object> before = staffSnapshot(user, user.getHotel());
 
         boolean hasHistory = assignments.stream().anyMatch(item -> item.getHotel() != null
                 && hotel.getId().equals(item.getHotel().getId()));
@@ -527,7 +534,8 @@ public class UserService {
 
         user.setStatus("ACTIVE");
         user.setHotel(hotel);
-        User saved = userRepository.save(user);
+        user.setUpdatedAt(now);
+        User saved = userRepository.saveAndFlush(user);
         auditStaff("STAFF_REACTIVATED", saved, hotel, before, staffSnapshot(saved, hotel), reason);
         return convertToDto(saved, systemAdministrator ? null : propertyAccessService.accessibleHotelIds());
     }
@@ -733,6 +741,7 @@ public class UserService {
     private UserDto convertToDto(User user, java.util.Set<Long> visibleHotelIds) {
         UserDto dto = new UserDto();
         dto.setId(user.getId());
+        dto.setVersion(user.getVersion());
         dto.setUsername(user.getUsername());
         dto.setEmail(user.getEmail());
         dto.setEmailVerifiedAt(user.getEmailVerifiedAt());
@@ -817,6 +826,7 @@ public class UserService {
                         .toList();
         return new StaffListItemDto(
                 user.getId(),
+                user.getVersion(),
                 user.getUsername(),
                 user.getEmail(),
                 user.getFullName(),
@@ -830,11 +840,23 @@ public class UserService {
     private java.util.Map<String, Object> staffSnapshot(User user, com.hotel.entities.Hotel hotel) {
         java.util.Map<String, Object> snapshot = new java.util.LinkedHashMap<>();
         snapshot.put("id", user.getId());
+        snapshot.put("version", user.getVersion());
         snapshot.put("username", user.getUsername());
         snapshot.put("status", user.getStatus());
         snapshot.put("roleCodes", user.getRoles() == null ? java.util.List.of() : user.getRoles().stream()
                 .map(com.hotel.entities.Role::getCode).sorted().toList());
         snapshot.put("hotelId", hotel == null ? null : hotel.getId());
+        snapshot.put("assignments", userPropertyRepository
+                .findByUserIdAndRelationshipTypeOrderByStartDateDesc(user.getId(), "STAFF")
+                .stream()
+                .map(item -> java.util.Map.of(
+                        "id", item.getId(),
+                        "hotelId", item.getHotel().getId(),
+                        "status", item.getStatus(),
+                        "reason", item.getStatusReason() == null ? "" : item.getStatusReason(),
+                        "startDate", item.getStartDate() == null ? "" : item.getStartDate().toString(),
+                        "endDate", item.getEndDate() == null ? "" : item.getEndDate().toString()))
+                .toList());
         return snapshot;
     }
 
@@ -842,11 +864,27 @@ public class UserService {
                             Object before, Object after, String reason) {
         if (operationalAuditService == null) return;
         String scope = hotel == null ? "SYSTEM" : "TENANT";
+        User actor = propertyAccessService == null ? null : propertyAccessService.currentUser();
         operationalAuditService.append(new OperationalAuditService.AuditCommand(
                 scope, hotel == null ? null : hotel.getId(), "STAFF", eventType, "USER",
-                String.valueOf(user.getId()), null, null,
+                String.valueOf(user.getId()), actor == null ? null : "USER", actor == null ? null : actor.getId(),
                 reason == null || reason.isBlank() ? "Staff mutation completed" : reason,
                 before, after, null));
+    }
+
+    private void requireExpectedUserVersion(Long expectedVersion, Long currentVersion) {
+        if (!Objects.equals(expectedVersion, currentVersion)) {
+            throw new OptimisticLockingFailureException(
+                    "Staff account changed. Reload current data before retrying.");
+        }
+    }
+
+    private String requireMutationReason(String value) {
+        String reason = value == null ? "" : value.trim();
+        if (reason.length() < 3 || reason.length() > 500) {
+            throw new IllegalArgumentException("A change reason of 3 to 500 characters is required.");
+        }
+        return reason;
     }
 
     @Autowired

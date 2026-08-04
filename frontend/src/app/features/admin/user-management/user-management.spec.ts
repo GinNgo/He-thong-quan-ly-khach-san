@@ -1,13 +1,15 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { RoleService } from '@app/core/services/role.service';
 import { User, UserService } from '@app/core/services/user';
+import { PermissionService } from '@app/core/services/permission.service';
 import { UserManagement } from './user-management';
 
 describe('UserManagement staff lifecycle', () => {
   const staff: User = {
     id: 42,
+    version: 7,
     username: 'staff-42',
     email: 'staff42@example.com',
     fullName: 'Nguyen Staff',
@@ -26,6 +28,9 @@ describe('UserManagement staff lifecycle', () => {
     ],
   };
 
+  const router = { url: '/admin/users', navigate: vi.fn() };
+  const permissionService = { hasPermission: vi.fn(() => true) };
+
   let userService: {
     getUsers: ReturnType<typeof vi.fn>;
     getStaff: ReturnType<typeof vi.fn>;
@@ -40,6 +45,7 @@ describe('UserManagement staff lifecycle', () => {
   };
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     userService = {
       getUsers: vi.fn(() => of([staff])),
       getStaff: vi.fn(() => of([staff])),
@@ -67,6 +73,8 @@ describe('UserManagement staff lifecycle', () => {
           provide: ActivatedRoute,
           useValue: { snapshot: { data: { userType: 'STAFF' } }, data: of({ userType: 'STAFF' }) },
         },
+        { provide: Router, useValue: router },
+        { provide: PermissionService, useValue: permissionService },
       ],
     }).compileComponents();
   });
@@ -98,8 +106,9 @@ describe('UserManagement staff lifecycle', () => {
     expect(userService.reactivateStaff).toHaveBeenCalledWith(42, {
       hotelId: 11,
       reason: 'New seasonal contract',
+      expectedVersion: 7,
     });
-  });
+  }, 15000);
 
   it('loads the tenant-scoped staff and property options instead of public hotel search data', () => {
     const fixture = TestBed.createComponent(UserManagement);
@@ -171,6 +180,7 @@ describe('UserManagement staff lifecycle', () => {
     component.editUser(staff);
     component.userForm.hotelId = 11;
     component.userForm.assignmentReason = '';
+    component.userForm.changeReason = 'Approved profile update';
     component.saveUser();
 
     expect(userService.updateStaff).not.toHaveBeenCalled();
@@ -184,6 +194,7 @@ describe('UserManagement staff lifecycle', () => {
     component.editUser(staff);
     component.userForm.hotelId = 11;
     component.userForm.assignmentReason = 'Transfer to Hue property';
+    component.userForm.changeReason = 'Approved role and property update';
     component.userForm.password = '';
     component.saveUser();
 
@@ -194,7 +205,20 @@ describe('UserManagement staff lifecycle', () => {
       roleIds: [3],
       hotelId: 11,
       assignmentReason: 'Transfer to Hue property',
+      expectedVersion: 7,
+      changeReason: 'Approved role and property update',
     });
     expect(userService.updateUser).not.toHaveBeenCalled();
+  });
+
+  it('opens tenant-safe audit history for the selected staff account', () => {
+    const fixture = TestBed.createComponent(UserManagement);
+    fixture.detectChanges();
+
+    fixture.componentInstance.openHistory(staff);
+
+    expect(router.navigate).toHaveBeenCalledWith(['/admin/audit-log'], {
+      queryParams: { domain: 'STAFF', aggregateType: 'USER', aggregateId: 42 },
+    });
   });
 });

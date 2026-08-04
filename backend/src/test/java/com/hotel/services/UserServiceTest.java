@@ -85,6 +85,7 @@ class UserServiceTest {
         staff.setPasswordHash("StrongPass1");
         staff.setFullName("Staff One");
         staff.setStatus("ACTIVE");
+        staff.setVersion(0L);
 
         hotel = new Hotel();
         hotel.setId(10L);
@@ -300,11 +301,12 @@ class UserServiceTest {
     void deactivateStaff_LastAssignment_SoftLocksAccountAndRetainsHistory() {
         UserProperty mapping = activeAssignment(hotel);
         when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
-        when(userRepository.findById(2L)).thenReturn(java.util.Optional.of(staff));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(java.util.Optional.of(staff));
         when(propertyAccessService.currentUser()).thenReturn(owner);
         when(propertyAccessService.requireManagedHotel(10L)).thenReturn(hotel);
         when(propertyAccessService.accessibleHotelIds()).thenReturn(Set.of(10L));
         when(userPropertyRepository.findStaffAssignmentsForUpdate(2L)).thenReturn(List.of(mapping));
+        when(userRepository.saveAndFlush(staff)).thenReturn(staff);
 
         userService.deactivateStaff(2L, lifecycleRequest(10L, "End of employment contract"));
 
@@ -314,7 +316,7 @@ class UserServiceTest {
         assertEquals("INACTIVE", staff.getStatus());
         assertThrows(AccountDisabledAuthenticationException.class, () -> AccountStatusPolicy.requireActive(staff));
         verify(userPropertyRepository).save(mapping);
-        verify(userRepository).save(staff);
+        verify(userRepository).saveAndFlush(staff);
         verify(userRepository, never()).delete(any());
         verify(userPropertyRepository, never()).deleteAll(any());
     }
@@ -326,19 +328,20 @@ class UserServiceTest {
         UserProperty target = activeAssignment(hotel);
         UserProperty other = activeAssignment(otherHotel);
         when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
-        when(userRepository.findById(2L)).thenReturn(java.util.Optional.of(staff));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(java.util.Optional.of(staff));
         when(propertyAccessService.currentUser()).thenReturn(owner);
         when(propertyAccessService.requireManagedHotel(10L)).thenReturn(hotel);
         when(propertyAccessService.accessibleHotelIds()).thenReturn(Set.of(10L));
         when(userPropertyRepository.findStaffAssignmentsForUpdate(2L)).thenReturn(List.of(target, other));
         when(userPropertyRepository.countByUserIdAndStatus(2L, "ACTIVE")).thenReturn(1L);
+        when(userRepository.saveAndFlush(staff)).thenReturn(staff);
 
         userService.deactivateStaff(2L, lifecycleRequest(10L, "Property assignment ended"));
 
         assertEquals("INACTIVE", target.getStatus());
         assertEquals("ACTIVE", other.getStatus());
         assertEquals("ACTIVE", staff.getStatus());
-        verify(userRepository, never()).save(staff);
+        verify(userRepository).saveAndFlush(staff);
     }
 
     @Test
@@ -349,7 +352,7 @@ class UserServiceTest {
         historical.setStatusReason("Previous contract ended");
         staff.setStatus("INACTIVE");
         when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
-        when(userRepository.findById(2L)).thenReturn(java.util.Optional.of(staff));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(java.util.Optional.of(staff));
         when(propertyAccessService.currentUser()).thenReturn(owner);
         when(propertyAccessService.requireManagedHotel(10L)).thenReturn(hotel);
         when(propertyAccessService.accessibleHotelIds()).thenReturn(Set.of(10L));
@@ -357,7 +360,7 @@ class UserServiceTest {
         when(propertyEntitlementService.getCurrentForUpdate(10L)).thenReturn(
                 PropertySubscriptionEntitlementService.EntitlementView.none(10L, "TEST"));
         when(userPropertyRepository.countActiveStaffByHotelId(10L)).thenReturn(3L);
-        when(userRepository.save(staff)).thenReturn(staff);
+        when(userRepository.saveAndFlush(staff)).thenReturn(staff);
 
         userService.reactivateStaff(2L, lifecycleRequest(10L, "New seasonal contract"));
 
@@ -376,7 +379,7 @@ class UserServiceTest {
     @Test
     void deactivateStaff_AsPropertyOwner_RejectsAssignmentOutsideScope() {
         when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
-        when(userRepository.findById(2L)).thenReturn(java.util.Optional.of(staff));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(java.util.Optional.of(staff));
         when(propertyAccessService.currentUser()).thenReturn(owner);
         when(propertyAccessService.requireManagedHotel(99L))
                 .thenThrow(new SecurityException("Property access denied"));
@@ -402,6 +405,7 @@ class UserServiceTest {
         StaffLifecycleRequest request = new StaffLifecycleRequest();
         request.setHotelId(hotelId);
         request.setReason(reason);
+        request.setExpectedVersion(0L);
         return request;
     }
 
@@ -412,6 +416,8 @@ class UserServiceTest {
         request.setRoleIds(Set.of(3L));
         request.setHotelId(hotelId);
         request.setAssignmentReason(reason);
+        request.setExpectedVersion(0L);
+        request.setChangeReason(reason == null ? "Staff metadata updated" : reason);
         return request;
     }
 }

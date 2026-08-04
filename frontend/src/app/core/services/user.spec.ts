@@ -69,6 +69,8 @@ describe('UserService staff reads', () => {
       roleIds: [3],
       hotelId: 11,
       assignmentReason: 'Transfer to Hue',
+      expectedVersion: 4,
+      changeReason: 'Approved staff transfer',
     };
 
     service.updateStaff(42, payload).subscribe();
@@ -77,5 +79,25 @@ describe('UserService staff reads', () => {
     expect(request.request.method).toBe('PUT');
     expect(request.request.body).toEqual(payload);
     request.flush({ id: 42, ...payload });
+  });
+
+  it('sends versioned staff lifecycle requests to the dedicated endpoints', () => {
+    const payload = { hotelId: 11, reason: 'Season ended', expectedVersion: 5 };
+
+    service.deactivateStaff(42, payload).subscribe();
+    const deactivate = http.expectOne(`${environment.apiUrl}/users/42/deactivate`);
+    expect(deactivate.request.method).toBe('POST');
+    expect(deactivate.request.body).toEqual(payload);
+    deactivate.flush({ id: 42, version: 6, status: 'INACTIVE' });
+
+    service.reactivateStaff(42, { ...payload, reason: 'Season reopened', expectedVersion: 6 }).subscribe();
+    const reactivate = http.expectOne(`${environment.apiUrl}/users/42/reactivate`);
+    expect(reactivate.request.method).toBe('POST');
+    expect(reactivate.request.body).toEqual({
+      hotelId: 11,
+      reason: 'Season reopened',
+      expectedVersion: 6,
+    });
+    reactivate.flush({ id: 42, version: 7, status: 'ACTIVE' });
   });
 });

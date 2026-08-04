@@ -26,6 +26,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -110,17 +111,19 @@ class StaffUpdateConcurrencyIntegrationTest {
         ExecutorService executor = Executors.newFixedThreadPool(2);
         CountDownLatch start = new CountDownLatch(1);
         try {
-            Future<?> first = executor.submit(() -> moveAfter(start, firstTarget, "Concurrent move A"));
-            Future<?> second = executor.submit(() -> moveAfter(start, secondTarget, "Concurrent move B"));
+            Future<Throwable> first = executor.submit(() -> moveAfter(start, firstTarget, "Concurrent move A"));
+            Future<Throwable> second = executor.submit(() -> moveAfter(start, secondTarget, "Concurrent move B"));
             start.countDown();
-            first.get(20, TimeUnit.SECONDS);
-            second.get(20, TimeUnit.SECONDS);
+            assertThat(java.util.Arrays.asList(first.get(20, TimeUnit.SECONDS), second.get(20, TimeUnit.SECONDS)))
+                    .filteredOn(java.util.Objects::nonNull)
+                    .singleElement()
+                    .isInstanceOf(OptimisticLockingFailureException.class);
         } finally {
             executor.shutdownNow();
         }
 
         assertThat(userPropertyRepository.findByUserIdAndRelationshipType(staff.getId(), "STAFF"))
-                .hasSize(3)
+                .hasSize(2)
                 .filteredOn(item -> "ACTIVE".equals(item.getStatus()))
                 .singleElement();
     }
@@ -141,7 +144,9 @@ class StaffUpdateConcurrencyIntegrationTest {
                                 "fullName", "Changed Before Failure",
                                 "roleIds", Set.of(receptionist.getId()),
                                 "hotelId", firstTarget.getId(),
-                                "assignmentReason", "Rollback move"))))
+                                "assignmentReason", "Rollback move",
+                                "expectedVersion", staff.getVersion(),
+                                "changeReason", "Rollback move audit"))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("DATA_CONFLICT"));
 
@@ -157,13 +162,16 @@ class StaffUpdateConcurrencyIntegrationTest {
                 });
     }
 
-    private void moveAfter(CountDownLatch start, Hotel target, String reason) {
+    private Throwable moveAfter(CountDownLatch start, Hotel target, String reason) {
         try {
             if (!start.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Start latch timed out");
             userService.updateStaff(staff.getId(), updateRequest(target.getId(), reason));
+            return null;
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException(exception);
+            return new IllegalStateException(exception);
+        } catch (RuntimeException exception) {
+            return exception;
         }
     }
 
@@ -173,6 +181,8 @@ class StaffUpdateConcurrencyIntegrationTest {
         request.setRoleIds(Set.of(receptionist.getId()));
         request.setHotelId(hotelId);
         request.setAssignmentReason(reason);
+        request.setExpectedVersion(staff.getVersion());
+        request.setChangeReason(reason);
         return request;
     }
 
