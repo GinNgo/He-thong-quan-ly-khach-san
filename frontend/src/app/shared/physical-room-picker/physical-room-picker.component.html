@@ -2,7 +2,7 @@
   <header>
     <div>
       <span>{{ copy.text('eyebrow') }}</span>
-      <h2 id="room-picker-title">{{ copy.text('title') }}</h2>
+      <h2 id="room-picker-title" tabindex="-1">{{ copy.text('title') }}</h2>
     </div>
     <button type="button" class="refresh" (click)="load()" [disabled]="loading || mutationBusy || releaseConfirmation">
       <i class="pi pi-refresh" [class.pi-spin]="loading" aria-hidden="true"></i>

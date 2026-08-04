@@ -110,7 +110,6 @@ export class PhysicalRoomPickerComponent implements OnChanges {
     if (!this.canReleaseAssignment || !this.releaseConfirmation) return;
     const normalizedReason = this.reason.trim();
     const signature = `release:${this.currentAssignedIds.join(',')}:${normalizedReason}`;
-    this.releaseConfirmation = false;
     this.runMutation(
       this.reservationService.releaseRoomAssignment(
         this.reservationId,
@@ -225,10 +224,15 @@ export class PhysicalRoomPickerComponent implements OnChanges {
   }
 
   private runMutation(request$: ReturnType<ReservationService['updateRoomAssignment']>, success: string): void {
+    const closingReleaseDialog = this.releaseConfirmation;
     this.mutationBusy = true;
     this.mutationError = '';
     this.mutationSuccess = '';
     this.releaseConfirmation = false;
+    if (closingReleaseDialog) {
+      this.changeDetector.detectChanges();
+      this.host.nativeElement.querySelector<HTMLElement>('#room-picker-title')?.focus();
+    }
     request$.pipe(finalize(() => this.mutationBusy = false)).subscribe({
       next: reservation => {
         this.reason = '';

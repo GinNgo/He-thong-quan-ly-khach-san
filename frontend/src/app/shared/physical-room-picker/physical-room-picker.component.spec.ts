@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TranslateService } from '@ngx-translate/core';
 import { of, Subject, throwError } from 'rxjs';
 
 import { AvailableRoomContext, ReservationService } from '@app/core/services/reservation.service';
@@ -9,6 +10,7 @@ describe('PhysicalRoomPickerComponent', () => {
   let getAvailableRoomContext: ReturnType<typeof vi.fn>;
   let updateRoomAssignment: ReturnType<typeof vi.fn>;
   let releaseRoomAssignment: ReturnType<typeof vi.fn>;
+  let activeLanguage: 'vi' | 'en';
 
   const context: AvailableRoomContext = {
     reservationId: 88,
@@ -28,6 +30,7 @@ describe('PhysicalRoomPickerComponent', () => {
   };
 
   beforeEach(async () => {
+    activeLanguage = 'vi';
     getAvailableRoomContext = vi.fn(() => of(context));
     updateRoomAssignment = vi.fn(() => of({ id: 88 }));
     releaseRoomAssignment = vi.fn(() => of({ id: 88 }));
@@ -36,6 +39,12 @@ describe('PhysicalRoomPickerComponent', () => {
       providers: [{
         provide: ReservationService,
         useValue: { getAvailableRoomContext, updateRoomAssignment, releaseRoomAssignment },
+      }, {
+        provide: TranslateService,
+        useValue: {
+          getCurrentLang: () => activeLanguage,
+          getFallbackLang: () => 'vi',
+        },
       }],
     }).compileComponents();
     fixture = TestBed.createComponent(PhysicalRoomPickerComponent);
@@ -222,6 +231,7 @@ describe('PhysicalRoomPickerComponent', () => {
     await clickAndRender(fixture.nativeElement.querySelector('[data-action="confirm-room-release"]'));
 
     expect(releaseRoomAssignment).toHaveBeenCalledWith(88, 'Giải phóng để xử lý bảo trì', expect.any(String));
+    expect(document.activeElement).toBe(fixture.nativeElement.querySelector('#room-picker-title'));
   });
 
   it('keeps view-only users from selecting or mutating rooms', async () => {
@@ -236,13 +246,11 @@ describe('PhysicalRoomPickerComponent', () => {
   });
 
   it('renders the room-assignment workspace in English when the active locale is English', () => {
-    const previousLanguage = document.documentElement.lang;
-    document.documentElement.lang = 'en';
+    activeLanguage = 'en';
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Assign rooms to this reservation');
     expect(fixture.nativeElement.textContent).toContain('Physical room inventory');
 
-    document.documentElement.lang = previousLanguage;
   });
 });
