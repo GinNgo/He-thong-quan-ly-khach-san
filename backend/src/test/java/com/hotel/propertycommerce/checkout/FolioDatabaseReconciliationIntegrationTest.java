@@ -20,6 +20,9 @@ import com.hotel.repositories.PaymentRepository;
 import com.hotel.repositories.ReservationRepository;
 import com.hotel.repositories.ReservationServiceItemRepository;
 import com.hotel.repositories.UserRepository;
+import com.hotel.security.ActionCode;
+import com.hotel.security.CustomUserDetails;
+import com.hotel.security.FunctionCode;
 import com.hotel.services.PropertyAccessService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
@@ -30,6 +33,9 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -37,6 +43,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -46,7 +54,7 @@ import static org.mockito.Mockito.when;
 
 @DataJpaTest
 @ContextConfiguration(classes = FolioDatabaseReconciliationIntegrationTest.TestApplication.class)
-@Import(FolioCalculationService.class)
+@Import({FolioCalculationService.class, CheckoutPreviewService.class})
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:h2:mem:folio-database-reconciliation;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
         "spring.jpa.hibernate.ddl-auto=create-drop",
@@ -62,6 +70,7 @@ class FolioDatabaseReconciliationIntegrationTest {
     }
 
     @org.springframework.beans.factory.annotation.Autowired private FolioCalculationService folioService;
+    @org.springframework.beans.factory.annotation.Autowired private CheckoutPreviewService previewService;
     @org.springframework.beans.factory.annotation.Autowired private UserRepository userRepository;
     @org.springframework.beans.factory.annotation.Autowired private HotelRepository hotelRepository;
     @org.springframework.beans.factory.annotation.Autowired private HotelServiceRepository hotelServiceRepository;
@@ -134,6 +143,54 @@ class FolioDatabaseReconciliationIntegrationTest {
         assertThatThrownBy(() -> folioService.calculate(otherReservation.getId()))
                 .isInstanceOfSatisfying(FinancialException.class,
                         exception -> assertThat(exception.code()).isEqualTo(FinancialErrorCode.RESOURCE_NOT_FOUND));
+    }
+
+    @Test
+    void rechecksPaymentRefundAndChargeChangesAfterAStalePreview() {
+        User customer = userRepository.saveAndFlush(user());
+        Hotel hotel = hotelRepository.saveAndFlush(hotel());
+        Reservation reservation = reservationRepository.saveAndFlush(reservation(customer, hotel));
+        transactionRepository.saveAndFlush(debit(hotel, reservation, 900_000, "initial-payment"));
+        entityManager.clear();
+        authorizeCheckout(hotel.getId());
+
+        CheckoutPreviewService.CheckoutPreview first = previewService.preview(reservation.getId());
+        assertThat(first.folio().balance()).isEqualByComparingTo("100000");
+
+        Reservation managed = reservationRepository.findById(reservation.getId()).orElseThrow();
+        transactionRepository.saveAndFlush(debit(hotelRepository.getReferenceById(hotel.getId()), managed,
+                100_000, "settling-payment"));
+        entityManager.clear();
+        assertThat(previewService.preview(reservation.getId()).checkoutAllowed()).isTrue();
+
+        managed = reservationRepository.findById(reservation.getId()).orElseThrow();
+        chargeLineRepository.saveAndFlush(chargeLine(hotelRepository.getReferenceById(hotel.getId()), managed,
+                ReservationChargeLine.ChargeType.SURCHARGE, 1, "POST-PREVIEW-CHARGE", null));
+        entityManager.clear();
+        assertThatThrownBy(() -> previewService.requireSettled(reservation.getId()))
+                .isInstanceOfSatisfying(FinancialException.class,
+                        exception -> assertThat(exception.code()).isEqualTo(FinancialErrorCode.OUTSTANDING_BALANCE));
+
+        managed = reservationRepository.findById(reservation.getId()).orElseThrow();
+        PropertyFinancialTransaction original = transactionRepository
+                .findByIdempotencyIdentity("effect-settling-payment").orElseThrow();
+        transactionRepository.saveAndFlush(refund(hotelRepository.getReferenceById(hotel.getId()), managed,
+                original, 1, "post-preview-refund"));
+        entityManager.clear();
+        CheckoutPreviewService.CheckoutPreview changed = previewService.preview(reservation.getId());
+        assertThat(changed.folio().balance()).isEqualByComparingTo("2");
+        assertThat(changed.sourceVersion()).isGreaterThan(first.sourceVersion());
+    }
+
+    private void authorizeCheckout(Long hotelId) {
+        when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
+        when(propertyAccessService.accessibleHotelIds()).thenReturn(Set.of(hotelId));
+        CustomUserDetails principal = new CustomUserDetails(
+                "staff@example.com", "password",
+                List.of(new SimpleGrantedAuthority("ROLE_STAFF")),
+                Map.of(FunctionCode.CHECKOUT, ActionCode.VIEW), 9L, hotelId, Map.of());
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
     }
 
     private User user() {
