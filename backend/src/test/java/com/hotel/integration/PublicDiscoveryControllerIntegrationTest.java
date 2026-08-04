@@ -20,7 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -46,6 +49,7 @@ class PublicDiscoveryControllerIntegrationTest {
     private Location secondProvince;
     private Location primaryLandmark;
     private Location secondaryLandmark;
+    private Location duplicateLandmark;
     private Hotel hotel;
 
     @BeforeEach
@@ -55,11 +59,17 @@ class PublicDiscoveryControllerIntegrationTest {
         currentProvince = location("TEST-CP-" + suffix, "VN34-82", "Tỉnh Đồng Tháp", "PROVINCE", null);
         ward = location("TEST-W-" + suffix, "Phường Mỹ Tho", "WARD", province);
         secondProvince = location("TEST-P2-" + suffix, "VN34-48", "Thành phố Đà Nẵng", "PROVINCE", null);
+        location("TEST-UNMAPPED-" + suffix, "LEGACY-X", "Tỉnh thử cũ", "PROVINCE", null);
         primaryLandmark = landmark("TEST-LM-" + suffix, "Cầu Rồng", "CULTURE", currentProvince, 10.3505, 106.3505, "ACTIVE");
         primaryLandmark.setPopularityScore(20);
+        location("TEST-FAKE-CURRENT-" + suffix, "VN34-FAKE", "Tinh gia lap", "PROVINCE", null);
         primaryLandmark = locationRepository.saveAndFlush(primaryLandmark);
         secondaryLandmark = landmark("TEST-LM2-" + suffix, "Cầu Rồng", "CULTURE", secondProvince, 16.0611, 108.2277, "ACTIVE");
+        duplicateLandmark = landmark("TEST-LM4-" + suffix, "Cầu Rồng", "CULTURE", currentProvince, 10.3510, 106.3510, "ACTIVE");
+        duplicateLandmark.setPopularityScore(5);
+        duplicateLandmark = locationRepository.saveAndFlush(duplicateLandmark);
         landmark("TEST-LM3-" + suffix, "Điểm thử", "NATURE", province, null, null, "INACTIVE");
+        landmark("TEST-LM5-" + suffix, "Cầu Rồng", "NATURE", currentProvince, 999d, 106.35, "ACTIVE");
 
         hotel = new Hotel();
         hotel.setName("LuxeStay Riverside Mỹ Tho");
@@ -92,11 +102,24 @@ class PublicDiscoveryControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.provinces[0].id").value(currentProvince.getId()));
 
+        mockMvc.perform(get("/api/public/search/suggestions").param("keyword", "tien giang"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.provinces[0].id").value(currentProvince.getId()))
+                .andExpect(jsonPath("$.provinces[0].name").value(currentProvince.getNameVi()));
+
+        mockMvc.perform(get("/api/public/search/suggestions").param("keyword", "tinh thu cu"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.provinces", hasSize(0)));
+
+        mockMvc.perform(get("/api/public/search/suggestions").param("keyword", "tinh gia lap"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.provinces", hasSize(0)));
+
         mockMvc.perform(get("/api/public/search/suggestions").param("keyword", "my tho"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.wards", hasSize(greaterThanOrEqualTo(1))))
                 .andExpect(jsonPath("$.wards[0].type").value("WARD"))
-                .andExpect(jsonPath("$.wards[0].provinceName").value(province.getNameVi()));
+                .andExpect(jsonPath("$.wards[0].provinceName").value(currentProvince.getNameVi()));
 
         mockMvc.perform(get("/api/public/search/suggestions").param("keyword", "Mỹ Tho"))
                 .andExpect(status().isOk())
@@ -132,13 +155,14 @@ class PublicDiscoveryControllerIntegrationTest {
         mockMvc.perform(get("/api/public/search/suggestions")
                         .param("keyword", "cau rong"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.landmarks", hasSize(2)))
+                .andExpect(jsonPath("$.landmarks", hasSize(3)))
                 .andExpect(jsonPath("$.landmarks[0].type").value("LANDMARK"))
                 .andExpect(jsonPath("$.landmarks[0].provinceName").exists())
                 .andExpect(jsonPath("$.landmarks[0].latitude").isNumber())
                 .andExpect(jsonPath("$.landmarks[0].defaultRadiusKm").value(5.0))
                 .andExpect(jsonPath("$.landmarks[*].id", containsInAnyOrder(
-                        primaryLandmark.getId().intValue(), secondaryLandmark.getId().intValue())));
+                        primaryLandmark.getId().intValue(), secondaryLandmark.getId().intValue(),
+                        duplicateLandmark.getId().intValue())));
 
         mockMvc.perform(get("/api/public/search/suggestions")
                         .param("keyword", "cau rong")
@@ -151,8 +175,34 @@ class PublicDiscoveryControllerIntegrationTest {
                         .param("keyword", "cau rong")
                         .param("provinceId", currentProvince.getId().toString()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.landmarks", hasSize(1)))
+                .andExpect(jsonPath("$.landmarks", hasSize(2)))
                 .andExpect(jsonPath("$.landmarks[0].provinceId").value(currentProvince.getId()));
+
+        mockMvc.perform(get("/api/public/search/suggestions")
+                        .param("keyword", "cau rong")
+                        .param("provinceId", province.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.landmarks", hasSize(2)))
+                .andExpect(jsonPath("$.landmarks[*].provinceId", everyItem(is(currentProvince.getId().intValue()))));
+    }
+
+    @Test
+    void currentAndLegacyProvinceIdsShareWardAndPropertyScopes() throws Exception {
+        mockMvc.perform(get("/api/public/locations/provinces/{provinceId}/wards", currentProvince.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].id", hasItem(ward.getId().intValue())));
+
+        mockMvc.perform(get("/api/public/search/suggestions")
+                        .param("keyword", "my tho")
+                        .param("provinceId", currentProvince.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.wards[*].id", hasItem(ward.getId().intValue())));
+
+        mockMvc.perform(get("/api/public/search/suggestions")
+                        .param("keyword", "anh duong")
+                        .param("provinceId", currentProvince.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.properties[0].provinceId").value(currentProvince.getId()));
     }
 
     @Test
@@ -192,7 +242,8 @@ class PublicDiscoveryControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].sourceCode").value(org.hamcrest.Matchers.everyItem(
                         org.hamcrest.Matchers.startsWith("VN34-"))))
-                .andExpect(jsonPath("$[?(@.sourceCode == '82')]").isEmpty());
+                .andExpect(jsonPath("$[?(@.sourceCode == '82')]").isEmpty())
+                .andExpect(jsonPath("$[?(@.sourceCode == 'VN34-FAKE')]").isEmpty());
     }
 
     private Location location(String code, String name, String type, Location parent) {

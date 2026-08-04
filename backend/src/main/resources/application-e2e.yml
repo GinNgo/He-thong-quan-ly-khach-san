@@ -33,7 +33,10 @@ app:
     enabled: false
   location-import:
     enabled: true
-    file-path: ../docs/34_tinh_huyen_xa.json
+    file-path: ${LOCATION_IMPORT_FILE_PATH:}
+    resource: ${LOCATION_IMPORT_RESOURCE:classpath:data/locations.json}
+    current-province-resource: ${CURRENT_PROVINCE_IMPORT_RESOURCE:classpath:data/provinces-current-34.json}
+    landmark-resource: ${LANDMARK_IMPORT_RESOURCE:classpath:data/landmarks.json}
     cleanup-obsolete: false
   demo-data:
     enabled: true

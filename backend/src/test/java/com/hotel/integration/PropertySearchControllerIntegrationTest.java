@@ -52,13 +52,14 @@ public class PropertySearchControllerIntegrationTest {
 
     private Location primaryProvince;
     private Location legacyPrimaryProvince;
+    private Location secondaryProvince;
     private Location landmark;
 
     @BeforeEach
     void setUp() {
         primaryProvince = saveLocation("TEST-P-SEARCH", "VN34-48", "Thành phố Đà Nẵng", "PROVINCE", null);
         legacyPrimaryProvince = saveLocation("TEST-P-SEARCH-LEGACY", "48", "Đà Nẵng", "PROVINCE", null);
-        Location secondaryProvince = saveLocation("TEST-P-SEARCH-2", "Da Lat", "PROVINCE", null);
+        secondaryProvince = saveLocation("TEST-P-SEARCH-2", "VN34-68", "Da Lat", "PROVINCE", null);
         landmark = saveLocation("TEST-LM-SEARCH", "Cau Rong", "LANDMARK", primaryProvince);
         landmark.setCategory("CULTURE");
         landmark.setLatitude(16.0611);
@@ -136,6 +137,13 @@ public class PropertySearchControllerIntegrationTest {
                 .andExpect(jsonPath("$.content", hasSize(greaterThanOrEqualTo(1))))
                 .andExpect(jsonPath("$.content[0].name", is("Ocean View Hotel")))
                 .andExpect(jsonPath("$.content[0].provinceName", is("Thành phố Đà Nẵng")));
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("provinceId", legacyPrimaryProvince.getId().toString())
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].name", is("Ocean View Hotel")))
+                .andExpect(jsonPath("$.content[0].provinceName", is("Thành phố Đà Nẵng")));
     }
 
     @Test
@@ -171,6 +179,7 @@ public class PropertySearchControllerIntegrationTest {
     void searchProperties_ByLandmarkResolvesCoordinatesAndOrdersByDistance() throws Exception {
         mockMvc.perform(get("/api/public/properties/search")
                         .param("landmarkId", landmark.getId().toString())
+                        .param("provinceId", legacyPrimaryProvince.getId().toString())
                         .param("latitude", "0")
                         .param("longitude", "0")
                         .param("radiusKm", "5")
@@ -198,6 +207,53 @@ public class PropertySearchControllerIntegrationTest {
 
         mockMvc.perform(get("/api/public/properties/search")
                         .param("landmarkId", invalid.getId().toString()))
+                .andExpect(status().isBadRequest());
+
+        Location coordinateLess = saveLocation("TEST-LM-NO-COORD", "No Coordinate", "LANDMARK", primaryProvince);
+        coordinateLess.setStatus("ACTIVE");
+        coordinateLess = locationRepository.saveAndFlush(coordinateLess);
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("landmarkId", coordinateLess.getId().toString()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void searchProperties_RejectsProvinceMismatchAndInvalidRadiusOrCoordinates() throws Exception {
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("landmarkId", landmark.getId().toString())
+                        .param("provinceId", secondaryProvince.getId().toString()))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("landmarkId", landmark.getId().toString())
+                        .param("radiusKm", "0"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("landmarkId", landmark.getId().toString())
+                        .param("radiusKm", "51"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("landmarkId", landmark.getId().toString())
+                        .param("radiusKm", "NaN"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("latitude", "91")
+                        .param("longitude", "108")
+                        .param("radiusKm", "5"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("latitude", "NaN")
+                        .param("longitude", "108")
+                        .param("radiusKm", "5"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("latitude", "16"))
                 .andExpect(status().isBadRequest());
     }
 

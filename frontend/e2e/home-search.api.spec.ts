@@ -151,6 +151,63 @@ test('supports grouped accent, property, landmark and keyboard autocomplete jour
   await expect(page).toHaveURL(/landmarkId=\d+/);
 });
 
+test('supports current province compatibility, legacy wards and duplicate landmarks', async ({ page }) => {
+  const provinceResponse = await page.request.get(
+    `http://localhost:${backendPort}/api/public/locations/provinces`
+  );
+  expect(provinceResponse.ok()).toBe(true);
+  const provinces = await provinceResponse.json() as Array<{ id: number; sourceCode: string }>;
+  expect(provinces).toHaveLength(34);
+  expect(provinces.every(province => province.sourceCode.startsWith('VN34-'))).toBe(true);
+
+  const currentDongThap = provinces.find(province => province.sourceCode === 'VN34-82');
+  expect(currentDongThap).toBeTruthy();
+  const wardResponse = await page.request.get(
+    `http://localhost:${backendPort}/api/public/locations/provinces/${currentDongThap!.id}/wards`
+  );
+  const wards = await wardResponse.json() as Array<{ id: number; nameVi: string; normalizedName: string }>;
+  expect(wardResponse.ok()).toBe(true);
+  expect(wards.length).toBeGreaterThan(0);
+  const propertySuggestionResponse = await page.request.get(
+    `http://localhost:${backendPort}/api/public/search/suggestions?keyword=anh%20duong`
+  );
+  const propertySuggestions = await propertySuggestionResponse.json() as {
+    properties: Array<{ wardId: number }>;
+  };
+  const seedWard = wards.find(ward => ward.id === propertySuggestions.properties[0]?.wardId);
+  expect(seedWard).toBeTruthy();
+
+  await page.goto('/');
+  const input = page.locator('app-hero-search app-location-autocomplete input');
+  await input.fill(seedWard!.normalizedName);
+  const legacyWard = page.locator('[data-suggestion-type="WARD"]')
+    .filter({ hasText: seedWard!.nameVi }).first();
+  await expect(legacyWard).toBeVisible();
+  await legacyWard.click();
+  const wardSearch = page.waitForResponse(response =>
+    response.url().includes('/api/public/properties/search') && response.request().method() === 'GET'
+  );
+  await page.getByRole('button', { name: 'TÌM', exact: true }).click();
+  expect((await wardSearch).status()).toBe(200);
+  await expect(page).toHaveURL(/wardId=\d+/);
+
+  await page.goto('/');
+  const landmarkInput = page.locator('app-hero-search app-location-autocomplete input');
+  await landmarkInput.fill('ho xuan huong');
+  const duplicates = page.locator('[data-suggestion-type="LANDMARK"]');
+  await expect(duplicates).toHaveCount(2);
+  await duplicates.first().click();
+  const landmarkSearch = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname.endsWith('/api/public/properties/search')
+      && url.searchParams.has('landmarkId')
+      && response.request().method() === 'GET';
+  });
+  await page.getByRole('button', { name: 'TÌM', exact: true }).click();
+  expect((await landmarkSearch).status()).toBe(200);
+  await expect(page).toHaveURL(/landmarkId=\d+/);
+});
+
 test('announces missing dates and returns keyboard focus to the date trigger on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');

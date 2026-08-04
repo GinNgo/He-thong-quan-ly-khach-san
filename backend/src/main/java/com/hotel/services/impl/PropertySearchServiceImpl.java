@@ -9,6 +9,7 @@ import com.hotel.repositories.LocationRepository;
 import com.hotel.repositories.PropertyImageRepository;
 import com.hotel.repositories.RoomTypeRepository;
 import com.hotel.services.PropertySearchService;
+import com.hotel.services.ProvinceCompatibilityService;
 import com.hotel.services.RoomAvailabilityService;
 import com.hotel.util.VietnameseTextNormalizer;
 import jakarta.persistence.EntityManager;
@@ -29,6 +30,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class PropertySearchServiceImpl implements PropertySearchService {
@@ -41,6 +43,7 @@ public class PropertySearchServiceImpl implements PropertySearchService {
     private final PropertyImageRepository propertyImageRepository;
     private final RoomAvailabilityService roomAvailabilityService;
     private final Environment environment;
+    private final ProvinceCompatibilityService provinceCompatibilityService;
 
     @Value("${app.demo-data.allow-public-demo:false}")
     private boolean allowPublicDemo;
@@ -48,13 +51,15 @@ public class PropertySearchServiceImpl implements PropertySearchService {
     public PropertySearchServiceImpl(EntityManager entityManager, LocationRepository locationRepository,
                                      RoomTypeRepository roomTypeRepository,
                                      PropertyImageRepository propertyImageRepository,
-                                     RoomAvailabilityService roomAvailabilityService, Environment environment) {
+                                     RoomAvailabilityService roomAvailabilityService, Environment environment,
+                                     ProvinceCompatibilityService provinceCompatibilityService) {
         this.entityManager = entityManager;
         this.locationRepository = locationRepository;
         this.roomTypeRepository = roomTypeRepository;
         this.propertyImageRepository = propertyImageRepository;
         this.roomAvailabilityService = roomAvailabilityService;
         this.environment = environment;
+        this.provinceCompatibilityService = provinceCompatibilityService;
     }
 
     @Override
@@ -70,6 +75,7 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         }
 
         resolveLandmark(request);
+        validateCoordinateRequest(request);
 
         int roomCount = Math.max(request.getRoomCount() == null ? 1 : request.getRoomCount(), 1);
         int adults = Math.max(request.getAdultCount() == null ? 0 : request.getAdultCount(), 0);
@@ -95,7 +101,8 @@ public class PropertySearchServiceImpl implements PropertySearchService {
                        (SELECT COUNT(*) FROM rooms r WHERE r.hotel_id=h.id AND r.status <> 'MAINTENANCE' AND COALESCE(r.maintenance_status,'NONE') NOT IN ('MAINTENANCE','OUT_OF_SERVICE')) AS total_rooms,
                        (SELECT TOP 1 rt.id FROM room_types rt WHERE rt.hotel_id=h.id AND rt.status='ACTIVE' ORDER BY rt.base_price,rt.id) AS lowest_room_id,
                        (SELECT TOP 1 rt.name_vi FROM room_types rt WHERE rt.hotel_id=h.id AND rt.status='ACTIVE' ORDER BY rt.base_price,rt.id) AS lowest_room_name,
-                       (SELECT TOP 1 COALESCE(rt.max_guests,rt.max_guest) FROM room_types rt WHERE rt.hotel_id=h.id AND rt.status='ACTIVE' ORDER BY rt.base_price,rt.id) AS lowest_room_guests
+                       (SELECT TOP 1 COALESCE(rt.max_guests,rt.max_guest) FROM room_types rt WHERE rt.hotel_id=h.id AND rt.status='ACTIVE' ORDER BY rt.base_price,rt.id) AS lowest_room_guests,
+                       p.id AS province_id
                 """;
         String from = " FROM hotels h LEFT JOIN locations p ON p.id=h.province_id LEFT JOIN locations w ON w.id=h.ward_id ";
         StringBuilder where = new StringBuilder(" WHERE h.approval_status='APPROVED' AND h.operation_status='ACTIVE' ");
@@ -104,8 +111,9 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         }
 
         if (request.getProvinceId() != null) {
-            where.append(" AND h.province_id=:provinceId ");
-            params.put("provinceId", request.getProvinceId());
+            Set<Long> provinceIds = provinceCompatibilityService.provinceScopeIds(request.getProvinceId());
+            where.append(" AND h.province_id IN (:provinceIds) ");
+            params.put("provinceIds", provinceIds);
         }
         if (request.getWardId() != null) {
             where.append(" AND h.ward_id=:wardId ");
@@ -208,8 +216,11 @@ public class PropertySearchServiceImpl implements PropertySearchService {
                 .orElseThrow(() -> new IllegalArgumentException("Địa danh không hợp lệ hoặc không còn khả dụng."));
 
         Long landmarkProvinceId = provinceIdFor(landmark);
-        if (request.getProvinceId() != null && landmarkProvinceId != null
-                && !request.getProvinceId().equals(landmarkProvinceId)) {
+        if (landmarkProvinceId == null) {
+            throw new IllegalArgumentException("Landmark is not attached to a province.");
+        }
+        if (request.getProvinceId() != null
+                && !provinceCompatibilityService.sameProvinceScope(request.getProvinceId(), landmarkProvinceId)) {
             throw new IllegalArgumentException("Địa danh không thuộc tỉnh/thành phố đã chọn.");
         }
 
@@ -220,6 +231,22 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         request.setLatitude(landmark.getLatitude());
         request.setLongitude(landmark.getLongitude());
         request.setRadiusKm(radius);
+    }
+
+    private void validateCoordinateRequest(PropertySearchRequestDTO request) {
+        boolean hasLatitude = request.getLatitude() != null;
+        boolean hasLongitude = request.getLongitude() != null;
+        if (hasLatitude != hasLongitude) {
+            throw new IllegalArgumentException("Latitude and longitude must be supplied together.");
+        }
+        if (hasLatitude && !validCoordinates(request.getLatitude(), request.getLongitude())) {
+            throw new IllegalArgumentException("Coordinates are outside the valid latitude/longitude range.");
+        }
+        if (request.getRadiusKm() != null
+                && (!hasLatitude || !Double.isFinite(request.getRadiusKm())
+                || request.getRadiusKm() <= 0 || request.getRadiusKm() > 50)) {
+            throw new IllegalArgumentException("Radius requires valid coordinates and must be within 0..50 km.");
+        }
     }
 
     private Long provinceIdFor(Location location) {
@@ -233,6 +260,7 @@ public class PropertySearchServiceImpl implements PropertySearchService {
 
     private boolean validCoordinates(Double latitude, Double longitude) {
         return latitude != null && longitude != null
+                && Double.isFinite(latitude) && Double.isFinite(longitude)
                 && latitude >= -90 && latitude <= 90
                 && longitude >= -180 && longitude <= 180;
     }
@@ -255,7 +283,9 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         dto.setPropertyType((String) row[8]);
         dto.setReviewScore(decimal(row[9]));
         dto.setReviewCount(integer(row[10]) == null ? 0 : integer(row[10]));
-        dto.setProvinceName((String) row[11]);
+        Long storedProvinceId = row[19] == null ? null : number(row[19]).longValue();
+        Location currentProvince = provinceCompatibilityService.currentProvinceForId(storedProvinceId);
+        dto.setProvinceName(currentProvince == null ? (String) row[11] : currentProvince.getNameVi());
         dto.setWardName((String) row[12]);
         dto.setDistanceKm(decimal(row[13]));
         if (dto.getDistanceKm() != null) dto.setDistanceText(String.format("Cách %.1f km", dto.getDistanceKm()));
