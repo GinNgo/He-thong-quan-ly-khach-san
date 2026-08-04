@@ -425,6 +425,85 @@ public class PropertySearchControllerIntegrationTest {
     }
 
     @Test
+    void searchProperties_SortsAndPagesDeterministicallyWithoutDuplicatesOrCountDrift() throws Exception {
+        List<Hotel> hotels = List.of(
+                saveSortHotel("A"), saveSortHotel("B"), saveSortHotel("C"),
+                saveSortHotel("D"), saveSortHotel("E"));
+        List<Integer> ascendingIds = hotels.stream().map(Hotel::getId).map(Long::intValue).toList();
+        List<Integer> descendingIds = new java.util.ArrayList<>(ascendingIds);
+        java.util.Collections.reverse(descendingIds);
+
+        for (String sortBy : List.of("POPULAR", "NEAREST", "PRICE_ASC", "PRICE_DESC", "RATING")) {
+            List<Integer> expectedIds = "POPULAR".equals(sortBy) ? descendingIds : ascendingIds;
+            List<Integer> pagedIds = new java.util.ArrayList<>();
+
+            for (int pageNumber = 1; pageNumber <= 3; pageNumber++) {
+                MvcResult page = performSortPage(sortBy, pageNumber, 2)
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.number").value(pageNumber - 1))
+                        .andExpect(jsonPath("$.size").value(2))
+                        .andExpect(jsonPath("$.totalElements").value(5))
+                        .andExpect(jsonPath("$.totalPages").value(3))
+                        .andReturn();
+                String body = page.getResponse().getContentAsString();
+                pagedIds.addAll(JsonPath.read(body, "$.content[*].id"));
+                if (sortBy.startsWith("PRICE_")) {
+                    List<Number> prices = JsonPath.read(body, "$.content[*].startingPrice");
+                    assertTrue(prices.stream().allMatch(price -> price.doubleValue() == 640000d));
+                }
+            }
+
+            assertEquals(expectedIds, pagedIds, sortBy + " must have a stable page-through order");
+            assertEquals(5, new java.util.HashSet<>(pagedIds).size(), sortBy + " must not duplicate results");
+
+            MvcResult repeatedFirstPage = performSortPage(sortBy, 1, 2)
+                    .andExpect(status().isOk())
+                    .andReturn();
+            List<Integer> repeatedIds = JsonPath.read(
+                    repeatedFirstPage.getResponse().getContentAsString(), "$.content[*].id");
+            assertEquals(expectedIds.subList(0, 2), repeatedIds, sortBy + " must repeat deterministically");
+        }
+    }
+
+    @Test
+    void searchProperties_RejectsInvalidSortAndPaginationInsteadOfClamping() throws Exception {
+        for (String invalidSort : List.of("CHEAPEST", "PRICE", "nearest-first")) {
+            mockMvc.perform(get("/api/public/properties/search").param("sortBy", invalidSort))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+        }
+        for (String invalidPage : List.of("0", "-1")) {
+            mockMvc.perform(get("/api/public/properties/search").param("pageNumber", invalidPage))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+        }
+        for (String invalidSize : List.of("0", "-1", "101")) {
+            mockMvc.perform(get("/api/public/properties/search").param("pageSize", invalidSize))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+        }
+
+        mockMvc.perform(get("/api/public/properties/search").param("sortBy", " price_asc "))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void searchProperties_HighOutOfRangePageIsEmptyAndPreservesAuthoritativeCount() throws Exception {
+        saveSortHotel("A");
+        saveSortHotel("B");
+        saveSortHotel("C");
+
+        performSortPage("PRICE_ASC", 99, 2)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.number").value(98))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.numberOfElements").value(0))
+                .andExpect(jsonPath("$.content", hasSize(0)))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2));
+    }
+
+    @Test
     void searchProperties_ExcludesLegacyNullRoomPricesFromBoundedCandidates() {
         RoomType legacyNullPrice = new RoomType();
         legacyNullPrice.setBasePrice(null);
@@ -824,6 +903,53 @@ public class PropertySearchControllerIntegrationTest {
 
     private PriceRoomSeed priceRoom(String code, String price, boolean hasInventory) {
         return new PriceRoomSeed(code, new BigDecimal(price), hasInventory);
+    }
+
+    private Hotel saveSortHotel(String suffix) {
+        String key = suffix.replaceAll("[^A-Za-z0-9]", "-").toUpperCase();
+        Hotel hotel = new Hotel();
+        hotel.setName("T279 Matrix " + suffix);
+        hotel.setCode("TEST-T279-" + key);
+        hotel.setSlug("test-t279-" + key.toLowerCase());
+        hotel.setNormalizedName(("T279 Matrix " + suffix).toLowerCase());
+        hotel.setProvinceId(secondaryProvince.getId());
+        hotel.setAddressLine("279 Stable Street " + suffix);
+        hotel.setCity(secondaryProvince.getNameVi());
+        hotel.setCountry("Vietnam");
+        hotel.setStatus("ACTIVE");
+        hotel.setApprovalStatus("APPROVED");
+        hotel.setOperationStatus("ACTIVE");
+        hotel.setPropertyType("HOTEL");
+        hotel.setAverageRating(8.5);
+        hotel.setReviewCount(25);
+        hotel.setLatitude(16.05);
+        hotel.setLongitude(108.2);
+        hotel = hotelRepository.saveAndFlush(hotel);
+
+        RoomType roomType = new RoomType();
+        roomType.setHotel(hotel);
+        roomType.setNameEn("T279 stable room " + suffix);
+        roomType.setNameVi("T279 stable room " + suffix);
+        roomType.setCode("T279-ROOM-" + key);
+        roomType.setBasePrice(new BigDecimal("640000"));
+        roomType.setMaxGuest(2);
+        roomType.setStatus("ACTIVE");
+        roomType = roomTypeRepository.saveAndFlush(roomType);
+        saveRoom(hotel, roomType, "T279-" + hotel.getId());
+        return hotel;
+    }
+
+    private org.springframework.test.web.servlet.ResultActions performSortPage(
+            String sortBy, int pageNumber, int pageSize) throws Exception {
+        var request = get("/api/public/properties/search")
+                .param("keyword", "T279 Matrix")
+                .param("sortBy", sortBy)
+                .param("pageNumber", Integer.toString(pageNumber))
+                .param("pageSize", Integer.toString(pageSize));
+        if ("NEAREST".equals(sortBy)) {
+            request.param("latitude", "16.0500").param("longitude", "108.2000");
+        }
+        return mockMvc.perform(request);
     }
 
     private void savePropertyImage(Hotel hotel, String imageUrl, boolean primary, int sortOrder, String altText) {

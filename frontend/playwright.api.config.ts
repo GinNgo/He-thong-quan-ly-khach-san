@@ -24,7 +24,8 @@ export default defineConfig({
     'property-search-eligibility.api.spec.ts',
     'legacy-public-search.api.spec.ts',
     'property-search-filters.api.spec.ts',
-    'property-search-price-filters.api.spec.ts'
+    'property-search-price-filters.api.spec.ts',
+    'property-search-sort-pagination.api.spec.ts'
   ],
   fullyParallel: false,
   workers: 1,
@@ -39,7 +40,7 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
     ...(!useExternalBackend ? [{
-      command: '.\\mvnw.cmd -q spring-boot:run -Dspring-boot.run.profiles=e2e',
+      command: '.\\mvnw.cmd -q "-Dmaven.test.skip=true" spring-boot:run "-Dspring-boot.run.profiles=e2e"',
       cwd: '../backend',
       env: backendEnv,
       url: 'http://localhost:28743/api/public/properties/search?pageNumber=1&pageSize=1',

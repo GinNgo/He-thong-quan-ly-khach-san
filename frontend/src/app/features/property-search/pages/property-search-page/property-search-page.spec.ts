@@ -131,6 +131,88 @@ describe('PropertySearchPageComponent filter contract', () => {
     expect(component.currentFilterState.maxPrice).toBe(600000);
   });
 
+  it('keeps invalid direct pagination values on the API request while canonicalizing paginator state', () => {
+    queryParams.next({ pageNumber: '0', pageSize: '101' });
+
+    expect(api.searchHotels).toHaveBeenLastCalledWith(expect.objectContaining({
+      pageNumber: 0,
+      pageSize: 101,
+    }));
+    expect(component.pageNumber()).toBe(1);
+    expect(component.pageSize()).toBe(100);
+  });
+
+  it('resets sort to page one and preserves filters and sort across page changes', () => {
+    component.selectedSort = 'PRICE_ASC';
+    component.onSortChange();
+
+    expect(router.navigate).toHaveBeenLastCalledWith([], expect.objectContaining({
+      queryParams: { sortBy: 'PRICE_ASC', pageNumber: 1 },
+      queryParamsHandling: 'merge',
+    }));
+
+    router.navigate.mockClear();
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+    component.onPageChange({ page: 2, rows: 50 });
+
+    expect(router.navigate).toHaveBeenCalledOnce();
+    expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({
+      queryParams: { pageNumber: 3, pageSize: 50 },
+      queryParamsHandling: 'merge',
+    }));
+    const patch = router.navigate.mock.calls[0][1].queryParams;
+    expect(patch).not.toHaveProperty('sortBy');
+    expect(patch).not.toHaveProperty('propertyTypes');
+    expect(patch).not.toHaveProperty('starRatings');
+    expect(patch).not.toHaveProperty('minPrice');
+    scrollTo.mockRestore();
+  });
+
+  it('redirects an empty out-of-range page once and keeps zero-based response numbers internal to the API', () => {
+    router.navigate.mockClear();
+    api.searchHotels.mockReturnValue(of({
+      content: [], totalElements: 21, totalPages: 3, number: 998, size: 20,
+    }));
+
+    queryParams.next({ pageNumber: '999', pageSize: '20', sortBy: 'RATING', propertyTypes: 'RESORT' });
+    fixture.detectChanges();
+
+    expect(router.navigate).toHaveBeenCalledOnce();
+    expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({
+      queryParams: { pageNumber: 3 },
+      queryParamsHandling: 'merge',
+    }));
+    expect(component.isLoading()).toBe(true);
+    expect(fixture.nativeElement.querySelector('[data-search-empty]')).toBeNull();
+
+    queryParams.next({ pageNumber: '999', pageSize: '20', sortBy: 'RATING', propertyTypes: 'RESORT' });
+    expect(router.navigate).toHaveBeenCalledOnce();
+
+    api.searchHotels.mockReturnValue(of({
+      content: [{
+        id: 7,
+        name: 'Stable page result',
+        addressLine: 'Dong Thap',
+        starRating: 5,
+        latitude: 10.4,
+        longitude: 106.4,
+      } as Hotel],
+      totalElements: 21,
+      totalPages: 3,
+      number: 2,
+      size: 20,
+    }));
+    queryParams.next({ pageNumber: '3', pageSize: '20', sortBy: 'RATING', propertyTypes: 'RESORT' });
+    fixture.detectChanges();
+
+    expect(router.navigate).toHaveBeenCalledOnce();
+    expect(component.pageNumber()).toBe(3);
+    expect(component.properties()[0].id).toBe(7);
+    expect(component.isLoading()).toBe(false);
+    expect(fixture.nativeElement.querySelector('[data-search-sort]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-search-pagination]')?.getAttribute('data-page-number')).toBe('3');
+  });
+
   it('removes one star and resets the page through merged query params', () => {
     const chip = fixture.nativeElement.querySelector('[data-filter-chip="starRating:5"]') as HTMLButtonElement;
     chip.click();

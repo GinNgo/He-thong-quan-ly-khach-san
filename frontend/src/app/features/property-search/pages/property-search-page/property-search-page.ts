@@ -12,6 +12,7 @@ import { HomeSearchStateService } from '../../../client/home/services/home-searc
 import { PropertyResultCardComponent } from '../../components/property-result-card/property-result-card';
 import { FilterState, SearchFilterSidebarComponent } from '../../components/search-filter-sidebar/search-filter-sidebar';
 import {
+  canonicalPaginationDisplayState,
   canonicalPriceDisplayState,
   canonicalPropertyTypes,
   canonicalReviewScore,
@@ -21,6 +22,8 @@ import {
   validSearchStayDates,
   PRICE_FILTER_MAX,
   PRICE_FILTER_MIN,
+  DEFAULT_PAGE_NUMBER,
+  DEFAULT_PAGE_SIZE,
 } from './property-search-query';
 
 interface PageChangeEvent {
@@ -67,7 +70,7 @@ interface PageChangeEvent {
                 <button *ngIf="activeFilterCount" type="button" class="clear-chip" data-filter-clear
                   (click)="clearAllFilters()">Xóa tất cả</button>
               </div>
-              <label class="sort"><span>Sắp xếp</span><p-select [options]="sortOptions" [(ngModel)]="selectedSort" optionLabel="label" optionValue="value" (onChange)="onSortChange()"></p-select></label>
+              <label class="sort"><span>Sắp xếp</span><p-select data-search-sort [options]="sortOptions" [(ngModel)]="selectedSort" optionLabel="label" optionValue="value" (onChange)="onSortChange()"></p-select></label>
             </div>
 
             <div *ngIf="isLoading()" class="skeleton-list">
@@ -83,10 +86,10 @@ interface PageChangeEvent {
 
             <ng-container *ngIf="!isLoading() && !errorMessage() && properties().length">
               <app-property-result-card *ngFor="let property of properties(); trackBy: trackProperty" [property]="property" (viewDetails)="goToDetails($event)"></app-property-result-card>
-              <div class="pagination"><p-paginator [first]="(pageNumber()-1)*pageSize()" [rows]="pageSize()" [totalRecords]="totalItems()" [rowsPerPageOptions]="[10,20,50]" (onPageChange)="onPageChange($event)"></p-paginator></div>
+              <div class="pagination" data-search-pagination [attr.data-page-number]="pageNumber()"><p-paginator [first]="(pageNumber()-1)*pageSize()" [rows]="pageSize()" [totalRecords]="totalItems()" [rowsPerPageOptions]="[10,20,50]" (onPageChange)="onPageChange($event)"></p-paginator></div>
             </ng-container>
 
-            <div *ngIf="!isLoading() && !errorMessage() && !properties().length" class="state-panel">
+            <div *ngIf="!isLoading() && !errorMessage() && !properties().length" class="state-panel" data-search-empty>
               <i class="pi pi-search"></i><h2>Không tìm thấy chỗ nghỉ phù hợp</h2><p>Hãy thử bỏ bớt bộ lọc, đổi ngày hoặc tìm trong toàn tỉnh.</p><button type="button" (click)="clearAllFilters()">Xóa bộ lọc</button>
             </div>
           </section>
@@ -111,15 +114,16 @@ interface PageChangeEvent {
 export class PropertySearchPageComponent implements OnInit, OnDestroy {
   private readonly route=inject(ActivatedRoute); private readonly router=inject(Router); private readonly api=inject(ClientApiService);
   readonly stateService=inject(HomeSearchStateService); private readonly destroy$=new Subject<void>(); private lastParams:Params={};
+  private pendingPageRecovery: string | null = null;
   private mobileFilterFocusTimer: number | undefined;
   @ViewChild('mobileFilterTrigger') private mobileFilterTrigger?: ElementRef<HTMLButtonElement>;
   @ViewChild('mobileFilterDialog') private mobileFilterDialog?: ElementRef<HTMLElement>;
   @ViewChild('mobileFilterClose') private mobileFilterClose?: ElementRef<HTMLButtonElement>;
-  properties=signal<Hotel[]>([]); totalItems=signal(0); isLoading=signal(true); errorMessage=signal(''); errorTitle=signal('Không thể tải kết quả'); errorCode=signal(''); errorRetryable=signal(true); pageNumber=signal(1); pageSize=signal(20); displayLocation=signal(''); mobileFilterVisible=false;
+  properties=signal<Hotel[]>([]); totalItems=signal(0); isLoading=signal(true); errorMessage=signal(''); errorTitle=signal('Không thể tải kết quả'); errorCode=signal(''); errorRetryable=signal(true); pageNumber=signal(DEFAULT_PAGE_NUMBER); pageSize=signal(DEFAULT_PAGE_SIZE); displayLocation=signal(''); mobileFilterVisible=false;
   currentFilterState:FilterState={minPrice:PRICE_FILTER_MIN,maxPrice:PRICE_FILTER_MAX,propertyTypes:[],starRatings:[],minReviewScore:null,amenityIds:[]};
   selectedSort='POPULAR'; readonly sortOptions=[{label:'Được đề xuất',value:'POPULAR'},{label:'Giá thấp nhất',value:'PRICE_ASC'},{label:'Giá cao nhất',value:'PRICE_DESC'},{label:'Đánh giá cao',value:'RATING'},{label:'Gần nhất',value:'NEAREST'}];
 
-  ngOnInit():void{this.route.queryParams.pipe(takeUntil(this.destroy$),tap(params=>{this.lastParams=params;this.syncFromUrl(params);this.isLoading.set(true);this.errorMessage.set('');this.errorCode.set('');}),switchMap(params=>this.api.searchHotels(this.request(params)).pipe(catchError(error=>{const state=propertySearchErrorState(error);this.errorTitle.set(state.title);this.errorMessage.set(state.message);this.errorCode.set(state.code);this.errorRetryable.set(state.retryable);return of({content:[],totalElements:0,totalPages:0,number:0,size:this.pageSize()});})))).subscribe(res=>{this.properties.set(res.content||[]);this.totalItems.set(res.totalElements||0);this.isLoading.set(false);});}
+  ngOnInit():void{this.route.queryParams.pipe(takeUntil(this.destroy$),tap(params=>{this.lastParams=params;this.syncFromUrl(params);this.isLoading.set(true);this.errorMessage.set('');this.errorCode.set('');}),switchMap(params=>this.api.searchHotels(this.request(params)).pipe(catchError(error=>{const state=propertySearchErrorState(error);this.errorTitle.set(state.title);this.errorMessage.set(state.message);this.errorCode.set(state.code);this.errorRetryable.set(state.retryable);return of({content:[],totalElements:0,totalPages:0,number:0,size:this.pageSize()});})))).subscribe(res=>{const content=res.content||[];const recoveryKey=`${this.pageNumber()}:${res.totalPages}`;if(!content.length&&res.totalPages>0&&this.pageNumber()>res.totalPages){if(this.pendingPageRecovery!==recoveryKey){this.pendingPageRecovery=recoveryKey;this.updateRoute({pageNumber:res.totalPages});}return;}this.pendingPageRecovery=null;this.properties.set(content);this.totalItems.set(res.totalElements||0);this.isLoading.set(false);});}
   get staySummary():string{const routeDates=validSearchStayDates(this.lastParams);if(routeDates)return `${this.formatDateDisplay(routeDates.checkIn)} - ${this.formatDateDisplay(routeDates.checkOut)}`;if(this.lastParams['checkInDate']||this.lastParams['checkOutDate'])return 'Ngày lưu trú không hợp lệ';const s=this.stateService.state();return `${this.formatDateDisplay(s.checkInDate)} - ${this.formatDateDisplay(s.checkOutDate)}`;}
   get activeFilterCount():number{return this.currentFilterState.propertyTypes.length+this.currentFilterState.starRatings.length+(this.currentFilterState.minReviewScore!==null?1:0)+(this.hasPriceFilter?1:0);}
   get hasPriceFilter():boolean{return this.currentFilterState.minPrice>PRICE_FILTER_MIN||this.currentFilterState.maxPrice<PRICE_FILTER_MAX;}
@@ -139,7 +143,7 @@ export class PropertySearchPageComponent implements OnInit, OnDestroy {
     });
   }
   onSortChange():void{this.updateRoute({sortBy:this.selectedSort,pageNumber:1});}
-  onPageChange(e:PageChangeEvent):void{this.updateRoute({pageNumber:(e.page??0)+1,pageSize:e.rows??this.pageSize()});window.scrollTo({top:0,behavior:'smooth'});}
+  onPageChange(e:PageChangeEvent):void{const pagination=canonicalPaginationDisplayState((e.page??0)+1,e.rows??this.pageSize());this.updateRoute(pagination);window.scrollTo({top:0,behavior:'smooth'});}
   removePropertyType(t:string):void{const v=this.currentFilterState.propertyTypes.filter(x=>x!==t);this.updateRoute({propertyTypes:v.length?v.join(','):null,pageNumber:1});}
   removeStarRating(star:number):void{const v=this.currentFilterState.starRatings.filter(value=>value!==star);this.updateRoute({starRatings:v.length?v.join(','):null,pageNumber:1});}
   removeReviewScore():void{this.updateRoute({minReviewScore:null,pageNumber:1});} removePriceFilter():void{this.updateRoute({minPrice:null,maxPrice:null,pageNumber:1});}
@@ -188,8 +192,9 @@ export class PropertySearchPageComponent implements OnInit, OnDestroy {
     const routeDates=validSearchStayDates(p);
     if(routeDates)this.stateService.updateDates(routeDates.checkIn,routeDates.checkOut);
     if(routeState.adultCount||routeState.roomCount)this.stateService.updateGuests(routeState.adultCount||1,routeState.childCount||0,routeState.roomCount||1);
-    this.pageNumber.set(routeState.pageNumber||1);
-    this.pageSize.set(routeState.pageSize||20);
+    const pagination=canonicalPaginationDisplayState(routeState.pageNumber,routeState.pageSize);
+    this.pageNumber.set(pagination.pageNumber);
+    this.pageSize.set(pagination.pageSize);
     this.selectedSort=routeState.sortBy||'POPULAR';
     this.currentFilterState={
       ...canonicalPriceDisplayState(routeState.minPrice,routeState.maxPrice),
@@ -199,7 +204,7 @@ export class PropertySearchPageComponent implements OnInit, OnDestroy {
       amenityIds:routeState.amenityIds||[]
     };
   }
-  private request(p:Params):PropertySearchParams{const r=propertySearchParamsFromRoute(p);return{...r,pageNumber:this.pageNumber(),pageSize:this.pageSize(),sortBy:this.selectedSort,propertyTypes:this.currentFilterState.propertyTypes.length?this.currentFilterState.propertyTypes:undefined,starRatings:this.currentFilterState.starRatings.length?this.currentFilterState.starRatings:undefined,minReviewScore:this.currentFilterState.minReviewScore??undefined};}
+  private request(p:Params):PropertySearchParams{const r=propertySearchParamsFromRoute(p);return{...r,propertyTypes:this.currentFilterState.propertyTypes.length?this.currentFilterState.propertyTypes:undefined,starRatings:this.currentFilterState.starRatings.length?this.currentFilterState.starRatings:undefined,minReviewScore:this.currentFilterState.minReviewScore??undefined};}
   private updateRoute(q:Params):void{this.router.navigate([],{relativeTo:this.route,queryParams:q,queryParamsHandling:'merge'});} private vnd(v:number):string{return `${new Intl.NumberFormat('vi-VN').format(v)} ₫`;} private formatDateDisplay(v:Date|null):string{return v?new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'}).format(v):'Chưa chọn';}
   ngOnDestroy():void{if(this.mobileFilterFocusTimer!==undefined)globalThis.clearTimeout(this.mobileFilterFocusTimer);this.destroy$.next();this.destroy$.complete();}
 }

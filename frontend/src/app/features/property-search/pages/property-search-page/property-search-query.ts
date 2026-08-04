@@ -20,6 +20,11 @@ export interface PriceFilterDisplayState {
   maxPrice: number;
 }
 
+export interface PaginationDisplayState {
+  pageNumber: number;
+  pageSize: number;
+}
+
 export const PROPERTY_TYPE_FILTERS = [
   'HOTEL', 'RESORT', 'APARTMENT', 'VILLA', 'HOMESTAY', 'MOTEL', 'GUEST_HOUSE', 'HOSTEL',
 ] as const;
@@ -28,6 +33,9 @@ export const REVIEW_SCORE_FILTERS = [9, 8, 7, 6] as const;
 export const PRICE_FILTER_MIN = 0;
 export const PRICE_FILTER_MAX = 10_000_000;
 export const PRICE_FILTER_STEP = 100_000;
+export const DEFAULT_PAGE_NUMBER = 1;
+export const DEFAULT_PAGE_SIZE = 20;
+export const MAX_PAGE_SIZE = 100;
 
 export function propertySearchParamsFromRoute(params: Params): PropertySearchParams {
   return {
@@ -81,6 +89,13 @@ export function canonicalPriceDisplayState(minValue: unknown, maxValue: unknown)
   return {
     minPrice: Math.min(minPrice, maxPrice),
     maxPrice: Math.max(minPrice, maxPrice),
+  };
+}
+
+export function canonicalPaginationDisplayState(pageValue: unknown, sizeValue: unknown): PaginationDisplayState {
+  return {
+    pageNumber: canonicalPositiveInteger(pageValue, DEFAULT_PAGE_NUMBER),
+    pageSize: Math.min(MAX_PAGE_SIZE, canonicalPositiveInteger(sizeValue, DEFAULT_PAGE_SIZE)),
   };
 }
 
@@ -150,6 +165,12 @@ function canonicalDisplayPrice(value: unknown, fallback: number): number {
   const price = Number(value);
   if (!Number.isFinite(price)) return fallback;
   return Math.min(PRICE_FILTER_MAX, Math.max(PRICE_FILTER_MIN, price));
+}
+
+function canonicalPositiveInteger(value: unknown, fallback: number): number {
+  if (value === null || value === undefined || (typeof value === 'string' && !value.trim())) return fallback;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function isoDate(value?: string): Date | null {

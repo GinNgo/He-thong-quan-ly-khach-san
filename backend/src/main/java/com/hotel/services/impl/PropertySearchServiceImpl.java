@@ -66,6 +66,7 @@ public class PropertySearchServiceImpl implements PropertySearchService {
     @SuppressWarnings("unchecked")
     public Page<PropertySearchResponseDTO> searchProperties(PropertySearchRequestDTO request) {
         validateSupportedRequestContract(request);
+        String sortBy = request.getSortBy();
         LocalDate checkIn = parseDate(request.getCheckInDate(), "checkInDate");
         LocalDate checkOut = parseDate(request.getCheckOutDate(), "checkOutDate");
         if ((checkIn == null) != (checkOut == null)) {
@@ -182,25 +183,29 @@ public class PropertySearchServiceImpl implements PropertySearchService {
             params.put("radiusKm", request.getRadiusKm());
         }
 
-        String orderBy = switch (request.getSortBy() == null ? "POPULAR" : request.getSortBy().toUpperCase()) {
-            case "NEAREST" -> hasCoordinates ? " ORDER BY distance ASC" : " ORDER BY h.id DESC";
-            case "PRICE_ASC" -> " ORDER BY min_price ASC";
-            case "PRICE_DESC" -> " ORDER BY min_price DESC";
+        String orderBy = switch (sortBy) {
+            case "NEAREST" -> hasCoordinates ? " ORDER BY distance ASC,h.id ASC" : " ORDER BY h.id DESC";
+            case "PRICE_ASC" -> " ORDER BY min_price ASC,h.id ASC";
+            case "PRICE_DESC" -> " ORDER BY min_price DESC,h.id ASC";
             case "RATING" -> " ORDER BY CASE WHEN h.average_rating IS NULL OR COALESCE(h.review_count,0)<=0 THEN 1 ELSE 0 END,"
                     + " CASE WHEN h.average_rating IS NULL OR COALESCE(h.review_count,0)<=0 THEN NULL ELSE h.average_rating END DESC,"
                     + " CASE WHEN h.average_rating IS NULL OR COALESCE(h.review_count,0)<=0 THEN 0 ELSE h.review_count END DESC,h.id ASC";
-            default -> " ORDER BY h.review_count DESC,h.id DESC";
+            case "POPULAR" -> " ORDER BY h.review_count DESC,h.id DESC";
+            default -> throw new IllegalStateException("Unexpected validated sort: " + sortBy);
         };
 
         Query dataQuery = entityManager.createNativeQuery(select + from + where + orderBy);
         Query countQuery = entityManager.createNativeQuery("SELECT COUNT(DISTINCT h.id)" + from + where);
+        params.forEach(dataQuery::setParameter);
         params.forEach((name, value) -> {
-            dataQuery.setParameter(name, value);
-            countQuery.setParameter(name, value);
+            boolean distanceOnlyParameter = "userLat".equals(name) || "userLng".equals(name);
+            if (!distanceOnlyParameter || request.getRadiusKm() != null) {
+                countQuery.setParameter(name, value);
+            }
         });
 
-        int pageSize = Math.min(Math.max(request.getPageSize(), 1), 100);
-        int pageNumber = Math.max(request.getPageNumber(), 1);
+        int pageSize = request.getPageSize();
+        int pageNumber = request.getPageNumber();
         dataQuery.setFirstResult((pageNumber - 1) * pageSize);
         dataQuery.setMaxResults(pageSize);
 
@@ -419,6 +424,13 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
     private void validateSupportedRequestContract(PropertySearchRequestDTO request) {
+        if (request.getPageNumber() < 1) {
+            throw new IllegalArgumentException("pageNumber must be greater than or equal to 1.");
+        }
+        if (request.getPageSize() < 1 || request.getPageSize() > 100) {
+            throw new IllegalArgumentException("pageSize must be within 1..100.");
+        }
+        request.setSortBy(normalizeSortBy(request.getSortBy()));
         request.setPropertyTypes(normalizePropertyTypes(request.getPropertyTypes()));
         request.setStarRatings(normalizeStarRatings(request.getStarRatings()));
         if (request.getMinReviewScore() != null
@@ -448,6 +460,15 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         if (Boolean.TRUE.equals(request.getBreakfastIncluded())) {
             throw new IllegalArgumentException("breakfastIncluded filtering is not available yet.");
         }
+    }
+    private String normalizeSortBy(String sortBy) {
+        String normalized = sortBy == null || sortBy.isBlank()
+                ? "POPULAR"
+                : sortBy.trim().toUpperCase(Locale.ROOT);
+        if (!Set.of("POPULAR", "NEAREST", "PRICE_ASC", "PRICE_DESC", "RATING").contains(normalized)) {
+            throw new IllegalArgumentException("Unsupported sortBy: " + sortBy);
+        }
+        return normalized;
     }
     private List<String> normalizePropertyTypes(List<String> propertyTypes) {
         if (propertyTypes == null || propertyTypes.isEmpty()) return propertyTypes;

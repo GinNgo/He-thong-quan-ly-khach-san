@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
 import {
+  canonicalPaginationDisplayState,
   canonicalPriceDisplayState,
   canonicalPropertyTypes,
   canonicalReviewScore,
@@ -133,6 +134,17 @@ describe('property search query contract', () => {
       minPrice: 0,
       maxPrice: 10000000,
     });
+  });
+
+  it('canonicalizes one-based pagination display state without changing the raw route contract', () => {
+    expect(canonicalPaginationDisplayState('4', '50')).toEqual({ pageNumber: 4, pageSize: 50 });
+    expect(canonicalPaginationDisplayState('0', '101')).toEqual({ pageNumber: 1, pageSize: 100 });
+    expect(canonicalPaginationDisplayState('-2', '0')).toEqual({ pageNumber: 1, pageSize: 20 });
+    expect(canonicalPaginationDisplayState('1.5', 'NaN')).toEqual({ pageNumber: 1, pageSize: 20 });
+    expect(propertySearchParamsFromRoute({ pageNumber: '0', pageSize: '101' })).toEqual(expect.objectContaining({
+      pageNumber: 0,
+      pageSize: 101,
+    }));
   });
 
   it('hydrates only a strict, increasing ISO stay range', () => {
