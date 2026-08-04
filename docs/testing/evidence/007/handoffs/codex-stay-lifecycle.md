@@ -33,6 +33,7 @@ below after merging or cherry-picking the task commits.
 | T308 | `docs/testing/evidence/007/remediation/T308-debt-overpayment-policy-gate.md` | Missing owner-approved debt limits/approval rules and overpayment refund-versus-credit/accounting policy; current behavior remains fail-closed. |
 | T297 | `docs/testing/evidence/007/remediation/T297-customer-cancellation-policy-gate.md` | Customer cancellation/refund completion depends on the unapproved T298 policy and a disposable provider/browser fixture; policy-dependent stash remains untouched. |
 | T298 | `docs/testing/evidence/007/remediation/T298-cancellation-fee-policy-gate.md` | Missing owner-approved cancellation window, fee, rounding, refund-allocation and accounting policy; no booking snapshot or preview may be invented. |
+| T299 | `docs/testing/evidence/007/remediation/T299-no-show-policy-gate.md` | Missing owner-approved arrival threshold/timezone, room-release, retained/refunded amount, accounting and reversal policy; dedicated permission exists but consequences remain disabled. |
 | T315 | `docs/testing/evidence/007/remediation/T315-promotion-policy-gate.md` | Missing owner-approved OQ-002 through OQ-005 promotion, membership, stacking, redemption and sponsored-placement policy; current presentation retains zero financial effect. |
 
 ## Coordinator Updates
@@ -70,6 +71,8 @@ below after merging or cherry-picking the task commits.
   disposable provider/browser fixture are available; do not apply the existing WIP stash.
 - Keep T298/STAY-004 `BLOCKED_EXTERNAL` until product/finance owners approve the
   versioned cancellation window, fee, rounding, refund-allocation and accounting policy.
+- Keep T299/STAY-005 `BLOCKED_EXTERNAL` until operations/finance owners approve the
+  versioned no-show timing, inventory, financial and reversal policy.
 - Keep T315 open and classify STAY-027 as `BLOCKED_EXTERNAL` in the aggregate
   inventories until the versioned OQ-002 through OQ-005 commercial policy is approved.
 - Keep T316/STAY-028 `PARTIAL` until one disposable SQL Server + real backend +
