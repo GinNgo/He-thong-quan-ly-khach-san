@@ -118,6 +118,23 @@ public class EmailService {
         }
     }
 
+    public boolean sendOwnerInvitationEmail(String toEmail, String propertyName, String token, long expiresInDays) {
+        if (toEmail == null || toEmail.isBlank() || token == null || token.isBlank()) return false;
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail.trim());
+            message.setSubject("LuxeStay co-owner invitation");
+            message.setText("You were invited to co-own " + propertyName + ". Use this one-time token within "
+                    + expiresInDays + " days: " + token);
+            mailSender.send(message);
+            return true;
+        } catch (Exception exception) {
+            log.warn("MAIL_DELIVERY template=owner_invitation outcome=failure type={}", exception.getClass().getSimpleName());
+            return false;
+        }
+    }
+
     private String passwordResetTemplate(String customerName, String safeResetUrl, long expiresInMinutes) {
         return """
                 <!doctype html>

@@ -30,6 +30,7 @@ export const routes: Routes = [
   { path: 'register', loadComponent: () => import('./features/auth/register/register.component').then(m => m.RegisterComponent) },
   { path: 'partner/register', loadComponent: () => import('./features/client/partner-register/partner-register.component').then(m => m.PartnerRegisterComponent) },
   { path: 'partner/registration-status', loadComponent: () => import('./features/client/partner-registration-status/partner-registration-status.component').then(m => m.PartnerRegistrationStatusComponent), canActivate: [clientAuthGuard] },
+  { path: 'partner/owner-invitation', loadComponent: () => import('./features/client/owner-invitation-accept/owner-invitation-accept.component').then(m => m.OwnerInvitationAcceptComponent), canActivate: [clientAuthGuard] },
   { path: 'admin/login', loadComponent: () => import('./features/auth/admin-login/admin-login.component').then(m => m.AdminLoginComponent) },
   {
     path: 'admin',
@@ -95,6 +96,7 @@ export const routes: Routes = [
       { path: 'property-revenue', loadComponent: () => import('./features/management/property-revenue/property-revenue.component').then(m => m.PropertyRevenueComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.REPORT, actionCode: ActionCode.VIEW } },
       { path: 'audit-log', loadComponent: () => import('./features/admin/audit-log/audit-log.component').then(m => m.AuditLogComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.AUDIT_LOG, actionCode: ActionCode.VIEW } },
       { path: 'billing', loadComponent: () => import('./features/management/subscription-billing/subscription-billing.component').then(m => m.SubscriptionBillingComponent) },
+      { path: 'ownership', loadComponent: () => import('./features/management/property-ownership/property-ownership.component').then(m => m.PropertyOwnershipComponent) },
       { path: 'subscription', redirectTo: 'billing', pathMatch: 'full' },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]

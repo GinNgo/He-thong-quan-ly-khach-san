@@ -62,6 +62,11 @@ export class ManagementLayout implements OnInit, OnDestroy {
           url: '/management/billing',
           icon: 'workspace_premium',
         },
+        {
+          label: 'Chủ sở hữu',
+          url: '/management/ownership',
+          icon: 'group',
+        },
       ],
     },
     {

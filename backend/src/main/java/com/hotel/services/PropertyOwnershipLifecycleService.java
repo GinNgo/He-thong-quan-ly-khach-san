@@ -92,6 +92,16 @@ public class PropertyOwnershipLifecycleService {
         }
     }
 
+    @Transactional
+    public void ensureOwnerRole(User user) {
+        grantOwnerRole(user);
+    }
+
+    @Transactional
+    public void removeOwnerRoleWhenUnused(User user) {
+        removeOwnerRoleIfUnused(user);
+    }
+
     private void removeOwnerRoleIfUnused(User user) {
         boolean hasActiveOwnership = userPropertyRepository.findByUserIdAndRelationshipType(user.getId(), "OWNER")
                 .stream().anyMatch(mapping -> "ACTIVE".equalsIgnoreCase(mapping.getStatus()));
