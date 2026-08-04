@@ -24,6 +24,18 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     @Query("""
             select count(room)
             from Room room
+            join room.hotel hotel
+            where hotel.approvalStatus = 'APPROVED'
+              and hotel.operationStatus = 'ACTIVE'
+              and hotel.isDemo = false
+              and room.status <> 'MAINTENANCE'
+              and (room.maintenanceStatus is null or room.maintenanceStatus = 'NONE')
+            """)
+    long countSystemOperationalRooms();
+
+    @Query("""
+            select count(room)
+            from Room room
             where room.roomType.id = :roomTypeId
               and room.status not in :excludedRoomStatuses
               and (room.maintenanceStatus is null or room.maintenanceStatus = 'NONE')

@@ -19,6 +19,7 @@ public interface HotelRepository extends JpaRepository<Hotel, Long> {
     long countByWardIdAndApprovalStatusAndOperationStatus(Long wardId, String approvalStatus, String operationStatus);
     long countByProvinceIdAndApprovalStatusAndOperationStatusAndIsDemoFalse(Long provinceId, String approvalStatus, String operationStatus);
     long countByWardIdAndApprovalStatusAndOperationStatusAndIsDemoFalse(Long wardId, String approvalStatus, String operationStatus);
+    long countByApprovalStatusAndOperationStatusAndIsDemoFalse(String approvalStatus, String operationStatus);
     @org.springframework.data.jpa.repository.Query("""
             SELECT h FROM Hotel h
             WHERE h.approvalStatus = 'APPROVED' AND h.operationStatus = 'ACTIVE'
