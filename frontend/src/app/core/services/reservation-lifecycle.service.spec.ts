@@ -39,4 +39,22 @@ describe('ReservationService lifecycle commands', () => {
   it('does not expose the retired legacy service-charge mutation', () => {
     expect('addExtraService' in service).toBe(false);
   });
+
+  it('loads a typed physical-room picker context for a reservation', () => {
+    service.getAvailableRoomContext(88).subscribe();
+
+    const request = http.expectOne(`${environment.apiUrl}/reservations/88/available-rooms/context`);
+    expect(request.request.method).toBe('GET');
+    request.flush({
+      reservationId: 88,
+      hotelId: 3,
+      roomTypeId: 7,
+      roomTypeName: 'Deluxe',
+      checkInDate: '2026-08-10',
+      checkOutDate: '2026-08-12',
+      requiredQuantity: 2,
+      assignedRoomIds: [],
+      candidates: [],
+    });
+  });
 });

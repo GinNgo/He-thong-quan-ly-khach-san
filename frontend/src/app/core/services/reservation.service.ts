@@ -54,6 +54,30 @@ export interface ReservationPage {
   totalPages: number;
 }
 
+export interface AvailablePhysicalRoom {
+  id: number;
+  hotelId: number;
+  roomTypeId: number;
+  roomTypeNameVi?: string;
+  roomNumber: string;
+  floor: number;
+  status: string;
+  housekeepingStatus: string;
+  maintenanceStatus: string;
+}
+
+export interface AvailableRoomContext {
+  reservationId: number;
+  hotelId: number;
+  roomTypeId: number;
+  roomTypeName: string;
+  checkInDate: string;
+  checkOutDate: string;
+  requiredQuantity: number;
+  assignedRoomIds: number[];
+  candidates: AvailablePhysicalRoom[];
+}
+
 export type ReservationAmendmentStatus =
   | 'QUOTED'
   | 'AWAITING_PAYMENT'
@@ -182,6 +206,10 @@ export class ReservationService {
 
   markNoShow(id: number): Observable<Reservation> {
     return this.http.post<Reservation>(`${this.apiUrl}/${id}/no-show`, {});
+  }
+
+  getAvailableRoomContext(id: number): Observable<AvailableRoomContext> {
+    return this.http.get<AvailableRoomContext>(`${this.apiUrl}/${id}/available-rooms/context`);
   }
 
   cancelMyReservation(id: number, idempotencyKey?: string): Observable<Reservation> {

@@ -15,8 +15,6 @@ import com.hotel.repositories.HotelServiceRepository;
 import com.hotel.repositories.HousekeepingTaskRepository;
 import com.hotel.repositories.InvoiceRepository;
 import com.hotel.repositories.PaymentRepository;
-import com.hotel.repositories.PaymentSessionRepository;
-import com.hotel.repositories.RefundRequestRepository;
 import com.hotel.repositories.ReservationDetailRepository;
 import com.hotel.repositories.ReservationRepository;
 import com.hotel.repositories.ReservationRoomRepository;
@@ -63,9 +61,6 @@ class ReservationLifecycleLockingTest {
     @Mock private InvoiceRepository invoiceRepository;
     @Mock private PaymentRepository paymentRepository;
     @Mock private PaymentService paymentService;
-    @Mock private PaymentSessionRepository paymentSessionRepository;
-    @Mock private RefundRequestRepository refundRequestRepository;
-    @Mock private RefundService refundService;
     @Mock private HousekeepingTaskRepository housekeepingTaskRepository;
     @Mock private PropertyAccessService propertyAccessService;
     @Mock private ReservationHoldService reservationHoldService;
@@ -119,7 +114,7 @@ class ReservationLifecycleLockingTest {
 
         when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
         lenient().when(reservationRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(reservation));
-        when(reservationDetailRepository.findByReservationId(42L)).thenReturn(List.of(detail));
+        lenient().when(reservationDetailRepository.findByReservationId(42L)).thenReturn(List.of(detail));
     }
 
     @Test
@@ -187,10 +182,13 @@ class ReservationLifecycleLockingTest {
 
     @Test
     void availableRoomLookupExcludesReservedOrOtherwiseNonAssignableStates() {
-        detail.setQuantity(1);
+        detail.setQuantity(2);
         secondRoom.setStatus("RESERVED");
         when(reservationRepository.findById(42L)).thenReturn(Optional.of(reservation));
+        when(reservationRoomRepository.findByReservationDetailIdAndStatus(71L, "ASSIGNED"))
+                .thenReturn(List.of());
         when(roomRepository.findAvailableRoomsByRoomTypeAndDate(
+                3L,
                 7L,
                 List.of("MAINTENANCE", "OUT_OF_SERVICE", "DIRTY", "CLEANING", "OCCUPIED"),
                 RoomAvailabilityService.RELEASED_RESERVATION_STATUSES,
@@ -198,9 +196,59 @@ class ReservationLifecycleLockingTest {
                 reservation.getCheckOutDate()))
                 .thenReturn(List.of(firstRoom, secondRoom));
 
-        assertThat(reservationService.getAvailableRooms(42L))
+        assertThat(reservationService.getAvailableRoomContext(42L).candidates())
                 .extracting(com.hotel.dtos.RoomDTO::getId)
                 .containsExactly(11L);
+        assertThat(reservationService.getAvailableRoomContext(42L).requiredQuantity()).isEqualTo(2);
+    }
+
+    @Test
+    void availableRoomLookupAcceptsOnlyAvailableCleanOrInspectedRooms() {
+        Room inspected = room(reservation.getHotel(), detail.getRoomType(), 13L, "103");
+        inspected.setHousekeepingStatus("INSPECTED");
+        Room dirty = room(reservation.getHotel(), detail.getRoomType(), 14L, "104");
+        dirty.setStatus("DIRTY");
+        dirty.setHousekeepingStatus("DIRTY");
+        Room cleaning = room(reservation.getHotel(), detail.getRoomType(), 15L, "105");
+        cleaning.setStatus("CLEANING");
+        cleaning.setHousekeepingStatus("CLEANING");
+        Room maintenance = room(reservation.getHotel(), detail.getRoomType(), 16L, "106");
+        maintenance.setStatus("MAINTENANCE");
+        maintenance.setMaintenanceStatus("MAINTENANCE");
+        Room occupied = room(reservation.getHotel(), detail.getRoomType(), 17L, "107");
+        occupied.setStatus("OCCUPIED");
+        Room outOfService = room(reservation.getHotel(), detail.getRoomType(), 18L, "108");
+        outOfService.setStatus("OUT_OF_SERVICE");
+        outOfService.setMaintenanceStatus("OUT_OF_SERVICE");
+        Room inconsistentMaintenance = room(reservation.getHotel(), detail.getRoomType(), 19L, "109");
+        inconsistentMaintenance.setMaintenanceStatus("MAINTENANCE");
+        when(reservationRepository.findById(42L)).thenReturn(Optional.of(reservation));
+        when(reservationRoomRepository.findByReservationDetailIdAndStatus(71L, "ASSIGNED"))
+                .thenReturn(List.of());
+        when(roomRepository.findAvailableRoomsByRoomTypeAndDate(
+                3L, 7L,
+                List.of("MAINTENANCE", "OUT_OF_SERVICE", "DIRTY", "CLEANING", "OCCUPIED"),
+                RoomAvailabilityService.RELEASED_RESERVATION_STATUSES,
+                reservation.getCheckInDate(), reservation.getCheckOutDate()))
+                .thenReturn(List.of(firstRoom, inspected, dirty, cleaning, maintenance, occupied,
+                        outOfService, inconsistentMaintenance));
+
+        assertThat(reservationService.getAvailableRoomContext(42L).candidates())
+                .extracting(com.hotel.dtos.RoomDTO::getId)
+                .containsExactly(11L, 13L);
+    }
+
+    @Test
+    void availableRoomLookupRejectsReleasedReservationStates() {
+        reservation.setStatus("CANCELLED");
+        when(reservationRepository.findById(42L)).thenReturn(Optional.of(reservation));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> reservationService.getAvailableRoomContext(42L))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(roomRepository, never()).findAvailableRoomsByRoomTypeAndDate(
+                any(), any(), any(), any(), any(), any());
     }
 
     private AssignRoomsRequest request(Long... roomIds) {

@@ -122,6 +122,15 @@
         <div><small>Lưu trú</small><strong>{{ reservation.checkInDate | date:'dd/MM/yyyy' }} - {{ reservation.checkOutDate | date:'dd/MM/yyyy' }}</strong></div>
         <div><small>Trạng thái</small><strong>{{ getStatusLabel(reservation.status) }}</strong></div>
       </div>
+      <div class="room-picker-entry" *ngIf="canOpenRoomPicker(reservation.status)">
+        <div>
+          <strong>Phòng vật lý sẵn sàng</strong>
+          <span>Kiểm tra đúng loại phòng, trạng thái sạch, bảo trì và xung đột lưu trú.</span>
+        </div>
+        <button type="button" data-action="open-room-picker" (click)="openRoomPicker(reservation)">
+          Mở bộ chọn phòng
+        </button>
+      </div>
       <h3>Lịch sử sự kiện</h3>
       <ol *ngIf="reservation.events?.length; else noEvents" class="reservation-events">
         <li *ngFor="let event of reservation.events">
@@ -131,6 +140,26 @@
       </ol>
       <ng-template #noEvents><p class="reservation-state">Chưa có sự kiện vận hành được ghi nhận.</p></ng-template>
     </section>
+  </p-dialog>
+
+  <p-dialog
+    [(visible)]="showRoomPickerDialog"
+    [modal]="true"
+    [showHeader]="false"
+    [style]="{ width: 'min(920px, 96vw)' }"
+    [breakpoints]="{ '640px': '100vw' }"
+    styleClass="room-picker-dialog"
+    (onHide)="roomPickerReservationId = null"
+  >
+    <app-physical-room-picker
+      *ngIf="roomPickerReservationId as reservationId"
+      [reservationId]="reservationId"
+      (selectionChange)="handleRoomPickerSelection($event)"
+    ></app-physical-room-picker>
+    <div class="room-picker-dialog__footer" *ngIf="roomPickerReservationId">
+      <span>{{ roomPickerSelection.length ? 'Đã chọn ' + roomPickerSelection.length + ' phòng để dùng ở bước phân phòng.' : 'Chưa chọn phòng.' }}</span>
+      <button type="button" (click)="showRoomPickerDialog = false">Đóng</button>
+    </div>
   </p-dialog>
 
   <p-dialog

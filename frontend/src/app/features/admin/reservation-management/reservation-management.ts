@@ -18,6 +18,7 @@ import { ReservationCheckoutComponent } from './reservation-checkout.component';
 import { ActionCode, FunctionCode, PermissionService } from '../../../core/services/permission.service';
 import { Observable, finalize } from 'rxjs';
 import { ReservationAmendmentWorkspaceComponent } from '../../../shared/reservation-amendment/reservation-amendment-workspace.component';
+import { PhysicalRoomPickerComponent } from '../../../shared/physical-room-picker/physical-room-picker.component';
 
 @Component({
   selector: 'app-reservation-management',
@@ -34,6 +35,7 @@ import { ReservationAmendmentWorkspaceComponent } from '../../../shared/reservat
     TooltipModule,
     ReservationCheckoutComponent,
     ReservationAmendmentWorkspaceComponent,
+    PhysicalRoomPickerComponent,
   ],
   providers: [MessageService],
   templateUrl: './reservation-management.html',
@@ -59,12 +61,19 @@ export class ReservationManagement implements OnInit {
   selectedReservationId: number | null = null;
   amendmentReservationId: number | null = null;
   showAmendmentDialog = false;
+  showRoomPickerDialog = false;
+  roomPickerReservationId: number | null = null;
+  roomPickerSelection: number[] = [];
   private permissionService = inject(PermissionService);
   readonly canUpdateReservation = this.permissionService.hasPermission(FunctionCode.RESERVATION, ActionCode.UPDATE);
   readonly canAmendReservation = this.permissionService.hasPermission(FunctionCode.RESERVATION_AMEND, ActionCode.UPDATE);
   readonly canCheckIn = this.permissionService.hasPermission(FunctionCode.CHECKIN, ActionCode.UPDATE);
   readonly canCancelOperational = this.permissionService.hasPermission(FunctionCode.RESERVATION_CANCEL, ActionCode.UPDATE);
   readonly canMarkNoShow = this.permissionService.hasPermission(FunctionCode.RESERVATION_NO_SHOW, ActionCode.UPDATE);
+  readonly canViewRoomAssignments = this.permissionService.hasPermission(
+    FunctionCode.RESERVATION_ASSIGNMENT,
+    ActionCode.VIEW,
+  );
   readonly lifecycleActionKey = signal<string | null>(null);
 
   constructor(
@@ -218,6 +227,23 @@ export class ReservationManagement implements OnInit {
     if (!res.id) return;
     this.amendmentReservationId = res.id;
     this.showAmendmentDialog = true;
+  }
+
+  openRoomPicker(res: Reservation) {
+    if (!res.id || !this.canViewRoomAssignments) return;
+    this.roomPickerReservationId = res.id;
+    this.roomPickerSelection = [];
+    this.showRoomPickerDialog = true;
+  }
+
+  handleRoomPickerSelection(roomIds: number[]) {
+    this.roomPickerSelection = roomIds;
+  }
+
+  canOpenRoomPicker(status: string | undefined): boolean {
+    return this.canViewRoomAssignments && !new Set([
+      'CHECKED_OUT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED', 'NO_SHOW',
+    ]).has(status || '');
   }
 
   handleAmendmentApplied(reservationId: number) {

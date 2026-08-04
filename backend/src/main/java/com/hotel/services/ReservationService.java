@@ -455,20 +455,48 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public List<RoomDTO> getAvailableRooms(Long reservationId) {
+        return getAvailableRoomContext(reservationId).candidates();
+    }
+
+    @Transactional(readOnly = true)
+    public AvailableRoomContextDTO getAvailableRoomContext(Long reservationId) {
         Reservation reservation = findReservation(reservationId);
         requireOperationalAccess(reservation);
+        if (Set.of("CHECKED_OUT", "COMPLETED", "CANCELLED", "REJECTED", "EXPIRED", "NO_SHOW")
+                .contains(reservation.getStatus())) {
+            throw new IllegalStateException("Không thể chọn phòng cho booking đã kết thúc hoặc bị hủy.");
+        }
         List<ReservationDetail> details = reservationDetailRepository.findByReservationId(reservationId);
         if (details.size() != 1 || details.get(0).getRoomType() == null) {
             throw new IllegalStateException("Booking phải có đúng một loại phòng để chọn phòng vật lý.");
         }
-        return roomRepository.findAvailableRoomsByRoomTypeAndDate(
-                        details.get(0).getRoomType().getId(),
+        ReservationDetail detail = details.get(0);
+        List<Long> assignedRoomIds = reservationRoomRepository
+                .findByReservationDetailIdAndStatus(detail.getId(), "ASSIGNED").stream()
+                .map(ReservationRoom::getRoom)
+                .map(Room::getId)
+                .distinct()
+                .sorted()
+                .toList();
+        List<RoomDTO> candidates = roomRepository.findAvailableRoomsByRoomTypeAndDate(
+                        reservation.getHotel().getId(),
+                        detail.getRoomType().getId(),
                         List.of("MAINTENANCE", "OUT_OF_SERVICE", "DIRTY", "CLEANING", "OCCUPIED"),
                         RoomAvailabilityService.RELEASED_RESERVATION_STATUSES,
                         reservation.getCheckInDate(), reservation.getCheckOutDate()).stream()
-                .filter(room -> room.getHotel().getId().equals(reservation.getHotel().getId()))
                 .filter(RoomStatePolicy::isAssignable)
-                .map(this::availableRoomDto).toList();
+                .map(this::availableRoomDto)
+                .toList();
+        return new AvailableRoomContextDTO(
+                reservation.getId(),
+                reservation.getHotel().getId(),
+                detail.getRoomType().getId(),
+                detail.getRoomType().getNameVi(),
+                reservation.getCheckInDate(),
+                reservation.getCheckOutDate(),
+                detail.getQuantity() == null ? 1 : detail.getQuantity(),
+                assignedRoomIds,
+                candidates);
     }
 
     @Transactional

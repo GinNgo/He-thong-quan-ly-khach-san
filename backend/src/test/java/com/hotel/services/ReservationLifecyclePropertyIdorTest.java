@@ -9,8 +9,6 @@ import com.hotel.propertycommerce.config.PropertyPaymentConfigurationRepository;
 import com.hotel.propertycommerce.invoice.InvoiceFinalizationService;
 import com.hotel.repositories.HotelServiceRepository;
 import com.hotel.repositories.PaymentRepository;
-import com.hotel.repositories.PaymentSessionRepository;
-import com.hotel.repositories.RefundRequestRepository;
 import com.hotel.repositories.ReservationDetailRepository;
 import com.hotel.repositories.ReservationRepository;
 import com.hotel.repositories.ReservationRoomRepository;
@@ -20,6 +18,7 @@ import com.hotel.repositories.RoomTypeRepository;
 import com.hotel.repositories.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -31,6 +30,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -49,9 +49,6 @@ class ReservationLifecyclePropertyIdorTest {
     @Mock private ReservationServiceItemRepository reservationServiceItemRepository;
     @Mock private HotelServiceRepository hotelServiceRepository;
     @Mock private PaymentRepository paymentRepository;
-    @Mock private PaymentSessionRepository paymentSessionRepository;
-    @Mock private RefundRequestRepository refundRequestRepository;
-    @Mock private RefundService refundService;
     @Mock private PropertyAccessService propertyAccessService;
     @Mock private ReservationHoldService reservationHoldService;
     @Mock private PropertyPaymentConfigurationRepository propertyPaymentConfigurationRepository;
@@ -73,7 +70,7 @@ class ReservationLifecyclePropertyIdorTest {
         foreignReservation.setHotel(foreignHotel);
         foreignReservation.setStatus("CONFIRMED");
 
-        when(reservationRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(foreignReservation));
+        lenient().when(reservationRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(foreignReservation));
         doThrow(new ResourceNotFoundException("booking not found"))
                 .when(propertyAccessService).requireAccessibleOrNotFound(99L, "booking");
     }
@@ -85,7 +82,18 @@ class ReservationLifecyclePropertyIdorTest {
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("booking not found");
 
-        verifyNoInteractions(reservationDetailRepository, reservationRoomRepository, roomRepository, refundService);
+        verifyNoInteractions(reservationDetailRepository, reservationRoomRepository, roomRepository);
+    }
+
+    @Test
+    void crossPropertyAvailableRoomLookupIsHiddenBeforeInventoryReads() {
+        when(reservationRepository.findById(7L)).thenReturn(Optional.of(foreignReservation));
+
+        assertThatThrownBy(() -> reservationService.getAvailableRoomContext(7L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("booking not found");
+
+        verifyNoInteractions(reservationDetailRepository, reservationRoomRepository, roomRepository);
     }
 
     private void execute(OperationalAction action) {

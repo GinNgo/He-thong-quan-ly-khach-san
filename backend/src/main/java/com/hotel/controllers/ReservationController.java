@@ -117,6 +117,12 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.getAvailableRooms(id));
     }
 
+    @GetMapping("/{id}/available-rooms/context")
+    @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.VIEW)
+    public ResponseEntity<AvailableRoomContextDTO> availableRoomContext(@PathVariable Long id) {
+        return ResponseEntity.ok(reservationService.getAvailableRoomContext(id));
+    }
+
     @PostMapping("/{id}/assign-rooms")
     @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.UPDATE)
     public ResponseEntity<ReservationDTO> assignRoomsPost(@PathVariable Long id, @RequestBody AssignRoomsRequest request) {

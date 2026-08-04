@@ -110,6 +110,8 @@
   color: #5f584e;
 }
 
+.room-picker-entry{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin:0 0 1.25rem;padding:1rem;border:1px solid #a9c2b6;background:linear-gradient(120deg,#f2f8f5,#fffaf0)}.room-picker-entry div{display:grid;gap:.25rem}.room-picker-entry span{color:#5f6f67;font-size:.88rem}.room-picker-entry button,.room-picker-dialog__footer button{min-height:42px;padding:0 1rem;border:1px solid #245846;background:#245846;color:#fff;font-weight:800;white-space:nowrap}.room-picker-dialog__footer{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:14px 26px;background:#17332a;color:#fff}.room-picker-dialog__footer span{font-weight:700}
+
 @media (max-width: 768px) {
   .reservation-filters,
   .reservation-detail__summary {
@@ -135,4 +137,5 @@
 
   :host ::ng-deep .amendment-dialog{margin:0;max-height:100dvh;border-radius:0}
   :host ::ng-deep .amendment-dialog .p-dialog-content{max-height:100dvh;overflow:auto;border-radius:0}
+  .room-picker-entry,.room-picker-dialog__footer{align-items:stretch;flex-direction:column}.room-picker-entry button,.room-picker-dialog__footer button{width:100%}:host ::ng-deep .room-picker-dialog{margin:0;max-height:100dvh;border-radius:0}:host ::ng-deep .room-picker-dialog .p-dialog-content{padding:0;max-height:100dvh;overflow:auto;border-radius:0}
 }
