@@ -61,6 +61,11 @@
           <div class="booking-actions">
             <span class="status">{{ getStatusLabel(booking.status) }}</span>
             <button type="button" class="booking-detail-btn" (click)="viewBooking(booking.id)">Xem chi tiết</button>
+            <button *ngIf="booking.status === 'CHECKED_OUT' && !reviewsByReservation.has(booking.id)"
+              type="button" class="review-btn" (click)="openReview(booking.id)">Đánh giá / Review</button>
+            <span *ngIf="reviewsByReservation.get(booking.id) as review" class="review-score">
+              {{ review.rating }}/10 · {{ review.status === 'PUBLISHED' ? 'Đã đăng / Published' : 'Đang ẩn / Hidden' }}
+            </span>
             <button
               *ngIf="booking.status === 'PENDING_PAYMENT' || booking.status === 'CONFIRMED'"
               type="button"
@@ -111,6 +116,17 @@
     </section>
   </section>
 </main>
+
+<div *ngIf="reviewReservationId as reservationId" class="review-overlay" role="dialog" aria-modal="true" aria-labelledby="stay-review-title">
+  <form class="review-panel" (ngSubmit)="submitReview()">
+    <header><div><small>RES-{{ reservationId }}</small><h2 id="stay-review-title">Đánh giá kỳ nghỉ / Review your stay</h2></div><button type="button" (click)="closeReview()" aria-label="Đóng / Close">×</button></header>
+    <label>Điểm / Rating (1-10)<input type="number" min="1" max="10" name="reviewRating" [(ngModel)]="reviewRating" required></label>
+    <label>Tiêu đề / Title<input type="text" maxlength="150" name="reviewTitle" [(ngModel)]="reviewTitle"></label>
+    <label>Nhận xét / Comment<textarea minlength="10" maxlength="2000" name="reviewComment" [(ngModel)]="reviewComment" required></textarea></label>
+    <p *ngIf="reviewError" class="alert error" role="alert">{{ reviewError }}</p>
+    <footer><button type="button" (click)="closeReview()">Hủy / Cancel</button><button type="submit" [disabled]="reviewBusy">{{ reviewBusy ? 'Đang gửi... / Sending...' : 'Gửi đánh giá / Submit' }}</button></footer>
+  </form>
+</div>
 
 <div *ngIf="amendmentReservationId as reservationId" class="amendment-overlay" role="dialog" aria-modal="true" aria-label="Thay đổi đặt phòng">
   <div class="amendment-overlay__panel">

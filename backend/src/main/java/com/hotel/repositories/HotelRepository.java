@@ -9,6 +9,9 @@ import org.springframework.data.domain.Pageable;
 
 @Repository
 public interface HotelRepository extends JpaRepository<Hotel, Long> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select h from Hotel h where h.id = :id")
+    java.util.Optional<Hotel> findByIdForUpdate(@org.springframework.data.repository.query.Param("id") Long id);
     java.util.Optional<Hotel> findByCode(String code);
     java.util.Optional<Hotel> findBySeedKey(String seedKey);
     long countByIsDemoTrue();

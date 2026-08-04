@@ -37,5 +37,6 @@ public enum FunctionCode {
     PLATFORM_REFUND,
     PLATFORM_REVENUE,
     PAYMENT_READINESS,
+    REVIEW,
     AUDIT_LOG
 }

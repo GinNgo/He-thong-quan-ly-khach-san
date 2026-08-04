@@ -1,6 +1,6 @@
 ﻿import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { finalize, map, of, switchMap } from 'rxjs';
 import { AuthService } from '@app/core/services/auth';
@@ -11,10 +11,11 @@ import { UserService } from '@app/core/services/user';
 import { EmailVerificationService } from '@app/core/services/email-verification.service';
 import { ReservationAmendmentWorkspaceComponent } from '@app/shared/reservation-amendment/reservation-amendment-workspace.component';
 import { RoomAssignmentCopyService } from '@app/shared/physical-room-picker/room-assignment-copy.service';
+import { StayReview, StayReviewService } from '@app/core/services/stay-review.service';
 
 @Component({
   selector: 'app-profile', standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, ReservationAmendmentWorkspaceComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, ReservationAmendmentWorkspaceComponent],
   templateUrl: './profile.component.html', styleUrls: ['./profile.component.css']
 })
 export class ProfileComponent implements OnInit {
@@ -28,6 +29,7 @@ export class ProfileComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
   private readonly changeDetector = inject(ChangeDetectorRef);
+  private readonly stayReviews = inject(StayReviewService);
   readonly roomAssignmentCopy = inject(RoomAssignmentCopyService);
 
   user: UserContext | null = null;
@@ -43,6 +45,9 @@ export class ProfileComponent implements OnInit {
   bookingDetailError = '';
   amendmentReservationId: number | null = null;
   error = ''; bookingsError = ''; success = '';
+  reviewsByReservation = new Map<number, StayReview>();
+  reviewReservationId: number | null = null;
+  reviewRating = 10; reviewTitle = ''; reviewComment = ''; reviewBusy = false; reviewError = '';
   readonly emailVerificationText = {
     verified: 'Email đã xác minh / Email verified',
     unverified: 'Email chưa xác minh / Email not verified',
@@ -155,7 +160,7 @@ export class ProfileComponent implements OnInit {
       this.bookingsLoading = false;
       this.changeDetector.detectChanges();
     })).subscribe({
-      next: data => { this.bookings = data; this.changeDetector.detectChanges(); },
+      next: data => { this.bookings = data; this.loadMyReviews(); this.changeDetector.detectChanges(); },
       error: () => { this.bookingsError = 'Không thể tải danh sách chuyến đi.'; this.changeDetector.detectChanges(); }
     });
   }
@@ -239,6 +244,37 @@ export class ProfileComponent implements OnInit {
       ROOMS_REASSIGNED: this.roomAssignmentCopy.text('historyReassigned'),
       ROOMS_RELEASED: this.roomAssignmentCopy.text('historyReleased'),
     } as Record<string, string>)[eventType] || eventType;
+  }
+
+  openReview(reservationId: number): void {
+    this.reviewReservationId = reservationId; this.reviewRating = 10;
+    this.reviewTitle = ''; this.reviewComment = ''; this.reviewError = '';
+  }
+
+  closeReview(): void { this.reviewReservationId = null; this.reviewError = ''; }
+
+  submitReview(): void {
+    if (!this.reviewReservationId || this.reviewBusy) return;
+    if (this.reviewRating < 1 || this.reviewRating > 10 || this.reviewComment.trim().length < 10) {
+      this.reviewError = 'Vui lòng chọn 1-10 điểm và nhập ít nhất 10 ký tự / Choose 1-10 and enter at least 10 characters.';
+      return;
+    }
+    const reservationId = this.reviewReservationId;
+    this.reviewBusy = true; this.reviewError = '';
+    this.stayReviews.create(reservationId, { rating: this.reviewRating,
+      title: this.reviewTitle.trim() || undefined, comment: this.reviewComment.trim() })
+      .pipe(finalize(() => { this.reviewBusy = false; this.changeDetector.detectChanges(); }))
+      .subscribe({
+        next: review => { this.reviewsByReservation.set(reservationId, review); this.success = 'Đã gửi đánh giá lưu trú / Stay review submitted.'; this.closeReview(); },
+        error: err => this.reviewError = err.error?.message || 'Không thể gửi đánh giá / Review could not be submitted.',
+      });
+  }
+
+  private loadMyReviews(): void {
+    this.stayReviews.mine().subscribe({
+      next: reviews => this.reviewsByReservation = new Map(reviews.map(review => [review.reservationId, review])),
+      error: () => undefined,
+    });
   }
 
   assignedRoomNumbers(booking: Reservation): string[] {
