@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
 import {
+  canonicalPriceDisplayState,
   canonicalPropertyTypes,
   canonicalReviewScore,
   canonicalStarRatings,
@@ -119,6 +120,19 @@ describe('property search query contract', () => {
     expect(propertySearchParamsFromRoute({ minReviewScore: '0' })).toEqual(expect.objectContaining({
       minReviewScore: 0,
     }));
+  });
+
+  it('canonicalizes a finite nonnegative price display range without losing inclusive endpoints', () => {
+    expect(canonicalPriceDisplayState('400000', '600000')).toEqual({ minPrice: 400000, maxPrice: 600000 });
+    expect(canonicalPriceDisplayState(600000, 400000)).toEqual({ minPrice: 400000, maxPrice: 600000 });
+    expect(canonicalPriceDisplayState(-100, Number.POSITIVE_INFINITY)).toEqual({
+      minPrice: 0,
+      maxPrice: 10000000,
+    });
+    expect(canonicalPriceDisplayState(Number.NaN, 12000000)).toEqual({
+      minPrice: 0,
+      maxPrice: 10000000,
+    });
   });
 
   it('hydrates only a strict, increasing ISO stay range', () => {

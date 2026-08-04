@@ -10,6 +10,7 @@ import com.hotel.repositories.LocationRepository;
 import com.hotel.repositories.PropertyImageRepository;
 import com.hotel.repositories.RoomTypeRepository;
 import com.hotel.repositories.RoomRepository;
+import com.hotel.services.impl.PropertySearchServiceImpl;
 import com.jayway.jsonpath.JsonPath;
 import com.hotel.entities.Room;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +21,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +32,7 @@ import java.util.List;
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -59,6 +62,9 @@ public class PropertySearchControllerIntegrationTest {
 
     @Autowired
     private PropertyImageRepository propertyImageRepository;
+
+    @Autowired
+    private PropertySearchServiceImpl propertySearchService;
 
     private Location primaryProvince;
     private Location legacyPrimaryProvince;
@@ -303,6 +309,130 @@ public class PropertySearchControllerIntegrationTest {
                 .andExpect(jsonPath("$.content[0].pricing.subtotal", is(2000000)))
                 .andExpect(jsonPath("$.content[0].pricing.taxAmount", is(300000.00)))
                 .andExpect(jsonPath("$.content[0].pricing.totalAmount", is(2300000.00)));
+    }
+
+    @Test
+    void searchProperties_RejectsInvalidPriceBounds() throws Exception {
+        for (String field : List.of("minPrice", "maxPrice")) {
+            for (String invalid : List.of("-1", "NaN", "Infinity")) {
+                mockMvc.perform(get("/api/public/properties/search").param(field, invalid))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+            }
+        }
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("minPrice", "600000")
+                        .param("maxPrice", "500000"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
+    void searchProperties_RequiresOneRoomTypeToSatisfyBothInclusiveBounds() throws Exception {
+        savePriceHotel("Split Bounds",
+                priceRoom("LOW", "300000", true),
+                priceRoom("HIGH", "900000", true));
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("keyword", "T278 Split Bounds")
+                        .param("minPrice", "400000")
+                        .param("maxPrice", "600000"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.content", hasSize(0)));
+
+        PriceHotelFixture matching = savePriceHotel("Inclusive Bounds",
+                priceRoom("LOW", "300000", true),
+                priceRoom("MATCH", "500000", true),
+                priceRoom("HIGH", "900000", true));
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("keyword", "T278 Inclusive Bounds")
+                        .param("minPrice", "500000")
+                        .param("maxPrice", "500000"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(matching.hotel().getId().intValue()))
+                .andExpect(jsonPath("$.content[0].startingPrice").value(500000.0))
+                .andExpect(jsonPath("$.content[0].pricing.nightlyPrice").value(500000))
+                .andExpect(jsonPath("$.content[0].lowestRoomType.id")
+                        .value(matching.roomTypes().get(1).getId().intValue()));
+    }
+
+    @Test
+    void searchProperties_UsesTheBoundedRoomForAvailabilityAndOneSidedFilters() throws Exception {
+        savePriceHotel("Unavailable Match",
+                priceRoom("AVAILABLE-LOW", "300000", true),
+                priceRoom("NO-INVENTORY-MATCH", "500000", false));
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("keyword", "T278 Unavailable Match")
+                        .param("minPrice", "400000")
+                        .param("maxPrice", "600000"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+
+        savePriceHotel("One Sided",
+                priceRoom("LOW", "300000", true),
+                priceRoom("MID", "500000", true),
+                priceRoom("HIGH", "900000", true));
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("keyword", "T278 One Sided")
+                        .param("minPrice", "500000"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].startingPrice").value(500000.0));
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("keyword", "T278 One Sided")
+                        .param("maxPrice", "500000"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].startingPrice").value(300000.0));
+    }
+
+    @Test
+    void searchProperties_PriceSortUsesTheSameBoundedDisplayedPrice() throws Exception {
+        PriceHotelFixture low = savePriceHotel("Sort Low",
+                priceRoom("OUTSIDE", "100000", true), priceRoom("MATCH", "550000", true));
+        PriceHotelFixture middle = savePriceHotel("Sort Middle",
+                priceRoom("OUTSIDE", "200000", true), priceRoom("MATCH", "650000", true));
+        PriceHotelFixture high = savePriceHotel("Sort High",
+                priceRoom("OUTSIDE", "300000", true), priceRoom("MATCH", "750000", true));
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("keyword", "T278 Sort")
+                        .param("minPrice", "500000")
+                        .param("maxPrice", "800000")
+                        .param("sortBy", "PRICE_ASC")
+                        .param("pageSize", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].id", contains(
+                        low.hotel().getId().intValue(), middle.hotel().getId().intValue(), high.hotel().getId().intValue())))
+                .andExpect(jsonPath("$.content[*].startingPrice", contains(550000.0, 650000.0, 750000.0)))
+                .andExpect(jsonPath("$.content[*].pricing.nightlyPrice", contains(550000, 650000, 750000)));
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("keyword", "T278 Sort")
+                        .param("minPrice", "500000")
+                        .param("maxPrice", "800000")
+                        .param("sortBy", "PRICE_DESC")
+                        .param("pageSize", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].id", contains(
+                        high.hotel().getId().intValue(), middle.hotel().getId().intValue(), low.hotel().getId().intValue())))
+                .andExpect(jsonPath("$.content[*].startingPrice", contains(750000.0, 650000.0, 550000.0)));
+    }
+
+    @Test
+    void searchProperties_ExcludesLegacyNullRoomPricesFromBoundedCandidates() {
+        RoomType legacyNullPrice = new RoomType();
+        legacyNullPrice.setBasePrice(null);
+
+        Boolean matches = ReflectionTestUtils.invokeMethod(
+                propertySearchService, "isWithinPriceBounds", legacyNullPrice, 0d, 1_000_000d);
+
+        assertFalse(Boolean.TRUE.equals(matches));
     }
 
     @Test
@@ -656,6 +786,46 @@ public class PropertySearchControllerIntegrationTest {
         return hotel;
     }
 
+    private PriceHotelFixture savePriceHotel(String suffix, PriceRoomSeed... seeds) {
+        String key = suffix.replaceAll("[^A-Za-z0-9]", "-").toUpperCase();
+        Hotel hotel = new Hotel();
+        hotel.setName("T278 " + suffix);
+        hotel.setCode("TEST-T278-" + key);
+        hotel.setSlug("test-t278-" + key.toLowerCase());
+        hotel.setNormalizedName(("T278 " + suffix).toLowerCase());
+        hotel.setProvinceId(secondaryProvince.getId());
+        hotel.setAddressLine("278 Price Street " + suffix);
+        hotel.setCity(secondaryProvince.getNameVi());
+        hotel.setCountry("Vietnam");
+        hotel.setStatus("ACTIVE");
+        hotel.setApprovalStatus("APPROVED");
+        hotel.setOperationStatus("ACTIVE");
+        hotel.setPropertyType("HOTEL");
+        hotel = hotelRepository.saveAndFlush(hotel);
+
+        List<RoomType> roomTypes = new java.util.ArrayList<>();
+        for (PriceRoomSeed seed : seeds) {
+            RoomType roomType = new RoomType();
+            roomType.setHotel(hotel);
+            roomType.setNameEn("T278 " + suffix + " " + seed.code());
+            roomType.setNameVi("T278 " + suffix + " " + seed.code());
+            roomType.setCode("T278-" + key + "-" + seed.code());
+            roomType.setBasePrice(seed.price());
+            roomType.setMaxGuest(2);
+            roomType.setStatus("ACTIVE");
+            roomType = roomTypeRepository.saveAndFlush(roomType);
+            roomTypes.add(roomType);
+            if (seed.hasInventory()) {
+                saveRoom(hotel, roomType, "T278-" + hotel.getId() + "-" + seed.code());
+            }
+        }
+        return new PriceHotelFixture(hotel, List.copyOf(roomTypes));
+    }
+
+    private PriceRoomSeed priceRoom(String code, String price, boolean hasInventory) {
+        return new PriceRoomSeed(code, new BigDecimal(price), hasInventory);
+    }
+
     private void savePropertyImage(Hotel hotel, String imageUrl, boolean primary, int sortOrder, String altText) {
         PropertyImage image = new PropertyImage();
         image.setHotel(hotel);
@@ -669,4 +839,8 @@ public class PropertySearchControllerIntegrationTest {
     private record FilterFixture(Hotel hotelLeader, Hotel resortReviewed, Hotel homestayReviewed,
                                  Hotel zeroScoreReviewed, Hotel zeroCountHigh, Hotel nullAverageCount,
                                  Hotel nullCountHigh) { }
+
+    private record PriceRoomSeed(String code, BigDecimal price, boolean hasInventory) { }
+
+    private record PriceHotelFixture(Hotel hotel, List<RoomType> roomTypes) { }
 }

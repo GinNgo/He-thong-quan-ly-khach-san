@@ -48,13 +48,14 @@ import { ImageFallbackService } from '../../../../core/services/image-fallback.s
         <ng-template #unrated><p class="unrated">Chưa có đánh giá</p></ng-template>
 
         <div *ngIf="property.pricing; else unavailable" class="price-block">
-          <p>Từ <strong>{{ formatVnd(effectiveNightlyPrice) }}</strong><span>/đêm</span></p>
+          <p>Từ <strong data-nightly-price [attr.data-price-value]="effectiveNightlyPrice"
+            [attr.aria-label]="'Giá mỗi đêm ' + formatVnd(effectiveNightlyPrice)">{{ formatVnd(effectiveNightlyPrice) }}</strong><span>/đêm</span></p>
           <small>{{ property.pricing.roomQuantity || 1 }} phòng · {{ property.pricing.numberOfNights }} đêm</small>
           <div class="total">Tổng <b>{{ formatVnd(property.pricing.totalAmount) }}</b></div>
           <small>Thuế và phí: {{ formatVnd(taxAndFees) }}</small>
           <button type="button" class="view-button" (click)="view()">Xem phòng <i class="pi pi-arrow-right"></i></button>
         </div>
-        <ng-template #unavailable><div class="price-block"><p class="unavailable">Không còn phòng phù hợp</p></div></ng-template>
+        <ng-template #unavailable><div class="price-block" data-pricing-unavailable><p class="unavailable">Không còn phòng phù hợp</p></div></ng-template>
       </div>
     </article>
   `,

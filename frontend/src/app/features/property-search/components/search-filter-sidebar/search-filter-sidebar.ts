@@ -4,9 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { CheckboxModule } from 'primeng/checkbox';
 import { SliderModule } from 'primeng/slider';
 import {
+  canonicalPriceDisplayState,
   canonicalPropertyTypes,
   canonicalReviewScore,
   canonicalStarRatings,
+  PRICE_FILTER_MAX,
+  PRICE_FILTER_MIN,
+  PRICE_FILTER_STEP,
 } from '../../pages/property-search-page/property-search-query';
 
 export interface FilterState {
@@ -31,11 +35,11 @@ export interface FilterState {
 
       <section class="filter-group">
         <div class="group-heading"><h3>Khoảng giá mỗi đêm</h3><span>VND</span></div>
-        <p-slider [(ngModel)]="priceRange" [range]="true" [min]="0" [max]="10000000"
-          [step]="100000" ariaLabel="Khoảng giá phòng"></p-slider>
+        <p-slider [(ngModel)]="priceRange" [range]="true" [min]="priceFilterMin" [max]="priceFilterMax"
+          [step]="priceFilterStep" ariaLabel="Khoảng giá phòng"></p-slider>
         <div class="price-values">
           <span>{{ formatVnd(priceRange[0]) }}</span>
-          <span>{{ priceRange[1] >= 10000000 ? '10.000.000 ₫ trở lên' : formatVnd(priceRange[1]) }}</span>
+          <span>{{ priceRange[1] >= priceFilterMax ? '10.000.000 ₫ trở lên' : formatVnd(priceRange[1]) }}</span>
         </div>
       </section>
 
@@ -87,7 +91,10 @@ export class SearchFilterSidebarComponent implements OnChanges {
   @Input() initialState: Partial<FilterState> = {};
   @Output() filtersChanged = new EventEmitter<FilterState>();
 
-  priceRange = [0, 10000000];
+  priceRange = [PRICE_FILTER_MIN, PRICE_FILTER_MAX];
+  readonly priceFilterMin = PRICE_FILTER_MIN;
+  readonly priceFilterMax = PRICE_FILTER_MAX;
+  readonly priceFilterStep = PRICE_FILTER_STEP;
   selectedPropertyTypes: string[] = [];
   selectedStars: number[] = [];
   selectedReviewScore: number | null = null;
@@ -104,16 +111,19 @@ export class SearchFilterSidebarComponent implements OnChanges {
   ];
 
   ngOnChanges(): void {
-    this.priceRange = [this.initialState.minPrice ?? 0, this.initialState.maxPrice ?? 10000000];
+    const priceState = canonicalPriceDisplayState(this.initialState.minPrice, this.initialState.maxPrice);
+    this.priceRange = [priceState.minPrice, priceState.maxPrice];
     this.selectedPropertyTypes = canonicalPropertyTypes(this.initialState.propertyTypes);
     this.selectedStars = canonicalStarRatings(this.initialState.starRatings);
     this.selectedReviewScore = canonicalReviewScore(this.initialState.minReviewScore);
   }
 
   applyFilters(): void {
+    const priceState = canonicalPriceDisplayState(this.priceRange[0], this.priceRange[1]);
+    this.priceRange = [priceState.minPrice, priceState.maxPrice];
     this.filtersChanged.emit({
-      minPrice: Math.max(0, Number(this.priceRange[0]) || 0),
-      maxPrice: Math.max(this.priceRange[0], Number(this.priceRange[1]) || 10000000),
+      minPrice: priceState.minPrice,
+      maxPrice: priceState.maxPrice,
       propertyTypes: canonicalPropertyTypes(this.selectedPropertyTypes),
       starRatings: canonicalStarRatings(this.selectedStars),
       minReviewScore: canonicalReviewScore(this.selectedReviewScore),
@@ -122,7 +132,7 @@ export class SearchFilterSidebarComponent implements OnChanges {
   }
 
   clearAll(): void {
-    this.priceRange = [0, 10000000]; this.selectedPropertyTypes = []; this.selectedStars = [];
+    this.priceRange = [PRICE_FILTER_MIN, PRICE_FILTER_MAX]; this.selectedPropertyTypes = []; this.selectedStars = [];
     this.selectedReviewScore = null; this.applyFilters();
   }
 

@@ -15,11 +15,19 @@ export interface SearchStayDates {
   checkOut: Date;
 }
 
+export interface PriceFilterDisplayState {
+  minPrice: number;
+  maxPrice: number;
+}
+
 export const PROPERTY_TYPE_FILTERS = [
   'HOTEL', 'RESORT', 'APARTMENT', 'VILLA', 'HOMESTAY', 'MOTEL', 'GUEST_HOUSE', 'HOSTEL',
 ] as const;
 export const STAR_RATING_FILTERS = [5, 4, 3, 2, 1] as const;
 export const REVIEW_SCORE_FILTERS = [9, 8, 7, 6] as const;
+export const PRICE_FILTER_MIN = 0;
+export const PRICE_FILTER_MAX = 10_000_000;
+export const PRICE_FILTER_STEP = 100_000;
 
 export function propertySearchParamsFromRoute(params: Params): PropertySearchParams {
   return {
@@ -65,6 +73,15 @@ export function canonicalReviewScore(value: unknown): number | null {
   if (value === null || value === undefined || (typeof value === 'string' && !value.trim())) return null;
   const score = Number(value);
   return Number.isFinite(score) && score >= 0 && score <= 10 ? score : null;
+}
+
+export function canonicalPriceDisplayState(minValue: unknown, maxValue: unknown): PriceFilterDisplayState {
+  const minPrice = canonicalDisplayPrice(minValue, PRICE_FILTER_MIN);
+  const maxPrice = canonicalDisplayPrice(maxValue, PRICE_FILTER_MAX);
+  return {
+    minPrice: Math.min(minPrice, maxPrice),
+    maxPrice: Math.max(minPrice, maxPrice),
+  };
 }
 
 export function validSearchStayDates(params: Params): SearchStayDates | null {
@@ -126,6 +143,13 @@ function booleanValue(value: unknown): boolean | undefined {
   if (text === 'true') return true;
   if (text === 'false') return false;
   return undefined;
+}
+
+function canonicalDisplayPrice(value: unknown, fallback: number): number {
+  if (value === null || value === undefined || (typeof value === 'string' && !value.trim())) return fallback;
+  const price = Number(value);
+  if (!Number.isFinite(price)) return fallback;
+  return Math.min(PRICE_FILTER_MAX, Math.max(PRICE_FILTER_MIN, price));
 }
 
 function isoDate(value?: string): Date | null {

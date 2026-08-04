@@ -45,6 +45,8 @@ describe('PropertySearchPageComponent filter contract', () => {
       sortBy: 'RATING',
       pageNumber: '4',
       pageSize: '50',
+      minPrice: '400000',
+      maxPrice: '600000',
       propertyTypes: 'resort,RESORT,unknown',
       starRatings: '4,5,5,0',
       minReviewScore: '0',
@@ -97,13 +99,36 @@ describe('PropertySearchPageComponent filter contract', () => {
       propertyTypes: ['RESORT'],
       starRatings: [5, 4],
       minReviewScore: 0,
+      minPrice: 400000,
+      maxPrice: 600000,
       pageNumber: 4,
       pageSize: 50,
       sortBy: 'RATING',
     }));
-    expect(component.activeFilterCount).toBe(4);
-    expect(fixture.nativeElement.querySelectorAll('[data-filter-chip]').length).toBe(4);
+    expect(component.activeFilterCount).toBe(5);
+    expect(fixture.nativeElement.querySelectorAll('[data-filter-chip]').length).toBe(5);
     expect(fixture.nativeElement.querySelector('[data-filter-chip="reviewScore:0"]')).not.toBeNull();
+    const priceChip = fixture.nativeElement.querySelector('[data-filter-chip="price"]') as HTMLButtonElement;
+    expect(priceChip.textContent).toContain('400.000');
+    expect(priceChip.textContent).toContain('600.000');
+    expect(priceChip.getAttribute('aria-label')).toContain('Bỏ bộ lọc khoảng giá');
+  });
+
+  it('preserves an invalid route price order for the API while canonicalizing only the slider display', () => {
+    queryParams.next({
+      checkInDate: '2026-08-10',
+      checkOutDate: '2026-08-12',
+      minPrice: '600000',
+      maxPrice: '400000',
+    });
+    fixture.detectChanges();
+
+    expect(api.searchHotels).toHaveBeenLastCalledWith(expect.objectContaining({
+      minPrice: 600000,
+      maxPrice: 400000,
+    }));
+    expect(component.currentFilterState.minPrice).toBe(400000);
+    expect(component.currentFilterState.maxPrice).toBe(600000);
   });
 
   it('removes one star and resets the page through merged query params', () => {
@@ -120,10 +145,25 @@ describe('PropertySearchPageComponent filter contract', () => {
     expect(patch).not.toHaveProperty('pageSize');
   });
 
+  it('removes the inclusive price range at page one without overwriting search state', () => {
+    const chip = fixture.nativeElement.querySelector('[data-filter-chip="price"]') as HTMLButtonElement;
+    chip.click();
+
+    expect(router.navigate).toHaveBeenLastCalledWith([], expect.objectContaining({
+      queryParams: { minPrice: null, maxPrice: null, pageNumber: 1 },
+      queryParamsHandling: 'merge',
+    }));
+    const patch = router.navigate.mock.calls.at(-1)?.[1].queryParams;
+    expect(patch).not.toHaveProperty('checkInDate');
+    expect(patch).not.toHaveProperty('checkOutDate');
+    expect(patch).not.toHaveProperty('sortBy');
+    expect(patch).not.toHaveProperty('pageSize');
+  });
+
   it('canonicalizes applied filters and clears all filters at page one', () => {
     component.onFiltersChanged({
-      minPrice: 0,
-      maxPrice: 10000000,
+      minPrice: 600000,
+      maxPrice: 400000,
       propertyTypes: ['hotel', 'HOTEL', 'bad'],
       starRatings: [3, 5, 5, 9],
       minReviewScore: 8.5,
@@ -131,6 +171,7 @@ describe('PropertySearchPageComponent filter contract', () => {
     });
     expect(router.navigate).toHaveBeenLastCalledWith([], expect.objectContaining({
       queryParams: expect.objectContaining({
+        minPrice: 400000, maxPrice: 600000,
         propertyTypes: 'HOTEL', starRatings: '5,3', minReviewScore: 8.5, pageNumber: 1,
       }),
       queryParamsHandling: 'merge',

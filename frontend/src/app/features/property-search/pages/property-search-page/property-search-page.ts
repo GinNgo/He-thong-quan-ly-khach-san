@@ -12,12 +12,15 @@ import { HomeSearchStateService } from '../../../client/home/services/home-searc
 import { PropertyResultCardComponent } from '../../components/property-result-card/property-result-card';
 import { FilterState, SearchFilterSidebarComponent } from '../../components/search-filter-sidebar/search-filter-sidebar';
 import {
+  canonicalPriceDisplayState,
   canonicalPropertyTypes,
   canonicalReviewScore,
   canonicalStarRatings,
   propertySearchErrorState,
   propertySearchParamsFromRoute,
   validSearchStayDates,
+  PRICE_FILTER_MAX,
+  PRICE_FILTER_MIN,
 } from './property-search-query';
 
 interface PageChangeEvent {
@@ -58,7 +61,9 @@ interface PageChangeEvent {
                   [attr.data-filter-chip]="'reviewScore:' + currentFilterState.minReviewScore"
                   [attr.aria-label]="'Bỏ bộ lọc điểm đánh giá từ ' + currentFilterState.minReviewScore"
                   (click)="removeReviewScore()">{{ currentFilterState.minReviewScore }}+ điểm <i class="pi pi-times" aria-hidden="true"></i></button>
-                <button *ngIf="hasPriceFilter" type="button" (click)="removePriceFilter()">{{ priceChip }} <i class="pi pi-times"></i></button>
+                <button *ngIf="hasPriceFilter" type="button" data-filter-chip="price"
+                  [attr.aria-label]="'Bỏ bộ lọc khoảng giá ' + priceChip" (click)="removePriceFilter()">
+                  {{ priceChip }} <i class="pi pi-times" aria-hidden="true"></i></button>
                 <button *ngIf="activeFilterCount" type="button" class="clear-chip" data-filter-clear
                   (click)="clearAllFilters()">Xóa tất cả</button>
               </div>
@@ -111,21 +116,22 @@ export class PropertySearchPageComponent implements OnInit, OnDestroy {
   @ViewChild('mobileFilterDialog') private mobileFilterDialog?: ElementRef<HTMLElement>;
   @ViewChild('mobileFilterClose') private mobileFilterClose?: ElementRef<HTMLButtonElement>;
   properties=signal<Hotel[]>([]); totalItems=signal(0); isLoading=signal(true); errorMessage=signal(''); errorTitle=signal('Không thể tải kết quả'); errorCode=signal(''); errorRetryable=signal(true); pageNumber=signal(1); pageSize=signal(20); displayLocation=signal(''); mobileFilterVisible=false;
-  currentFilterState:FilterState={minPrice:0,maxPrice:10000000,propertyTypes:[],starRatings:[],minReviewScore:null,amenityIds:[]};
+  currentFilterState:FilterState={minPrice:PRICE_FILTER_MIN,maxPrice:PRICE_FILTER_MAX,propertyTypes:[],starRatings:[],minReviewScore:null,amenityIds:[]};
   selectedSort='POPULAR'; readonly sortOptions=[{label:'Được đề xuất',value:'POPULAR'},{label:'Giá thấp nhất',value:'PRICE_ASC'},{label:'Giá cao nhất',value:'PRICE_DESC'},{label:'Đánh giá cao',value:'RATING'},{label:'Gần nhất',value:'NEAREST'}];
 
   ngOnInit():void{this.route.queryParams.pipe(takeUntil(this.destroy$),tap(params=>{this.lastParams=params;this.syncFromUrl(params);this.isLoading.set(true);this.errorMessage.set('');this.errorCode.set('');}),switchMap(params=>this.api.searchHotels(this.request(params)).pipe(catchError(error=>{const state=propertySearchErrorState(error);this.errorTitle.set(state.title);this.errorMessage.set(state.message);this.errorCode.set(state.code);this.errorRetryable.set(state.retryable);return of({content:[],totalElements:0,totalPages:0,number:0,size:this.pageSize()});})))).subscribe(res=>{this.properties.set(res.content||[]);this.totalItems.set(res.totalElements||0);this.isLoading.set(false);});}
   get staySummary():string{const routeDates=validSearchStayDates(this.lastParams);if(routeDates)return `${this.formatDateDisplay(routeDates.checkIn)} - ${this.formatDateDisplay(routeDates.checkOut)}`;if(this.lastParams['checkInDate']||this.lastParams['checkOutDate'])return 'Ngày lưu trú không hợp lệ';const s=this.stateService.state();return `${this.formatDateDisplay(s.checkInDate)} - ${this.formatDateDisplay(s.checkOutDate)}`;}
   get activeFilterCount():number{return this.currentFilterState.propertyTypes.length+this.currentFilterState.starRatings.length+(this.currentFilterState.minReviewScore!==null?1:0)+(this.hasPriceFilter?1:0);}
-  get hasPriceFilter():boolean{return this.currentFilterState.minPrice>0||this.currentFilterState.maxPrice<10000000;}
-  get priceChip():string{return `${this.vnd(this.currentFilterState.minPrice)} - ${this.currentFilterState.maxPrice>=10000000?'10.000.000 ₫+':this.vnd(this.currentFilterState.maxPrice)}`;}
+  get hasPriceFilter():boolean{return this.currentFilterState.minPrice>PRICE_FILTER_MIN||this.currentFilterState.maxPrice<PRICE_FILTER_MAX;}
+  get priceChip():string{return `${this.vnd(this.currentFilterState.minPrice)} - ${this.currentFilterState.maxPrice>=PRICE_FILTER_MAX?'10.000.000 ₫+':this.vnd(this.currentFilterState.maxPrice)}`;}
   onFiltersChanged(f:FilterState):void{
+    const priceState=canonicalPriceDisplayState(f.minPrice,f.maxPrice);
     const propertyTypes=canonicalPropertyTypes(f.propertyTypes);
     const starRatings=canonicalStarRatings(f.starRatings);
     const minReviewScore=canonicalReviewScore(f.minReviewScore);
     this.updateRoute({
-      minPrice:f.minPrice>0?f.minPrice:null,
-      maxPrice:f.maxPrice<10000000?f.maxPrice:null,
+      minPrice:priceState.minPrice>PRICE_FILTER_MIN?priceState.minPrice:null,
+      maxPrice:priceState.maxPrice<PRICE_FILTER_MAX?priceState.maxPrice:null,
       propertyTypes:propertyTypes.length?propertyTypes.join(','):null,
       starRatings:starRatings.length?starRatings.join(','):null,
       minReviewScore,
@@ -186,15 +192,14 @@ export class PropertySearchPageComponent implements OnInit, OnDestroy {
     this.pageSize.set(routeState.pageSize||20);
     this.selectedSort=routeState.sortBy||'POPULAR';
     this.currentFilterState={
-      minPrice:routeState.minPrice||0,
-      maxPrice:routeState.maxPrice??10000000,
+      ...canonicalPriceDisplayState(routeState.minPrice,routeState.maxPrice),
       propertyTypes:routeState.propertyTypes||[],
       starRatings:routeState.starRatings||[],
       minReviewScore:routeState.minReviewScore??null,
       amenityIds:routeState.amenityIds||[]
     };
   }
-  private request(p:Params):PropertySearchParams{const r=propertySearchParamsFromRoute(p);return{...r,pageNumber:this.pageNumber(),pageSize:this.pageSize(),sortBy:this.selectedSort,propertyTypes:this.currentFilterState.propertyTypes.length?this.currentFilterState.propertyTypes:undefined,starRatings:this.currentFilterState.starRatings.length?this.currentFilterState.starRatings:undefined,minReviewScore:this.currentFilterState.minReviewScore??undefined,minPrice:this.currentFilterState.minPrice||undefined,maxPrice:this.currentFilterState.maxPrice<10000000?this.currentFilterState.maxPrice:undefined};}
+  private request(p:Params):PropertySearchParams{const r=propertySearchParamsFromRoute(p);return{...r,pageNumber:this.pageNumber(),pageSize:this.pageSize(),sortBy:this.selectedSort,propertyTypes:this.currentFilterState.propertyTypes.length?this.currentFilterState.propertyTypes:undefined,starRatings:this.currentFilterState.starRatings.length?this.currentFilterState.starRatings:undefined,minReviewScore:this.currentFilterState.minReviewScore??undefined};}
   private updateRoute(q:Params):void{this.router.navigate([],{relativeTo:this.route,queryParams:q,queryParamsHandling:'merge'});} private vnd(v:number):string{return `${new Intl.NumberFormat('vi-VN').format(v)} ₫`;} private formatDateDisplay(v:Date|null):string{return v?new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'}).format(v):'Chưa chọn';}
   ngOnDestroy():void{if(this.mobileFilterFocusTimer!==undefined)globalThis.clearTimeout(this.mobileFilterFocusTimer);this.destroy$.next();this.destroy$.complete();}
 }

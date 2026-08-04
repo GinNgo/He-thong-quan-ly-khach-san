@@ -184,6 +184,8 @@ describe('ClientApiService property search query serialization', () => {
     expect(request.request.params.get('propertyTypes')).toBe('HOTEL,HOMESTAY');
     expect(request.request.params.get('starRatings')).toBe('4,5');
     expect(request.request.params.get('amenityIds')).toBe('3,7');
+    expect(request.request.params.get('minPrice')).toBe('300000');
+    expect(request.request.params.get('maxPrice')).toBe('1500000');
     expect(request.request.params.get('freeCancellation')).toBe('false');
     expect(request.request.params.get('payAtProperty')).toBe('false');
     expect(request.request.params.get('breakfastIncluded')).toBe('false');
@@ -194,6 +196,17 @@ describe('ClientApiService property search query serialization', () => {
     service.searchHotels({ keyword: '   ', propertyTypes: [], starRatings: [], amenityIds: [] }).subscribe();
     const request = http.expectOne(`${environment.apiUrl}/public/properties/search`);
     expect(request.request.params.keys()).toEqual([]);
+    request.flush({ content: [], totalElements: 0, totalPages: 0, number: 1, size: 20 });
+  });
+
+  it('serializes inclusive zero and upper price boundaries without truthy filtering', () => {
+    service.searchHotels({ minPrice: 0, maxPrice: 600000 }).subscribe();
+
+    const request = http.expectOne(candidate =>
+      candidate.url === `${environment.apiUrl}/public/properties/search`,
+    );
+    expect(request.request.params.get('minPrice')).toBe('0');
+    expect(request.request.params.get('maxPrice')).toBe('600000');
     request.flush({ content: [], totalElements: 0, totalPages: 0, number: 1, size: 20 });
   });
 });

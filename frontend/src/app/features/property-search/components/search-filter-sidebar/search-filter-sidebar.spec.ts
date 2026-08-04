@@ -34,4 +34,18 @@ describe('SearchFilterSidebarComponent', () => {
     expect(component.selectedStars).toEqual([5, 3]);
     expect(component.selectedReviewScore).toBe(0);
   });
+
+  it('normalizes invalid display prices and preserves inclusive reversed endpoints', () => {
+    const component = new SearchFilterSidebarComponent();
+    component.initialState = { minPrice: Number.NaN, maxPrice: Number.POSITIVE_INFINITY };
+    component.ngOnChanges();
+    expect(component.priceRange).toEqual([0, 10000000]);
+
+    const emit = vi.spyOn(component.filtersChanged, 'emit');
+    component.priceRange = [600000, 400000];
+    component.applyFilters();
+
+    expect(component.priceRange).toEqual([400000, 600000]);
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ minPrice: 400000, maxPrice: 600000 }));
+  });
 });

@@ -23,7 +23,8 @@ export default defineConfig({
     'home-search.api.spec.ts',
     'property-search-eligibility.api.spec.ts',
     'legacy-public-search.api.spec.ts',
-    'property-search-filters.api.spec.ts'
+    'property-search-filters.api.spec.ts',
+    'property-search-price-filters.api.spec.ts'
   ],
   fullyParallel: false,
   workers: 1,

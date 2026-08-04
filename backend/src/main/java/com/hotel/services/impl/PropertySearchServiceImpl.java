@@ -85,6 +85,21 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         int adults = Math.max(request.getAdultCount() == null ? 0 : request.getAdultCount(), 0);
         int children = Math.max(request.getChildCount() == null ? 0 : request.getChildCount(), 0);
         Map<String, Object> params = new HashMap<>();
+        params.put("roomCount", roomCount);
+        params.put("adultCount", adults);
+        params.put("childCount", children);
+        params.put("guestCount", adults + children);
+        if (request.getMinPrice() != null) params.put("minPrice", request.getMinPrice());
+        if (request.getMaxPrice() != null) params.put("maxPrice", request.getMaxPrice());
+        if (checkIn != null) {
+            params.put("checkIn", checkIn);
+            params.put("checkOut", checkOut);
+        }
+
+        String pricedRoomPredicate = eligibleRoomPredicate(
+                "rt_price", request.getMinPrice() != null, request.getMaxPrice() != null, checkIn != null);
+        String qualifyingRoomPredicate = eligibleRoomPredicate(
+                "rt_offer", request.getMinPrice() != null, request.getMaxPrice() != null, checkIn != null);
 
         boolean hasCoordinates = request.getLatitude() != null && request.getLongitude() != null;
         String distance = hasCoordinates
@@ -101,7 +116,9 @@ public class PropertySearchServiceImpl implements PropertySearchService {
                        h.average_rating, h.review_count, p.name_vi, w.name_vi,
                 """ + distance + """
                         AS distance,
-                       (SELECT MIN(rt.base_price) FROM room_types rt WHERE rt.hotel_id=h.id AND rt.status='ACTIVE') AS min_price,
+                       (SELECT MIN(rt_price.base_price) FROM room_types rt_price WHERE
+                """ + pricedRoomPredicate + """
+                       ) AS min_price,
                        (SELECT COUNT(*) FROM rooms r WHERE r.hotel_id=h.id AND r.status <> 'MAINTENANCE' AND COALESCE(r.maintenance_status,'NONE') NOT IN ('MAINTENANCE','OUT_OF_SERVICE')) AS total_rooms,
                        (SELECT TOP 1 rt.id FROM room_types rt WHERE rt.hotel_id=h.id AND rt.status='ACTIVE' ORDER BY rt.base_price,rt.id) AS lowest_room_id,
                        (SELECT TOP 1 rt.name_vi FROM room_types rt WHERE rt.hotel_id=h.id AND rt.status='ACTIVE' ORDER BY rt.base_price,rt.id) AS lowest_room_name,
@@ -156,32 +173,9 @@ public class PropertySearchServiceImpl implements PropertySearchService {
                     .append("AND h.average_rating>=:minReviewScore ");
             params.put("minReviewScore", request.getMinReviewScore());
         }
-        if (request.getMinPrice() != null) {
-            where.append(" AND EXISTS (SELECT 1 FROM room_types rt WHERE rt.hotel_id=h.id AND rt.status='ACTIVE' AND rt.base_price>=:minPrice) ");
-            params.put("minPrice", request.getMinPrice());
-        }
-        if (request.getMaxPrice() != null) {
-            where.append(" AND EXISTS (SELECT 1 FROM room_types rt WHERE rt.hotel_id=h.id AND rt.status='ACTIVE' AND rt.base_price<=:maxPrice) ");
-            params.put("maxPrice", request.getMaxPrice());
-        }
-
-        where.append(" AND EXISTS (SELECT 1 FROM room_types rt WHERE rt.hotel_id=h.id AND rt.status='ACTIVE' ")
-                .append(" AND COALESCE(rt.max_adults,rt.max_guests,rt.max_guest,999)*:roomCount>=:adultCount ")
-                .append(" AND COALESCE(rt.max_children,rt.max_guests,rt.max_guest,999)*:roomCount>=:childCount ")
-                .append(" AND COALESCE(rt.max_guests,rt.max_guest,999)*:roomCount>=:guestCount ")
-                .append(" AND ((SELECT COUNT(*) FROM rooms r WHERE r.room_type_id=rt.id AND r.status<>'MAINTENANCE' AND COALESCE(r.maintenance_status,'NONE') NOT IN ('MAINTENANCE','OUT_OF_SERVICE')) ");
-        params.put("roomCount", roomCount);
-        params.put("adultCount", adults);
-        params.put("childCount", children);
-        params.put("guestCount", adults + children);
-        if (checkIn != null) {
-            where.append(" - (SELECT COALESCE(SUM(rd.quantity),0) FROM reservation_details rd JOIN reservations rs ON rs.id=rd.reservation_id WHERE rd.room_type_id=rt.id AND rs.status NOT IN (")
-                    .append(RELEASED_STATUSES)
-                    .append(") AND rs.check_in_date<:checkOut AND rs.check_out_date>:checkIn) ");
-            params.put("checkIn", checkIn);
-            params.put("checkOut", checkOut);
-        }
-        where.append(" >=:roomCount)) ");
+        where.append(" AND EXISTS (SELECT 1 FROM room_types rt_offer WHERE ")
+                .append(qualifyingRoomPredicate)
+                .append(") ");
 
         if (hasCoordinates && request.getRadiusKm() != null) {
             where.append(" AND ").append(distance).append("<=:radiusKm ");
@@ -212,7 +206,8 @@ public class PropertySearchServiceImpl implements PropertySearchService {
 
         List<PropertySearchResponseDTO> content = new ArrayList<>();
         for (Object[] row : (List<Object[]>) dataQuery.getResultList()) {
-            content.add(mapRow(row, checkIn, checkOut, adults, children, roomCount));
+            content.add(mapRow(row, checkIn, checkOut, adults, children, roomCount,
+                    request.getMinPrice(), request.getMaxPrice()));
         }
         long total = ((Number) countQuery.getSingleResult()).longValue();
         return new PageImpl<>(content, PageRequest.of(pageNumber - 1, pageSize), total);
@@ -281,7 +276,8 @@ public class PropertySearchServiceImpl implements PropertySearchService {
     }
 
     private PropertySearchResponseDTO mapRow(Object[] row, LocalDate checkIn, LocalDate checkOut,
-                                             int adults, int children, int roomCount) {
+                                             int adults, int children, int roomCount,
+                                             Double minPrice, Double maxPrice) {
         PropertySearchResponseDTO dto = new PropertySearchResponseDTO();
         dto.setId(number(row[0]).longValue());
         dto.setSlug((String) row[1]);
@@ -306,7 +302,9 @@ public class PropertySearchServiceImpl implements PropertySearchService {
 
         List<RoomType> roomTypes = roomTypeRepository.findByHotelId(dto.getId()).stream()
                 .filter(rt -> "ACTIVE".equals(rt.getStatus()))
-                .filter(rt -> canHost(rt, adults, children, roomCount)).toList();
+                .filter(rt -> canHost(rt, adults, children, roomCount))
+                .filter(rt -> isWithinPriceBounds(rt, minPrice, maxPrice))
+                .toList();
         Map<Long, Long> availability = new HashMap<>();
         roomTypes.forEach(rt -> availability.put(rt.getId(), roomAvailabilityService.countAvailableRooms(rt.getId(), checkIn, checkOut)));
         long available = availability.values().stream().mapToLong(Long::longValue).sum();
@@ -368,6 +366,51 @@ public class PropertySearchServiceImpl implements PropertySearchService {
                 && adults + children <= maxGuests * roomCount;
     }
 
+    private boolean isWithinPriceBounds(RoomType roomType, Double minPrice, Double maxPrice) {
+        BigDecimal price = roomType == null ? null : roomType.getBasePrice();
+        if (price == null) return false;
+        if (minPrice != null && price.compareTo(BigDecimal.valueOf(minPrice)) < 0) return false;
+        return maxPrice == null || price.compareTo(BigDecimal.valueOf(maxPrice)) <= 0;
+    }
+
+    private String eligibleRoomPredicate(String roomAlias, boolean hasMinPrice,
+                                         boolean hasMaxPrice, boolean hasStayDates) {
+        String physicalRoomAlias = roomAlias + "_room";
+        String detailAlias = roomAlias + "_detail";
+        String reservationAlias = roomAlias + "_reservation";
+        StringBuilder predicate = new StringBuilder()
+                .append(roomAlias).append(".hotel_id=h.id ")
+                .append("AND ").append(roomAlias).append(".status='ACTIVE' ")
+                .append("AND ").append(roomAlias).append(".base_price IS NOT NULL ");
+        if (hasMinPrice) predicate.append("AND ").append(roomAlias).append(".base_price>=:minPrice ");
+        if (hasMaxPrice) predicate.append("AND ").append(roomAlias).append(".base_price<=:maxPrice ");
+        predicate.append("AND COALESCE(").append(roomAlias)
+                .append(".max_adults,").append(roomAlias).append(".max_guests,")
+                .append(roomAlias).append(".max_guest,999)*:roomCount>=:adultCount ")
+                .append("AND COALESCE(").append(roomAlias)
+                .append(".max_children,").append(roomAlias).append(".max_guests,")
+                .append(roomAlias).append(".max_guest,999)*:roomCount>=:childCount ")
+                .append("AND COALESCE(").append(roomAlias).append(".max_guests,")
+                .append(roomAlias).append(".max_guest,999)*:roomCount>=:guestCount ")
+                .append("AND ((SELECT COUNT(*) FROM rooms ").append(physicalRoomAlias)
+                .append(" WHERE ").append(physicalRoomAlias).append(".room_type_id=")
+                .append(roomAlias).append(".id AND ").append(physicalRoomAlias)
+                .append(".status<>'MAINTENANCE' AND COALESCE(").append(physicalRoomAlias)
+                .append(".maintenance_status,'NONE') NOT IN ('MAINTENANCE','OUT_OF_SERVICE')) ");
+        if (hasStayDates) {
+            predicate.append("- (SELECT COALESCE(SUM(").append(detailAlias)
+                    .append(".quantity),0) FROM reservation_details ").append(detailAlias)
+                    .append(" JOIN reservations ").append(reservationAlias).append(" ON ")
+                    .append(reservationAlias).append(".id=").append(detailAlias)
+                    .append(".reservation_id WHERE ").append(detailAlias).append(".room_type_id=")
+                    .append(roomAlias).append(".id AND ").append(reservationAlias)
+                    .append(".status NOT IN (").append(RELEASED_STATUSES).append(") AND ")
+                    .append(reservationAlias).append(".check_in_date<:checkOut AND ")
+                    .append(reservationAlias).append(".check_out_date>:checkIn) ");
+        }
+        return predicate.append(">=:roomCount)").toString();
+    }
+
     private int value(Integer preferred, Integer fallback) { return preferred != null ? preferred : fallback != null ? fallback : Integer.MAX_VALUE; }
     private String firstNotBlank(String preferred, String fallback) {
         return preferred != null && !preferred.isBlank() ? preferred : fallback;
@@ -382,6 +425,12 @@ public class PropertySearchServiceImpl implements PropertySearchService {
                 && (!Double.isFinite(request.getMinReviewScore())
                 || request.getMinReviewScore() < 0 || request.getMinReviewScore() > 10)) {
             throw new IllegalArgumentException("minReviewScore must be a finite value within 0..10.");
+        }
+        validatePriceBound("minPrice", request.getMinPrice());
+        validatePriceBound("maxPrice", request.getMaxPrice());
+        if (request.getMinPrice() != null && request.getMaxPrice() != null
+                && request.getMinPrice() > request.getMaxPrice()) {
+            throw new IllegalArgumentException("minPrice must not exceed maxPrice.");
         }
         if (request.getStayType() != null && !request.getStayType().isBlank()
                 && !"OVERNIGHT".equalsIgnoreCase(request.getStayType().trim())) {
@@ -422,6 +471,11 @@ public class PropertySearchServiceImpl implements PropertySearchService {
             normalized.add(starRating);
         }
         return List.copyOf(normalized);
+    }
+    private void validatePriceBound(String field, Double value) {
+        if (value != null && (!Double.isFinite(value) || value < 0)) {
+            throw new IllegalArgumentException(field + " must be a finite non-negative value.");
+        }
     }
     private LocalDate parseDate(String value, String field) {
         if (value == null || value.isBlank()) return null;

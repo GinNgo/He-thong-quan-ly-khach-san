@@ -45,6 +45,34 @@ describe('PropertyResultCardComponent image fallback', () => {
     expect(fixture.nativeElement.querySelector('.review')).toBeNull();
     expect(fixture.nativeElement.querySelector('.unrated')).not.toBeNull();
   });
+
+  it('exposes the authoritative displayed nightly price for range assertions', () => {
+    fixture.componentRef.setInput('property', property({
+      pricing: {
+        nightlyPrice: 500000,
+        discountedPrice: 500000,
+        numberOfNights: 2,
+        taxAmount: 150000,
+        feeAmount: 0,
+        totalAmount: 1150000,
+        currency: 'VND',
+      },
+    }));
+    fixture.detectChanges();
+
+    const nightlyPrice = fixture.nativeElement.querySelector('[data-nightly-price]') as HTMLElement;
+    expect(nightlyPrice.getAttribute('data-price-value')).toBe('500000');
+    expect(nightlyPrice.textContent).toContain('500.000');
+    expect(fixture.nativeElement.querySelector('[data-pricing-unavailable]')).toBeNull();
+  });
+
+  it('renders unavailable without a synthetic zero nightly price when pricing is null', () => {
+    fixture.componentRef.setInput('property', property({ pricing: undefined }));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-nightly-price]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-pricing-unavailable]')).not.toBeNull();
+  });
 });
 
 function property(override: Record<string, unknown> = {}) {
