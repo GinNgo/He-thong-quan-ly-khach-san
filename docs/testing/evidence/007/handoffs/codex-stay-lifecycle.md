@@ -13,7 +13,7 @@ below after merging or cherry-picking the task commits.
 | T295 | `6788dbe` | Backend 11/11; frontend 13/13 | `docs/testing/evidence/007/remediation/T295-reservation-read-journeys.md` |
 | T296 | `58d75a4` | Isolated backend compile; backend 46/46; frontend 15/15 | `docs/testing/evidence/007/remediation/T296-reservation-change-policy-gate.md` |
 | T300 | `29338ee` | Isolated backend compile; backend 20/20; frontend 12/12 | `docs/testing/evidence/007/remediation/T300-available-physical-room-picker.md` |
-| T301 | `bcc85e0`, `ada8586` | Isolated backend compile; backend 38/38; frontend 24/24 | `docs/testing/evidence/007/remediation/T301-room-assignment-lifecycle.md` |
+| T301 | `bcc85e0`, `ada8586`, `3bed3ba` | Isolated backend compile; backend 38/38; frontend 24/24; final picker 10/10 | `docs/testing/evidence/007/remediation/T301-room-assignment-lifecycle.md` |
 
 ## Coordinator Updates
 

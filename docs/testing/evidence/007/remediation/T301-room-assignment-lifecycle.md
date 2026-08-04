@@ -6,6 +6,7 @@ Implementation commits:
 
 - `bcc85e0 feat(T301): complete room assignment lifecycle`
 - `ada8586 fix(T301): close room assignment safety gaps`
+- `3bed3ba fix(T301): restore focus after room release`
 
 ## Implemented Boundary
 
@@ -26,14 +27,15 @@ Implementation commits:
   separation, explicit release confirmation, stable retry keys, `409` refresh/reconfirmation and
   localized VI/EN copy. Checked-in stays remain readable but not mutable; delayed conflict refresh
   disables all stale controls. The release alertdialog traps focus, supports Escape and restores
-  focus to its trigger. Customer booking detail remains read-only and displays room numbers.
+  focus to its trigger on cancel and to the workspace title after confirmation. Customer booking
+  detail remains read-only and displays room numbers.
 
 ## Focused Validation
 
 | Validation | Result |
 |---|---|
 | Backend focused JUnit suite | PASS 38/38 across HTTP serialization, persistent idempotency/recovery, legacy-route retirement, action permission, JPQL contract, H2 overlap persistence, deterministic locking/reassignment/release and tenant IDOR |
-| Frontend focused Angular/Vitest suite | PASS 24/24 across typed client requests, admin view/update/state masks, picker assignment/reassignment/release/delayed-conflict/accessibility/localization states and customer read-only display |
+| Frontend focused Angular/Vitest suite | PASS 24/24 across typed client requests, admin view/update/state masks, picker assignment/reassignment/release/delayed-conflict/accessibility/runtime-language states and customer read-only display; final picker rerun PASS 10/10 after the focus restoration fix |
 | Isolated backend main compilation | PASS; all T301 production sources compiled before the focused suites |
 | `git diff --cached --check` before source commit | PASS |
 
