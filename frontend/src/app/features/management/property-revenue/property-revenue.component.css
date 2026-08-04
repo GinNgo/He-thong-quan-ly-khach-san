@@ -72,6 +72,10 @@ tbody tr:hover { background: color-mix(in srgb, var(--hotel-primary-light) 30%, 
 .emphasis { color: var(--hotel-heading); font-weight: 700; }
 code { color: var(--hotel-primary); font-size: var(--hotel-text-xs); }
 .dimension-tag { display: inline-flex; padding: .25rem .5rem; color: var(--hotel-info); background: var(--hotel-info-light); border-radius: var(--hotel-radius-pill); font-size: var(--hotel-text-xs); font-weight: 700; }
+.export-actions, .pagination { display: flex; align-items: center; gap: var(--hotel-space-2); }
+.export-actions button, .pagination button { min-height: 2.5rem; padding: 0 var(--hotel-space-3); border: 1px solid var(--hotel-border); border-radius: var(--hotel-radius-md); background: var(--hotel-card-bg); color: var(--hotel-primary); font-weight: 700; cursor: pointer; }
+.export-actions button:disabled, .pagination button:disabled { opacity: .5; cursor: not-allowed; }
+.pagination { justify-content: flex-end; margin-top: var(--hotel-space-3); color: var(--hotel-text-muted); font-size: var(--hotel-text-sm); }
 @media (max-width: 70rem) { .filter-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 58rem) { .report-grid { grid-template-columns: 1fr; } }
 @media (max-width: 42rem) { .report-hero { align-items: flex-start; flex-direction: column; padding: var(--hotel-space-5); } .watermark { width: 100%; min-width: 0; } .filter-grid, .metric-grid { grid-template-columns: 1fr; } .filter-actions { align-items: stretch; flex-direction: column; } .filter-note { flex: initial; } .button { width: 100%; } .panel { padding: var(--hotel-space-4); } }

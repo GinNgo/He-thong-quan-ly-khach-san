@@ -20,6 +20,7 @@ import {
   PropertyRevenueReportFilters,
   RevenueBasis,
   RevenueBreakdown,
+  RevenueExportFormat,
   RevenueReportResult,
   RevenueReportService,
   RevenueTransactionRow,
@@ -46,6 +47,9 @@ export class PropertyRevenueComponent implements OnInit {
   readonly loading = signal(false);
   readonly contextLoading = signal(true);
   readonly errorMessage = signal('');
+  readonly exportLoading = signal<RevenueExportFormat | null>(null);
+  readonly page = signal(0);
+  readonly pageSize = 50;
 
   fromDate = this.monthStart();
   toDate = this.inputDate(new Date());
@@ -159,7 +163,31 @@ export class PropertyRevenueComponent implements OnInit {
   }
 
   visibleRows(): RevenueTransactionRow[] {
-    return (this.report()?.rows ?? []).slice(0, 100);
+    const start = this.page() * this.pageSize;
+    return (this.report()?.rows ?? []).slice(start, start + this.pageSize);
+  }
+
+  totalPages(): number { return Math.max(1, Math.ceil((this.report()?.rows.length ?? 0) / this.pageSize)); }
+  previousPage(): void { this.page.update(value => Math.max(0, value - 1)); }
+  nextPage(): void { this.page.update(value => Math.min(this.totalPages() - 1, value + 1)); }
+
+  export(format: RevenueExportFormat): void {
+    const propertyId = this.propertyId();
+    if (!propertyId || this.exportLoading()) return;
+    this.exportLoading.set(format);
+    this.reportService.exportPropertyRevenue(this.filters(propertyId), format)
+      .pipe(finalize(() => this.exportLoading.set(null)), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: blob => {
+          const url = URL.createObjectURL(blob);
+          const anchor = document.createElement('a');
+          anchor.href = url;
+          anchor.download = `property-revenue-${propertyId}-${this.fromDate}-${this.toDate}.${format.toLowerCase()}`;
+          anchor.click();
+          URL.revokeObjectURL(url);
+        },
+        error: (error: HttpErrorResponse) => this.errorMessage.set(this.errorMessageFrom(error)),
+      });
   }
 
   propertyName(): string {
@@ -200,16 +228,8 @@ export class PropertyRevenueComponent implements OnInit {
   private loadReport(propertyId: number): void {
     this.loading.set(true);
     this.errorMessage.set('');
-    const filters: PropertyRevenueReportFilters = {
-      from: this.fromDate,
-      to: this.toDate,
-      basis: this.basis,
-      propertyId,
-      provider: this.provider || undefined,
-      method: this.method || undefined,
-      transactionType: this.transactionType || undefined,
-      roomType: this.roomType || undefined,
-    };
+    const filters = this.filters(propertyId);
+    this.page.set(0);
 
     this.reportService.getPropertyRevenue(filters)
       .pipe(
@@ -223,6 +243,19 @@ export class PropertyRevenueComponent implements OnInit {
           this.errorMessage.set(this.errorMessageFrom(error));
         },
       });
+  }
+
+  private filters(propertyId: number): PropertyRevenueReportFilters {
+    return {
+      from: this.fromDate,
+      to: this.toDate,
+      basis: this.basis,
+      propertyId,
+      provider: this.provider || undefined,
+      method: this.method || undefined,
+      transactionType: this.transactionType || undefined,
+      roomType: this.roomType || undefined,
+    };
   }
 
   private errorMessageFrom(error: HttpErrorResponse): string {
