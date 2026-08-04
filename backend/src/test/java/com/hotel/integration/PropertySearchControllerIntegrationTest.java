@@ -254,6 +254,11 @@ public class PropertySearchControllerIntegrationTest {
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 
         mockMvc.perform(get("/api/public/properties/search")
+                        .param("legacyAddressKeyword", "Bạch Đằng"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        mockMvc.perform(get("/api/public/properties/search")
                         .param("stayType", "DAY_USE"))
                 .andExpect(status().isBadRequest());
         mockMvc.perform(get("/api/public/properties/search")

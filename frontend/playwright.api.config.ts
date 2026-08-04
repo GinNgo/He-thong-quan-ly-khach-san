@@ -14,11 +14,16 @@ const backendEnv = {
   SERVER_PORT: '28743'
 };
 const useExternalBackend = process.env['PLAYWRIGHT_EXTERNAL_BACKEND'] === 'true';
+const apiOnly = process.env['PLAYWRIGHT_API_ONLY'] === 'true';
 const frontendPort = process.env['PUBLIC_BOOKING_FRONTEND_PORT'] || '42769';
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: ['home-search.api.spec.ts', 'property-search-eligibility.api.spec.ts'],
+  testMatch: [
+    'home-search.api.spec.ts',
+    'property-search-eligibility.api.spec.ts',
+    'legacy-public-search.api.spec.ts'
+  ],
   fullyParallel: false,
   workers: 1,
   retries: 0,
@@ -39,12 +44,12 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 180_000
     }] : []),
-    {
+    ...(!apiOnly ? [{
       command: `npm run start -- --port ${frontendPort}`,
       cwd: '.',
       url: `http://localhost:${frontendPort}`,
       reuseExistingServer: false,
       timeout: 180_000
-    }
+    }] : [])
   ]
 });

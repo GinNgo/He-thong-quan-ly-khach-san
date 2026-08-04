@@ -5,6 +5,7 @@ import lombok.Data;
 @Data
 public class PropertySearchRequestDTO {
     private String keyword;
+    private String legacyAddressKeyword;
     private Long provinceId;
     private Long wardId;
     private Long landmarkId;

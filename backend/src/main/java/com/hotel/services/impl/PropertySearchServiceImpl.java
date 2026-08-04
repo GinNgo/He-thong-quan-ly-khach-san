@@ -124,6 +124,11 @@ public class PropertySearchServiceImpl implements PropertySearchService {
             params.put("keyword", "%" + normalizedKeyword + "%");
             params.put("rawKeyword", "%" + request.getKeyword().trim().toLowerCase() + "%");
         }
+        if (request.getLegacyAddressKeyword() != null && !request.getLegacyAddressKeyword().isBlank()) {
+            where.append(" AND LOWER(h.address) LIKE :legacyAddressKeyword ESCAPE '\\' ");
+            params.put("legacyAddressKeyword", "%"
+                    + escapeLikePattern(request.getLegacyAddressKeyword().trim().toLowerCase()) + "%");
+        }
         if (request.getPropertyTypes() != null && !request.getPropertyTypes().isEmpty()) {
             List<String> placeholders = new ArrayList<>();
             for (int i = 0; i < request.getPropertyTypes().size(); i++) {
@@ -359,6 +364,9 @@ public class PropertySearchServiceImpl implements PropertySearchService {
     private int value(Integer preferred, Integer fallback) { return preferred != null ? preferred : fallback != null ? fallback : Integer.MAX_VALUE; }
     private String firstNotBlank(String preferred, String fallback) {
         return preferred != null && !preferred.isBlank() ? preferred : fallback;
+    }
+    private String escapeLikePattern(String value) {
+        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
     private void validateSupportedRequestContract(PropertySearchRequestDTO request) {
         if (request.getStayType() != null && !request.getStayType().isBlank()

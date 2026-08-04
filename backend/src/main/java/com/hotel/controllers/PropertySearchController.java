@@ -9,9 +9,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.CacheControl;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.WebDataBinder;
 
 import java.util.Collections;
 import java.util.Set;
@@ -30,6 +32,11 @@ public class PropertySearchController {
             "breakfastIncluded");
 
     private final PropertySearchService propertySearchService;
+
+    @InitBinder
+    void disallowInternalSearchFields(WebDataBinder binder) {
+        binder.setDisallowedFields("legacyAddressKeyword");
+    }
 
     @GetMapping("/search")
     public ResponseEntity<Page<PropertySearchResponseDTO>> searchProperties(
