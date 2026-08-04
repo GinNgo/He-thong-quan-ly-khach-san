@@ -457,7 +457,7 @@
   }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 820px) {
   .management-header {
     align-items: flex-start;
     flex-wrap: wrap;
