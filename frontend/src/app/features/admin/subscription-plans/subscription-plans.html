@@ -3,7 +3,14 @@
     <div class="mb-5 font-bold text-900 text-4xl">Gói dịch vụ cho Chủ cơ sở</div>
     <div class="text-700 text-xl mb-8 line-height-3">Nâng cấp để quản lý nhiều cơ sở lưu trú và mở khóa tính năng cao cấp.</div>
 
-    <div class="grid">
+    <app-feedback-state *ngIf="plansLoading" state="loading" title="Loading subscription plans"
+        message="Checking the current platform catalog." />
+    <app-feedback-state *ngIf="!plansLoading && plansError" state="error" title="Plans unavailable"
+        [message]="plansError" actionLabel="Retry" (actionTriggered)="loadPlans()" />
+    <app-feedback-state *ngIf="!plansLoading && !plansError && plans.length === 0" state="empty"
+        title="No plans published" message="The platform catalog has no active plans yet." />
+
+    <div class="grid" *ngIf="!plansLoading && !plansError && plans.length">
         <div class="col-12 lg:col-4 p-3" *ngFor="let plan of plans">
             <p-card styleClass="plan-card shadow-2">
                 <ng-template pTemplate="title">
@@ -44,7 +51,19 @@
         </div>
     </div>
 
-    <div class="mt-8 text-left" *ngIf="mySubscriptions.length > 0">
+    <div class="mt-8 text-left" *ngIf="subscriptionsLoading">
+        <app-feedback-state state="loading" title="Loading current subscriptions"
+            message="Checking active and historical plan assignments." />
+    </div>
+    <div class="mt-8 text-left" *ngIf="!subscriptionsLoading && subscriptionsError">
+        <app-feedback-state state="error" title="Subscriptions unavailable" [message]="subscriptionsError"
+            actionLabel="Retry" (actionTriggered)="loadMySubscriptions()" />
+    </div>
+    <div class="mt-8 text-left" *ngIf="!subscriptionsLoading && !subscriptionsError && mySubscriptions.length === 0">
+        <app-feedback-state state="empty" title="No current subscriptions"
+            message="No account subscription has been assigned yet." />
+    </div>
+    <div class="mt-8 text-left" *ngIf="!subscriptionsLoading && !subscriptionsError && mySubscriptions.length > 0">
         <h3 class="text-900 text-2xl font-bold mb-4">Gói đang sử dụng</h3>
         <p-table [value]="mySubscriptions" [tableStyle]="{'min-width': '50rem'}">
             <ng-template pTemplate="header">

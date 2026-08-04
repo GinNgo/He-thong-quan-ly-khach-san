@@ -1,17 +1,23 @@
-import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { SubscriptionService, SubscriptionPlan, AccountSubscription } from '../../../core/services/subscription.service';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
-import { ToastModule } from 'primeng/toast';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
+import { ToastModule } from 'primeng/toast';
+
+import {
+  AccountSubscription,
+  SubscriptionPlan,
+  SubscriptionService,
+} from '../../../core/services/subscription.service';
+import { FeedbackStateComponent } from '../../../shared/components/feedback-state/feedback-state.component';
 
 @Component({
   selector: 'app-subscription-plans',
   standalone: true,
-  imports: [CommonModule, ButtonModule, CardModule, ToastModule, TableModule, TagModule],
+  imports: [CommonModule, ButtonModule, CardModule, ToastModule, TableModule, TagModule, FeedbackStateComponent],
   providers: [MessageService],
   templateUrl: './subscription-plans.html',
   styles: [`
@@ -23,37 +29,67 @@ import { TagModule } from 'primeng/tag';
   `]
 })
 export class SubscriptionPlansComponent implements OnInit {
-  private subscriptionService = inject(SubscriptionService);
-  private messageService = inject(MessageService);
+  private readonly subscriptionService = inject(SubscriptionService);
+  private readonly messageService = inject(MessageService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   plans: SubscriptionPlan[] = [];
   mySubscriptions: AccountSubscription[] = [];
+  plansLoading = false;
+  plansError = '';
+  subscriptionsLoading = false;
+  subscriptionsError = '';
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.loadPlans();
     this.loadMySubscriptions();
   }
 
-  loadPlans() {
+  loadPlans(): void {
+    this.plansLoading = true;
+    this.plansError = '';
     this.subscriptionService.getPlans().subscribe({
-      next: (data) => this.plans = data,
-      error: (err) => this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải danh sách gói.' })
+      next: data => {
+        this.plans = data;
+        this.plansLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: error => {
+        this.plansLoading = false;
+        this.plansError = error?.error?.message || 'Unable to load subscription plans.';
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: this.plansError });
+        this.cdr.markForCheck();
+      }
     });
   }
 
-  loadMySubscriptions() {
+  loadMySubscriptions(): void {
+    this.subscriptionsLoading = true;
+    this.subscriptionsError = '';
     this.subscriptionService.getMySubscriptions().subscribe({
-      next: (data) => this.mySubscriptions = data,
-      error: (err) => console.error(err)
+      next: data => {
+        this.mySubscriptions = data;
+        this.subscriptionsLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: error => {
+        this.subscriptionsLoading = false;
+        this.subscriptionsError = error?.error?.message || 'Unable to load current subscriptions.';
+        this.cdr.markForCheck();
+      }
     });
   }
 
-  purchase(plan: SubscriptionPlan) {
-    // Implement purchase logic via Payment API
-    this.messageService.add({ severity: 'info', summary: 'Chức năng', detail: `Đang chuyển hướng thanh toán cho gói ${plan.nameVi}...` });
+  purchase(plan: SubscriptionPlan): void {
+    this.messageService.add({
+      severity: 'info',
+      summary: 'Payment',
+      detail: `Opening payment for ${plan.nameVi}...`,
+    });
   }
 
   isCurrentPlan(plan: SubscriptionPlan): boolean {
-    return this.mySubscriptions.some(sub => sub.plan.id === plan.id && sub.status === 'ACTIVE');
+    return this.mySubscriptions.some(subscription =>
+      subscription.plan.id === plan.id && subscription.status === 'ACTIVE');
   }
 }
