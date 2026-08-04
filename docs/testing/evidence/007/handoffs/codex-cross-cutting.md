@@ -79,4 +79,6 @@ This file records branch-local completion evidence. Shared aggregate files are i
 
 ## Deferred claim conflicts
 
+- T318 was not modified because its WebSocket security and recovery scope remains actively claimed by `/root/t318_notification_ws`.
 - T323 was not modified because its invoice-email/PDF scope overlaps the active T309 claim owned by `/root/t309_itemized_invoice`. The coordinator should requeue T323 only after that claim is released or explicitly partitioned.
+- T344 and dependent T345 were not modified because T229 remains actively claimed and its completed-but-uncommitted localized `/terms`, `/privacy`, `/cookies`, `/contact` and `/support` routes are required by the all-public-route localization matrix. The root worktree also contains uncommitted shared locale resources, so copying or changing them here would duplicate and conflict with another agent's scope. Requeue T344-T345 after T229 is committed and merged into this branch's reachable history.
