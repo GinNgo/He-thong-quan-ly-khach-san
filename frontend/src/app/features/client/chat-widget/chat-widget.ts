@@ -14,6 +14,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FocusTrapModule } from 'primeng/focustrap';
 
 import {
   ChatConnectionState,
@@ -23,13 +24,14 @@ import {
   SupportAttachment
 } from '../../../core/services/chat.service';
 import { AuthService } from '../../../core/services/auth';
+import { FocusOnErrorDirective } from '../../../shared/directives/focus-management.directive';
 
 const SEND_ACK_TIMEOUT_MS = 10_000;
 
 @Component({
   selector: 'app-chat-widget',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, FocusTrapModule, FocusOnErrorDirective],
   templateUrl: './chat-widget.html',
   styleUrl: './chat-widget.css'
 })
@@ -228,14 +230,14 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
     }
     this.isOpen.set(true);
     this.acknowledgeVisibleMessages(this.messages());
-    queueMicrotask(() => this.messageInput?.nativeElement.focus());
+    setTimeout(() => this.messageInput?.nativeElement.focus());
   }
 
   @HostListener('document:keydown.escape')
   closeChat(): void {
     if (!this.isOpen()) return;
     this.isOpen.set(false);
-    queueMicrotask(() => this.triggerButton?.nativeElement.focus());
+    setTimeout(() => this.triggerButton?.nativeElement.focus());
   }
 
   retryConnection(): void {

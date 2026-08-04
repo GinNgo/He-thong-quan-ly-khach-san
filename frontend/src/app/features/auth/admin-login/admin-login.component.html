@@ -40,7 +40,8 @@
         <p class="text-muted small">Đăng nhập để quản lý bảng điều khiển của bạn</p>
       </div>
 
-      <div *ngIf="errorMessage" class="alert alert-danger p-3 mb-4 d-flex align-items-center rounded bg-danger-subtle text-danger border border-danger-subtle fw-medium small">
+      <div *ngIf="errorMessage" class="alert alert-danger p-3 mb-4 d-flex align-items-center rounded bg-danger-subtle text-danger border border-danger-subtle fw-medium small"
+        role="alert" aria-live="assertive" [appFocusOnError]="true">
         <i class="pi pi-exclamation-circle me-2 fs-6"></i>
         {{ errorMessage }}
       </div>

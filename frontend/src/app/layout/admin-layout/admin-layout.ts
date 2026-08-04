@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -12,16 +12,20 @@ import { MessageService } from 'primeng/api';
 import { Subscription } from 'rxjs';
 import { UserService } from '../../core/services/user';
 import { environment } from '../../../environments/environment';
+import { RouteFocusTargetDirective } from '../../shared/directives/focus-management.directive';
 
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, RouterOutlet, Sidebar, AiAssistant, ToastModule],
+  imports: [CommonModule, FormsModule, RouterLink, RouterOutlet, Sidebar, AiAssistant, ToastModule,
+    RouteFocusTargetDirective],
   providers: [MessageService],
   templateUrl: './admin-layout.html',
   styleUrl: './admin-layout.css'
 })
 export class AdminLayout implements OnInit, OnDestroy {
+  @ViewChild('notificationTrigger') private notificationTrigger?: ElementRef<HTMLButtonElement>;
+  @ViewChild('profileTrigger') private profileTrigger?: ElementRef<HTMLButtonElement>;
   isSidebarCollapsed = false;
   isMobileSidebarOpen = false;
   isNotificationOpen = false;
@@ -79,7 +83,7 @@ export class AdminLayout implements OnInit, OnDestroy {
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe((event) => {
         this.updatePageTitle(event.urlAfterRedirects);
-        this.closeOverlays();
+        this.closeOverlays(false);
       });
   }
 
@@ -186,13 +190,17 @@ export class AdminLayout implements OnInit, OnDestroy {
   }
 
   toggleNotifications(): void {
+    const restoreFocus = this.isNotificationOpen;
     this.isNotificationOpen = !this.isNotificationOpen;
     this.isUserMenuOpen = false;
+    if (restoreFocus) queueMicrotask(() => this.notificationTrigger?.nativeElement.focus());
   }
 
   toggleUserMenu(): void {
+    const restoreFocus = this.isUserMenuOpen;
     this.isUserMenuOpen = !this.isUserMenuOpen;
     this.isNotificationOpen = false;
+    if (restoreFocus) queueMicrotask(() => this.profileTrigger?.nativeElement.focus());
   }
 
   executeGlobalSearch(): void {
@@ -217,10 +225,15 @@ export class AdminLayout implements OnInit, OnDestroy {
   }
 
   @HostListener('document:keydown.escape')
-  closeOverlays(): void {
+  closeOverlays(restoreFocus = true): void {
+    const notificationWasOpen = this.isNotificationOpen;
+    const profileWasOpen = this.isUserMenuOpen;
     this.isMobileSidebarOpen = false;
     this.isNotificationOpen = false;
     this.isUserMenuOpen = false;
+    if (!restoreFocus) return;
+    if (notificationWasOpen) queueMicrotask(() => this.notificationTrigger?.nativeElement.focus());
+    else if (profileWasOpen) queueMicrotask(() => this.profileTrigger?.nativeElement.focus());
   }
 
   private updatePageTitle(url: string): void {

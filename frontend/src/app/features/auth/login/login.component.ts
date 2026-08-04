@@ -2,10 +2,11 @@ import { Component, ChangeDetectionStrategy, inject, ChangeDetectorRef, OnInit }
 import { SharedModule } from '@app/shared/shared.module';
 import { AuthService } from '@app/core/services/auth';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
+import { FocusOnErrorDirective } from '../../../shared/directives/focus-management.directive';
 
 @Component({
   standalone: true,
-  imports: [SharedModule, RouterModule],
+  imports: [SharedModule, RouterModule, FocusOnErrorDirective],
   selector: 'app-login',
   templateUrl: './login.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

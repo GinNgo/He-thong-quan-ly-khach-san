@@ -1,3 +1,4 @@
+<a class="skip-link" href="#management-main-content">Bo qua dieu huong doi tac</a>
 <div
   class="management-shell"
   [class.sidebar-collapsed]="isSidebarCollapsed"
@@ -61,6 +62,7 @@
     <header class="management-header">
       <div class="header-leading">
         <button
+          #navigationTrigger
           type="button"
           class="management-icon-button"
           (click)="toggleSidebar()"
@@ -113,6 +115,7 @@
 
         <div class="user-menu-anchor">
           <button
+            #profileTrigger
             type="button"
             class="management-profile-button"
             (click)="toggleUserMenu()"
@@ -160,7 +163,7 @@
       </aside>
     }
 
-    <main id="management-main-content" class="management-content" tabindex="-1">
+    <main id="management-main-content" class="management-content" appRouteFocusTarget>
       <router-outlet></router-outlet>
     </main>
   </div>

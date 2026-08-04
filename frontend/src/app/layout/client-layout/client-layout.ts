@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { distinctUntilChanged, Subject, takeUntil } from 'rxjs';
 import { AuthService } from '../../core/services/auth';
@@ -7,13 +7,16 @@ import { ClientApiService, UserContext } from '../../core/services/client-api.se
 import { CustomerNotificationService } from '../../core/services/customer-notification.service';
 import { LayoutStateService } from '../../core/services/layout-state.service';
 import { ChatWidgetComponent } from '../../features/client/chat-widget/chat-widget';
+import { RouteFocusTargetDirective } from '../../shared/directives/focus-management.directive';
 
 @Component({
   selector: 'app-client-layout', standalone: true,
-  imports: [CommonModule, RouterModule, ChatWidgetComponent],
+  imports: [CommonModule, RouterModule, ChatWidgetComponent, RouteFocusTargetDirective],
   templateUrl: './client-layout.html', styleUrls: ['./client-layout.css', './client-layout.notifications.css']
 })
 export class ClientLayout implements OnInit, OnDestroy {
+  @ViewChild('accountTrigger') private accountTrigger?: ElementRef<HTMLButtonElement>;
+  @ViewChild('mobileTrigger') private mobileTrigger?: ElementRef<HTMLButtonElement>;
   private readonly authService = inject(AuthService);
   private readonly api = inject(ClientApiService);
   private readonly router = inject(Router);
@@ -85,9 +88,21 @@ export class ClientLayout implements OnInit, OnDestroy {
     return 'Đăng chỗ nghỉ của bạn';
   }
 
-  toggleAccountMenu(event: Event): void { event.stopPropagation(); this.accountMenuOpen = !this.accountMenuOpen; }
-  closeAccountMenu(): void { this.accountMenuOpen = false; }
-  toggleMobileMenu(): void { this.isMobileMenuOpen = !this.isMobileMenuOpen; }
+  toggleAccountMenu(event: Event): void {
+    event.stopPropagation();
+    const restoreFocus = this.accountMenuOpen;
+    this.accountMenuOpen = !this.accountMenuOpen;
+    if (restoreFocus) queueMicrotask(() => this.accountTrigger?.nativeElement.focus());
+  }
+  closeAccountMenu(restoreFocus = false): void {
+    this.accountMenuOpen = false;
+    if (restoreFocus) queueMicrotask(() => this.accountTrigger?.nativeElement.focus());
+  }
+  toggleMobileMenu(): void {
+    const restoreFocus = this.isMobileMenuOpen;
+    this.isMobileMenuOpen = !this.isMobileMenuOpen;
+    if (restoreFocus) queueMicrotask(() => this.mobileTrigger?.nativeElement.focus());
+  }
   closeMobileMenu(): void { this.isMobileMenuOpen = false; }
   handleAvatarError(): void { this.avatarUrl = ''; }
 
@@ -114,7 +129,14 @@ export class ClientLayout implements OnInit, OnDestroy {
   }
 
   @HostListener('document:keydown.escape')
-  onEscape(): void { this.accountMenuOpen = false; this.isMobileMenuOpen = false; }
+  onEscape(): void {
+    const accountWasOpen = this.accountMenuOpen;
+    const mobileWasOpen = this.isMobileMenuOpen;
+    this.accountMenuOpen = false;
+    this.isMobileMenuOpen = false;
+    if (accountWasOpen) queueMicrotask(() => this.accountTrigger?.nativeElement.focus());
+    else if (mobileWasOpen) queueMicrotask(() => this.mobileTrigger?.nativeElement.focus());
+  }
 
   ngOnDestroy(): void {
     this.customerNotifications.disconnect();

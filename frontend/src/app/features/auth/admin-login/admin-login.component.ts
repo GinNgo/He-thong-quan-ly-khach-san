@@ -7,10 +7,11 @@ import {
   ACCOUNT_DISABLED_MESSAGE,
   authenticationErrorMessage,
 } from '@app/core/auth/account-status-error';
+import { FocusOnErrorDirective } from '../../../shared/directives/focus-management.directive';
 
 @Component({
   standalone: true,
-  imports: [SharedModule],
+  imports: [SharedModule, FocusOnErrorDirective],
   selector: 'app-admin-login',
   templateUrl: './admin-login.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

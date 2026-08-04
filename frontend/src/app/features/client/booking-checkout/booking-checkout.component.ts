@@ -10,11 +10,12 @@ import {
 } from '../../../core/services/property-payment.service';
 import { PropertyPaymentPanelComponent } from './property-payment-panel.component';
 import { AsyncActionCoordinatorService } from '../../../core/services/async-action-coordinator.service';
+import { FocusOnErrorDirective } from '../../../shared/directives/focus-management.directive';
 
 @Component({
   selector: 'app-booking-checkout',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, PropertyPaymentPanelComponent],
+  imports: [CommonModule, RouterModule, FormsModule, PropertyPaymentPanelComponent, FocusOnErrorDirective],
   templateUrl: './booking-checkout.component.html',
   styleUrls: ['./booking-checkout.component.css']
 })

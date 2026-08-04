@@ -167,6 +167,24 @@ h1, h2, h3, h4, h5, h6, .font-serif {
   animation: slideDown 0.3s ease-out forwards;
 }
 
+.skip-link {
+    position: fixed;
+    top: var(--hotel-space-2);
+    left: var(--hotel-space-2);
+    z-index: 10000;
+    padding: var(--hotel-space-2) var(--hotel-space-4);
+    color: #fff;
+    border-radius: var(--hotel-radius-md);
+    background: var(--hotel-heading);
+    box-shadow: var(--hotel-shadow-md);
+    transform: translateY(calc(-100% - var(--hotel-space-4)));
+    transition: transform var(--hotel-transition-fast) ease;
+}
+
+.skip-link:focus {
+    transform: translateY(0);
+}
+
 /* Keep authenticated tables and overlays inside narrow viewports while preserving local scrolling. */
 :where(.p-datatable-wrapper, .table-scroll, .table-responsive) {
     max-width: 100%;

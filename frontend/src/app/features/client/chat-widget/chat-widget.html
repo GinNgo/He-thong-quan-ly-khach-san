@@ -3,10 +3,12 @@
     *ngIf="isOpen()"
     id="support-chat-panel"
     class="support-panel"
+    pFocusTrap
     role="dialog"
-    aria-modal="false"
+    aria-modal="true"
     aria-labelledby="support-chat-title"
-    aria-describedby="support-chat-description">
+    aria-describedby="support-chat-description"
+    (keydown.escape)="closeChat(); $event.stopPropagation()">
     <header class="support-header">
       <div class="support-brand-mark" aria-hidden="true">
         <i class="pi pi-headphones"></i>
@@ -14,7 +16,7 @@
       <div class="support-heading">
         <h2 id="support-chat-title">LuxeStay Care</h2>
         <p id="support-chat-description">Ho tro truc tuyen tu doi ngu trung tam</p>
-        <span class="connection-status" [class.is-connected]="connectionState() === 'connected'">
+        <span class="connection-status" role="status" aria-live="polite" [class.is-connected]="connectionState() === 'connected'">
           <span class="connection-dot" aria-hidden="true"></span>
           {{ connectionLabel() }}
         </span>
@@ -71,7 +73,7 @@
         </div>
 
         <div *ngIf="historyState() === 'error' || conversationState() === 'error'"
-          class="support-state support-error" role="alert">
+          class="support-state support-error" role="alert" aria-live="assertive" [appFocusOnError]="true">
           <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
           <span>{{ historyError() }}</span>
           <button type="button" class="text-action" (click)="retryHistory()">Thu lai</button>
@@ -160,7 +162,8 @@
         <i *ngIf="!isSending()" class="pi pi-send" aria-hidden="true"></i>
         <i *ngIf="isSending()" class="pi pi-spin pi-spinner" aria-hidden="true"></i>
       </button>
-      <p id="support-send-status" class="composer-status" [class.has-error]="sendError()" aria-live="polite">
+      <p id="support-send-status" class="composer-status" [class.has-error]="sendError()" aria-live="polite"
+        [appFocusOnError]="!!sendError()">
         {{ sendError() || (isSending() ? 'Dang cho may chu xac nhan...' : '') }}
       </p>
     </form>

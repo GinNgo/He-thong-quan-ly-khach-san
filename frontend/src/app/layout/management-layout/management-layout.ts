@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, RouterModule, RouterOutlet } from '@angular/router';
 import { Subscription, filter } from 'rxjs';
 import { AuthService } from '../../core/services/auth';
@@ -9,6 +9,7 @@ import {
 } from '../../core/services/management-api.service';
 import { ManagementPropertyContextService } from '../../core/services/management-property-context.service';
 import { ActionCode, FunctionCode, PermissionService } from '../../core/services/permission.service';
+import { RouteFocusTargetDirective } from '../../shared/directives/focus-management.directive';
 
 interface ManagementLink {
   label: string;
@@ -22,11 +23,13 @@ interface ManagementLink {
 @Component({
   selector: 'app-management-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, RouterOutlet],
+  imports: [CommonModule, RouterModule, RouterOutlet, RouteFocusTargetDirective],
   templateUrl: './management-layout.html',
   styleUrls: ['./management-layout.css'],
 })
 export class ManagementLayout implements OnInit, OnDestroy {
+  @ViewChild('navigationTrigger') private navigationTrigger?: ElementRef<HTMLButtonElement>;
+  @ViewChild('profileTrigger') private profileTrigger?: ElementRef<HTMLButtonElement>;
   private authService = inject(AuthService);
   private managementApi = inject(ManagementApiService);
   private route = inject(ActivatedRoute);
@@ -118,7 +121,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
         .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
         .subscribe((event) => {
           this.updatePageTitle(event.urlAfterRedirects);
-          this.closeOverlays();
+          this.closeOverlays(false);
           this.cdr.markForCheck();
         }),
     );
@@ -194,7 +197,9 @@ export class ManagementLayout implements OnInit, OnDestroy {
   }
 
   toggleUserMenu(): void {
+    const restoreFocus = this.isUserMenuOpen;
     this.isUserMenuOpen = !this.isUserMenuOpen;
+    if (restoreFocus) queueMicrotask(() => this.profileTrigger?.nativeElement.focus());
   }
 
   closeMobileNavigation(): void {
@@ -202,9 +207,14 @@ export class ManagementLayout implements OnInit, OnDestroy {
   }
 
   @HostListener('document:keydown.escape')
-  closeOverlays(): void {
+  closeOverlays(restoreFocus = true): void {
+    const navigationWasOpen = this.isMobileSidebarOpen;
+    const profileWasOpen = this.isUserMenuOpen;
     this.isMobileSidebarOpen = false;
     this.isUserMenuOpen = false;
+    if (!restoreFocus) return;
+    if (profileWasOpen) queueMicrotask(() => this.profileTrigger?.nativeElement.focus());
+    else if (navigationWasOpen) queueMicrotask(() => this.navigationTrigger?.nativeElement.focus());
   }
 
   @HostListener('window:resize')
