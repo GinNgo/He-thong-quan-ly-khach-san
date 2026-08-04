@@ -15,6 +15,12 @@ export interface SearchStayDates {
   checkOut: Date;
 }
 
+export const PROPERTY_TYPE_FILTERS = [
+  'HOTEL', 'RESORT', 'APARTMENT', 'VILLA', 'HOMESTAY', 'MOTEL', 'GUEST_HOUSE', 'HOSTEL',
+] as const;
+export const STAR_RATING_FILTERS = [5, 4, 3, 2, 1] as const;
+export const REVIEW_SCORE_FILTERS = [9, 8, 7, 6] as const;
+
 export function propertySearchParamsFromRoute(params: Params): PropertySearchParams {
   return {
     keyword: textValue(params['keyword']),
@@ -32,17 +38,33 @@ export function propertySearchParamsFromRoute(params: Params): PropertySearchPar
     sortBy: textValue(params['sortBy']),
     pageNumber: numberValue(params['pageNumber']),
     pageSize: numberValue(params['pageSize']),
-    propertyTypes: stringList(params['propertyTypes']),
+    propertyTypes: optionalList(canonicalPropertyTypes(stringList(params['propertyTypes']))),
     stayType: textValue(params['stayType']),
     minPrice: numberValue(params['minPrice']),
     maxPrice: numberValue(params['maxPrice']),
-    starRatings: numberList(params['starRatings']),
-    minReviewScore: numberValue(params['minReviewScore']),
+    starRatings: optionalList(canonicalStarRatings(numberList(params['starRatings']))),
+    minReviewScore: canonicalReviewScore(numberValue(params['minReviewScore'])) ?? undefined,
     amenityIds: numberList(params['amenityIds']),
     freeCancellation: booleanValue(params['freeCancellation']),
     payAtProperty: booleanValue(params['payAtProperty']),
     breakfastIncluded: booleanValue(params['breakfastIncluded']),
   };
+}
+
+export function canonicalPropertyTypes(values?: readonly string[]): string[] {
+  const selected = new Set((values || []).map(value => value.trim().toUpperCase()));
+  return PROPERTY_TYPE_FILTERS.filter(value => selected.has(value));
+}
+
+export function canonicalStarRatings(values?: readonly number[]): number[] {
+  const selected = new Set((values || []).map(Number).filter(Number.isFinite));
+  return STAR_RATING_FILTERS.filter(value => selected.has(value));
+}
+
+export function canonicalReviewScore(value: unknown): number | null {
+  if (value === null || value === undefined || (typeof value === 'string' && !value.trim())) return null;
+  const score = Number(value);
+  return Number.isFinite(score) && score >= 0 && score <= 10 ? score : null;
 }
 
 export function validSearchStayDates(params: Params): SearchStayDates | null {
@@ -93,6 +115,10 @@ function stringList(value: unknown): string[] | undefined {
 
 function numberList(value: unknown): number[] | undefined {
   return stringList(value)?.map(Number);
+}
+
+function optionalList<T>(values: T[]): T[] | undefined {
+  return values.length ? values : undefined;
 }
 
 function booleanValue(value: unknown): boolean | undefined {

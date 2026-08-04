@@ -3,6 +3,11 @@ import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core
 import { FormsModule } from '@angular/forms';
 import { CheckboxModule } from 'primeng/checkbox';
 import { SliderModule } from 'primeng/slider';
+import {
+  canonicalPropertyTypes,
+  canonicalReviewScore,
+  canonicalStarRatings,
+} from '../../pages/property-search-page/property-search-query';
 
 export interface FilterState {
   minPrice: number;
@@ -57,7 +62,7 @@ export interface FilterState {
           <input type="radio" name="review-score" [value]="score.value" [(ngModel)]="selectedReviewScore">
           <span><strong>{{ score.value }}+</strong> {{ score.label }}</span>
         </label>
-        <button *ngIf="selectedReviewScore" type="button" class="text-action compact" (click)="selectedReviewScore = null">
+        <button *ngIf="selectedReviewScore !== null" type="button" class="text-action compact" (click)="selectedReviewScore = null">
           Bỏ lọc điểm đánh giá
         </button>
       </section>
@@ -100,17 +105,19 @@ export class SearchFilterSidebarComponent implements OnChanges {
 
   ngOnChanges(): void {
     this.priceRange = [this.initialState.minPrice ?? 0, this.initialState.maxPrice ?? 10000000];
-    this.selectedPropertyTypes = [...(this.initialState.propertyTypes || [])];
-    this.selectedStars = [...(this.initialState.starRatings || [])];
-    this.selectedReviewScore = this.initialState.minReviewScore ?? null;
+    this.selectedPropertyTypes = canonicalPropertyTypes(this.initialState.propertyTypes);
+    this.selectedStars = canonicalStarRatings(this.initialState.starRatings);
+    this.selectedReviewScore = canonicalReviewScore(this.initialState.minReviewScore);
   }
 
   applyFilters(): void {
     this.filtersChanged.emit({
       minPrice: Math.max(0, Number(this.priceRange[0]) || 0),
       maxPrice: Math.max(this.priceRange[0], Number(this.priceRange[1]) || 10000000),
-      propertyTypes: [...this.selectedPropertyTypes], starRatings: [...this.selectedStars],
-      minReviewScore: this.selectedReviewScore, amenityIds: []
+      propertyTypes: canonicalPropertyTypes(this.selectedPropertyTypes),
+      starRatings: canonicalStarRatings(this.selectedStars),
+      minReviewScore: canonicalReviewScore(this.selectedReviewScore),
+      amenityIds: [...(this.initialState.amenityIds || [])]
     });
   }
 

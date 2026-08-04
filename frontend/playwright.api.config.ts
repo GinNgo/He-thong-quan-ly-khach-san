@@ -22,7 +22,8 @@ export default defineConfig({
   testMatch: [
     'home-search.api.spec.ts',
     'property-search-eligibility.api.spec.ts',
-    'legacy-public-search.api.spec.ts'
+    'legacy-public-search.api.spec.ts',
+    'property-search-filters.api.spec.ts'
   ],
   fullyParallel: false,
   workers: 1,

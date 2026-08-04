@@ -306,6 +306,85 @@ public class PropertySearchControllerIntegrationTest {
     }
 
     @Test
+    void searchProperties_NormalizesAndDeduplicatesPropertyTypeAndStarFilters() throws Exception {
+        FilterFixture fixture = seedFilterFixture();
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("keyword", "T276")
+                        .param("propertyTypes", " hotel ,RESORT,hotel")
+                        .param("starRatings", "5,4,5")
+                        .param("pageSize", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.content[*].id", containsInAnyOrder(
+                        fixture.hotelLeader().getId().intValue(), fixture.resortReviewed().getId().intValue())))
+                .andExpect(jsonPath("$.content[*].propertyType", containsInAnyOrder("HOTEL", "RESORT")))
+                .andExpect(jsonPath("$.content[*].starRating", containsInAnyOrder(5, 4)));
+    }
+
+    @Test
+    void searchProperties_RequiresRealReviewsAndPreservesReviewedZeroScore() throws Exception {
+        FilterFixture fixture = seedFilterFixture();
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("keyword", "T276")
+                        .param("minReviewScore", "8")
+                        .param("pageSize", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.content[*].id", containsInAnyOrder(
+                        fixture.hotelLeader().getId().intValue(), fixture.resortReviewed().getId().intValue())))
+                .andExpect(jsonPath("$.content[*].name", not(hasItems(
+                        "T276 Zero Count High", "T276 Null Count High", "T276 Null Average Count"))));
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("keyword", "T276")
+                        .param("minReviewScore", "0")
+                        .param("pageSize", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(4))
+                .andExpect(jsonPath("$.content[*].id", containsInAnyOrder(
+                        fixture.hotelLeader().getId().intValue(), fixture.resortReviewed().getId().intValue(),
+                        fixture.homestayReviewed().getId().intValue(), fixture.zeroScoreReviewed().getId().intValue())))
+                .andExpect(jsonPath("$.content[?(@.name == 'T276 Zero Reviewed')].reviewScore", contains(0.0)))
+                .andExpect(jsonPath("$.content[?(@.name == 'T276 Zero Reviewed')].reviewCount", contains(3)));
+
+        mockMvc.perform(get("/api/public/properties/search")
+                        .param("keyword", "T276")
+                        .param("pageSize", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(7))
+                .andExpect(jsonPath("$.content[?(@.name == 'T276 Zero Count High')].reviewScore",
+                        contains(nullValue())))
+                .andExpect(jsonPath("$.content[?(@.name == 'T276 Zero Count High')].reviewCount", contains(0)))
+                .andExpect(jsonPath("$.content[?(@.name == 'T276 Null Count High')].reviewScore",
+                        contains(nullValue())))
+                .andExpect(jsonPath("$.content[?(@.name == 'T276 Null Count High')].reviewCount", contains(0)))
+                .andExpect(jsonPath("$.content[?(@.name == 'T276 Null Average Count')].reviewScore",
+                        contains(nullValue())))
+                .andExpect(jsonPath("$.content[?(@.name == 'T276 Null Average Count')].reviewCount", contains(0)));
+    }
+
+    @Test
+    void searchProperties_RejectsInvalidPropertyTypeStarAndReviewFilters() throws Exception {
+        mockMvc.perform(get("/api/public/properties/search").param("propertyTypes", "CABIN"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        for (String invalidStar : List.of("0", "6")) {
+            mockMvc.perform(get("/api/public/properties/search").param("starRatings", invalidStar))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+        }
+
+        for (String invalidScore : List.of("-0.1", "10.1", "NaN", "Infinity")) {
+            mockMvc.perform(get("/api/public/properties/search").param("minReviewScore", invalidScore))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+        }
+    }
+
+    @Test
     void searchProperties_ByLandmarkResolvesCoordinatesAndOrdersByDistance() throws Exception {
         mockMvc.perform(get("/api/public/properties/search")
                         .param("landmarkId", landmark.getId().toString())
@@ -532,6 +611,51 @@ public class PropertySearchControllerIntegrationTest {
         return hotel;
     }
 
+    private FilterFixture seedFilterFixture() {
+        return new FilterFixture(
+                saveFilterHotel("Hotel Leader", "HOTEL", 5, 9.2, 20),
+                saveFilterHotel("Resort Reviewed", "RESORT", 4, 8.3, 10),
+                saveFilterHotel("Homestay Reviewed", "HOMESTAY", 3, 7.0, 1),
+                saveFilterHotel("Zero Reviewed", "HOTEL", 0, 0.0, 3),
+                saveFilterHotel("Zero Count High", "VILLA", null, 9.9, 0),
+                saveFilterHotel("Null Average Count", "APARTMENT", 5, null, 12),
+                saveFilterHotel("Null Count High", "MOTEL", 4, 9.7, null));
+    }
+
+    private Hotel saveFilterHotel(String suffix, String propertyType, Integer starRating,
+                                  Double averageRating, Integer reviewCount) {
+        String key = suffix.replaceAll("[^A-Za-z0-9]", "-").toUpperCase();
+        Hotel hotel = new Hotel();
+        hotel.setName("T276 " + suffix);
+        hotel.setCode("TEST-T276-" + key);
+        hotel.setSlug("test-t276-" + key.toLowerCase());
+        hotel.setNormalizedName(("T276 " + suffix).toLowerCase());
+        hotel.setProvinceId(secondaryProvince.getId());
+        hotel.setAddressLine("276 Filter Street " + suffix);
+        hotel.setCity(secondaryProvince.getNameVi());
+        hotel.setCountry("Vietnam");
+        hotel.setStatus("ACTIVE");
+        hotel.setApprovalStatus("APPROVED");
+        hotel.setOperationStatus("ACTIVE");
+        hotel.setPropertyType(propertyType);
+        hotel.setStarRating(starRating);
+        hotel.setAverageRating(averageRating);
+        hotel.setReviewCount(reviewCount);
+        hotel = hotelRepository.saveAndFlush(hotel);
+
+        RoomType roomType = new RoomType();
+        roomType.setHotel(hotel);
+        roomType.setNameEn("T276 filter room " + suffix);
+        roomType.setNameVi("T276 filter room " + suffix);
+        roomType.setCode("T276-ROOM-" + key);
+        roomType.setBasePrice(new BigDecimal("600000"));
+        roomType.setMaxGuest(2);
+        roomType.setStatus("ACTIVE");
+        roomType = roomTypeRepository.saveAndFlush(roomType);
+        saveRoom(hotel, roomType, "T276-" + hotel.getId());
+        return hotel;
+    }
+
     private void savePropertyImage(Hotel hotel, String imageUrl, boolean primary, int sortOrder, String altText) {
         PropertyImage image = new PropertyImage();
         image.setHotel(hotel);
@@ -541,4 +665,8 @@ public class PropertySearchControllerIntegrationTest {
         image.setAltTextVi(altText);
         propertyImageRepository.saveAndFlush(image);
     }
+
+    private record FilterFixture(Hotel hotelLeader, Hotel resortReviewed, Hotel homestayReviewed,
+                                 Hotel zeroScoreReviewed, Hotel zeroCountHigh, Hotel nullAverageCount,
+                                 Hotel nullCountHigh) { }
 }

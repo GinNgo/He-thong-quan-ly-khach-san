@@ -1,6 +1,9 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
 import {
+  canonicalPropertyTypes,
+  canonicalReviewScore,
+  canonicalStarRatings,
   propertySearchErrorState,
   propertySearchParamsFromRoute,
   validSearchStayDates,
@@ -58,7 +61,7 @@ describe('property search query contract', () => {
       stayType: 'OVERNIGHT',
       minPrice: 300000,
       maxPrice: 1500000,
-      starRatings: [4, 5],
+      starRatings: [5, 4],
       minReviewScore: 8,
       amenityIds: [3, 7],
       freeCancellation: false,
@@ -88,6 +91,34 @@ describe('property search query contract', () => {
     }));
     expect(propertySearchParamsFromRoute({ displayLocation: 'Tỉnh Đồng Tháp' }))
       .not.toHaveProperty('displayLocation');
+  });
+
+  it('canonicalizes, deduplicates and orders property, star and review filters', () => {
+    expect(canonicalPropertyTypes(['hotel', 'HOTEL', 'invalid', 'resort', 'villa']))
+      .toEqual(['HOTEL', 'RESORT', 'VILLA']);
+    expect(canonicalStarRatings([3, 5, 5, 0, 8, 4]))
+      .toEqual([5, 4, 3]);
+    expect(canonicalReviewScore('8')).toBe(8);
+    expect(canonicalReviewScore(0)).toBe(0);
+    expect(canonicalReviewScore(8.5)).toBe(8.5);
+    expect(canonicalReviewScore(-1)).toBeNull();
+    expect(canonicalReviewScore(11)).toBeNull();
+    expect(canonicalReviewScore(null)).toBeNull();
+    expect(canonicalReviewScore(undefined)).toBeNull();
+
+    expect(propertySearchParamsFromRoute({
+      propertyTypes: 'hotel,HOTEL,unknown,resort',
+      starRatings: '3,5,5,0,9,4',
+      minReviewScore: '7',
+    })).toEqual(expect.objectContaining({
+      propertyTypes: ['HOTEL', 'RESORT'],
+      starRatings: [5, 4, 3],
+      minReviewScore: 7,
+    }));
+
+    expect(propertySearchParamsFromRoute({ minReviewScore: '0' })).toEqual(expect.objectContaining({
+      minReviewScore: 0,
+    }));
   });
 
   it('hydrates only a strict, increasing ISO stay range', () => {

@@ -33,7 +33,7 @@ import { ImageFallbackService } from '../../../../core/services/image-fallback.s
           · tối đa {{ property.lowestRoomType.maxGuests }} khách/phòng</span>
         </div>
         <div class="amenities" *ngIf="property.amenities?.length">
-          <span *ngFor="let amenity of property.amenities?.slice(0, 4)">{{ amenity }}</span>
+          <span *ngFor="let amenity of property.amenities.slice(0, 4)">{{ amenity }}</span>
         </div>
         <p *ngIf="property.availableRoomCount" class="availability">
           <i class="pi pi-check-circle"></i> {{ property.availableRoomCount }} phòng phù hợp còn trống
@@ -41,7 +41,7 @@ import { ImageFallbackService } from '../../../../core/services/image-fallback.s
       </div>
 
       <div class="commercial">
-        <div class="review" *ngIf="property.reviewScore; else unrated">
+        <div class="review" *ngIf="hasReviews; else unrated">
           <span><strong>{{ reviewLabel(property.reviewScore) }}</strong><small>{{ property.reviewCount || 0 }} đánh giá</small></span>
           <b>{{ property.reviewScore | number:'1.1-1' }}</b>
         </div>
@@ -68,7 +68,7 @@ import { ImageFallbackService } from '../../../../core/services/image-fallback.s
   `]
 })
 export class PropertyResultCardComponent {
-  @Input({ required: true }) property!: Hotel & any;
+  @Input({ required: true }) property!: Hotel;
   @Output() viewDetails = new EventEmitter<number>();
   private readonly fallback = inject(ImageFallbackService);
   get imageUrl(): string {
@@ -85,10 +85,19 @@ export class PropertyResultCardComponent {
   }
   get effectiveNightlyPrice(): number { return this.property.pricing?.discountedNightlyPrice ?? this.property.pricing?.discountedPrice ?? this.property.pricing?.nightlyPrice ?? 0; }
   get taxAndFees(): number { return (this.property.pricing?.taxAmount || 0) + (this.property.pricing?.feeAmount || 0); }
+  get hasReviews(): boolean {
+    return (this.property.reviewCount ?? 0) > 0
+      && this.property.reviewScore !== null
+      && this.property.reviewScore !== undefined
+      && Number.isFinite(this.property.reviewScore);
+  }
   view(): void { this.viewDetails.emit(this.property.id); }
   handleImageError(event: Event): void { this.fallback.replace(event, this.fallback.property(this.property.propertyType)); }
   stars(value: number): number[] { return Array.from({ length: Math.max(0, Math.min(5, value || 0)) }); }
-  reviewLabel(score: number): string { return score >= 9 ? 'Tuyệt hảo' : score >= 8 ? 'Rất tốt' : score >= 7 ? 'Tốt' : 'Dễ chịu'; }
+  reviewLabel(score?: number): string {
+    const value = score ?? 0;
+    return value >= 9 ? 'Tuyệt hảo' : value >= 8 ? 'Rất tốt' : value >= 7 ? 'Tốt' : value >= 6 ? 'Dễ chịu' : 'Đã đánh giá';
+  }
   formatVnd(value: number): string { return `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(value || 0)} ₫`; }
   propertyTypeLabel(type?: string): string { return ({ HOTEL:'Khách sạn',RESORT:'Khu nghỉ dưỡng',VILLA:'Biệt thự',APARTMENT:'Căn hộ',HOMESTAY:'Homestay',MOTEL:'Nhà nghỉ',GUEST_HOUSE:'Nhà khách',HOSTEL:'Hostel' } as Record<string,string>)[type || ''] || 'Cơ sở lưu trú'; }
 }

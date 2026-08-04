@@ -26,7 +26,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -34,6 +36,8 @@ import java.util.Set;
 public class PropertySearchServiceImpl implements PropertySearchService {
 
     private static final String RELEASED_STATUSES = "'CANCELLED','REJECTED','EXPIRED','NO_SHOW','CHECKED_OUT','COMPLETED'";
+    private static final Set<String> PUBLIC_PROPERTY_TYPES = Set.of(
+            "HOTEL", "RESORT", "APARTMENT", "VILLA", "HOMESTAY", "MOTEL", "GUEST_HOUSE", "HOSTEL");
 
     private final EntityManager entityManager;
     private final LocationRepository locationRepository;
@@ -148,7 +152,8 @@ public class PropertySearchServiceImpl implements PropertySearchService {
             where.append(" AND h.star_rating IN (").append(String.join(",", placeholders)).append(") ");
         }
         if (request.getMinReviewScore() != null) {
-            where.append(" AND h.average_rating>=:minReviewScore ");
+            where.append(" AND COALESCE(h.review_count,0)>0 AND h.average_rating IS NOT NULL ")
+                    .append("AND h.average_rating>=:minReviewScore ");
             params.put("minReviewScore", request.getMinReviewScore());
         }
         if (request.getMinPrice() != null) {
@@ -287,9 +292,11 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         dto.setLatitude(decimal(row[6]));
         dto.setLongitude(decimal(row[7]));
         dto.setPropertyType((String) row[8]);
-        Integer reviewCount = integer(row[10]) == null ? 0 : integer(row[10]);
-        dto.setReviewScore(reviewCount > 0 ? decimal(row[9]) : null);
-        dto.setReviewCount(reviewCount);
+        Integer storedReviewCount = integer(row[10]);
+        Double storedReviewScore = decimal(row[9]);
+        boolean reviewed = storedReviewCount != null && storedReviewCount > 0 && storedReviewScore != null;
+        dto.setReviewScore(reviewed ? storedReviewScore : null);
+        dto.setReviewCount(reviewed ? storedReviewCount : 0);
         Long storedProvinceId = row[19] == null ? null : number(row[19]).longValue();
         Location currentProvince = provinceCompatibilityService.currentProvinceForId(storedProvinceId);
         dto.setProvinceName(currentProvince == null ? (String) row[11] : currentProvince.getNameVi());
@@ -369,6 +376,13 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
     private void validateSupportedRequestContract(PropertySearchRequestDTO request) {
+        request.setPropertyTypes(normalizePropertyTypes(request.getPropertyTypes()));
+        request.setStarRatings(normalizeStarRatings(request.getStarRatings()));
+        if (request.getMinReviewScore() != null
+                && (!Double.isFinite(request.getMinReviewScore())
+                || request.getMinReviewScore() < 0 || request.getMinReviewScore() > 10)) {
+            throw new IllegalArgumentException("minReviewScore must be a finite value within 0..10.");
+        }
         if (request.getStayType() != null && !request.getStayType().isBlank()
                 && !"OVERNIGHT".equalsIgnoreCase(request.getStayType().trim())) {
             throw new IllegalArgumentException("Only OVERNIGHT stayType is supported by property search.");
@@ -385,6 +399,29 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         if (Boolean.TRUE.equals(request.getBreakfastIncluded())) {
             throw new IllegalArgumentException("breakfastIncluded filtering is not available yet.");
         }
+    }
+    private List<String> normalizePropertyTypes(List<String> propertyTypes) {
+        if (propertyTypes == null || propertyTypes.isEmpty()) return propertyTypes;
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        for (String propertyType : propertyTypes) {
+            String value = propertyType == null ? "" : propertyType.trim().toUpperCase(Locale.ROOT);
+            if (!PUBLIC_PROPERTY_TYPES.contains(value)) {
+                throw new IllegalArgumentException("Unsupported property type: " + propertyType);
+            }
+            normalized.add(value);
+        }
+        return List.copyOf(normalized);
+    }
+    private List<Integer> normalizeStarRatings(List<Integer> starRatings) {
+        if (starRatings == null || starRatings.isEmpty()) return starRatings;
+        LinkedHashSet<Integer> normalized = new LinkedHashSet<>();
+        for (Integer starRating : starRatings) {
+            if (starRating == null || starRating < 1 || starRating > 5) {
+                throw new IllegalArgumentException("starRatings values must be within 1..5.");
+            }
+            normalized.add(starRating);
+        }
+        return List.copyOf(normalized);
     }
     private LocalDate parseDate(String value, String field) {
         if (value == null || value.isBlank()) return null;
