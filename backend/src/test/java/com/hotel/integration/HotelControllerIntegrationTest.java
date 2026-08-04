@@ -10,6 +10,8 @@ import com.hotel.services.HotelManagementService;
 import com.hotel.services.PropertyAccessService;
 import com.hotel.services.PropertyRegistrationService;
 import com.hotel.services.PropertySearchService;
+import com.hotel.services.PublicInventoryEligibilityPolicy;
+import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.observability.OperationalMetrics;
 import com.hotel.services.RoomTypeService;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,6 +47,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @WebMvcTest(HotelController.class)
@@ -69,6 +72,9 @@ class HotelControllerIntegrationTest {
 
     @MockBean
     private PropertyRegistrationService propertyRegistrationService;
+
+    @MockBean
+    private PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
 
     @MockBean
     private OperationalMetrics operationalMetrics;
@@ -114,6 +120,39 @@ class HotelControllerIntegrationTest {
     void getMyHotels_WithoutAuth_ShouldReturn401() throws Exception {
         mockMvc.perform(get("/api/v1/hotels/my-hotels"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void publicDetail_UsesCanonicalEligibilityPolicyAndDisablesCaching() throws Exception {
+        com.hotel.entities.Hotel hotel = new com.hotel.entities.Hotel();
+        hotel.setId(44L);
+        hotel.setNameVi("Canonical public detail");
+        hotel.setApprovalStatus("APPROVED");
+        hotel.setOperationStatus("ACTIVE");
+        when(publicInventoryEligibilityPolicy.requirePublicProperty(44L)).thenReturn(hotel);
+
+        mockMvc.perform(get("/api/v1/hotels/public/{id}", 44L))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
+                .andExpect(jsonPath("$.id").value(44))
+                .andExpect(jsonPath("$.name").value("Canonical public detail"));
+
+        verify(publicInventoryEligibilityPolicy).requirePublicProperty(44L);
+        verify(hotelService, never()).getHotelById(44L);
+        verifyNoMoreInteractions(publicInventoryEligibilityPolicy);
+    }
+
+    @Test
+    void publicDetail_ReturnsIndistinguishable404WhenCanonicalPolicyRejectsProperty() throws Exception {
+        when(publicInventoryEligibilityPolicy.requirePublicProperty(91L))
+                .thenThrow(new ResourceNotFoundException("The requested property is not publicly available."));
+
+        mockMvc.perform(get("/api/v1/hotels/public/{id}", 91L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        verify(publicInventoryEligibilityPolicy).requirePublicProperty(91L);
+        verify(hotelService, never()).getHotelById(91L);
     }
 
     @Test

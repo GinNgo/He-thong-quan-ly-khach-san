@@ -5,6 +5,7 @@ import com.hotel.dto.PropertySearchResponseDTO;
 import com.hotel.dtos.PublicHotelDetailDTO;
 import com.hotel.entities.Hotel;
 import com.hotel.services.HotelManagementService;
+import com.hotel.services.PublicInventoryEligibilityPolicy;
 import com.hotel.services.PropertySearchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,9 @@ public class HotelController {
 
     @Autowired
     private PropertySearchService propertySearchService;
+
+    @Autowired
+    private PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
 
     @Autowired
     private com.hotel.services.PropertyAccessService propertyAccessService;
@@ -69,10 +73,10 @@ public class HotelController {
     }
     @GetMapping("/public/{id}")
     public ResponseEntity<PublicHotelDetailDTO> getHotelById(@PathVariable Long id) {
-        return hotelService.getHotelById(id)
-                .map(PublicHotelDetailDTO::from)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        Hotel hotel = publicInventoryEligibilityPolicy.requirePublicProperty(id);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(PublicHotelDetailDTO.from(hotel));
     }
 
     @GetMapping("/my-hotels")

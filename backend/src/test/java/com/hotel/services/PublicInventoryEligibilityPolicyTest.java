@@ -35,6 +35,50 @@ class PublicInventoryEligibilityPolicyTest {
     }
 
     @Test
+    void publicPropertyRejectsEveryNonApprovedOrNonActiveCatalogState() {
+        PublicInventoryEligibilityPolicy policy = policy(false, "test");
+        Hotel hotel = hotel(false);
+        when(hotelRepository.findById(10L)).thenReturn(Optional.of(hotel));
+
+        for (String approval : java.util.List.of(
+                "DRAFT", "PENDING", "PENDING_APPROVAL", "REJECTED", "IMPORTED_PENDING_REVIEW")) {
+            hotel.setApprovalStatus(approval);
+            hotel.setOperationStatus("ACTIVE");
+            assertThrows(ResourceNotFoundException.class, () -> policy.requirePublicProperty(10L), approval);
+        }
+
+        hotel.setApprovalStatus(null);
+        assertThrows(ResourceNotFoundException.class, () -> policy.requirePublicProperty(10L), "null approval");
+
+        hotel.setApprovalStatus("APPROVED");
+        for (String operation : java.util.List.of(
+                "INACTIVE", "SUSPENDED", "CLOSED", "MAINTENANCE", "OUT_OF_SERVICE")) {
+            hotel.setOperationStatus(operation);
+            assertThrows(ResourceNotFoundException.class, () -> policy.requirePublicProperty(10L), operation);
+        }
+
+        hotel.setOperationStatus(null);
+        assertThrows(ResourceNotFoundException.class, () -> policy.requirePublicProperty(10L), "null operation");
+    }
+
+    @Test
+    void missingAndIneligiblePropertiesShareTheSameNotFoundBoundary() {
+        PublicInventoryEligibilityPolicy policy = policy(false, "test");
+        when(hotelRepository.findById(10L)).thenReturn(Optional.empty());
+
+        ResourceNotFoundException missing = assertThrows(
+                ResourceNotFoundException.class, () -> policy.requirePublicProperty(10L));
+
+        Hotel rejected = hotel(false);
+        rejected.setApprovalStatus("REJECTED");
+        when(hotelRepository.findById(10L)).thenReturn(Optional.of(rejected));
+        ResourceNotFoundException hidden = assertThrows(
+                ResourceNotFoundException.class, () -> policy.requirePublicProperty(10L));
+
+        assertEquals(missing.getMessage(), hidden.getMessage());
+    }
+
+    @Test
     void productionHidesDemoInventoryUnlessExplicitlyAllowed() {
         Hotel hotel = hotel(true);
         when(hotelRepository.findById(10L)).thenReturn(Optional.of(hotel));
