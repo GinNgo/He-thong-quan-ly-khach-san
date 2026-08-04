@@ -160,3 +160,26 @@ test('T330 keeps property onboarding and approval actions out of the system-admi
     fullPage: true,
   });
 });
+
+test('T331 removes the timer-only work-order table and fake legacy export controls', async ({ page }) => {
+  await seedSystemAdmin(page);
+  await page.route('**/api/**', async route => {
+    if (new URL(route.request().url()).pathname === '/api/analytics/dashboard') {
+      await json(route, dashboard);
+    } else {
+      await fulfillShellRequest(route);
+    }
+  });
+
+  await page.goto('/admin/dashboard', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByText('RECONCILED')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Yeu cau bao tri' })).toHaveCount(0);
+  await expect(page.locator('app-data-table')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Excel' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'PDF' })).toHaveCount(0);
+
+  await page.screenshot({
+    path: '../docs/testing/evidence/007/remediation/T331-admin-dashboard-without-work-order-placeholder.png',
+    fullPage: true,
+  });
+});

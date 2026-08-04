@@ -1,5 +1,4 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { AnalyticsData, AnalyticsService } from '../../../core/services/analytics';
@@ -35,7 +34,6 @@ describe('AdminDashboard', () => {
       imports: [Dashboard],
       providers: [
         { provide: AnalyticsService, useValue: { getDashboardData } },
-        { provide: Router, useValue: { navigate: vi.fn(() => Promise.resolve(true)) } },
       ]
     }).compileComponents();
   });
@@ -56,6 +54,8 @@ describe('AdminDashboard', () => {
     expect(text).toContain('platform-watermark-12');
     expect(text).not.toContain('Thiet lap co so');
     expect(text).not.toContain('Gui yeu cau');
+    expect(text).not.toContain('Yeu cau bao tri');
+    expect(fixture.nativeElement.querySelector('app-data-table')).toBeNull();
     expect(fixture.componentInstance.occupancyChartData.datasets).toHaveLength(1);
   });
 

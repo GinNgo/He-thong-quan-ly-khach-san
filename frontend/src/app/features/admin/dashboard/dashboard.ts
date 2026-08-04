@@ -1,18 +1,15 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
 
 import { AnalyticsData, AnalyticsService } from '../../../core/services/analytics';
-import { DataTable, ColumnDefinition } from '../../../shared/components/data-table/data-table';
 import { OccupancyChart } from '../../../shared/components/charts/occupancy-chart/occupancy-chart';
 import { RevenueChart } from '../../../shared/components/charts/revenue-chart/revenue-chart';
 import { StatCard } from '../../../shared/components/stat-card/stat-card';
-import { FilterRequest, PageRequest, SortRequest } from '../../../shared/models/pagination.model';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, StatCard, RevenueChart, OccupancyChart, DataTable],
+  imports: [CommonModule, StatCard, RevenueChart, OccupancyChart],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
 })
@@ -24,23 +21,9 @@ export class Dashboard implements OnInit {
   occupancyChartData: any;
   chartOptions: any;
 
-  // T331 replaces this intentionally isolated legacy work-order placeholder.
-  workOrderColumns: ColumnDefinition[] = [
-    { field: 'priority', header: 'Uu tien', sortable: true, type: 'badge' },
-    { field: 'roomNumber', header: 'So phong', sortable: true },
-    { field: 'issue', header: 'Su co bao cao' },
-    { field: 'reporter', header: 'Nguoi bao cao' },
-    { field: 'createdAt', header: 'Ngay tao', sortable: true },
-    { field: 'status', header: 'Trang thai', type: 'badge' }
-  ];
-  workOrders: any[] = [];
-  totalWorkOrders = 0;
-  loadingWorkOrders = false;
-
   constructor(
     private readonly analyticsService: AnalyticsService,
-    private readonly cdr: ChangeDetectorRef,
-    private readonly router: Router
+    private readonly cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -118,22 +101,4 @@ export class Dashboard implements OnInit {
       && this.data.totalBookings === 0 && this.data.totalRooms === 0;
   }
 
-  navigateTo(route: string): void {
-    void this.router.navigate([route]);
-  }
-
-  loadWorkOrders(): void {
-    if (this.loadingWorkOrders) return;
-    this.loadingWorkOrders = true;
-    setTimeout(() => {
-      this.workOrders = [];
-      this.totalWorkOrders = 0;
-      this.loadingWorkOrders = false;
-      this.cdr.detectChanges();
-    }, 500);
-  }
-
-  onPageChange(_event: PageRequest): void { this.loadWorkOrders(); }
-  onSortChange(_event: SortRequest): void { this.loadWorkOrders(); }
-  onFilterChange(_event: FilterRequest): void { this.loadWorkOrders(); }
 }

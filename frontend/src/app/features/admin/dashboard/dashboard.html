@@ -80,14 +80,4 @@
     </section>
   </ng-container>
 
-  <!-- T331 either implements canonical work orders or removes this placeholder surface. -->
-  <section class="bg-white rounded-3 shadow-sm border overflow-hidden mb-4">
-    <div class="p-4 border-bottom d-flex align-items-center justify-content-between">
-      <h2 class="h5 mb-0 fw-bold text-dark">Yeu cau bao tri</h2>
-    </div>
-    <app-data-table [columns]="workOrderColumns" [data]="workOrders" [totalRecords]="totalWorkOrders"
-      [loading]="loadingWorkOrders" [pageSize]="10" (pageChange)="onPageChange($event)"
-      (sortChange)="onSortChange($event)" (filterChange)="onFilterChange($event)">
-    </app-data-table>
-  </section>
 </div>
