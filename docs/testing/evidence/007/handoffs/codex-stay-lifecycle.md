@@ -11,6 +11,7 @@ below after merging or cherry-picking the task commits.
 | Task | Commit | Focused validation | Domain evidence |
 |---|---|---|---|
 | T295 | `6788dbe` | Backend 11/11; frontend 13/13 | `docs/testing/evidence/007/remediation/T295-reservation-read-journeys.md` |
+| T296 | `58d75a4` | Isolated backend compile; backend 46/46; frontend 15/15 | `docs/testing/evidence/007/remediation/T296-reservation-change-policy-gate.md` |
 
 ## Coordinator Updates
 
@@ -19,9 +20,9 @@ below after merging or cherry-picking the task commits.
   `docs/audit/system/MASTER_FUNCTION_INVENTORY.md`.
 - Add T295/STAY-001 executable evidence to
   `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md`.
-
-## Stop Gates
-
-| Task | Status | Evidence | Coordinator action |
-|---|---|---|---|
-| T296 | `BLOCKED_EXTERNAL` | `docs/testing/evidence/007/remediation/T296-reservation-change-policy-gate.md` | Keep unchecked; obtain an approved versioned reservation-change financial policy before implementation. |
+- Mark T296 complete in `specs/007-payment-billing-completion/tasks.md`.
+- Promote STAY-002 to `COMPLETE_VERIFIED` in
+  `docs/audit/system/MASTER_FUNCTION_INVENTORY.md` and add the T296 evidence/commit to
+  `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md`.
+- After the parallel locale work is merged, move the amendment workspace's local Vietnamese copy
+  into the shared EN/VI catalog without changing the server-owned pricing and policy behavior.

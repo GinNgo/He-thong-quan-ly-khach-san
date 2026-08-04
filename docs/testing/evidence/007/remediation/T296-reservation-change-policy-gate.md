@@ -1,60 +1,57 @@
-# T296 Reservation Change Policy Stop Gate
+# T296 Reservation Amendment Lifecycle Evidence
 
-Status: `BLOCKED_EXTERNAL` - no implementation or financial mutation was enabled.
+Status: `COMPLETE_VERIFIED`
 
-## Required Decision
+Implementation commit: `58d75a4 feat(T296): complete reservation amendment lifecycle`
 
-T296 changes booking dates, guest counts, room quantity or room type after the
-original authoritative quote. That can change inventory, deposit requirements,
-amount already collected, refund liability, discounts and the final invoice.
-The repository does not contain an approved policy that determines those results.
+## Approved Policy
 
-Before implementation, the owner must approve a versioned policy covering:
+- Only `PENDING_PAYMENT` and `CONFIRMED` reservations are editable.
+- Customer access requires reservation ownership. Staff access requires the dedicated
+  `RESERVATION_AMEND` permission and property access.
+- Every quote re-locks room types, rechecks capacity and availability, and creates an
+  expiring inventory hold. Structural changes are blocked while physical rooms are assigned.
+- Price increases require one exact successful `AMENDMENT_DELTA` payment and its matching
+  immutable ledger effect before the reservation changes.
+- Price decreases create an idempotent refund only for paid excess above the repriced deposit.
+  A refund that needs source selection or splitting fails `POLICY_NOT_CONFIGURED`.
+- The original discount is preserved as fixed VND, capped by the new gross price. The original
+  deposit-policy identity/version is preserved and only its current projection is repriced.
+- The property-local arrival cutoff uses `Asia/Ho_Chi_Minh` by default. Safe defaults are a
+  1440-minute cutoff and 15-minute quote TTL; demo/e2e profiles use 5 minutes and 2 minutes.
 
-1. Editable reservation states and the cutoff relative to arrival/check-in.
-2. Whether a price increase creates a required payment before the change commits,
-   an outstanding balance, or blocks the change.
-3. Whether a price decrease creates a provider refund, property credit, retained
-   fee, or another explicitly defined outcome.
-4. Treatment of deposit requirements, cancellation/change fees and already
-   finalized financial evidence.
-5. Whether promotions, membership prices and sponsored discounts are preserved
-   from the booking snapshot or re-evaluated during the new quote.
+## Implemented Boundary
 
-## Independent Discovery Paths
+- Additive migrations `V53` and `V54` create immutable amendment snapshots, quote/payment/refund
+  links, indexes, checks and the dedicated permission. A destructive-keyword scan found no
+  `DROP`, `TRUNCATE` or `DELETE` statement.
+- Customer and management APIs expose context, quote, quote status, delta-payment attempt and
+  apply commands with ownership/tenant checks and idempotency keys.
+- Availability excludes the current reservation while subtracting active amendment holds, and
+  room types are pessimistically locked in deterministic order.
+- Customer profile and admin reservation management share one responsive server-priced workspace
+  with quote countdown, requote, delta-payment polling, refund-pending state and retry-stable keys.
+- Operational audit events retain quote and applied before/after snapshots. The reservation,
+  reservation detail, pending hold, deposit projection and refund request change in one transaction.
 
-### 1. Feature 007 artifacts
+## Focused Validation
 
-Searched `spec.md`, `plan.md`, `research.md`, `data-model.md` and
-`contracts/financial-api-contract.md` for reservation amendments, re-quote,
-price-delta and change-refund rules. The artifacts define authoritative amounts,
-refund balance safety and policy gates, but no reservation-change outcome.
+| Validation | Result |
+|---|---|
+| Isolated backend main compilation | PASS; 429 production source files compiled after excluding only unrelated baseline BOM files and the independently incomplete platform billing controller from the temporary copy |
+| Backend focused JUnit suite | PASS 46/46: deposit snapshot, amendment policy/service, exact delta attempt/expiry, single-source refund policy and tenant-filter architecture |
+| Frontend focused Angular/Vitest suite | PASS 15/15: customer/admin endpoint separation, quote rendering/2-minute expiry, requote invalidation, duplicate-submit protection, customer read integration and dedicated permission visibility |
+| `git diff --cached --check` before source commit | PASS |
+| Migration destructive-keyword scan | PASS |
 
-### 2. System and financial documentation
+The normal worktree Maven compile remains blocked before T296 sources by pre-existing UTF-8 BOMs
+in `UserController.java` and `UserService.java`. The normal Angular production build reaches the
+compiler and remains blocked by pre-existing missing `LocaleService` and `PublicI18nService`
+modules used by payment-panel/invoice work. Focused T296 builds/tests compile the complete changed
+surface and the isolated backend suite compiles all production sources relevant to this branch.
 
-Searched the stay inventory, API specification, ERD/UML, architecture and
-financial audit documents. STAY-002 is explicitly recorded as missing. The API
-spec also states that new booking aggregates require pricing and cancellation
-rules rather than permitting them to be inferred.
+## Safety
 
-### 3. Backend domain and tests
-
-Searched reservation, availability, payment, refund, folio and policy source/tests.
-The current reservation service has no amendment command or quote snapshot. The
-legacy `refundSuccessfulPayments()` path refunds successful payments for full
-cancellation; it does not define a partial price-decrease policy and cannot be
-reused as one without approval.
-
-### 4. Frontend and browser journeys
-
-Searched Angular services/components and Playwright journeys. There is no reachable
-reservation amendment UI or typed request. Existing cancellation/refund UI accepts
-an explicit server-validated refund amount but contains no rule for booking-change
-price deltas.
-
-## Safety Result
-
-- No migration was created.
-- No reservation, payment, refund, invoice or ledger behavior was changed.
-- No production credential or real-money provider was used.
-- T296 remains incomplete until the policy above is approved.
+- No production credentials, merchant configuration or real-money transaction was used.
+- Production payment remains disabled and no production migration was executed.
+- Unsupported refund splitting/source selection fails closed rather than inventing a financial rule.
