@@ -169,41 +169,13 @@ public class ManagementPortalService {
     }
 
     @Transactional
-    public List<RoomDTO> bulkRooms(BulkRoomRequest request) {
-        if (request == null || request.getRoomTypeId() == null || request.getFromNumber() == null
-                || request.getToNumber() == null || request.getFloor() == null
-                || request.getToNumber() < request.getFromNumber()) {
-            throw new IllegalArgumentException("Dải số phòng và tầng không hợp lệ.");
-        }
-        int quantity = request.getToNumber() - request.getFromNumber() + 1;
-        if (quantity > 200) throw new IllegalArgumentException("Mỗi lần chỉ được tạo tối đa 200 phòng.");
-        RoomStatePolicy.requireInitialStatus(request.getStatus());
-        RoomType roomType = roomTypeRepository.findById(request.getRoomTypeId())
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy loại phòng."));
-        Hotel hotel = propertyAccessService.requireManagedHotel(roomType.getHotel().getId());
-        if (request.getHotelId() != null && !request.getHotelId().equals(hotel.getId())) {
-            throw new IllegalArgumentException("Loại phòng không thuộc cơ sở đã chọn.");
-        }
-        requireWithinPropertyLimit(hotel.getId(), "MAX_ROOMS",
-                roomRepository.countByHotelId(hotel.getId()), quantity);
-        List<RoomDTO> created = new ArrayList<>();
-        String prefix = request.getPrefix() == null ? "" : request.getPrefix().trim();
-        for (int number = request.getFromNumber(); number <= request.getToNumber(); number++) {
-            String roomNumber = prefix + number;
-            if (roomRepository.findByHotelIdAndRoomNumber(hotel.getId(), roomNumber).isPresent()) {
-                throw new IllegalArgumentException("Số phòng " + roomNumber + " đã tồn tại trong cơ sở.");
-            }
-            Room room = new Room();
-            room.setHotel(hotel);
-            room.setRoomType(roomType);
-            room.setRoomNumber(roomNumber);
-            room.setFloor(request.getFloor());
-            RoomStatePolicy.initialize(room);
-            room.setMaxGuests(roomType.getMaxGuests());
-            room.setIsDemo(false);
-            created.add(roomDto(roomRepository.save(room)));
-        }
-        return created;
+    public BulkRoomResultDTO bulkRooms(BulkRoomRequest request) {
+        return roomService.bulkCreate(request);
+    }
+
+    @Transactional
+    public void deleteRoom(Long id) {
+        roomService.deleteRoom(id);
     }
 
     @Transactional

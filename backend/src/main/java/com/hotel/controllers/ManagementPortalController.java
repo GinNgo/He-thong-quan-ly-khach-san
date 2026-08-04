@@ -74,33 +74,46 @@ public class ManagementPortalController {
     }
 
     @GetMapping("/rooms")
+    @Permission(function = FunctionCode.ROOM, action = ActionCode.VIEW)
     public ResponseEntity<List<RoomDTO>> rooms(@RequestParam Long propertyId) {
         return ResponseEntity.ok(service.rooms(propertyId));
     }
 
     @PostMapping("/rooms")
-    public ResponseEntity<RoomDTO> createRoom(@RequestBody RoomDTO request) {
+    @Permission(function = FunctionCode.ROOM, action = ActionCode.CREATE)
+    public ResponseEntity<RoomDTO> createRoom(@Valid @RequestBody RoomDTO request) {
         return ResponseEntity.ok(service.createRoom(request));
     }
 
     @PostMapping("/rooms/bulk")
-    public ResponseEntity<List<RoomDTO>> bulkRooms(@RequestBody BulkRoomRequest request) {
+    @Permission(function = FunctionCode.ROOM, action = ActionCode.CREATE)
+    public ResponseEntity<BulkRoomResultDTO> bulkRooms(@Valid @RequestBody BulkRoomRequest request) {
         return ResponseEntity.ok(service.bulkRooms(request));
     }
 
     @PutMapping("/rooms/{id}")
-    public ResponseEntity<RoomDTO> updateRoom(@PathVariable Long id, @RequestBody RoomDTO request) {
+    @Permission(function = FunctionCode.ROOM, action = ActionCode.UPDATE)
+    public ResponseEntity<RoomDTO> updateRoom(@PathVariable Long id, @Valid @RequestBody RoomDTO request) {
         return ResponseEntity.ok(service.updateRoom(id, request));
     }
 
     @PostMapping("/rooms/{id}/maintenance/start")
+    @Permission(function = FunctionCode.ROOM, action = ActionCode.UPDATE)
     public ResponseEntity<RoomDTO> startRoomMaintenance(@PathVariable Long id) {
         return ResponseEntity.ok(service.startRoomMaintenance(id));
     }
 
     @PostMapping("/rooms/{id}/maintenance/complete")
+    @Permission(function = FunctionCode.ROOM, action = ActionCode.UPDATE)
     public ResponseEntity<RoomDTO> completeRoomMaintenance(@PathVariable Long id) {
         return ResponseEntity.ok(service.completeRoomMaintenance(id));
+    }
+
+    @DeleteMapping("/rooms/{id}")
+    @Permission(function = FunctionCode.ROOM, action = ActionCode.DELETE)
+    public ResponseEntity<Void> deleteRoom(@PathVariable Long id) {
+        service.deleteRoom(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/housekeeping/{taskId}/complete")

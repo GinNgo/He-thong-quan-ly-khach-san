@@ -19,6 +19,8 @@ describe('ManagementInventoryComponent', () => {
     updateRoomType: ReturnType<typeof vi.fn>;
     deleteRoomType: ReturnType<typeof vi.fn>;
     bulkRooms: ReturnType<typeof vi.fn>;
+    updateRoom: ReturnType<typeof vi.fn>;
+    deleteRoom: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -31,7 +33,9 @@ describe('ManagementInventoryComponent', () => {
       createRoomType: vi.fn(() => of({ id: 21 })),
       updateRoomType: vi.fn(() => of({ id: 21 })),
       deleteRoomType: vi.fn(() => of(undefined)),
-      bulkRooms: vi.fn(() => of([])),
+      bulkRooms: vi.fn(() => of({ created: [], failedRoomNumbers: [] })),
+      updateRoom: vi.fn(() => of({ id: 12 })),
+      deleteRoom: vi.fn(() => of(undefined)),
     };
 
     await TestBed.configureTestingModule({
@@ -67,5 +71,17 @@ describe('ManagementInventoryComponent', () => {
 
     component.deactivateRoomType({ id: 21, status: 'ACTIVE' });
     expect(api.deleteRoomType).toHaveBeenCalledWith(21);
+  });
+
+  it('edits and soft-disables a physical room through permission-parity endpoints', () => {
+    component.propertyId = 3;
+    component.roomTypes = [{ id: 5, nameVi: 'Deluxe' }];
+    component.editRoom({ id: 12, hotelId: 3, roomTypeId: 5, roomNumber: '101', floor: 1, status: 'AVAILABLE' });
+    component.roomForm.roomNumber = '102';
+    component.save();
+    expect(api.updateRoom).toHaveBeenCalledWith(12, expect.objectContaining({ hotelId: 3, roomNumber: '102' }));
+
+    component.deactivateRoom({ id: 12, status: 'AVAILABLE' });
+    expect(api.deleteRoom).toHaveBeenCalledWith(12);
   });
 });

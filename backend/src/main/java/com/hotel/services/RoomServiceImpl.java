@@ -13,6 +13,8 @@ import com.hotel.repositories.RoomImageRepository;
 import com.hotel.repositories.RoomRepository;
 import com.hotel.repositories.RoomTypeImageRepository;
 import com.hotel.repositories.RoomTypeRepository;
+import com.hotel.repositories.HotelRepository;
+import com.hotel.repositories.ReservationRoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,8 @@ public class RoomServiceImpl implements RoomService {
 
     private final RoomRepository roomRepository;
     private final RoomTypeRepository roomTypeRepository;
+    private final HotelRepository hotelRepository;
+    private final ReservationRoomRepository reservationRoomRepository;
     private final RoomImageRepository roomImageRepository;
     private final PropertyImageRepository propertyImageRepository;
     private final RoomTypeImageRepository roomTypeImageRepository;
@@ -60,9 +64,11 @@ public class RoomServiceImpl implements RoomService {
     @Override
     @Transactional
     public RoomDTO createRoom(RoomDTO dto) {
+        normalizeAndValidate(dto);
         RoomStatePolicy.requireInitialState(dto);
         Room room = new Room();
-        RoomType roomType = roomTypeRepository.findById(dto.getRoomTypeId())
+        lockHotelForRoomType(dto.getRoomTypeId());
+        RoomType roomType = roomTypeRepository.findByIdForUpdate(dto.getRoomTypeId())
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
         propertyAccessService.requireAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
         Long hotelId = roomType.getHotel().getId();
@@ -105,6 +111,8 @@ public class RoomServiceImpl implements RoomService {
     @Override
     @Transactional
     public RoomDTO updateRoom(Long id, RoomDTO dto) {
+        normalizeAndValidate(dto);
+        lockHotelForRoom(id);
         Room room = roomRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy phòng."));
         propertyAccessService.requireAccessibleOrNotFound(room.getHotel().getId(), "phòng");
@@ -120,10 +128,11 @@ public class RoomServiceImpl implements RoomService {
                 .filter(existing -> !existing.getId().equals(id))
                 .ifPresent(existing -> { throw new IllegalArgumentException("Số phòng đã tồn tại trong cơ sở này."); });
                 
+        if (!roomType.getId().equals(room.getRoomType().getId())) requireNoActiveBooking(room);
         mapToEntity(dto, room);
         room.setRoomType(roomType);
         room = roomRepository.save(room);
-        
+
         // Simplicity: we don't handle complex image updates here yet, we assume images are handled in a separate endpoint
         audit("ROOM", "ROOM_UPDATED", room, before, roomSnapshot(room), "Room metadata updated");
         return mapToDTO(room);
@@ -156,8 +165,10 @@ public class RoomServiceImpl implements RoomService {
     @Override
     @Transactional
     public void deleteRoom(Long id) {
+        lockHotelForRoom(id);
         Room room = findLockedRoom(id);
         requireFeature(room.getHotel().getId(), "MAX_ROOMS");
+        requireNoActiveBooking(room);
         java.util.Map<String, Object> before = roomSnapshot(room);
         RoomStatePolicy.deactivate(room);
         Room saved = roomRepository.save(room);
@@ -176,7 +187,8 @@ public class RoomServiceImpl implements RoomService {
             throw new IllegalArgumentException("Mỗi lần chỉ được tạo tối đa 200 phòng.");
         }
         RoomStatePolicy.requireInitialStatus(request.getStatus());
-        RoomType roomType = roomTypeRepository.findById(request.getRoomTypeId())
+        lockHotelForRoomType(request.getRoomTypeId());
+        RoomType roomType = roomTypeRepository.findByIdForUpdate(request.getRoomTypeId())
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
         propertyAccessService.requireAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
         if (request.getHotelId() != null && !request.getHotelId().equals(roomType.getHotel().getId())) {
@@ -185,15 +197,18 @@ public class RoomServiceImpl implements RoomService {
         long requestedRooms = (long) request.getToNumber() - request.getFromNumber() + 1;
         Long hotelId = roomType.getHotel().getId();
         requireCapacity(hotelId, "MAX_ROOMS", roomRepository.countByHotelId(hotelId), requestedRooms);
-        String prefix = request.getPrefix() == null ? "" : request.getPrefix().trim();
+        String prefix = normalizeRoomNumber(request.getPrefix() == null ? "" : request.getPrefix());
         List<RoomDTO> created = new ArrayList<>();
         List<String> failed = new ArrayList<>();
+        List<String> roomNumbers = new ArrayList<>();
         for (int number = request.getFromNumber(); number <= request.getToNumber(); number++) {
             String roomNumber = prefix + number;
             if (roomRepository.findByHotelIdAndRoomNumber(roomType.getHotel().getId(), roomNumber).isPresent()) {
-                failed.add(roomNumber);
-                continue;
+                throw new IllegalArgumentException("Sá»‘ phÃ²ng " + roomNumber + " Ä‘Ã£ tá»“n táº¡i trong cÆ¡ sá»Ÿ.");
             }
+            roomNumbers.add(roomNumber);
+        }
+        for (String roomNumber : roomNumbers) {
             Room room = new Room();
             room.setHotel(roomType.getHotel());
             room.setRoomType(roomType);
@@ -223,6 +238,48 @@ public class RoomServiceImpl implements RoomService {
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy phòng."));
         propertyAccessService.requireAccessibleOrNotFound(room.getHotel().getId(), "phòng");
         return room;
+    }
+
+    private void lockHotelForRoomType(Long roomTypeId) {
+        RoomType snapshot = roomTypeRepository.findById(roomTypeId)
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Room type not found."));
+        Long hotelId = snapshot.getHotel().getId();
+        propertyAccessService.requireAccessibleOrNotFound(hotelId, "room type");
+        hotelRepository.findByIdForUpdate(hotelId)
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Property not found."));
+    }
+
+    private void lockHotelForRoom(Long roomId) {
+        Room snapshot = roomRepository.findById(roomId)
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Room not found."));
+        Long hotelId = snapshot.getHotel().getId();
+        propertyAccessService.requireAccessibleOrNotFound(hotelId, "room");
+        hotelRepository.findByIdForUpdate(hotelId)
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Property not found."));
+    }
+
+    private void requireNoActiveBooking(Room room) {
+        if (reservationRoomRepository.hasActiveAssignment(
+                room.getId(), RoomAvailabilityService.RELEASED_RESERVATION_STATUSES)) {
+            throw new IllegalStateException("A room with an active booking cannot change type or be deactivated.");
+        }
+    }
+
+    private void normalizeAndValidate(RoomDTO dto) {
+        if (dto == null || dto.getRoomTypeId() == null) {
+            throw new IllegalArgumentException("Room type and room number are required.");
+        }
+        dto.setRoomNumber(normalizeRoomNumber(dto.getRoomNumber()));
+        if (dto.getRoomNumber().isBlank() || dto.getRoomNumber().length() > 50
+                || !dto.getRoomNumber().matches("[\\p{L}\\p{N}_-]+")) {
+            throw new IllegalArgumentException("Room number is invalid.");
+        }
+        if (dto.getFloor() != null && (dto.getFloor() < -10 || dto.getFloor() > 500)) throw new IllegalArgumentException("Floor is invalid.");
+        if (dto.getMaxGuests() != null && dto.getMaxGuests() < 1) throw new IllegalArgumentException("Capacity is invalid.");
+    }
+
+    private String normalizeRoomNumber(String value) {
+        return value == null ? "" : value.trim().toUpperCase(java.util.Locale.ROOT);
     }
 
     private void requireCapacity(Long hotelId, String featureCode, long currentUsage, long addition) {

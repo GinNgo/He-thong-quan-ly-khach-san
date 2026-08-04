@@ -33,7 +33,9 @@ export class ManagementApiService {
   updateRoomType(id: number, body: any) { return this.http.put<any>(`${this.baseUrl}/room-types/${id}`, body); }
   deleteRoomType(id: number) { return this.http.delete<void>(`${this.baseUrl}/room-types/${id}`); }
   createRoom(body: any) { return this.http.post<any>(`${this.baseUrl}/rooms`, body); }
-  bulkRooms(body: any) { return this.http.post<any[]>(`${this.baseUrl}/rooms/bulk`, body); }
+  updateRoom(id: number, body: any) { return this.http.put<any>(`${this.baseUrl}/rooms/${id}`, body); }
+  deleteRoom(id: number) { return this.http.delete<void>(`${this.baseUrl}/rooms/${id}`); }
+  bulkRooms(body: any) { return this.http.post<{ created: any[]; failedRoomNumbers: string[] }>(`${this.baseUrl}/rooms/bulk`, body); }
   startRoomMaintenance(roomId: number) { return this.http.post<any>(`${this.baseUrl}/rooms/${roomId}/maintenance/start`, {}); }
   completeRoomMaintenance(roomId: number) { return this.http.post<any>(`${this.baseUrl}/rooms/${roomId}/maintenance/complete`, {}); }
 }

@@ -11,12 +11,16 @@ import { PropertyGalleryComponent } from '../../../shared/components/property-ga
 @Component({ selector: 'app-management-inventory', standalone: true, imports: [CommonModule, FormsModule, FeedbackStateComponent, AmenityAssignmentComponent, PropertyGalleryComponent], templateUrl: './management-inventory.component.html', styleUrl: './management-inventory.component.css' })
 export class ManagementInventoryComponent implements OnInit {
   private api = inject(ManagementApiService); private route = inject(ActivatedRoute); private cdr = inject(ChangeDetectorRef); private permissions = inject(PermissionService);
-  mode: 'room-types' | 'rooms' = 'room-types'; properties: ManagedProperty[] = []; propertyId?: number; rows: any[] = []; roomTypes: any[] = []; loading = true; saving = false; error = ''; showForm = false; changingRoomId?: number; selectedAmenityRoomTypeId?: number; selectedGalleryRoomTypeId?: number; editingRoomTypeId?: number;
+  mode: 'room-types' | 'rooms' = 'room-types'; properties: ManagedProperty[] = []; propertyId?: number; rows: any[] = []; roomTypes: any[] = []; loading = true; saving = false; error = ''; showForm = false; changingRoomId?: number; selectedAmenityRoomTypeId?: number; selectedGalleryRoomTypeId?: number; editingRoomTypeId?: number; editingRoomId?: number;
   roomTypeForm: any = { code: '', nameVi: '', nameEn: '', bedType: 'DOUBLE', bedCount: 1, maxAdults: 2, maxChildren: 1, maxGuests: 3, basePrice: 0, status: 'ACTIVE' };
   bulkForm: any = { roomTypeId: undefined, fromNumber: 101, toNumber: 105, floor: 1, status: 'AVAILABLE' };
+  roomForm: any = { roomTypeId: undefined, roomNumber: '', floor: 1, note: '' };
   canCreateRoomType = this.permissions.hasPermission(FunctionCode.ROOM_TYPE, ActionCode.CREATE);
   canUpdateRoomType = this.permissions.hasPermission(FunctionCode.ROOM_TYPE, ActionCode.UPDATE);
   canDeleteRoomType = this.permissions.hasPermission(FunctionCode.ROOM_TYPE, ActionCode.DELETE);
+  canCreateRoom = this.permissions.hasPermission(FunctionCode.ROOM, ActionCode.CREATE);
+  canUpdateRoom = this.permissions.hasPermission(FunctionCode.ROOM, ActionCode.UPDATE);
+  canDeleteRoom = this.permissions.hasPermission(FunctionCode.ROOM, ActionCode.DELETE);
 
   ngOnInit(): void {
     this.mode = this.route.snapshot.data['mode'] || 'room-types';
@@ -67,7 +71,33 @@ export class ManagementInventoryComponent implements OnInit {
     this.showForm = true;
   }
 
+  editRoom(row: any): void {
+    if (!this.canUpdateRoom) return;
+    this.editingRoomId = row.id;
+    this.roomForm = { ...row };
+    this.showForm = true;
+  }
+
+  saveRoom(): void {
+    if (!this.propertyId || !this.editingRoomId || this.saving || !this.roomForm.roomTypeId || !String(this.roomForm.roomNumber || '').trim()) return;
+    this.saving = true; this.error = '';
+    this.api.updateRoom(this.editingRoomId, { ...this.roomForm, hotelId: this.propertyId }).subscribe({
+      next: () => { this.saving = false; this.showForm = false; this.editingRoomId = undefined; this.reload(); this.cdr.markForCheck(); },
+      error: e => { this.error = e?.error?.message || 'Không thể cập nhật phòng.'; this.saving = false; this.cdr.markForCheck(); }
+    });
+  }
+
+  deactivateRoom(row: any): void {
+    if (!this.canDeleteRoom || this.saving || row.status === 'OUT_OF_SERVICE') return;
+    this.saving = true; this.error = '';
+    this.api.deleteRoom(row.id).subscribe({
+      next: () => { this.saving = false; this.reload(); this.cdr.markForCheck(); },
+      error: e => { this.error = e?.error?.message || 'Không thể ngừng sử dụng phòng.'; this.saving = false; this.cdr.markForCheck(); }
+    });
+  }
+
   save(): void {
+    if (this.editingRoomId) { this.saveRoom(); return; }
     if (!this.propertyId || this.saving) return;
     this.error = '';
     this.saving = true;

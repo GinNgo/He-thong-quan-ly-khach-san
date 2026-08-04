@@ -13,6 +13,8 @@ import com.hotel.repositories.RoomImageRepository;
 import com.hotel.repositories.RoomRepository;
 import com.hotel.repositories.RoomTypeImageRepository;
 import com.hotel.repositories.RoomTypeRepository;
+import com.hotel.repositories.HotelRepository;
+import com.hotel.repositories.ReservationRoomRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +39,8 @@ import static org.mockito.Mockito.when;
 class RoomServiceImplTest {
     @Mock private RoomRepository roomRepository;
     @Mock private RoomTypeRepository roomTypeRepository;
+    @Mock private HotelRepository hotelRepository;
+    @Mock private ReservationRoomRepository reservationRoomRepository;
     @Mock private RoomImageRepository roomImageRepository;
     @Mock private PropertyImageRepository propertyImageRepository;
     @Mock private RoomTypeImageRepository roomTypeImageRepository;
@@ -58,6 +62,9 @@ class RoomServiceImplTest {
         roomType = new RoomType();
         roomType.setId(20L);
         roomType.setHotel(hotel);
+        org.mockito.Mockito.lenient().when(roomTypeRepository.findById(20L)).thenReturn(Optional.of(roomType));
+        org.mockito.Mockito.lenient().when(roomTypeRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(roomType));
+        org.mockito.Mockito.lenient().when(hotelRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(hotel));
     }
 
     @Test
@@ -88,8 +95,12 @@ class RoomServiceImplTest {
         existing.setMaintenanceStatus("NONE");
         RoomDTO request = new RoomDTO();
         request.setRoomTypeId(20L);
+        request.setHotelId(10L);
+        request.setRoomNumber("101");
+        request.setFloor(1);
 
         when(roomRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(existing));
+        when(roomRepository.findById(30L)).thenReturn(Optional.of(existing));
         when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
         doThrow(new RuntimeException("upgrade required"))
                 .when(subscriptionFeatureService).requireFeatureForProperty(10L, "MAX_ROOMS");
@@ -132,6 +143,7 @@ class RoomServiceImplTest {
         request.setStatus("OCCUPIED");
 
         when(roomRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(existing));
+        when(roomRepository.findById(30L)).thenReturn(Optional.of(existing));
 
         assertThrows(IllegalStateException.class, () -> roomService.updateRoom(30L, request));
         verify(roomRepository, never()).save(any(Room.class));
@@ -195,6 +207,32 @@ class RoomServiceImplTest {
         assertEquals(0, savedImage.getSortOrder());
         assertEquals(true, savedImage.getIsPrimary());
         assertEquals("Phòng 101", savedImage.getAltTextVi());
+    }
+
+    @Test
+    void deactivateWithActiveBookingLeavesRoomAvailable() {
+        Room existing = room("AVAILABLE", "CLEAN", "NONE");
+        existing.setId(30L); existing.setHotel(hotel); existing.setRoomType(roomType);
+        when(roomRepository.findById(30L)).thenReturn(Optional.of(existing));
+        when(roomRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(existing));
+        when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
+        when(reservationRoomRepository.hasActiveAssignment(
+                30L, RoomAvailabilityService.RELEASED_RESERVATION_STATUSES)).thenReturn(true);
+        assertThrows(IllegalStateException.class, () -> roomService.deleteRoom(30L));
+        assertEquals("AVAILABLE", existing.getStatus());
+        verify(roomRepository, never()).save(existing);
+    }
+
+    @Test
+    void bulkDuplicateRejectsWholeRequestBeforeFirstInsert() {
+        BulkRoomRequest request = new BulkRoomRequest();
+        request.setHotelId(10L); request.setRoomTypeId(20L); request.setFloor(1);
+        request.setPrefix(" a "); request.setFromNumber(101); request.setToNumber(103);
+        when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
+        when(roomRepository.findByHotelIdAndRoomNumber(10L, "A101")).thenReturn(Optional.empty());
+        when(roomRepository.findByHotelIdAndRoomNumber(10L, "A102")).thenReturn(Optional.of(new Room()));
+        assertThrows(IllegalArgumentException.class, () -> roomService.bulkCreate(request));
+        verify(roomRepository, never()).save(any(Room.class));
     }
 
     private Room room(String status, String housekeeping, String maintenance) {
