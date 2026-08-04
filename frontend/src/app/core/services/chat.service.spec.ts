@@ -114,7 +114,9 @@ describe('ChatService', () => {
   });
 
   it('sends tenant queue filters without redundant ALL values', () => {
-    service.getSupportConversations({ status: 'OPEN', assignment: 'ALL', sla: 'BREACHED', hotelId: 9 })
+    service.getSupportConversations({
+      status: 'OPEN', assignment: 'ALL', sla: 'BREACHED', hotelId: 9, query: 'hoa don'
+    })
       .subscribe();
 
     const request = http.expectOne(item => item.url.endsWith('/api/chat/support/conversations'));
@@ -122,6 +124,7 @@ describe('ChatService', () => {
     expect(request.request.params.has('assignment')).toBe(false);
     expect(request.request.params.get('sla')).toBe('BREACHED');
     expect(request.request.params.get('hotelId')).toBe('9');
+    expect(request.request.params.get('query')).toBe('hoa don');
     request.flush([]);
   });
 
@@ -132,5 +135,28 @@ describe('ChatService', () => {
     expect(request.request.method).toBe('POST');
     expect(request.request.params.get('expectedVersion')).toBe('5');
     request.flush({ conversationId: 33, version: 6, status: 'OPEN' });
+  });
+
+  it('sends reasoned close/reopen requests and tenant attachment calls', () => {
+    service.closeSupportConversation(33, 'Da xu ly xong', 6).subscribe();
+    const close = http.expectOne(item => item.url.endsWith('/api/chat/support/conversations/33/close'));
+    expect(close.request.params.get('expectedVersion')).toBe('6');
+    expect(close.request.body).toEqual({ reason: 'Da xu ly xong' });
+    close.flush({ conversationId: 33, version: 7, status: 'CLOSED' });
+
+    service.reopenSupportConversation(33, 'Khach phan hoi them', 7).subscribe();
+    const reopen = http.expectOne(item => item.url.endsWith('/api/chat/support/conversations/33/reopen'));
+    expect(reopen.request.body).toEqual({ reason: 'Khach phan hoi them' });
+    reopen.flush({ conversationId: 33, version: 8, status: 'OPEN' });
+
+    service.getSupportAttachments(33).subscribe();
+    const list = http.expectOne('http://localhost:8080/api/chat/support/conversations/33/attachments');
+    expect(list.request.method).toBe('GET');
+    list.flush([]);
+
+    service.getMyAttachments(91).subscribe();
+    const customerList = http.expectOne('http://localhost:8080/api/chat/me/conversations/91/attachments');
+    expect(customerList.request.method).toBe('GET');
+    customerList.flush([]);
   });
 });

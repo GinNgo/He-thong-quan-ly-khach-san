@@ -247,6 +247,59 @@ class ChatServiceTest {
         verify(conversationRepository, never()).saveAndFlush(conversation);
     }
 
+    @Test
+    void supportQueueSearchesWithinTheAlreadyScopedTenantRows() {
+        CustomUserDetails support = user(7L, Map.of(FunctionCode.AI_CHAT, ActionCode.VIEW), "SUPPORT");
+        SupportConversation invoice = scopedConversation(9L, 42L, 5L);
+        invoice.setSubject("Hoa don thang tam");
+        SupportConversation booking = scopedConversation(10L, 43L, 5L);
+        booking.setSubject("Dat phong");
+        when(userPropertyRepository.findByUserId(7L)).thenReturn(List.of(assignment(7L, 5L)));
+        when(conversationRepository.findByHotelIdInOrderByLastActivityAtDesc(Set.of(5L)))
+                .thenReturn(List.of(invoice, booking));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(customerEntity(7L)));
+        when(userRepository.findById(42L)).thenReturn(Optional.of(customerEntity(42L)));
+        when(userRepository.findById(43L)).thenReturn(Optional.of(customerEntity(43L)));
+        when(hotelRepository.findById(5L)).thenReturn(Optional.of(hotel(5L)));
+        when(chatMessageRepository.findFirstByConversationIdOrderByTimestampDesc(any()))
+                .thenReturn(Optional.empty());
+
+        List<ChatConversationDTO> queue = chatService.getSupportConversations(
+                support, "OPEN", "ALL", "ALL", 5L, "hoa DON");
+
+        assertEquals(List.of(9L), queue.stream().map(ChatConversationDTO::getConversationId).toList());
+    }
+
+    @Test
+    void reasonedCloseAndReopenPersistTimestampsAndAuditEvents() {
+        CustomUserDetails support = user(7L, Map.of(FunctionCode.AI_CHAT, ActionCode.CREATE), "SUPPORT");
+        SupportConversation conversation = scopedConversation(9L, 42L, 5L);
+        conversation.setAssignedAgentId(7L);
+        conversation.setVersion(4L);
+        when(conversationRepository.findById(9L)).thenReturn(Optional.of(conversation));
+        when(userPropertyRepository.findByUserId(7L)).thenReturn(List.of(assignment(7L, 5L)));
+        when(conversationRepository.saveAndFlush(conversation)).thenReturn(conversation);
+        when(userRepository.findById(42L)).thenReturn(Optional.of(customerEntity(42L)));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(customerEntity(7L)));
+        when(hotelRepository.findById(5L)).thenReturn(Optional.of(hotel(5L)));
+        when(chatMessageRepository.findFirstByConversationIdOrderByTimestampDesc(9L))
+                .thenReturn(Optional.empty());
+
+        ChatConversationDTO closed = chatService.closeConversation(support, 9L, 4L, " Da xu ly xong ");
+        assertEquals("CLOSED", closed.getStatus());
+        assertEquals("Da xu ly xong", closed.getClosedReason());
+        assertEquals(null, closed.getSlaDeadlineAt());
+        verify(auditService).record(conversation, 7L, "CLOSED", "Da xu ly xong");
+
+        conversation.setVersion(5L);
+        ChatConversationDTO reopened = chatService.reopenConversation(
+                support, 9L, 5L, "Khach phan hoi them");
+        assertEquals("OPEN", reopened.getStatus());
+        assertEquals("Khach phan hoi them", reopened.getReopenReason());
+        assertTrue(reopened.getReopenedAt() != null);
+        verify(auditService).record(conversation, 7L, "REOPENED", "Khach phan hoi them");
+    }
+
     private SupportConversation conversation(Long id, Long customerId, String subject, String updatedAt) {
         SupportConversation conversation = new SupportConversation();
         conversation.setId(id);

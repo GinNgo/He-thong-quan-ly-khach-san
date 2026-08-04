@@ -36,6 +36,17 @@ export interface ChatConversation {
   version?: number;
   slaDeadlineAt?: string;
   slaState?: 'BREACHED' | 'AT_RISK' | 'ON_TRACK' | 'NO_PENDING_RESPONSE';
+  createdAt?: string;
+  lastActivityAt?: string;
+  assignedAt?: string;
+  escalatedAt?: string;
+  closedAt?: string;
+  firstResponseAt?: string;
+  lastCustomerMessageAt?: string;
+  lastSupportReplyAt?: string;
+  closedReason?: string;
+  reopenedAt?: string;
+  reopenReason?: string;
   lastMessage: string;
   lastMessageAt?: string;
 }
@@ -56,6 +67,18 @@ export interface SupportQueueFilters {
   assignment?: 'ALL' | 'UNASSIGNED' | 'MINE';
   sla?: 'ALL' | 'BREACHED' | 'AT_RISK' | 'ON_TRACK' | 'NO_PENDING_RESPONSE';
   hotelId?: number;
+  query?: string;
+}
+
+export interface SupportAttachment {
+  id: number;
+  conversationId: number;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  checksumSha256: string;
+  uploadedByUserId: number;
+  uploadedAt: string;
 }
 
 export type ChatMode = 'customer' | 'support';
@@ -192,12 +215,25 @@ export class ChatService {
       });
   }
 
+  getMyAttachments(conversationId: number): Observable<SupportAttachment[]> {
+    return this.http.get<SupportAttachment[]>(
+      `${this.apiUrl}/me/conversations/${conversationId}/attachments`);
+  }
+
+  uploadMyAttachment(conversationId: number, file: File): Observable<SupportAttachment> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return this.http.post<SupportAttachment>(
+      `${this.apiUrl}/me/conversations/${conversationId}/attachments`, form);
+  }
+
   getSupportConversations(filters: SupportQueueFilters = {}): Observable<ChatConversation[]> {
     const params: Record<string, string | number> = {};
     if (filters.status && filters.status !== 'ALL') params['status'] = filters.status;
     if (filters.assignment && filters.assignment !== 'ALL') params['assignment'] = filters.assignment;
     if (filters.sla && filters.sla !== 'ALL') params['sla'] = filters.sla;
     if (filters.hotelId) params['hotelId'] = filters.hotelId;
+    if (filters.query?.trim()) params['query'] = filters.query.trim();
     return this.http.get<ChatConversation[]>(`${this.apiUrl}/support/conversations`, { params });
   }
 
@@ -247,8 +283,32 @@ export class ChatService {
     return this.mutateConversation(conversationId, 'escalate', expectedVersion);
   }
 
-  reopenSupportConversation(conversationId: number, expectedVersion?: number): Observable<ChatConversation> {
-    return this.mutateConversation(conversationId, 'reopen', expectedVersion);
+  closeSupportConversation(
+    conversationId: number, reason: string, expectedVersion?: number
+  ): Observable<ChatConversation> {
+    return this.mutateConversation(conversationId, 'close', expectedVersion, reason);
+  }
+
+  reopenSupportConversation(
+    conversationId: number, reason: string, expectedVersion?: number
+  ): Observable<ChatConversation> {
+    return this.mutateConversation(conversationId, 'reopen', expectedVersion, reason);
+  }
+
+  getSupportAttachments(conversationId: number): Observable<SupportAttachment[]> {
+    return this.http.get<SupportAttachment[]>(
+      `${this.apiUrl}/support/conversations/${conversationId}/attachments`);
+  }
+
+  uploadSupportAttachment(conversationId: number, file: File): Observable<SupportAttachment> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return this.http.post<SupportAttachment>(
+      `${this.apiUrl}/support/conversations/${conversationId}/attachments`, form);
+  }
+
+  downloadAttachment(attachmentId: number): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/attachments/${attachmentId}`, { responseType: 'blob' });
   }
 
   isConnected(): boolean {
@@ -276,13 +336,15 @@ export class ChatService {
 
   private mutateConversation(
     conversationId: number,
-    action: 'assign' | 'unassign' | 'escalate' | 'reopen',
+    action: 'assign' | 'unassign' | 'escalate' | 'close' | 'reopen',
     expectedVersion?: number,
+    reason?: string,
   ): Observable<ChatConversation> {
     const params: Record<string, number> = {};
     if (expectedVersion !== undefined) params['expectedVersion'] = expectedVersion;
     return this.http.post<ChatConversation>(
-      `${this.apiUrl}/support/conversations/${conversationId}/${action}`, null, { params });
+      `${this.apiUrl}/support/conversations/${conversationId}/${action}`,
+      reason === undefined ? null : { reason }, { params });
   }
 
   private publishIncoming(message: Message): void {

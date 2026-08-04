@@ -19,7 +19,8 @@ import {
   ChatConnectionState,
   ChatConversation,
   ChatMessage,
-  ChatService
+  ChatService,
+  SupportAttachment
 } from '../../../core/services/chat.service';
 import { AuthService } from '../../../core/services/auth';
 
@@ -57,6 +58,9 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
   readonly connectionError = signal('');
   readonly isSending = signal(false);
   readonly sendError = signal('');
+  readonly attachments = signal<SupportAttachment[]>([]);
+  readonly isUploadingAttachment = signal(false);
+  readonly attachmentError = signal('');
 
   newMessage = '';
   newSubject = 'Ho tro chung';
@@ -179,6 +183,7 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
         this.historyError.set('Khong the tai lich su cuoc tro chuyen.');
       }
     });
+    this.loadAttachments(conversation.conversationId);
   }
 
   loadOlderMessages(): void {
@@ -272,6 +277,40 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
     });
   }
 
+  uploadAttachment(event: Event): void {
+    const conversationId = this.selectedConversationId();
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!conversationId || !file || this.isUploadingAttachment()) return;
+    this.isUploadingAttachment.set(true);
+    this.attachmentError.set('');
+    this.chatService.uploadMyAttachment(conversationId, file).subscribe({
+      next: attachment => {
+        this.attachments.update(items => [...items, attachment]);
+        this.isUploadingAttachment.set(false);
+      },
+      error: () => {
+        this.isUploadingAttachment.set(false);
+        this.attachmentError.set('Khong the tai tep. Chi dung PDF, PNG, JPEG hoac TXT toi da 5 MB.');
+      }
+    });
+  }
+
+  downloadAttachment(attachment: SupportAttachment): void {
+    this.chatService.downloadAttachment(attachment.id).subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = attachment.filename;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.attachmentError.set('Khong the tai tep dinh kem.')
+    });
+  }
+
   connectionLabel(): string {
     switch (this.connectionState()) {
       case 'connected': return 'Da ket noi';
@@ -290,6 +329,11 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
     if (message.deliveryStatus === 'READ') return 'Da doc';
     if (message.deliveryStatus === 'DELIVERED') return 'Da nhan';
     return 'Da gui';
+  }
+
+  isSelectedConversationClosed(): boolean {
+    return this.conversations().some(item =>
+      item.conversationId === this.selectedConversationId() && item.status === 'CLOSED');
   }
 
   private handleIncomingMessage(message: ChatMessage | null): void {
@@ -354,5 +398,20 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
     if (this.sendTimeoutId === undefined) return;
     clearTimeout(this.sendTimeoutId);
     this.sendTimeoutId = undefined;
+  }
+
+  private loadAttachments(conversationId: number): void {
+    this.attachments.set([]);
+    this.attachmentError.set('');
+    this.chatService.getMyAttachments(conversationId).subscribe({
+      next: attachments => {
+        if (this.selectedConversationId() === conversationId) this.attachments.set(attachments);
+      },
+      error: () => {
+        if (this.selectedConversationId() === conversationId) {
+          this.attachmentError.set('Khong the tai tep dinh kem.');
+        }
+      }
+    });
   }
 }

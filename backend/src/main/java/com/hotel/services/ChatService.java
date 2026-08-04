@@ -207,7 +207,10 @@ public class ChatService {
         if (!write.created()) return write.message();
         assertExpectedVersion(conversation, expectedVersion);
         assignForReply(conversation, support);
-        conversation.setLastActivityAt(Instant.now());
+        Instant now = Instant.now();
+        conversation.setLastActivityAt(now);
+        conversation.setLastSupportReplyAt(now);
+        if (conversation.getFirstResponseAt() == null) conversation.setFirstResponseAt(now);
         conversation.setSlaDeadlineAt(null);
         conversationRepository.saveAndFlush(conversation);
         auditService.record(conversation, support.getUserId(), "REPLIED", "Support reply accepted");
@@ -307,6 +310,32 @@ public class ChatService {
     @Transactional
     public ChatConversationDTO reopenConversation(
             CustomUserDetails support, Long conversationId, Long expectedVersion) {
+        return reopenConversation(support, conversationId, expectedVersion, "Support follow-up");
+    }
+
+    @Transactional
+    public ChatConversationDTO closeConversation(
+            CustomUserDetails support, Long conversationId, Long expectedVersion, String reason) {
+        authorizationService.requirePermission(support, ActionCode.CREATE);
+        SupportConversation conversation = requireAccessibleConversation(support, conversationId, "CLOSE");
+        assertExpectedVersion(conversation, expectedVersion);
+        if ("CLOSED".equals(conversation.getStatus())) return toConversation(conversation);
+        assertLifecycleOwner(support, conversation, "CLOSE");
+        String normalizedReason = normalizeLifecycleReason(reason);
+        Instant now = Instant.now();
+        conversation.setStatus("CLOSED");
+        conversation.setClosedAt(now);
+        conversation.setClosedReason(normalizedReason);
+        conversation.setLastActivityAt(now);
+        conversation.setSlaDeadlineAt(null);
+        conversationRepository.saveAndFlush(conversation);
+        auditService.record(conversation, support.getUserId(), "CLOSED", normalizedReason);
+        return toConversation(conversation);
+    }
+
+    @Transactional
+    public ChatConversationDTO reopenConversation(
+            CustomUserDetails support, Long conversationId, Long expectedVersion, String reason) {
         authorizationService.requirePermission(support, ActionCode.CREATE);
         SupportConversation conversation = requireAccessibleConversation(support, conversationId, "REOPEN");
         assertExpectedVersion(conversation, expectedVersion);
@@ -319,10 +348,14 @@ public class ChatService {
         conversation.setEscalatedAt(null);
         conversation.setClosedAt(null);
         conversation.setStatus("OPEN");
-        conversation.setLastActivityAt(Instant.now());
+        String normalizedReason = normalizeLifecycleReason(reason);
+        Instant now = Instant.now();
+        conversation.setReopenedAt(now);
+        conversation.setReopenReason(normalizedReason);
+        conversation.setLastActivityAt(now);
         conversation.setSlaDeadlineAt(nextSlaDeadline());
         conversationRepository.saveAndFlush(conversation);
-        auditService.record(conversation, support.getUserId(), "REOPENED", "Conversation reopened in tenant queue");
+        auditService.record(conversation, support.getUserId(), "REOPENED", normalizedReason);
         return toConversation(conversation);
     }
 
@@ -366,7 +399,7 @@ public class ChatService {
 
     @Transactional(readOnly = true)
     public List<ChatConversationDTO> getSupportConversations(CustomUserDetails support) {
-        return getSupportConversations(support, null, "ALL", "ALL", null);
+        return getSupportConversations(support, null, "ALL", "ALL", null, null);
     }
 
     @Transactional(readOnly = true)
@@ -376,6 +409,17 @@ public class ChatService {
             String assignment,
             String sla,
             Long requestedHotelId) {
+        return getSupportConversations(support, status, assignment, sla, requestedHotelId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ChatConversationDTO> getSupportConversations(
+            CustomUserDetails support,
+            String status,
+            String assignment,
+            String sla,
+            Long requestedHotelId,
+            String query) {
         authorizationService.requirePermission(support, ActionCode.VIEW);
         String normalizedStatus = normalizeOptionalFilter(status, QUEUE_STATUSES, "status");
         String normalizedAssignment = normalizeFilter(assignment, ASSIGNMENT_FILTERS, "assignment");
@@ -390,6 +434,7 @@ public class ChatService {
                 : hotelIds.isEmpty() ? List.of()
                 : conversationRepository.findByHotelIdInOrderByLastActivityAtDesc(hotelIds);
         Instant retentionCutoff = cutoff();
+        String normalizedQuery = normalizeSearchQuery(query);
         return source.stream()
                 .filter(item -> item.getUpdatedAt() == null || !item.getUpdatedAt().isBefore(retentionCutoff))
                 .filter(item -> normalizedStatus == null
@@ -398,6 +443,7 @@ public class ChatService {
                 .filter(item -> matchesAssignment(item, normalizedAssignment, support.getUserId()))
                 .filter(item -> "ALL".equals(normalizedSla) || normalizedSla.equals(slaState(item)))
                 .map(this::toConversation)
+                .filter(item -> matchesSearch(item, normalizedQuery))
                 .toList();
     }
 
@@ -460,6 +506,7 @@ public class ChatService {
         }
         Instant now = Instant.now();
         conversation.setLastActivityAt(now);
+        conversation.setLastCustomerMessageAt(now);
         conversation.setSlaDeadlineAt(now.plus(slaResponseMinutes, ChronoUnit.MINUTES));
         conversationRepository.saveAndFlush(conversation);
         auditService.record(conversation, sender.getUserId(), "CUSTOMER_MESSAGE", "Customer message queued for support");
@@ -586,6 +633,17 @@ public class ChatService {
                 conversation.getVersion(),
                 conversation.getSlaDeadlineAt(),
                 slaState(conversation),
+                conversation.getCreatedAt(),
+                conversation.getLastActivityAt(),
+                conversation.getAssignedAt(),
+                conversation.getEscalatedAt(),
+                conversation.getClosedAt(),
+                conversation.getFirstResponseAt(),
+                conversation.getLastCustomerMessageAt(),
+                conversation.getLastSupportReplyAt(),
+                conversation.getClosedReason(),
+                conversation.getReopenedAt(),
+                conversation.getReopenReason(),
                 lastMessage == null ? "" : lastMessage.getContent(),
                 lastMessage == null ? conversation.getLastActivityAt() : lastMessage.getTimestamp());
     }
@@ -642,6 +700,18 @@ public class ChatService {
             auditService.recordDenied(
                     conversation, support.getUserId(), "ACCESS_DENIED_REPLY", "Conversation assigned to another agent");
             throw new AccessDeniedException("Conversation is assigned to another support agent");
+        }
+    }
+
+    private void assertLifecycleOwner(
+            CustomUserDetails support, SupportConversation conversation, String action) {
+        if (conversation.getAssignedAgentId() != null
+                && !conversation.getAssignedAgentId().equals(support.getUserId())
+                && !authorizationService.isSystemAdministrator(support)) {
+            auditService.recordDenied(
+                    conversation, support.getUserId(), "ACCESS_DENIED_" + action,
+                    "Conversation assigned to another agent");
+            throw new AccessDeniedException("Only the assigned agent can change this conversation lifecycle");
         }
     }
 
@@ -717,6 +787,38 @@ public class ChatService {
         Instant now = Instant.now();
         if (!deadline.isAfter(now)) return "BREACHED";
         return Duration.between(now, deadline).toMinutes() <= slaAtRiskMinutes ? "AT_RISK" : "ON_TRACK";
+    }
+
+    private boolean matchesSearch(ChatConversationDTO conversation, String query) {
+        if (query == null) return true;
+        return java.util.stream.Stream.of(
+                        conversation.getSubject(),
+                        conversation.getCustomerName(),
+                        conversation.getHotelName(),
+                        conversation.getLastMessage(),
+                        conversation.getReservationId() == null ? null : conversation.getReservationId().toString(),
+                        conversation.getConversationId() == null ? null : conversation.getConversationId().toString())
+                .filter(Objects::nonNull)
+                .map(value -> value.toLowerCase(Locale.ROOT))
+                .anyMatch(value -> value.contains(query));
+    }
+
+    private String normalizeSearchQuery(String query) {
+        if (query == null || query.isBlank()) return null;
+        String normalized = query.strip().toLowerCase(Locale.ROOT);
+        if (normalized.length() > 120) throw new IllegalArgumentException("Search query is too long.");
+        return normalized;
+    }
+
+    private String normalizeLifecycleReason(String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("Lifecycle reason is required.");
+        }
+        String normalized = reason.strip();
+        if (normalized.length() > 500) {
+            throw new IllegalArgumentException("Lifecycle reason must not exceed 500 characters.");
+        }
+        return normalized;
     }
 
     private String normalizeOptionalFilter(String value, Set<String> allowed, String name) {

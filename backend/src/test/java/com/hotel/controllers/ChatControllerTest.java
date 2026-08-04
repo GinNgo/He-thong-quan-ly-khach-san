@@ -6,6 +6,7 @@ import com.hotel.dtos.SupportChatReplyRequest;
 import com.hotel.security.ChatAuthorizationService;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.services.ChatService;
+import com.hotel.services.SupportAttachmentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +27,7 @@ class ChatControllerTest {
 
     @Mock private ChatService chatService;
     @Mock private SimpMessagingTemplate messagingTemplate;
+    @Mock private SupportAttachmentService attachmentService;
 
     private ChatController controller;
     private CustomUserDetails customer;
@@ -33,7 +35,8 @@ class ChatControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new ChatController(chatService, messagingTemplate, new ChatAuthorizationService());
+        controller = new ChatController(
+                chatService, messagingTemplate, new ChatAuthorizationService(), attachmentService);
         customer = user(42L, "customer");
         support = user(7L, "support");
     }

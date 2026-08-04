@@ -90,6 +90,24 @@ public class SupportConversation {
     @Column(name = "closed_at")
     private Instant closedAt;
 
+    @Column(name = "first_response_at")
+    private Instant firstResponseAt;
+
+    @Column(name = "last_customer_message_at")
+    private Instant lastCustomerMessageAt;
+
+    @Column(name = "last_support_reply_at")
+    private Instant lastSupportReplyAt;
+
+    @Column(name = "closed_reason", length = 500)
+    private String closedReason;
+
+    @Column(name = "reopened_at")
+    private Instant reopenedAt;
+
+    @Column(name = "reopen_reason", length = 500)
+    private String reopenReason;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -164,6 +182,18 @@ public class SupportConversation {
     public void setEscalatedAt(Instant escalatedAt) { this.escalatedAt = escalatedAt; }
     public Instant getClosedAt() { return closedAt; }
     public void setClosedAt(Instant closedAt) { this.closedAt = closedAt; }
+    public Instant getFirstResponseAt() { return firstResponseAt; }
+    public void setFirstResponseAt(Instant firstResponseAt) { this.firstResponseAt = firstResponseAt; }
+    public Instant getLastCustomerMessageAt() { return lastCustomerMessageAt; }
+    public void setLastCustomerMessageAt(Instant lastCustomerMessageAt) { this.lastCustomerMessageAt = lastCustomerMessageAt; }
+    public Instant getLastSupportReplyAt() { return lastSupportReplyAt; }
+    public void setLastSupportReplyAt(Instant lastSupportReplyAt) { this.lastSupportReplyAt = lastSupportReplyAt; }
+    public String getClosedReason() { return closedReason; }
+    public void setClosedReason(String closedReason) { this.closedReason = closedReason; }
+    public Instant getReopenedAt() { return reopenedAt; }
+    public void setReopenedAt(Instant reopenedAt) { this.reopenedAt = reopenedAt; }
+    public String getReopenReason() { return reopenReason; }
+    public void setReopenReason(String reopenReason) { this.reopenReason = reopenReason; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

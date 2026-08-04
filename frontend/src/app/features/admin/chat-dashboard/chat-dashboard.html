@@ -22,6 +22,12 @@
 
     <fieldset class="queue-filters" [disabled]="conversationState() === 'loading'">
       <legend class="visually-hidden">Loc hang doi</legend>
+      <label class="queue-search" style="grid-column: 1 / -1">
+        <span>Tim hoi thoai</span>
+        <input name="supportQuery" type="search" maxlength="120" [(ngModel)]="searchQuery"
+          style="min-height: 2.75rem; padding: 0 .5rem; border: 1px solid var(--hotel-border); border-radius: .5rem"
+          (keyup.enter)="applyFilters()" placeholder="Chu de, khach, co so, noi dung">
+      </label>
       <label>
         <span>Trang thai</span>
         <select name="supportStatusFilter" [(ngModel)]="statusFilter" (change)="applyFilters()">
@@ -124,6 +130,12 @@
           <small *ngIf="selectedConversation.assignedAgentName">
             Nhan vien: {{ selectedConversation.assignedAgentName }}
           </small>
+          <small *ngIf="selectedConversation.slaDeadlineAt">
+            Han SLA: {{ selectedConversation.slaDeadlineAt | date:'dd/MM/yyyy HH:mm' }}
+          </small>
+          <small *ngIf="selectedConversation.lastActivityAt">
+            Hoat dong cuoi: {{ selectedConversation.lastActivityAt | date:'dd/MM/yyyy HH:mm' }}
+          </small>
         </div>
       </header>
 
@@ -140,13 +152,61 @@
           [disabled]="isMutating() || selectedConversation.status === 'CLOSED'">
           Chuyen cap
         </button>
+        <label class="lifecycle-reason" style="flex: 1 1 14rem">
+          <span class="visually-hidden">Ly do dong hoac mo lai hoi thoai</span>
+          <input name="supportLifecycleReason" type="text" maxlength="500" [(ngModel)]="lifecycleReason"
+            style="width: 100%; min-height: 2.75rem; padding: 0 .5rem; border: 1px solid var(--hotel-border); border-radius: .5rem"
+            placeholder="Nhap ly do dong / mo lai">
+        </label>
+        <button type="button" (click)="closeConversation()"
+          [disabled]="isMutating() || selectedConversation.status === 'CLOSED' || !lifecycleReason.trim()">
+          Dong hoi thoai
+        </button>
         <button type="button" (click)="reopenConversation()"
           [disabled]="isMutating() || (selectedConversation.status !== 'CLOSED'
-            && selectedConversation.status !== 'ESCALATED')">
+            && selectedConversation.status !== 'ESCALATED') || !lifecycleReason.trim()">
           Mo lai
         </button>
         <p *ngIf="mutationError()" class="action-feedback is-error" role="alert">{{ mutationError() }}</p>
       </div>
+
+      <section class="attachment-panel" aria-labelledby="support-attachments-title"
+        style="padding: .75rem 1.5rem; border-bottom: 1px solid var(--hotel-border)">
+        <div class="attachment-heading"
+          style="display: flex; align-items: center; justify-content: space-between; gap: .75rem">
+          <div>
+            <p class="eyebrow">SAFE ATTACHMENTS</p>
+            <h3 id="support-attachments-title" style="margin: 0">Tep dinh kem</h3>
+          </div>
+          <label class="attachment-upload" [class.is-disabled]="isUploadingAttachment()">
+            <input type="file" accept=".pdf,.png,.jpg,.jpeg,.txt" style="position: absolute; opacity: 0"
+              [disabled]="isUploadingAttachment() || getConversation(selectedId)?.status === 'CLOSED'"
+              (change)="uploadAttachment($event)">
+            <span style="color: var(--hotel-primary); cursor: pointer">
+              {{ isUploadingAttachment() ? 'Dang tai...' : 'Them tep' }}
+            </span>
+          </label>
+        </div>
+        <p class="attachment-policy" style="margin: 0; color: var(--hotel-text-muted); font-size: .75rem">
+          PDF, PNG, JPEG hoac TXT; toi da 5 MB. Tep duoc kiem tra chu ky va checksum.
+        </p>
+        <p *ngIf="attachmentError()" class="action-feedback is-error" role="alert">{{ attachmentError() }}</p>
+        <div *ngIf="attachmentsState() === 'loading'" class="attachment-state">Dang tai tep dinh kem...</div>
+        <div *ngIf="attachmentsState() === 'ready' && attachments().length === 0" class="attachment-state">
+          Chua co tep dinh kem.
+        </div>
+        <ul *ngIf="attachments().length" class="attachment-list"
+          style="display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0 0; padding: 0; list-style: none">
+          <li *ngFor="let attachment of attachments()">
+            <button type="button" (click)="downloadAttachment(attachment)"
+              style="display: inline-flex; align-items: center; gap: .5rem; padding: .4rem .65rem; color: var(--hotel-primary); background: var(--hotel-primary-light); border: 1px solid var(--hotel-border); border-radius: .5rem">
+              <i class="pi pi-paperclip" aria-hidden="true"></i>
+              <span>{{ attachment.filename }}</span>
+              <small>{{ formatBytes(attachment.sizeBytes) }} / {{ attachment.checksumSha256.slice(0, 10) }}</small>
+            </button>
+          </li>
+        </ul>
+      </section>
 
       <div class="message-stream" #scrollMe role="log" aria-relevant="additions">
         <div *ngIf="messagesState() === 'loading'" class="dashboard-state">
@@ -192,14 +252,14 @@
           maxlength="2000"
           autocomplete="off"
           [(ngModel)]="newMessage"
-          [disabled]="isSending()"
+          [disabled]="isSending() || getConversation(selectedId)?.status === 'CLOSED'"
           aria-describedby="dashboard-send-status"
           placeholder="Viet phan hoi cho khach hang...">
         <button
           type="submit"
           class="send-button"
           aria-label="Gui phan hoi"
-          [disabled]="!newMessage.trim() || isSending()">
+          [disabled]="!newMessage.trim() || isSending() || getConversation(selectedId)?.status === 'CLOSED'">
           <i *ngIf="!isSending()" class="pi pi-send" aria-hidden="true"></i>
           <i *ngIf="isSending()" class="pi pi-spin pi-spinner" aria-hidden="true"></i>
         </button>

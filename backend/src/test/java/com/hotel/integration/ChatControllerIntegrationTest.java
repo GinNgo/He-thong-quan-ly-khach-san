@@ -11,6 +11,7 @@ import com.hotel.entities.UserProperty;
 import com.hotel.repositories.ChatMessageRepository;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.SupportConversationEventRepository;
+import com.hotel.repositories.SupportConversationAttachmentRepository;
 import com.hotel.repositories.SupportConversationRepository;
 import com.hotel.repositories.UserPropertyRepository;
 import com.hotel.repositories.UserRepository;
@@ -29,6 +30,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.mock.web.MockMultipartFile;
 
 import java.time.Instant;
 import java.util.Map;
@@ -43,6 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -64,6 +67,7 @@ class ChatControllerIntegrationTest {
     @Autowired private UserPropertyRepository userPropertyRepository;
     @Autowired private SupportConversationRepository conversationRepository;
     @Autowired private SupportConversationEventRepository eventRepository;
+    @Autowired private SupportConversationAttachmentRepository attachmentRepository;
     @Autowired private ChatMessageRepository chatMessageRepository;
     @Autowired private ObjectMapper objectMapper;
     @MockBean private UserDetailsService userDetailsService;
@@ -215,6 +219,8 @@ class ChatControllerIntegrationTest {
         SupportConversation escalated = conversationRepository.findById(conversation.getId()).orElseThrow();
         mockMvc.perform(post("/api/chat/support/conversations/{conversationId}/reopen", conversation.getId())
                         .param("expectedVersion", escalated.getVersion().toString())
+                        .contentType("application/json")
+                        .content("{\"reason\":\"Khach phan hoi them\"}")
                         .with(user(support)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("OPEN"))
@@ -222,6 +228,102 @@ class ChatControllerIntegrationTest {
 
         assertEquals(1L, eventRepository.countByConversationIdAndEventType(conversation.getId(), "UNASSIGNED"));
         assertEquals(1L, eventRepository.countByConversationIdAndEventType(conversation.getId(), "REOPENED"));
+    }
+
+    @Test
+    void supportCanSearchCloseAndReopenWithAuditedReasonsAndTimestamps() throws Exception {
+        User customer = saveUser("chat-close-customer");
+        User agent = saveUser("chat-close-agent");
+        Hotel hotel = saveHotel("chat-close-hotel");
+        assign(agent, hotel);
+        SupportConversation conversation = saveConversation(customer, hotel, Instant.now());
+        conversation.setSubject("Hoa don can doi chieu");
+        conversation.setAssignedAgentId(agent.getId());
+        conversation = conversationRepository.saveAndFlush(conversation);
+        CustomUserDetails support = support(agent);
+
+        mockMvc.perform(get("/api/chat/support/conversations")
+                        .param("query", "doi chieu")
+                        .with(user(support)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].conversationId").value(conversation.getId()))
+                .andExpect(jsonPath("$[0].createdAt").isNotEmpty())
+                .andExpect(jsonPath("$[0].lastActivityAt").isNotEmpty());
+
+        String closeBody = objectMapper.writeValueAsString(Map.of("reason", "Da doi chieu xong"));
+        mockMvc.perform(post("/api/chat/support/conversations/{id}/close", conversation.getId())
+                        .param("expectedVersion", conversation.getVersion().toString())
+                        .contentType("application/json")
+                        .content(closeBody)
+                        .with(user(support)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CLOSED"))
+                .andExpect(jsonPath("$.closedReason").value("Da doi chieu xong"))
+                .andExpect(jsonPath("$.closedAt").isNotEmpty())
+                .andExpect(jsonPath("$.slaDeadlineAt").doesNotExist());
+        assertEquals(1L, eventRepository.countByConversationIdAndEventType(conversation.getId(), "CLOSED"));
+
+        SupportConversation closed = conversationRepository.findById(conversation.getId()).orElseThrow();
+        mockMvc.perform(post("/api/chat/support/conversations/{id}/reopen", conversation.getId())
+                        .param("expectedVersion", closed.getVersion().toString())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("reason", "Khach gui them chung tu")))
+                        .with(user(support)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("OPEN"))
+                .andExpect(jsonPath("$.reopenReason").value("Khach gui them chung tu"))
+                .andExpect(jsonPath("$.reopenedAt").isNotEmpty())
+                .andExpect(jsonPath("$.slaDeadlineAt").isNotEmpty());
+    }
+
+    @Test
+    void attachmentsValidateSignatureExposeChecksumAndRemainTenantScoped() throws Exception {
+        User customer = saveUser("chat-attachment-customer");
+        User agent = saveUser("chat-attachment-agent");
+        User foreignAgent = saveUser("chat-attachment-foreign");
+        Hotel hotel = saveHotel("chat-attachment-hotel");
+        Hotel foreignHotel = saveHotel("chat-attachment-other-hotel");
+        assign(agent, hotel);
+        assign(foreignAgent, foreignHotel);
+        SupportConversation conversation = saveConversation(customer, hotel, Instant.now());
+        byte[] pdf = "%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+
+        String uploadBody = mockMvc.perform(multipart(
+                        "/api/chat/me/conversations/{id}/attachments", conversation.getId())
+                        .file(new MockMultipartFile("file", "hoa-don.pdf", "application/pdf", pdf))
+                        .with(user(customer(customer))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filename").value("hoa-don.pdf"))
+                .andExpect(jsonPath("$.contentType").value("application/pdf"))
+                .andExpect(jsonPath("$.checksumSha256").value(org.hamcrest.Matchers.hasLength(64)))
+                .andReturn().getResponse().getContentAsString();
+        Long attachmentId = objectMapper.readTree(uploadBody).get("id").asLong();
+
+        mockMvc.perform(get("/api/chat/support/conversations/{id}/attachments", conversation.getId())
+                        .with(user(support(agent))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].id").value(attachmentId));
+
+        mockMvc.perform(get("/api/chat/attachments/{id}", attachmentId)
+                        .with(user(support(agent))))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+                .andExpect(header().string("X-Content-SHA256", org.hamcrest.Matchers.hasLength(64)));
+
+        mockMvc.perform(get("/api/chat/attachments/{id}", attachmentId)
+                        .with(user(support(foreignAgent))))
+                .andExpect(status().isNotFound());
+        assertEquals(1L, eventRepository.countByConversationIdAndEventType(
+                conversation.getId(), "ACCESS_DENIED_ATTACHMENT_DOWNLOAD"));
+
+        mockMvc.perform(multipart("/api/chat/me/conversations/{id}/attachments", conversation.getId())
+                        .file(new MockMultipartFile("file", "fake.pdf", "application/pdf", "not a pdf".getBytes()))
+                        .with(user(customer(customer))))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.code").value("ATTACHMENT_TYPE_MISMATCH"));
+        assertEquals(1L, attachmentRepository.count());
     }
 
     @Test

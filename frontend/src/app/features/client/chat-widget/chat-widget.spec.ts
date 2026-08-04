@@ -50,6 +50,9 @@ describe('ChatWidget', () => {
             getMyConversations: () => of(page(conversations)),
             createMyConversation: (subject: string) => of({ ...conversations[0], conversationId: 13, subject }),
             createClientMessageId: () => 'customer-client-1',
+            getMyAttachments: vi.fn(() => of([])),
+            uploadMyAttachment: vi.fn(),
+            downloadAttachment: vi.fn(),
             acknowledgeMessage: vi.fn(messageId => of({
               id: messageId, conversationId: 11, senderId: 7, receiverId: 42,
               content: 'reply', deliveryStatus: 'READ' as const

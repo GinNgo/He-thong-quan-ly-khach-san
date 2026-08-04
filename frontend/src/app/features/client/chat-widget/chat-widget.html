@@ -117,6 +117,28 @@
       </ng-container>
     </div>
 
+    <section *ngIf="isLoggedIn() && selectedConversationId()" aria-label="Tep dinh kem ho tro"
+      style="padding: .5rem .75rem; border-top: 1px solid var(--hotel-border)">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: .5rem">
+        <small>PDF, PNG, JPEG, TXT; toi da 5 MB</small>
+        <label style="color: var(--hotel-primary); cursor: pointer">
+          <input type="file" accept=".pdf,.png,.jpg,.jpeg,.txt" style="position: absolute; opacity: 0"
+            [disabled]="isUploadingAttachment() || isSelectedConversationClosed()"
+            (change)="uploadAttachment($event)">
+          {{ isUploadingAttachment() ? 'Dang tai...' : 'Dinh kem' }}
+        </label>
+      </div>
+      <p *ngIf="attachmentError()" role="alert" style="margin: .25rem 0; color: var(--hotel-danger); font-size: .75rem">
+        {{ attachmentError() }}
+      </p>
+      <div *ngIf="attachments().length" style="display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .35rem">
+        <button *ngFor="let attachment of attachments()" type="button" (click)="downloadAttachment(attachment)"
+          style="padding: .25rem .5rem; color: var(--hotel-primary); background: var(--hotel-primary-light); border: 1px solid var(--hotel-border); border-radius: .5rem">
+          <i class="pi pi-paperclip" aria-hidden="true"></i> {{ attachment.filename }}
+        </button>
+      </div>
+    </section>
+
     <form *ngIf="isLoggedIn()" class="support-composer" (ngSubmit)="sendMessage()">
       <label class="visually-hidden" for="support-message">Noi dung tin nhan ho tro</label>
       <input
@@ -127,14 +149,14 @@
         maxlength="2000"
         autocomplete="off"
         [(ngModel)]="newMessage"
-        [disabled]="isSending() || !selectedConversationId()"
+        [disabled]="isSending() || !selectedConversationId() || isSelectedConversationClosed()"
         aria-describedby="support-send-status"
         placeholder="Nhap noi dung can ho tro...">
       <button
         type="submit"
         class="send-button"
         aria-label="Gui tin nhan ho tro"
-        [disabled]="!newMessage.trim() || isSending() || !selectedConversationId()">
+        [disabled]="!newMessage.trim() || isSending() || !selectedConversationId() || isSelectedConversationClosed()">
         <i *ngIf="!isSending()" class="pi pi-send" aria-hidden="true"></i>
         <i *ngIf="isSending()" class="pi pi-spin pi-spinner" aria-hidden="true"></i>
       </button>

@@ -6,15 +6,21 @@ import com.hotel.dtos.ChatMessageDTO;
 import com.hotel.dtos.ChatPageDTO;
 import com.hotel.dtos.CustomerChatMessageRequest;
 import com.hotel.dtos.SupportChatReplyRequest;
+import com.hotel.dtos.SupportAttachmentDTO;
+import com.hotel.dtos.SupportConversationLifecycleRequest;
 import com.hotel.security.ActionCode;
 import com.hotel.security.ChatAuthorizationService;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.Permission;
 import com.hotel.services.ChatService;
+import com.hotel.services.SupportAttachmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -25,6 +31,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.util.List;
@@ -35,6 +42,7 @@ public class ChatController {
     private final ChatService chatService;
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatAuthorizationService authorizationService;
+    private final SupportAttachmentService attachmentService;
 
     @MessageMapping("/chat.support.send")
     public void sendToSupport(
@@ -123,9 +131,10 @@ public class ChatController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "ALL") String assignment,
             @RequestParam(defaultValue = "ALL") String sla,
-            @RequestParam(required = false) Long hotelId) {
+            @RequestParam(required = false) Long hotelId,
+            @RequestParam(required = false) String query) {
         return ResponseEntity.ok(chatService.getSupportConversations(
-                authorizationService.requireUser(principal), status, assignment, sla, hotelId));
+                authorizationService.requireUser(principal), status, assignment, sla, hotelId, query));
     }
 
     @GetMapping("/api/chat/support/conversations/{conversationId}")
@@ -199,9 +208,75 @@ public class ChatController {
     public ResponseEntity<ChatConversationDTO> reopenConversation(
             @PathVariable Long conversationId,
             @RequestParam(required = false) Long expectedVersion,
+            @Valid @RequestBody SupportConversationLifecycleRequest request,
             Principal principal) {
         return ResponseEntity.ok(chatService.reopenConversation(
-                authorizationService.requireUser(principal), conversationId, expectedVersion));
+                authorizationService.requireUser(principal), conversationId, expectedVersion, request.reason()));
+    }
+
+    @PostMapping("/api/chat/support/conversations/{conversationId}/close")
+    @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.CREATE)
+    public ResponseEntity<ChatConversationDTO> closeConversation(
+            @PathVariable Long conversationId,
+            @RequestParam(required = false) Long expectedVersion,
+            @Valid @RequestBody SupportConversationLifecycleRequest request,
+            Principal principal) {
+        return ResponseEntity.ok(chatService.closeConversation(
+                authorizationService.requireUser(principal), conversationId, expectedVersion, request.reason()));
+    }
+
+    @GetMapping("/api/chat/me/conversations/{conversationId}/attachments")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<SupportAttachmentDTO>> getMyAttachments(
+            @PathVariable Long conversationId, Principal principal) {
+        return ResponseEntity.ok(attachmentService.listForCustomer(
+                authorizationService.requireUser(principal), conversationId));
+    }
+
+    @PostMapping(value = "/api/chat/me/conversations/{conversationId}/attachments",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<SupportAttachmentDTO> uploadMyAttachment(
+            @PathVariable Long conversationId,
+            @RequestParam("file") MultipartFile file,
+            Principal principal) {
+        return ResponseEntity.ok(attachmentService.uploadForCustomer(
+                authorizationService.requireUser(principal), conversationId, file));
+    }
+
+    @GetMapping("/api/chat/support/conversations/{conversationId}/attachments")
+    @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.VIEW)
+    public ResponseEntity<List<SupportAttachmentDTO>> getSupportAttachments(
+            @PathVariable Long conversationId, Principal principal) {
+        return ResponseEntity.ok(attachmentService.listForSupport(
+                authorizationService.requireUser(principal), conversationId));
+    }
+
+    @PostMapping(value = "/api/chat/support/conversations/{conversationId}/attachments",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.CREATE)
+    public ResponseEntity<SupportAttachmentDTO> uploadSupportAttachment(
+            @PathVariable Long conversationId,
+            @RequestParam("file") MultipartFile file,
+            Principal principal) {
+        return ResponseEntity.ok(attachmentService.uploadForSupport(
+                authorizationService.requireUser(principal), conversationId, file));
+    }
+
+    @GetMapping("/api/chat/attachments/{attachmentId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<byte[]> downloadAttachment(
+            @PathVariable Long attachmentId, Principal principal) {
+        SupportAttachmentService.AttachmentContent attachment = attachmentService.download(
+                authorizationService.requireUser(principal), attachmentId);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(attachment.contentType()));
+        headers.setContentDisposition(ContentDisposition.attachment()
+                .filename(attachment.filename(), java.nio.charset.StandardCharsets.UTF_8).build());
+        headers.setContentLength(attachment.bytes().length);
+        headers.set("X-Content-Type-Options", "nosniff");
+        headers.set("X-Content-SHA256", attachment.checksumSha256());
+        return ResponseEntity.ok().headers(headers).body(attachment.bytes());
     }
 
     @PostMapping("/api/chat/messages/{messageId}/state")

@@ -19,7 +19,8 @@ import {
   ChatConnectionState,
   ChatConversation,
   ChatMessage,
-  ChatService
+  ChatService,
+  SupportAttachment
 } from '../../../core/services/chat.service';
 import { AuthService } from '../../../core/services/auth';
 
@@ -56,8 +57,14 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
   readonly isMutating = signal(false);
   readonly mutationError = signal('');
   readonly conflictRecovery = signal('');
+  readonly attachments = signal<SupportAttachment[]>([]);
+  readonly attachmentsState = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  readonly attachmentError = signal('');
+  readonly isUploadingAttachment = signal(false);
 
   newMessage = '';
+  searchQuery = '';
+  lifecycleReason = '';
   statusFilter: 'ALL' | 'OPEN' | 'ASSIGNED' | 'ESCALATED' | 'CLOSED' = 'ALL';
   assignmentFilter: 'ALL' | 'UNASSIGNED' | 'MINE' = 'ALL';
   slaFilter: 'ALL' | 'BREACHED' | 'AT_RISK' | 'ON_TRACK' | 'NO_PENDING_RESPONSE' = 'ALL';
@@ -112,6 +119,7 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
       status: this.statusFilter,
       assignment: this.assignmentFilter,
       sla: this.slaFilter,
+      query: this.searchQuery,
     }).subscribe({
       next: conversations => {
         this.conversations.set(conversations);
@@ -157,6 +165,7 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
         this.messagesError.set('Khong the tai lich su hoi thoai nay.');
       }
     });
+    this.loadAttachments(conversation.conversationId);
   }
 
   loadOlderMessages(): void {
@@ -241,8 +250,70 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   reopenConversation(): void {
+    const reason = this.lifecycleReason.trim();
+    if (!reason) {
+      this.mutationError.set('Nhap ly do mo lai hoi thoai.');
+      return;
+    }
     this.runMutation(conversation => this.chatService.reopenSupportConversation(
-      conversation.conversationId, conversation.version));
+      conversation.conversationId, reason, conversation.version));
+  }
+
+  closeConversation(): void {
+    const reason = this.lifecycleReason.trim();
+    if (!reason) {
+      this.mutationError.set('Nhap ly do dong hoi thoai.');
+      return;
+    }
+    this.runMutation(conversation => this.chatService.closeSupportConversation(
+      conversation.conversationId, reason, conversation.version));
+  }
+
+  uploadAttachment(event: Event): void {
+    const conversationId = this.selectedConversationId();
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!conversationId || !file || this.isUploadingAttachment()) return;
+    this.isUploadingAttachment.set(true);
+    this.attachmentError.set('');
+    this.chatService.uploadSupportAttachment(conversationId, file).subscribe({
+      next: attachment => {
+        this.attachments.update(items => [...items, attachment]);
+        this.attachmentsState.set('ready');
+        this.isUploadingAttachment.set(false);
+      },
+      error: error => {
+        this.isUploadingAttachment.set(false);
+        if (error instanceof HttpErrorResponse && error.status === 413) {
+          this.attachmentError.set('Tep vuot qua gioi han kich thuoc.');
+        } else if (error instanceof HttpErrorResponse && error.status === 415) {
+          this.attachmentError.set('Chi chap nhan PDF, PNG, JPEG hoac tep van ban UTF-8.');
+        } else {
+          this.attachmentError.set('Khong the tai tep dinh kem. Hay thu lai.');
+        }
+      }
+    });
+  }
+
+  downloadAttachment(attachment: SupportAttachment): void {
+    this.attachmentError.set('');
+    this.chatService.downloadAttachment(attachment.id).subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = attachment.filename;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.attachmentError.set('Khong the tai tep dinh kem.')
+    });
+  }
+
+  formatBytes(size: number): string {
+    if (size < 1024) return `${size} B`;
+    return `${(size / 1024).toFixed(size < 10240 ? 1 : 0)} KB`;
   }
 
   isOwnMessage(message: ChatMessage): boolean {
@@ -367,6 +438,7 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
         this.conversations.update(items => items.map(item =>
           item.conversationId === updated.conversationId ? updated : item));
         this.isMutating.set(false);
+        this.lifecycleReason = '';
       },
       error: error => {
         this.isMutating.set(false);
@@ -386,5 +458,23 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
     if (this.sendTimeoutId === undefined) return;
     clearTimeout(this.sendTimeoutId);
     this.sendTimeoutId = undefined;
+  }
+
+  private loadAttachments(conversationId: number): void {
+    this.attachmentsState.set('loading');
+    this.attachmentError.set('');
+    this.attachments.set([]);
+    this.chatService.getSupportAttachments(conversationId).subscribe({
+      next: attachments => {
+        if (this.selectedConversationId() !== conversationId) return;
+        this.attachments.set(attachments);
+        this.attachmentsState.set('ready');
+      },
+      error: () => {
+        if (this.selectedConversationId() !== conversationId) return;
+        this.attachmentsState.set('error');
+        this.attachmentError.set('Khong the tai danh sach tep dinh kem.');
+      }
+    });
   }
 }

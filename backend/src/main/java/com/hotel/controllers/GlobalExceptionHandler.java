@@ -6,6 +6,7 @@ import com.hotel.exceptions.ChatMessageConflictException;
 import com.hotel.exceptions.PropertyNotOperationalException;
 import com.hotel.exceptions.RegistrationConflictException;
 import com.hotel.exceptions.ResourceNotFoundException;
+import com.hotel.exceptions.SupportAttachmentException;
 import com.hotel.paymentprovider.error.FinancialException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -158,6 +159,14 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
         return response(HttpStatus.CONFLICT, ChatMessageConflictException.ERROR_CODE,
                 ex.getMessage(), request, Map.of(), false, null);
+    }
+
+    @ExceptionHandler(SupportAttachmentException.class)
+    public ResponseEntity<ApiErrorResponse> handleSupportAttachment(
+            SupportAttachmentException ex,
+            HttpServletRequest request) {
+        return response(ex.status(), ex.code(), ex.getMessage(), request,
+                Map.of(), false, null);
     }
 
     @ExceptionHandler(PasswordChangeException.class)

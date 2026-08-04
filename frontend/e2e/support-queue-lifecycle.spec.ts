@@ -89,6 +89,7 @@ test('runs the real support queue HTTP, WebSocket, conflict and lifecycle journe
   await expect(supportPage.locator('.conversation-status')).toContainText('Dang cho');
   await supportPage.getByRole('button', { name: 'Chuyen cap' }).click();
   await expect(supportPage.locator('.conversation-status')).toContainText('Da chuyen cap');
+  await supportPage.getByPlaceholder('Nhap ly do dong / mo lai').fill('Khach phan hoi them');
   await supportPage.getByRole('button', { name: 'Mo lai' }).click();
   await expect(supportPage.locator('.conversation-status')).toContainText('Dang cho');
   await capture(supportPage, '.chat-dashboard', 'T326-lifecycle-actions.png');

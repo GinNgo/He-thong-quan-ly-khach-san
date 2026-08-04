@@ -14,6 +14,7 @@ describe('ChatDashboard', () => {
   let sendSupportMessage: ReturnType<typeof vi.fn>;
   let getConversations: ReturnType<typeof vi.fn>;
   let claimConversation: ReturnType<typeof vi.fn>;
+  let closeConversation: ReturnType<typeof vi.fn>;
 
   const conversation: ChatConversation = {
     conversationId: 21,
@@ -34,6 +35,9 @@ describe('ChatDashboard', () => {
     getConversations = vi.fn(() => of([conversation]));
     claimConversation = vi.fn(() => of({
       ...conversation, status: 'ASSIGNED' as const, assignedAgentId: 7, version: 4
+    }));
+    closeConversation = vi.fn(() => of({
+      ...conversation, status: 'CLOSED' as const, closedReason: 'Da xu ly', version: 4
     }));
     sendSupportMessage = vi.fn(() => of({
       id: 10, conversationId: 21, senderId: 7, receiverId: 42, content: 'Da tiep nhan'
@@ -68,6 +72,10 @@ describe('ChatDashboard', () => {
             unassignSupportConversation: vi.fn(),
             escalateSupportConversation: vi.fn(),
             reopenSupportConversation: vi.fn(),
+            closeSupportConversation: closeConversation,
+            getSupportAttachments: vi.fn(() => of([])),
+            uploadSupportAttachment: vi.fn(),
+            downloadAttachment: vi.fn(),
             isConnected: () => true,
           }
         }
@@ -111,7 +119,7 @@ describe('ChatDashboard', () => {
     component.applyFilters();
 
     expect(getConversations).toHaveBeenLastCalledWith({
-      status: 'ALL', assignment: 'MINE', sla: 'BREACHED'
+      status: 'ALL', assignment: 'MINE', sla: 'BREACHED', query: ''
     });
   });
 
@@ -135,6 +143,25 @@ describe('ChatDashboard', () => {
     expect(component.conflictRecovery()).toContain('tai lai');
     expect(getConversations).toHaveBeenCalledTimes(2);
     expect(fixture.nativeElement.querySelector('[role="status"]')?.textContent).toContain('tai lai');
+  });
+
+  it('requires and sends an audited reason when closing a conversation', () => {
+    component.selectConversation(conversation);
+    component.lifecycleReason = 'Da xu ly';
+
+    component.closeConversation();
+
+    expect(closeConversation).toHaveBeenCalledWith(21, 'Da xu ly', 3);
+    expect(component.getConversation(21)?.status).toBe('CLOSED');
+    expect(component.lifecycleReason).toBe('');
+  });
+
+  it('sends the search query with existing queue filters', () => {
+    component.searchQuery = 'hoa don';
+
+    component.applyFilters();
+
+    expect(getConversations).toHaveBeenLastCalledWith(expect.objectContaining({ query: 'hoa don' }));
   });
 
   function page<T>(content: T[]) {
