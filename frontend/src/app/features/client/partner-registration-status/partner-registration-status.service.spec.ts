@@ -35,7 +35,9 @@ describe('PartnerRegistrationStatusService', () => {
         approvalStatus: 'PENDING_APPROVAL',
         operationStatus: 'INACTIVE',
         ownershipStatus: 'PENDING',
-        rejectionReason: null
+        rejectionReason: null,
+        claimId: 81,
+        claimStatus: 'PENDING'
       }]
     });
 
@@ -76,6 +78,30 @@ describe('PartnerRegistrationStatusService', () => {
       afterState: state('PENDING_APPROVAL', 'PENDING_APPROVAL', 'INACTIVE', 'PENDING'),
       occurredAt: '2026-08-04T08:30:00Z'
     }]);
+  });
+
+  it('cancels a typed requester claim with an empty command body', () => {
+    let status = '';
+    service.cancelClaim(81).subscribe(response => status = response.status);
+
+    const request = http.expectOne(`${environment.apiUrl}/property-claims/81/cancel`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({});
+    request.flush({
+      id: 81,
+      property: null,
+      requesterUser: null,
+      verificationMethod: null,
+      verificationData: null,
+      note: null,
+      status: 'CANCELLED',
+      reviewedBy: null,
+      reviewedAt: null,
+      rejectionReason: null,
+      createdAt: null
+    });
+
+    expect(status).toBe('CANCELLED');
   });
 });
 

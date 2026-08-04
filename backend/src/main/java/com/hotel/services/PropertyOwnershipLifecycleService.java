@@ -70,8 +70,7 @@ public class PropertyOwnershipLifecycleService {
     @Transactional
     public boolean deactivatePendingOwner(Long hotelId, Long userId) {
         return userPropertyRepository
-                .findByUserIdAndHotelIdAndRelationshipType(userId, hotelId, "OWNER")
-                .filter(mapping -> "PENDING".equalsIgnoreCase(mapping.getStatus()))
+                .findPendingOwnerMappingForUpdate(userId, hotelId)
                 .map(mapping -> {
                     mapping.setStatus("INACTIVE");
                     mapping.setIsPrimaryOwner(false);

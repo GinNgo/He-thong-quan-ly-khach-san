@@ -15,7 +15,7 @@ import { PropertyClaimResponse, PropertyClaimService } from '../../../core/servi
           <p class="eyebrow">Property governance</p>
           <h2>Property Claim Requests</h2>
         </div>
-        <button type="button" class="btn btn-outline-primary" [disabled]="loading || approvalBusy" (click)="loadClaims()">
+        <button type="button" class="btn btn-outline-primary" [disabled]="loading || claimActionBusy" (click)="loadClaims()">
           Refresh
         </button>
       </header>
@@ -68,43 +68,72 @@ import { PropertyClaimResponse, PropertyClaimService } from '../../../core/servi
                   </td>
                   <td>
                     <ng-container *ngIf="claim.status === 'PENDING'">
-                      <div class="claim-actions" *ngIf="approvalPromptId !== claim.id; else approvalPrompt">
+                      <div class="claim-actions" *ngIf="approvalPromptId !== claim.id && rejectionPromptId !== claim.id">
                         <button
                           type="button"
                           class="btn btn-sm btn-success"
-                          [disabled]="approvalBusy"
+                          [disabled]="claimActionBusy"
                           (click)="requestApproval(claim)">
                           Approve
                         </button>
                         <button
                           type="button"
                           class="btn btn-sm btn-danger"
-                          [disabled]="approvalBusy"
-                          (click)="reject(claim.id)">
+                          [disabled]="claimActionBusy"
+                          (click)="requestRejection(claim)">
                           Reject
                         </button>
                       </div>
-                      <ng-template #approvalPrompt>
-                        <div class="approval-confirmation" role="group" [attr.aria-label]="'Confirm approval for claim ' + claim.id">
-                          <p>Approve this request and activate the requester as an owner when the server confirms the lifecycle is valid?</p>
-                          <div class="claim-actions">
-                            <button
-                              type="button"
-                              class="btn btn-sm btn-success"
-                              [disabled]="isApproving(claim.id)"
-                              (click)="confirmApproval(claim)">
-                              {{ isApproving(claim.id) ? 'Approving...' : 'Confirm approval' }}
-                            </button>
-                            <button
-                              type="button"
-                              class="btn btn-sm btn-outline-secondary"
-                              [disabled]="isApproving(claim.id)"
-                              (click)="cancelApproval()">
-                              Cancel
-                            </button>
-                          </div>
+                      <div *ngIf="approvalPromptId === claim.id" class="approval-confirmation" role="group" [attr.aria-label]="'Confirm approval for claim ' + claim.id">
+                        <p>Approve this request and activate the requester as an owner when the server confirms the lifecycle is valid?</p>
+                        <div class="claim-actions">
+                          <button
+                            type="button"
+                            class="btn btn-sm btn-success"
+                            [disabled]="isApproving(claim.id)"
+                            (click)="confirmApproval(claim)">
+                            {{ isApproving(claim.id) ? 'Approving...' : 'Confirm approval' }}
+                          </button>
+                          <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            [disabled]="isApproving(claim.id)"
+                            (click)="cancelApproval()">
+                            Cancel
+                          </button>
                         </div>
-                      </ng-template>
+                      </div>
+                      <div *ngIf="rejectionPromptId === claim.id" class="rejection-editor" role="group" [attr.aria-label]="'Reject claim ' + claim.id">
+                        <label [for]="'claim-rejection-' + claim.id">Rejection reason</label>
+                        <textarea
+                          [id]="'claim-rejection-' + claim.id"
+                          rows="3"
+                          maxlength="500"
+                          [value]="rejectionReasons[claim.id] || ''"
+                          [disabled]="isRejecting(claim.id)"
+                          (input)="updateRejectionReason(claim.id, $event)"
+                          [attr.aria-describedby]="'claim-rejection-help-' + claim.id"></textarea>
+                        <div class="rejection-help" [id]="'claim-rejection-help-' + claim.id">
+                          <span>{{ rejectionReasonError(claim.id) || 'Enter 10-500 characters.' }}</span>
+                          <span>{{ (rejectionReasons[claim.id] || '').length }}/500</span>
+                        </div>
+                        <div class="claim-actions">
+                          <button
+                            type="button"
+                            class="btn btn-sm btn-danger"
+                            [disabled]="isRejecting(claim.id) || !!rejectionReasonError(claim.id)"
+                            (click)="confirmRejection(claim)">
+                            {{ isRejecting(claim.id) ? 'Rejecting...' : 'Confirm rejection' }}
+                          </button>
+                          <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            [disabled]="isRejecting(claim.id)"
+                            (click)="cancelRejection()">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
                     </ng-container>
                   </td>
                 </tr>
@@ -116,7 +145,7 @@ import { PropertyClaimResponse, PropertyClaimService } from '../../../core/servi
     </main>
   `,
   styles: [`
-    :host{display:block}.claim-page{padding-bottom:48px}.page-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}.page-heading h2{margin:0}.eyebrow{margin:0 0 4px;color:#1764bd;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.claim-state{padding:34px;text-align:center;color:#64748b}.claim-actions{display:flex;flex-wrap:wrap;gap:8px}.approval-confirmation{min-width:260px;max-width:360px;padding:12px;border:1px solid #b8c7d9;border-radius:8px;background:#f8fafc}.approval-confirmation p{margin:0 0 10px;font-size:13px;line-height:1.5;color:#334155}@media(max-width:640px){.page-heading{align-items:flex-start;flex-direction:column}.page-heading button{width:100%}}
+    :host{display:block}.claim-page{padding-bottom:48px}.page-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}.page-heading h2{margin:0}.eyebrow{margin:0 0 4px;color:#1764bd;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.claim-state{padding:34px;text-align:center;color:#64748b}.claim-actions{display:flex;flex-wrap:wrap;gap:8px}.approval-confirmation,.rejection-editor{min-width:260px;max-width:360px;padding:12px;border:1px solid #b8c7d9;border-radius:8px;background:#f8fafc}.approval-confirmation p{margin:0 0 10px;font-size:13px;line-height:1.5;color:#334155}.rejection-editor{display:grid;gap:8px}.rejection-editor label{font-size:13px;font-weight:800;color:#334155}.rejection-editor textarea{width:100%;padding:9px 10px;border:1px solid #94a3b8;border-radius:7px;resize:vertical}.rejection-help{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:#9f1239}@media(max-width:640px){.page-heading{align-items:flex-start;flex-direction:column}.page-heading button{width:100%}}
   `]
 })
 export class PropertyClaimsComponent implements OnInit {
@@ -129,9 +158,16 @@ export class PropertyClaimsComponent implements OnInit {
   actionError = '';
   approvalPromptId: number | null = null;
   approvingClaimId: number | null = null;
+  rejectionPromptId: number | null = null;
+  rejectingClaimId: number | null = null;
+  readonly rejectionReasons: Record<number, string> = {};
 
   get approvalBusy(): boolean {
     return this.approvingClaimId !== null;
+  }
+
+  get claimActionBusy(): boolean {
+    return this.approvingClaimId !== null || this.rejectingClaimId !== null;
   }
 
   ngOnInit(): void {
@@ -139,7 +175,7 @@ export class PropertyClaimsComponent implements OnInit {
   }
 
   loadClaims(): void {
-    if (this.approvalBusy) return;
+    if (this.claimActionBusy) return;
     this.loading = true;
     this.loadError = '';
     this.propertyClaims.list().pipe(
@@ -151,7 +187,8 @@ export class PropertyClaimsComponent implements OnInit {
   }
 
   requestApproval(claim: PropertyClaimResponse): void {
-    if (claim.status !== 'PENDING' || this.approvingClaimId !== null) return;
+    if (claim.status !== 'PENDING' || this.claimActionBusy) return;
+    this.rejectionPromptId = null;
     this.approvalPromptId = claim.id;
     this.actionMessage = '';
     this.actionError = '';
@@ -162,7 +199,7 @@ export class PropertyClaimsComponent implements OnInit {
   }
 
   confirmApproval(claim: PropertyClaimResponse): void {
-    if (claim.status !== 'PENDING' || this.approvalPromptId !== claim.id || this.approvingClaimId !== null) return;
+    if (claim.status !== 'PENDING' || this.approvalPromptId !== claim.id || this.claimActionBusy) return;
 
     this.approvingClaimId = claim.id;
     this.actionMessage = '';
@@ -189,14 +226,61 @@ export class PropertyClaimsComponent implements OnInit {
     return this.approvingClaimId === claimId;
   }
 
-  reject(id: number): void {
-    const reason = prompt('Enter rejection reason:');
-    if (reason !== null) {
-      this.propertyClaims.reject(id, reason).subscribe({
-        next: () => this.loadClaims(),
-        error: () => this.actionError = 'Unable to reject this claim. Please retry.'
-      });
-    }
+  requestRejection(claim: PropertyClaimResponse): void {
+    if (claim.status !== 'PENDING' || this.claimActionBusy) return;
+    this.approvalPromptId = null;
+    this.rejectionPromptId = claim.id;
+    this.rejectionReasons[claim.id] = '';
+    this.actionMessage = '';
+    this.actionError = '';
+  }
+
+  cancelRejection(): void {
+    if (this.rejectingClaimId !== null) return;
+    if (this.rejectionPromptId !== null) delete this.rejectionReasons[this.rejectionPromptId];
+    this.rejectionPromptId = null;
+  }
+
+  updateRejectionReason(claimId: number, event: Event): void {
+    this.rejectionReasons[claimId] = (event.target as HTMLTextAreaElement).value;
+  }
+
+  rejectionReasonError(claimId: number): string {
+    const reason = (this.rejectionReasons[claimId] ?? '').trim();
+    if (reason.length < 10) return 'Reason must contain at least 10 characters.';
+    if (reason.length > 500) return 'Reason must not exceed 500 characters.';
+    return '';
+  }
+
+  confirmRejection(claim: PropertyClaimResponse): void {
+    if (claim.status !== 'PENDING' || this.rejectionPromptId !== claim.id || this.claimActionBusy) return;
+    if (this.rejectionReasonError(claim.id)) return;
+
+    const reason = this.rejectionReasons[claim.id].trim();
+    this.rejectingClaimId = claim.id;
+    this.actionMessage = '';
+    this.actionError = '';
+    this.propertyClaims.reject(claim.id, reason).pipe(
+      finalize(() => this.rejectingClaimId = null)
+    ).subscribe({
+      next: rejected => {
+        if (rejected.status !== 'REJECTED') {
+          this.actionError = 'The server did not confirm claim rejection. Refresh the queue before continuing.';
+          return;
+        }
+        this.claims = this.claims.map(current => current.id === rejected.id ? rejected : current);
+        delete this.rejectionReasons[claim.id];
+        this.rejectionPromptId = null;
+        this.actionMessage = `Claim #${rejected.id} was rejected successfully.`;
+      },
+      error: (error: HttpErrorResponse) => {
+        this.actionError = this.rejectionErrorMessage(error);
+      }
+    });
+  }
+
+  isRejecting(claimId: number): boolean {
+    return this.rejectingClaimId === claimId;
   }
 
   trackClaim(_index: number, claim: PropertyClaimResponse): number {
@@ -210,6 +294,14 @@ export class PropertyClaimsComponent implements OnInit {
       return 'This claim can no longer be approved from its current state. Refresh the queue.';
     }
     return 'Unable to approve this claim right now. Please retry.';
+  }
+
+  private rejectionErrorMessage(error: HttpErrorResponse): string {
+    if (error.status === 403) return 'You do not have permission to reject property claims.';
+    if (error.status === 404) return 'This claim no longer exists. Refresh the queue before trying again.';
+    if (error.status === 400) return 'Enter a valid rejection reason between 10 and 500 characters.';
+    if (error.status === 409) return 'This claim can no longer be rejected from its current state. Refresh the queue.';
+    return 'Unable to reject this claim right now. Please retry.';
   }
 
   private isCanonicalApproval(claim: PropertyClaimResponse): boolean {

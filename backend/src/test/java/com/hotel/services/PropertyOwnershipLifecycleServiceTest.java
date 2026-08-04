@@ -82,7 +82,7 @@ class PropertyOwnershipLifecycleServiceTest {
         user.getRoles().add(ownerRole);
         Hotel hotel = hotel(10L);
         UserProperty mapping = mapping(user, hotel, "PENDING");
-        when(userPropertyRepository.findByUserIdAndHotelIdAndRelationshipType(7L, 10L, "OWNER"))
+        when(userPropertyRepository.findPendingOwnerMappingForUpdate(7L, 10L))
                 .thenReturn(Optional.of(mapping));
         when(userPropertyRepository.findByUserIdAndRelationshipType(7L, "OWNER"))
                 .thenReturn(java.util.List.of(mapping));
@@ -100,13 +100,34 @@ class PropertyOwnershipLifecycleServiceTest {
         User user = user(7L);
         Hotel hotel = hotel(10L);
         UserProperty mapping = mapping(user, hotel, "ACTIVE");
-        when(userPropertyRepository.findByUserIdAndHotelIdAndRelationshipType(7L, 10L, "OWNER"))
-                .thenReturn(Optional.of(mapping));
+        when(userPropertyRepository.findPendingOwnerMappingForUpdate(7L, 10L))
+                .thenReturn(Optional.empty());
 
         boolean changed = service.deactivatePendingOwner(10L, 7L);
 
         assertFalse(changed);
         assertEquals("ACTIVE", mapping.getStatus());
+    }
+
+    @Test
+    void deactivatePendingOwnerKeepsOwnerRoleWhenAnotherActiveOwnershipExists() {
+        User user = user(7L);
+        Role ownerRole = new Role();
+        ownerRole.setCode("PROPERTY_OWNER");
+        user.getRoles().add(ownerRole);
+        Hotel pendingHotel = hotel(10L);
+        Hotel activeHotel = hotel(11L);
+        UserProperty pending = mapping(user, pendingHotel, "PENDING");
+        UserProperty active = mapping(user, activeHotel, "ACTIVE");
+        when(userPropertyRepository.findPendingOwnerMappingForUpdate(7L, 10L))
+                .thenReturn(Optional.of(pending));
+        when(userPropertyRepository.findByUserIdAndRelationshipType(7L, "OWNER"))
+                .thenReturn(java.util.List.of(pending, active));
+
+        assertTrue(service.deactivatePendingOwner(10L, 7L));
+
+        assertEquals("INACTIVE", pending.getStatus());
+        assertTrue(user.getRoles().contains(ownerRole));
     }
 
     private User user(Long id) {

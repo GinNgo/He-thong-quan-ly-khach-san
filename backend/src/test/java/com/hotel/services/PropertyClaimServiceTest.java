@@ -192,14 +192,21 @@ class PropertyClaimServiceTest {
         User admin = user(1L);
         Hotel property = hotel(10L, "IMPORTED_PENDING_REVIEW");
         PropertyClaimRequest claim = claim(20L, "PENDING", requester, property);
-        when(claimRepository.findById(20L)).thenReturn(Optional.of(claim));
+        when(claimRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(claim));
         when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
-        when(claimRepository.save(claim)).thenReturn(claim);
+        when(ownershipLifecycleService.deactivatePendingOwner(10L, 7L)).thenReturn(true);
+        when(claimRepository.saveAndFlush(claim)).thenReturn(claim);
 
-        PropertyClaimResponseDTO result = claimService.rejectClaim(20L, 1L, "Insufficient evidence");
+        PropertyClaimResponseDTO result = claimService.rejectClaim(
+                20L, 1L, "  Insufficient evidence  ");
 
         assertEquals("REJECTED", result.status());
+        assertEquals("Insufficient evidence", result.rejectionReason());
+        assertEquals("DRAFT", result.property().status());
+        assertEquals("IMPORTED_PENDING_REVIEW", result.property().approvalStatus());
+        assertEquals("INACTIVE", result.property().operationStatus());
         verify(ownershipLifecycleService).deactivatePendingOwner(10L, 7L);
+        verify(claimRepository).saveAndFlush(claim);
     }
 
     @Test
@@ -207,14 +214,98 @@ class PropertyClaimServiceTest {
         User requester = user(7L);
         Hotel property = hotel(10L, "IMPORTED_PENDING_REVIEW");
         PropertyClaimRequest claim = claim(20L, "PENDING", requester, property);
-        when(claimRepository.findById(20L)).thenReturn(Optional.of(claim));
-        when(claimRepository.save(claim)).thenReturn(claim);
+        when(claimRepository.findByIdAndRequesterUserIdForUpdate(20L, 7L)).thenReturn(Optional.of(claim));
+        when(ownershipLifecycleService.deactivatePendingOwner(10L, 7L)).thenReturn(true);
+        when(claimRepository.saveAndFlush(claim)).thenReturn(claim);
 
         PropertyClaimResponseDTO result = claimService.cancelClaim(20L, 7L);
 
         assertEquals("CANCELLED", result.status());
+        assertNull(result.reviewedAt());
+        assertNull(result.reviewedBy());
+        assertNull(result.rejectionReason());
+        assertEquals("DRAFT", result.property().status());
+        assertEquals("IMPORTED_PENDING_REVIEW", result.property().approvalStatus());
+        assertEquals("INACTIVE", result.property().operationStatus());
         verify(ownershipLifecycleService).deactivatePendingOwner(10L, 7L);
-        assertThrows(SecurityException.class, () -> claimService.cancelClaim(20L, 99L));
+        verify(claimRepository).saveAndFlush(claim);
+    }
+
+    @Test
+    void rejectClaim_ValidatesTrimmedReasonBeforeAnyRepositoryCall() {
+        assertThrows(IllegalArgumentException.class,
+                () -> claimService.rejectClaim(20L, 1L, null));
+        assertThrows(IllegalArgumentException.class,
+                () -> claimService.rejectClaim(20L, 1L, "   "));
+        assertThrows(IllegalArgumentException.class,
+                () -> claimService.rejectClaim(20L, 1L, " too short "));
+        assertThrows(IllegalArgumentException.class,
+                () -> claimService.rejectClaim(20L, 1L, "x".repeat(501)));
+
+        verifyNoInteractions(claimRepository, userRepository, ownershipLifecycleService);
+    }
+
+    @Test
+    void rejectClaim_FailsClosedWhenClaimOrPendingOwnershipIsNoLongerActionable() {
+        User requester = user(7L);
+        User admin = user(1L);
+        Hotel property = hotel(10L, "IMPORTED_PENDING_REVIEW");
+        PropertyClaimRequest approved = claim(20L, "APPROVED", requester, property);
+        when(claimRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(approved));
+
+        assertThrows(IllegalStateException.class,
+                () -> claimService.rejectClaim(20L, 1L, "Ownership evidence is invalid"));
+        verifyNoInteractions(userRepository, ownershipLifecycleService);
+        verify(claimRepository, never()).saveAndFlush(any());
+
+        PropertyClaimRequest pending = claim(21L, "PENDING", requester, property);
+        when(claimRepository.findByIdForUpdate(21L)).thenReturn(Optional.of(pending));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
+        when(ownershipLifecycleService.deactivatePendingOwner(10L, 7L)).thenReturn(false);
+
+        assertThrows(IllegalStateException.class,
+                () -> claimService.rejectClaim(21L, 1L, "Ownership evidence is invalid"));
+        assertEquals("PENDING", pending.getStatus());
+        assertNull(pending.getReviewedAt());
+        verify(claimRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void cancelClaim_HidesForeignAndMissingClaimsBehindTheSameNotFoundBoundary() {
+        when(claimRepository.findByIdAndRequesterUserIdForUpdate(20L, 99L))
+                .thenReturn(Optional.empty());
+        when(claimRepository.findByIdAndRequesterUserIdForUpdate(404L, 99L))
+                .thenReturn(Optional.empty());
+
+        IllegalArgumentException foreign = assertThrows(
+                IllegalArgumentException.class, () -> claimService.cancelClaim(20L, 99L));
+        IllegalArgumentException missing = assertThrows(
+                IllegalArgumentException.class, () -> claimService.cancelClaim(404L, 99L));
+
+        assertEquals("Claim request not found", foreign.getMessage());
+        assertEquals(foreign.getMessage(), missing.getMessage());
+        verifyNoInteractions(ownershipLifecycleService);
+        verify(claimRepository, never()).findByIdForUpdate(any());
+        verify(claimRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void cancelClaim_FailsClosedForReviewedClaimOrMissingPendingOwnership() {
+        User requester = user(7L);
+        Hotel property = hotel(10L, "IMPORTED_PENDING_REVIEW");
+        PropertyClaimRequest reviewed = claim(20L, "REJECTED", requester, property);
+        when(claimRepository.findByIdAndRequesterUserIdForUpdate(20L, 7L)).thenReturn(Optional.of(reviewed));
+
+        assertThrows(IllegalStateException.class, () -> claimService.cancelClaim(20L, 7L));
+        verifyNoInteractions(ownershipLifecycleService);
+
+        PropertyClaimRequest pending = claim(21L, "PENDING", requester, property);
+        when(claimRepository.findByIdAndRequesterUserIdForUpdate(21L, 7L)).thenReturn(Optional.of(pending));
+        when(ownershipLifecycleService.deactivatePendingOwner(10L, 7L)).thenReturn(false);
+
+        assertThrows(IllegalStateException.class, () -> claimService.cancelClaim(21L, 7L));
+        assertEquals("PENDING", pending.getStatus());
+        verify(claimRepository, never()).saveAndFlush(any());
     }
 
     private User user(Long id) {

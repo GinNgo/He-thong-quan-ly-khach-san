@@ -104,42 +104,65 @@ public class PropertyClaimService {
 
     @Transactional
     public PropertyClaimResponseDTO rejectClaim(Long claimId, Long adminUserId, String reason) {
-        PropertyClaimRequest claim = claimRepository.findById(claimId)
+        if (claimId == null) {
+            throw new IllegalArgumentException("Claim request id is required.");
+        }
+        if (adminUserId == null) {
+            throw new IllegalArgumentException("Admin user id is required.");
+        }
+        String validatedReason = requireValidRejectionReason(reason);
+        PropertyClaimRequest claim = claimRepository.findByIdForUpdate(claimId)
                 .orElseThrow(() -> new IllegalArgumentException("Claim request not found"));
-        
-        User admin = userRepository.findById(adminUserId)
-                .orElseThrow(() -> new IllegalArgumentException("Admin user not found"));
 
         if (!"PENDING".equals(claim.getStatus())) {
             throw new IllegalStateException("Claim is not in PENDING state.");
         }
-        if (reason == null || reason.isBlank()) {
-            throw new IllegalArgumentException("Rejection reason is required.");
+        User admin = userRepository.findById(adminUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Admin user not found"));
+        if (!ownershipLifecycleService.deactivatePendingOwner(
+                claim.getProperty().getId(), claim.getRequesterUser().getId())) {
+            throw new IllegalStateException("Pending property ownership is no longer actionable.");
         }
 
         claim.setStatus("REJECTED");
         claim.setReviewedBy(admin);
         claim.setReviewedAt(LocalDateTime.now());
-        claim.setRejectionReason(reason);
-        ownershipLifecycleService.deactivatePendingOwner(
-                claim.getProperty().getId(), claim.getRequesterUser().getId());
-        return toResponse(claimRepository.save(claim));
+        claim.setRejectionReason(validatedReason);
+        return toResponse(claimRepository.saveAndFlush(claim));
     }
 
     @Transactional
     public PropertyClaimResponseDTO cancelClaim(Long claimId, Long requesterUserId) {
-        PropertyClaimRequest claim = claimRepository.findById(claimId)
-                .orElseThrow(() -> new IllegalArgumentException("Claim request not found"));
-        if (!claim.getRequesterUser().getId().equals(requesterUserId)) {
-            throw new SecurityException("Bạn không có quyền huỷ yêu cầu này.");
+        if (claimId == null) {
+            throw new IllegalArgumentException("Claim request id is required.");
         }
+        if (requesterUserId == null) {
+            throw new SecurityException("Authenticated requester id is required.");
+        }
+        PropertyClaimRequest claim = claimRepository
+                .findByIdAndRequesterUserIdForUpdate(claimId, requesterUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Claim request not found"));
         if (!"PENDING".equals(claim.getStatus())) {
-            throw new IllegalStateException("Chỉ có thể huỷ yêu cầu đang chờ duyệt.");
+            throw new IllegalStateException("Only a pending property claim can be cancelled.");
+        }
+        if (!ownershipLifecycleService.deactivatePendingOwner(
+                claim.getProperty().getId(), requesterUserId)) {
+            throw new IllegalStateException("Pending property ownership is no longer actionable.");
         }
         claim.setStatus("CANCELLED");
-        ownershipLifecycleService.deactivatePendingOwner(
-                claim.getProperty().getId(), requesterUserId);
-        return toResponse(claimRepository.save(claim));
+        claim.setReviewedBy(null);
+        claim.setReviewedAt(null);
+        claim.setRejectionReason(null);
+        return toResponse(claimRepository.saveAndFlush(claim));
+    }
+
+    private String requireValidRejectionReason(String reason) {
+        String normalized = reason == null ? "" : reason.trim();
+        if (normalized.length() < 10 || normalized.length() > 500) {
+            throw new IllegalArgumentException(
+                    "Rejection reason must contain between 10 and 500 characters.");
+        }
+        return normalized;
     }
 
     @Transactional(readOnly = true)

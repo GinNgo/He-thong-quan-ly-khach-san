@@ -1,6 +1,7 @@
 package com.hotel.controllers;
 
 import com.hotel.dtos.PropertyClaimRequestDTO;
+import com.hotel.dtos.PropertyClaimRejectionRequest;
 import com.hotel.dtos.PropertyClaimResponseDTO;
 import com.hotel.exceptions.ApiErrorResponse;
 import com.hotel.exceptions.CorrelationIdSupport;
@@ -82,10 +83,10 @@ public class PropertyClaimController {
     @PreAuthorize("hasAuthority('PROPERTY_CLAIM_APPROVE') or hasAuthority('SUPER_ADMIN')")
     public ResponseEntity<?> rejectClaim(
             @PathVariable Long id,
-            @RequestBody Map<String, String> payload,
+            @Valid @RequestBody PropertyClaimRejectionRequest request,
             @AuthenticationPrincipal CustomUserDetails principal) {
-        String reason = payload.get("reason");
-        PropertyClaimResponseDTO claim = claimService.rejectClaim(id, principal.getUserId(), reason);
+        PropertyClaimResponseDTO claim = claimService.rejectClaim(
+                id, principal.getUserId(), request.reason());
         return ResponseEntity.ok(claim);
     }
 

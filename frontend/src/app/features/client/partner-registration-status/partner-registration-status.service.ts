@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
+import { PropertyClaimResponse, PropertyClaimStatus } from '../../../core/services/property-claim.service';
 import { PropertyReviewHistoryEvent } from '../../../core/services/property.service';
 
 export type PartnerPropertyStatus =
@@ -23,6 +24,8 @@ export interface PartnerPropertyStatusRow {
   operationStatus: string;
   ownershipStatus: string;
   rejectionReason?: string | null;
+  claimId: number | null;
+  claimStatus: PropertyClaimStatus | null;
 }
 
 export interface PartnerRegistrationStatusResponse {
@@ -60,6 +63,13 @@ export class PartnerRegistrationStatusService {
   loadHistory(propertyId: number): Observable<PropertyReviewHistoryEvent[]> {
     return this.http.get<PropertyReviewHistoryEvent[]>(
       `${environment.apiUrl}/partner/properties/${propertyId}/history`
+    );
+  }
+
+  cancelClaim(claimId: number): Observable<PropertyClaimResponse> {
+    return this.http.post<PropertyClaimResponse>(
+      `${environment.apiUrl}/property-claims/${claimId}/cancel`,
+      {}
     );
   }
 }

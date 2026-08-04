@@ -18,6 +18,19 @@ public record PartnerRegistrationStatusResponse(
             String approvalStatus,
             String operationStatus,
             String ownershipStatus,
-            String rejectionReason) {
+            String rejectionReason,
+            Long claimId,
+            String claimStatus) {
+        public PropertyStatus(
+                Long propertyId,
+                String propertyName,
+                String status,
+                String approvalStatus,
+                String operationStatus,
+                String ownershipStatus,
+                String rejectionReason) {
+            this(propertyId, propertyName, status, approvalStatus, operationStatus,
+                    ownershipStatus, rejectionReason, null, null);
+        }
     }
 }

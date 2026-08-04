@@ -100,6 +100,58 @@ describe('PropertyClaimsComponent', () => {
     expect(fixture.componentInstance.actionError).toContain('did not confirm owner activation');
     expect(fixture.componentInstance.claims[0].status).toBe('PENDING');
   });
+
+  it('uses a validated inline rejection editor and blocks duplicate submission', () => {
+    const browserPrompt = vi.spyOn(window, 'prompt').mockReturnValue('unsafe browser reason');
+    fixture.detectChanges();
+    flushQueue(http, [pendingClaim()]);
+    const claim = fixture.componentInstance.claims[0];
+
+    fixture.componentInstance.requestRejection(claim);
+    expect(fixture.componentInstance.rejectionPromptId).toBe(81);
+    expect(fixture.componentInstance.rejectionReasonError(81)).toContain('at least 10');
+    fixture.componentInstance.confirmRejection(claim);
+    http.expectNone(`${environment.apiUrl}/admin/property-claims/81/reject`);
+
+    fixture.componentInstance.rejectionReasons[81] = 'Ownership evidence could not be verified.';
+    fixture.componentInstance.confirmRejection(claim);
+    fixture.componentInstance.confirmRejection(claim);
+    expect(fixture.componentInstance.rejectingClaimId).toBe(81);
+    fixture.componentInstance.loadClaims();
+    http.expectNone(request => request.url === `${environment.apiUrl}/admin/property-claims`);
+
+    const rejection = http.expectOne(`${environment.apiUrl}/admin/property-claims/81/reject`);
+    expect(rejection.request.method).toBe('POST');
+    expect(rejection.request.body).toEqual({ reason: 'Ownership evidence could not be verified.' });
+    rejection.flush(rejectedClaim('Ownership evidence could not be verified.'));
+    fixture.detectChanges();
+
+    expect(browserPrompt).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.rejectingClaimId).toBeNull();
+    expect(fixture.componentInstance.rejectionPromptId).toBeNull();
+    expect(fixture.componentInstance.claims[0].status).toBe('REJECTED');
+    expect(fixture.componentInstance.claims[0].rejectionReason).toContain('could not be verified');
+    expect(fixture.componentInstance.actionMessage).toContain('rejected successfully');
+  });
+
+  it('keeps the rejection editor retryable and hides backend validation details', () => {
+    fixture.detectChanges();
+    flushQueue(http, [pendingClaim()]);
+    const claim = fixture.componentInstance.claims[0];
+    fixture.componentInstance.requestRejection(claim);
+    fixture.componentInstance.rejectionReasons[81] = 'Ownership evidence is incomplete.';
+    fixture.componentInstance.confirmRejection(claim);
+
+    http.expectOne(`${environment.apiUrl}/admin/property-claims/81/reject`).flush(
+      { message: 'Requester 42 failed internal ownership rule CLAIM_OWNER_17' },
+      { status: 400, statusText: 'Bad Request' }
+    );
+
+    expect(fixture.componentInstance.actionError).toContain('between 10 and 500');
+    expect(fixture.componentInstance.actionError).not.toContain('Requester 42');
+    expect(fixture.componentInstance.rejectionPromptId).toBe(81);
+    expect(fixture.componentInstance.rejectingClaimId).toBeNull();
+  });
 });
 
 function flushQueue(http: HttpTestingController, content: PropertyClaimResponse[]): void {
@@ -151,5 +203,15 @@ function approvedClaim(): PropertyClaimResponse {
     status: 'APPROVED',
     reviewedBy: { id: 7, username: 'admin', email: 'admin@example.com', fullName: 'Admin' },
     reviewedAt: '2026-08-04T06:30:00'
+  };
+}
+
+function rejectedClaim(reason: string): PropertyClaimResponse {
+  return {
+    ...pendingClaim(),
+    status: 'REJECTED',
+    reviewedBy: { id: 7, username: 'admin', email: 'admin@example.com', fullName: 'Admin' },
+    reviewedAt: '2026-08-04T06:30:00',
+    rejectionReason: reason
   };
 }

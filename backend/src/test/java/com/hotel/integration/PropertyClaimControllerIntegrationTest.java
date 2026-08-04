@@ -191,7 +191,7 @@ class PropertyClaimControllerIntegrationTest {
                         .with(user(principal(72L, "PROPERTY_CLAIM_APPROVE")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"reason": "Ownership evidence is incomplete"}
+                                {"reason": "  Ownership evidence is incomplete  "}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(9L))
@@ -199,6 +199,19 @@ class PropertyClaimControllerIntegrationTest {
                 .andExpect(jsonPath("$.rejectionReason").value("Ownership evidence is incomplete"));
 
         verify(claimService).rejectClaim(9L, 72L, "Ownership evidence is incomplete");
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidRejectionPayloads")
+    void invalidRejectReasonIsRejectedBeforeClaimServiceRuns(String payload) throws Exception {
+        mockMvc.perform(post("/api/admin/property-claims/{id}/reject", 9L)
+                        .with(user(principal(72L, "PROPERTY_CLAIM_APPROVE")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        verifyNoInteractions(claimService);
     }
 
     @Test
@@ -224,7 +237,7 @@ class PropertyClaimControllerIntegrationTest {
         mockMvc.perform(post("/api/admin/property-claims/{id}/reject", 10L)
                         .with(user(actor))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"Denied\"}"))
+                        .content("{\"reason\":\"Ownership evidence is invalid\"}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -286,5 +299,13 @@ class PropertyClaimControllerIntegrationTest {
                         + "x".repeat(1001) + "\"}",
                 "{\"verificationMethod\":\"EMAIL\",\"verificationData\":\"proof\",\"note\":\""
                         + "x".repeat(501) + "\"}");
+    }
+
+    private static Stream<String> invalidRejectionPayloads() {
+        return Stream.of(
+                "{}",
+                "{\"reason\":\"   \"}",
+                "{\"reason\":\"too short\"}",
+                "{\"reason\":\"" + "x".repeat(501) + "\"}");
     }
 }

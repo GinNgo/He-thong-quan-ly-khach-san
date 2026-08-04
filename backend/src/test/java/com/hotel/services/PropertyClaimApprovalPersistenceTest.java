@@ -43,6 +43,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -187,6 +188,71 @@ class PropertyClaimApprovalPersistenceTest {
 
         assertThrows(IllegalStateException.class,
                 () -> claimService.approveClaim(seed.claimId(), seed.adminId()));
+
+        assertRolledBack(seed);
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void rejectionCommitsExactClaimStatusCleansPendingMappingRoleAndPreservesImportedProperty() {
+        SeedData seed = seedImportedClaim("claim-reject@example.test");
+        User claimant = userRepository.findById(seed.claimantId()).orElseThrow();
+        claimant.setRoles(new HashSet<>(java.util.Set.of(
+                roleRepository.findByCode("PROPERTY_OWNER").orElseThrow())));
+        userRepository.saveAndFlush(claimant);
+
+        var result = claimService.rejectClaim(
+                seed.claimId(), seed.adminId(), "  Ownership evidence did not match.  ");
+
+        PropertyClaimRequest claim = claimRepository.findById(seed.claimId()).orElseThrow();
+        Hotel property = hotelRepository.findById(seed.propertyId()).orElseThrow();
+        UserProperty mapping = userPropertyRepository
+                .findByUserIdAndHotelIdAndRelationshipType(seed.claimantId(), seed.propertyId(), "OWNER")
+                .orElseThrow();
+        User reloaded = userRepository.findById(seed.claimantId()).orElseThrow();
+        assertEquals("REJECTED", result.status());
+        assertEquals("Ownership evidence did not match.", claim.getRejectionReason());
+        assertNotNull(claim.getReviewedAt());
+        assertEquals(seed.adminId(), claim.getReviewedBy().getId());
+        assertEquals("INACTIVE", mapping.getStatus());
+        assertFalse(Boolean.TRUE.equals(mapping.getIsPrimaryOwner()));
+        assertTrue(reloaded.getRoles().stream().noneMatch(role -> "PROPERTY_OWNER".equals(role.getCode())));
+        assertEquals("DRAFT", property.getStatus());
+        assertEquals("IMPORTED_PENDING_REVIEW", property.getApprovalStatus());
+        assertEquals("ACTIVE", property.getOperationStatus());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void cancellationCommitsCancelledWithoutReviewerAndPreservesImportedProperty() {
+        SeedData seed = seedImportedClaim("claim-cancel@example.test");
+
+        var result = claimService.cancelClaim(seed.claimId(), seed.claimantId());
+
+        PropertyClaimRequest claim = claimRepository.findById(seed.claimId()).orElseThrow();
+        Hotel property = hotelRepository.findById(seed.propertyId()).orElseThrow();
+        UserProperty mapping = userPropertyRepository
+                .findByUserIdAndHotelIdAndRelationshipType(seed.claimantId(), seed.propertyId(), "OWNER")
+                .orElseThrow();
+        assertEquals("CANCELLED", result.status());
+        assertNull(claim.getReviewedBy());
+        assertNull(claim.getReviewedAt());
+        assertNull(claim.getRejectionReason());
+        assertEquals("INACTIVE", mapping.getStatus());
+        assertEquals("DRAFT", property.getStatus());
+        assertEquals("IMPORTED_PENDING_REVIEW", property.getApprovalStatus());
+        assertEquals("ACTIVE", property.getOperationStatus());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void cancellationClaimWriteFailureRollsBackPendingMappingCleanup() {
+        SeedData seed = seedImportedClaim("claim-cancel-rollback@example.test");
+        doThrow(new IllegalStateException("claim store unavailable"))
+                .when(claimRepository).saveAndFlush(any(PropertyClaimRequest.class));
+
+        assertThrows(IllegalStateException.class,
+                () -> claimService.cancelClaim(seed.claimId(), seed.claimantId()));
 
         assertRolledBack(seed);
     }

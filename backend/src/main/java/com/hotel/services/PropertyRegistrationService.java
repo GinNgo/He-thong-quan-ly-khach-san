@@ -183,10 +183,10 @@ public class PropertyRegistrationService {
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
-        Map<Long, String> rejectedClaimReasons = rejectedClaimReasons(userId, propertyIds);
+        Map<Long, ClaimStatus> latestClaims = latestClaims(userId, propertyIds);
 
         List<PartnerRegistrationStatusResponse.PropertyStatus> properties = mappings.stream()
-                .map(mapping -> toRegistrationStatus(mapping, rejectedClaimReasons))
+                .map(mapping -> toRegistrationStatus(mapping, latestClaims))
                 .toList();
         String overallStatus = properties.stream()
                 .map(PartnerRegistrationStatusResponse.PropertyStatus::status)
@@ -198,33 +198,39 @@ public class PropertyRegistrationService {
         return new PartnerRegistrationStatusResponse(overallStatus, properties.size(), properties);
     }
 
-    private Map<Long, String> rejectedClaimReasons(Long userId, List<Long> propertyIds) {
+    private Map<Long, ClaimStatus> latestClaims(Long userId, List<Long> propertyIds) {
         if (propertyIds.isEmpty()) {
             return Map.of();
         }
-        Map<Long, String> reasons = new LinkedHashMap<>();
-        propertyClaimRequestRepository.findByRequesterAndPropertiesAndStatus(userId, propertyIds, "REJECTED")
+        Map<Long, ClaimStatus> claims = new LinkedHashMap<>();
+        propertyClaimRequestRepository
+                .findByRequesterAndPropertiesOrderByCreatedAtDescIdDesc(userId, propertyIds)
                 .forEach(claim -> {
                     Long propertyId = claim.getProperty() == null ? null : claim.getProperty().getId();
                     Long requesterId = claim.getRequesterUser() == null ? null : claim.getRequesterUser().getId();
-                    String reason = normalizeOptionalReason(claim.getRejectionReason());
-                    if (userId.equals(requesterId) && propertyIds.contains(propertyId) && reason != null) {
-                        reasons.putIfAbsent(propertyId, reason);
+                    if (claim.getId() != null
+                            && userId.equals(requesterId)
+                            && propertyIds.contains(propertyId)) {
+                        claims.putIfAbsent(propertyId, new ClaimStatus(
+                                claim.getId(),
+                                canonicalRawStatus(claim.getStatus()),
+                                normalizeOptionalReason(claim.getRejectionReason())));
                     }
                 });
-        return reasons;
+        return claims;
     }
 
     private PartnerRegistrationStatusResponse.PropertyStatus toRegistrationStatus(
             UserProperty mapping,
-            Map<Long, String> rejectedClaimReasons) {
+            Map<Long, ClaimStatus> latestClaims) {
         Hotel property = mapping.getHotel();
-        String status = classifyRegistrationStatus(property, mapping);
+        ClaimStatus claim = property == null ? null : latestClaims.get(property.getId());
+        String status = classifyRegistrationStatus(property, mapping, claim);
         String reason = null;
         if ("REJECTED".equals(status)) {
             reason = normalizeOptionalReason(mapping.getStatusReason());
-            if (reason == null && property != null) {
-                reason = rejectedClaimReasons.get(property.getId());
+            if (reason == null && claim != null) {
+                reason = claim.rejectionReason();
             }
         } else if (("SUSPENDED".equals(status) || "CANCELLED".equals(status))
                 && property != null) {
@@ -237,14 +243,26 @@ public class PropertyRegistrationService {
                 property == null ? null : property.getApprovalStatus(),
                 property == null ? null : property.getOperationStatus(),
                 mapping.getStatus(),
-                reason);
+                reason,
+                claim == null ? null : claim.id(),
+                claim == null ? null : claim.status());
     }
 
-    private String classifyRegistrationStatus(Hotel property, UserProperty mapping) {
+    private String classifyRegistrationStatus(
+            Hotel property,
+            UserProperty mapping,
+            ClaimStatus claim) {
         String approval = canonicalRawStatus(property == null ? null : property.getApprovalStatus());
         String operation = canonicalRawStatus(property == null ? null : property.getOperationStatus());
         String ownership = canonicalRawStatus(mapping.getStatus());
+        String claimStatus = claim == null ? "" : claim.status();
 
+        if ("REJECTED".equals(claimStatus)) {
+            return "REJECTED";
+        }
+        if ("CANCELLED".equals(claimStatus)) {
+            return "CANCELLED";
+        }
         if ("REJECTED".equals(approval)) {
             return "REJECTED";
         }
@@ -260,7 +278,9 @@ public class PropertyRegistrationService {
                 && "ACTIVE".equals(ownership)) {
             return "APPROVED";
         }
-        if ("PENDING_APPROVAL".equals(approval) || "PENDING".equals(ownership)) {
+        if ("PENDING".equals(claimStatus)
+                || "PENDING_APPROVAL".equals(approval)
+                || "PENDING".equals(ownership)) {
             return "PENDING";
         }
         if ("DRAFT".equals(approval)) {
@@ -280,5 +300,7 @@ public class PropertyRegistrationService {
     private String normalizeOptionalReason(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
+
+    private record ClaimStatus(Long id, String status, String rejectionReason) { }
 
 }

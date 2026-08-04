@@ -60,7 +60,7 @@ class PropertyRegistrationStatusServiceTest {
         assertEquals(0, result.propertyCount());
         assertEquals(List.of(), result.properties());
         verify(propertyClaimRequestRepository, never())
-                .findByRequesterAndPropertiesAndStatus(42L, List.of(), "REJECTED");
+                .findByRequesterAndPropertiesOrderByCreatedAtDescIdDesc(42L, List.of());
     }
 
     @ParameterizedTest
@@ -83,7 +83,7 @@ class PropertyRegistrationStatusServiceTest {
             String expectedStatus) {
         UserProperty mapping = ownerMapping(11L, "Harbor Hotel", approvalStatus, operationStatus, ownershipStatus);
         when(userPropertyRepository.findOwnerMappingsWithHotelByUserId(42L)).thenReturn(List.of(mapping));
-        when(propertyClaimRequestRepository.findByRequesterAndPropertiesAndStatus(42L, List.of(11L), "REJECTED"))
+        when(propertyClaimRequestRepository.findByRequesterAndPropertiesOrderByCreatedAtDescIdDesc(42L, List.of(11L)))
                 .thenReturn(List.of());
 
         PartnerRegistrationStatusResponse result = registrationService.registrationStatus(42L);
@@ -96,6 +96,8 @@ class PropertyRegistrationStatusServiceTest {
         assertEquals(operationStatus, row.operationStatus());
         assertEquals(ownershipStatus, row.ownershipStatus());
         assertNull(row.rejectionReason());
+        assertNull(row.claimId());
+        assertNull(row.claimStatus());
     }
 
     @Test
@@ -104,8 +106,8 @@ class PropertyRegistrationStatusServiceTest {
         UserProperty approved = ownerMapping(12L, "Live Hotel", "APPROVED", "ACTIVE", "ACTIVE");
         when(userPropertyRepository.findOwnerMappingsWithHotelByUserId(42L))
                 .thenReturn(List.of(draft, approved));
-        when(propertyClaimRequestRepository.findByRequesterAndPropertiesAndStatus(
-                42L, List.of(11L, 12L), "REJECTED"))
+        when(propertyClaimRequestRepository.findByRequesterAndPropertiesOrderByCreatedAtDescIdDesc(
+                42L, List.of(11L, 12L)))
                 .thenReturn(List.of());
 
         PartnerRegistrationStatusResponse result = registrationService.registrationStatus(42L);
@@ -129,17 +131,52 @@ class PropertyRegistrationStatusServiceTest {
 
         when(userPropertyRepository.findOwnerMappingsWithHotelByUserId(42L))
                 .thenReturn(List.of(mappingReason, exactClaimReason, unsafeClaimReason));
-        when(propertyClaimRequestRepository.findByRequesterAndPropertiesAndStatus(
-                42L, List.of(11L, 12L, 13L), "REJECTED"))
+        when(propertyClaimRequestRepository.findByRequesterAndPropertiesOrderByCreatedAtDescIdDesc(
+                42L, List.of(11L, 12L, 13L)))
                 .thenReturn(List.of(
-                        rejectedClaim(99L, 13L, "Other account reason"),
-                        rejectedClaim(42L, 999L, "Other property reason"),
-                        rejectedClaim(42L, 12L, "  Exact claim rejection  ")));
+                        claim(90L, 99L, 13L, "REJECTED", "Other account reason"),
+                        claim(91L, 42L, 999L, "REJECTED", "Other property reason"),
+                        claim(92L, 42L, 12L, "REJECTED", "  Exact claim rejection  ")));
 
         PartnerRegistrationStatusResponse result = registrationService.registrationStatus(42L);
 
         assertEquals("Mapping rejection wins", result.properties().get(0).rejectionReason());
         assertEquals("Exact claim rejection", result.properties().get(1).rejectionReason());
+        assertNull(result.properties().get(2).rejectionReason());
+        assertEquals(92L, result.properties().get(1).claimId());
+        assertEquals("REJECTED", result.properties().get(1).claimStatus());
+    }
+
+    @Test
+    void importedClaimRowsExposeExactPendingRejectedAndCancelledClaimState() {
+        UserProperty pending = ownerMapping(
+                11L, "Pending Imported", "IMPORTED_PENDING_REVIEW", "ACTIVE", "PENDING");
+        UserProperty rejected = ownerMapping(
+                12L, "Rejected Imported", "IMPORTED_PENDING_REVIEW", "ACTIVE", "INACTIVE");
+        UserProperty cancelled = ownerMapping(
+                13L, "Cancelled Imported", "IMPORTED_PENDING_REVIEW", "ACTIVE", "INACTIVE");
+        when(userPropertyRepository.findOwnerMappingsWithHotelByUserId(42L))
+                .thenReturn(List.of(pending, rejected, cancelled));
+        when(propertyClaimRequestRepository.findByRequesterAndPropertiesOrderByCreatedAtDescIdDesc(
+                42L, List.of(11L, 12L, 13L)))
+                .thenReturn(List.of(
+                        claim(103L, 42L, 13L, "CANCELLED", null),
+                        claim(102L, 42L, 12L, "REJECTED", "  Evidence did not match.  "),
+                        claim(101L, 42L, 11L, "PENDING", null)));
+
+        PartnerRegistrationStatusResponse result = registrationService.registrationStatus(42L);
+
+        assertEquals("MIXED", result.overallStatus());
+        assertEquals(List.of("PENDING", "REJECTED", "CANCELLED"), result.properties().stream()
+                .map(PartnerRegistrationStatusResponse.PropertyStatus::status)
+                .toList());
+        assertEquals(List.of(101L, 102L, 103L), result.properties().stream()
+                .map(PartnerRegistrationStatusResponse.PropertyStatus::claimId)
+                .toList());
+        assertEquals(List.of("PENDING", "REJECTED", "CANCELLED"), result.properties().stream()
+                .map(PartnerRegistrationStatusResponse.PropertyStatus::claimStatus)
+                .toList());
+        assertEquals("Evidence did not match.", result.properties().get(1).rejectionReason());
         assertNull(result.properties().get(2).rejectionReason());
     }
 
@@ -153,8 +190,8 @@ class PropertyRegistrationStatusServiceTest {
         closed.getHotel().setLifecycleReason("  Property operations ended permanently.  ");
         when(userPropertyRepository.findOwnerMappingsWithHotelByUserId(42L))
                 .thenReturn(List.of(suspended, closed));
-        when(propertyClaimRequestRepository.findByRequesterAndPropertiesAndStatus(
-                42L, List.of(11L, 12L), "REJECTED"))
+        when(propertyClaimRequestRepository.findByRequesterAndPropertiesOrderByCreatedAtDescIdDesc(
+                42L, List.of(11L, 12L)))
                 .thenReturn(List.of());
 
         PartnerRegistrationStatusResponse result = registrationService.registrationStatus(42L);
@@ -167,7 +204,7 @@ class PropertyRegistrationStatusServiceTest {
     void inconsistentCombinationFallsBackToCancelledAndNeverApproved() {
         UserProperty mapping = ownerMapping(11L, "Inconsistent", "APPROVED", "INACTIVE", "ACTIVE");
         when(userPropertyRepository.findOwnerMappingsWithHotelByUserId(42L)).thenReturn(List.of(mapping));
-        when(propertyClaimRequestRepository.findByRequesterAndPropertiesAndStatus(42L, List.of(11L), "REJECTED"))
+        when(propertyClaimRequestRepository.findByRequesterAndPropertiesOrderByCreatedAtDescIdDesc(42L, List.of(11L)))
                 .thenReturn(List.of());
 
         PartnerRegistrationStatusResponse result = registrationService.registrationStatus(42L);
@@ -184,7 +221,7 @@ class PropertyRegistrationStatusServiceTest {
         stale.setId(10L);
         when(userPropertyRepository.findOwnerMappingsWithHotelByUserId(42L))
                 .thenReturn(List.of(newest, stale));
-        when(propertyClaimRequestRepository.findByRequesterAndPropertiesAndStatus(42L, List.of(11L), "REJECTED"))
+        when(propertyClaimRequestRepository.findByRequesterAndPropertiesOrderByCreatedAtDescIdDesc(42L, List.of(11L)))
                 .thenReturn(List.of());
 
         PartnerRegistrationStatusResponse result = registrationService.registrationStatus(42L);
@@ -213,15 +250,21 @@ class PropertyRegistrationStatusServiceTest {
         return mapping;
     }
 
-    private PropertyClaimRequest rejectedClaim(Long requesterId, Long propertyId, String reason) {
+    private PropertyClaimRequest claim(
+            Long claimId,
+            Long requesterId,
+            Long propertyId,
+            String status,
+            String reason) {
         User requester = new User();
         requester.setId(requesterId);
         Hotel property = new Hotel();
         property.setId(propertyId);
         PropertyClaimRequest claim = new PropertyClaimRequest();
+        claim.setId(claimId);
         claim.setRequesterUser(requester);
         claim.setProperty(property);
-        claim.setStatus("REJECTED");
+        claim.setStatus(status);
         claim.setRejectionReason(reason);
         return claim;
     }
