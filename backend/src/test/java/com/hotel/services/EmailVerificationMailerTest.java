@@ -45,9 +45,10 @@ class EmailVerificationMailerTest {
                 60);
 
         assertTrue(sent);
-        assertTrue(message.getSubject().contains("new LuxeStay email"));
+        assertTrue(message.getSubject().contains("Confirm your new email"));
         assertTrue(message.getContent().toString().contains("Guest &lt;script&gt;"));
         assertTrue(message.getContent().toString().contains("next=&lt;script&gt;"));
+        assertTrue(message.getContent().toString().contains("Xác nhận email / Verify email"));
         verify(mailSender).send(message);
     }
 }

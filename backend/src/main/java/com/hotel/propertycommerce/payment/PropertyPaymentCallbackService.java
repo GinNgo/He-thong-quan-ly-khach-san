@@ -9,6 +9,7 @@ import com.hotel.paymentprovider.domain.VndMoney;
 import com.hotel.paymentprovider.error.FinancialErrorCode;
 import com.hotel.paymentprovider.error.FinancialException;
 import com.hotel.paymentprovider.spi.PaymentProviderAdapter;
+import com.hotel.services.PaymentReceiptEmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,9 @@ import java.util.UUID;
 
 @Service
 public class PropertyPaymentCallbackService {
+
+    @Autowired(required = false)
+    private PaymentReceiptEmailService paymentReceiptEmailService;
 
     private final PropertyPaymentAttemptRepository attemptRepository;
     private final PropertyFinancialTransactionRepository transactionRepository;
@@ -210,6 +214,9 @@ public class PropertyPaymentCallbackService {
 
         audit(attempt, command, normalized, previousState, PaymentState.SUCCESS,
                 "Verified provider payment", false, null);
+        if (paymentReceiptEmailService != null) {
+            paymentReceiptEmailService.sendPropertyReceiptAfterCommit(attempt, transaction);
+        }
         return CallbackResult.accepted(attempt, transaction, false);
     }
 

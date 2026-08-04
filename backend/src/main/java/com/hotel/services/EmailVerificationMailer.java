@@ -54,7 +54,9 @@ public class EmailVerificationMailer {
             MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
             helper.setFrom(fromEmail);
             helper.setTo(targetEmail.strip());
-            helper.setSubject(emailChange ? "Confirm your new LuxeStay email" : "Verify your LuxeStay email");
+            helper.setSubject(emailChange
+                    ? "Xác nhận email LuxeStay mới / Confirm your new email"
+                    : "Xác thực tài khoản LuxeStay / Verify your account");
             helper.setText(template(safeName, safeUrl, expiresInMinutes, emailChange), true);
             mailSender.send(message);
             operationalMetrics.recordExternal("mail", "email_verification", false, elapsed(startedAt));
@@ -72,10 +74,11 @@ public class EmailVerificationMailer {
     }
 
     private String template(String customerName, String url, long expiresInMinutes, boolean emailChange) {
-        String title = emailChange ? "Confirm your new email" : "Verify your email";
+        String title = emailChange ? "Xác nhận email mới" : "Chào mừng đến với LuxeStay";
+        String subtitle = emailChange ? "Confirm your new email" : "Verify your account email";
         String copy = emailChange
-                ? "Confirm this address before it replaces the email currently attached to your account."
-                : "Verify this address to protect your account and receive booking information reliably.";
+                ? "Xác nhận địa chỉ này trước khi thay thế email hiện tại trên tài khoản."
+                : "Xác thực email để bảo vệ tài khoản và nhận đầy đủ thông tin đặt phòng, thanh toán.";
         return """
                 <!doctype html>
                 <html lang="en">
@@ -83,13 +86,13 @@ public class EmailVerificationMailer {
                     <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="padding:32px 16px;background:#f3f7f5">
                       <tr><td align="center">
                         <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#fff;border:1px solid #d9e4df;border-radius:18px;overflow:hidden">
-                          <tr><td style="padding:26px 32px;background:#0f766e;color:#fff"><strong>LuxeStay</strong><h1 style="margin:8px 0 0">%s</h1></td></tr>
-                          <tr><td style="padding:32px"><p>Hello <strong>%s</strong>,</p><p style="line-height:1.65;color:#49635d">%s This one-time link expires in %d minutes.</p><a href="%s" style="display:inline-block;padding:13px 22px;border-radius:999px;background:#0f766e;color:#fff;text-decoration:none;font-weight:700">%s</a><p style="margin-top:26px;font-size:13px;color:#71837f">If you did not request this, ignore this message and keep your current email.</p></td></tr>
+                          <tr><td style="padding:26px 32px;background:#124e43;color:#fff"><div style="font-size:13px;letter-spacing:2px;text-transform:uppercase;opacity:.82">LuxeStay</div><h1 style="margin:8px 0 0">%s</h1><p style="margin:7px 0 0;opacity:.85">%s</p></td></tr>
+                          <tr><td style="padding:32px"><p>Xin chào / Hello <strong>%s</strong>,</p><p style="line-height:1.65;color:#49635d">%s Liên kết dùng một lần này hết hạn sau %d phút.<br>This one-time link expires in %d minutes.</p><a href="%s" style="display:inline-block;padding:13px 22px;border-radius:999px;background:#0f766e;color:#fff;text-decoration:none;font-weight:700">Xác nhận email / Verify email</a><p style="margin-top:26px;font-size:13px;line-height:1.55;color:#71837f">Nếu bạn không thực hiện yêu cầu này, hãy bỏ qua email và không chia sẻ liên kết.<br>If you did not request this, ignore the email and do not share the link.</p></td></tr>
                         </table>
                       </td></tr>
                     </table>
                   </body>
                 </html>
-                """.formatted(title, customerName, copy, expiresInMinutes, url, title);
+                """.formatted(title, subtitle, customerName, copy, expiresInMinutes, expiresInMinutes, url);
     }
 }
