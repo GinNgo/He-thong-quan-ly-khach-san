@@ -2,8 +2,10 @@ package com.hotel.services;
 
 import com.hotel.entities.Hotel;
 import com.hotel.entities.HousekeepingTask;
+import com.hotel.entities.Location;
 import com.hotel.entities.Room;
 import com.hotel.entities.User;
+import com.hotel.dtos.ManagementPropertyRequest;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.HousekeepingTaskRepository;
 import com.hotel.repositories.LocationRepository;
@@ -128,6 +130,61 @@ class ManagementPortalServiceTest {
         verify(roomRepository, never()).countByHotelId(999L);
         verify(userPropertyRepository, never()).countActiveStaffByHotelId(999L);
         verify(housekeepingTaskRepository, never()).countByHotelIdAndStatus(999L, "PENDING");
+    }
+
+    @Test
+    void profileUpdateUsesAllowlistedFieldsAndPreservesControlledState() {
+        Hotel hotel = operationalHotel(20L, "Old name");
+        hotel.setStatus("ACTIVE");
+        hotel.setDataSource("USER");
+        Location province = new Location();
+        province.setId(1L);
+        province.setLocationType("PROVINCE");
+        province.setNameVi("Ha Noi");
+        Location ward = new Location();
+        ward.setId(2L);
+        ward.setLocationType("WARD");
+        ward.setParent(province);
+        ManagementPropertyRequest request = new ManagementPropertyRequest();
+        request.setNameVi("  New name  ");
+        request.setPropertyType("HOTEL");
+        request.setProvinceId(1L);
+        request.setWardId(2L);
+        request.setAddress("  New address  ");
+        request.setEmail(" owner@example.test ");
+
+        when(propertyAccessService.requireAssignedHotel(20L)).thenReturn(hotel);
+        when(propertyAccessService.isOperational(hotel)).thenReturn(true);
+        when(locationRepository.findById(1L)).thenReturn(Optional.of(province));
+        when(locationRepository.findById(2L)).thenReturn(Optional.of(ward));
+        when(hotelRepository.saveAndFlush(hotel)).thenReturn(hotel);
+
+        Map<String, Object> result = service.updateProperty(20L, request);
+
+        assertEquals("New name", result.get("nameVi"));
+        assertEquals("New address", result.get("address"));
+        assertEquals("owner@example.test", result.get("email"));
+        assertEquals("APPROVED", result.get("approvalStatus"));
+        assertEquals("ACTIVE", result.get("operationStatus"));
+        assertEquals("ACTIVE", hotel.getStatus());
+        assertEquals(false, hotel.getIsDemo());
+        verify(hotelRepository).saveAndFlush(hotel);
+    }
+
+    @Test
+    void foreignProfileUpdateIsRejectedBeforeLocationLookupOrSave() {
+        ManagementPropertyRequest request = new ManagementPropertyRequest();
+        request.setNameVi("Foreign");
+        request.setProvinceId(1L);
+        request.setWardId(2L);
+        request.setAddress("Hidden");
+        when(propertyAccessService.requireAssignedHotel(999L))
+                .thenThrow(new com.hotel.exceptions.ResourceNotFoundException("Property not found"));
+
+        assertThrows(com.hotel.exceptions.ResourceNotFoundException.class, () -> service.updateProperty(999L, request));
+
+        verify(locationRepository, never()).findById(1L);
+        verify(hotelRepository, never()).saveAndFlush(org.mockito.ArgumentMatchers.any());
     }
 
     @Test

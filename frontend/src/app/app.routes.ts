@@ -89,7 +89,7 @@ export const routes: Routes = [
     data: { roles: ['PROPERTY_OWNER', 'HOTEL_ADMIN', 'HOTEL_MANAGER', 'SUPER_ADMIN', 'ADMIN'] },
     children: [
       { path: 'dashboard', loadComponent: () => import('./features/management/dashboard/management-dashboard.component').then(m => m.ManagementDashboardComponent) },
-      { path: 'properties', loadComponent: () => import('./features/management/dashboard/management-dashboard.component').then(m => m.ManagementDashboardComponent) },
+      { path: 'properties', loadComponent: () => import('./features/management/properties/management-properties.component').then(m => m.ManagementPropertiesComponent) },
       { path: 'room-types', loadComponent: () => import('./features/management/inventory/management-inventory.component').then(m => m.ManagementInventoryComponent), data: { mode: 'room-types' } },
       { path: 'rooms', loadComponent: () => import('./features/management/inventory/management-inventory.component').then(m => m.ManagementInventoryComponent), data: { mode: 'rooms' } },
       { path: 'payment-configuration', loadComponent: () => import('./features/management/property-payment-configuration/property-payment-configuration.component').then(m => m.PropertyPaymentConfigurationComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PROPERTY_PAYMENT_CONFIG, actionCode: ActionCode.VIEW } },

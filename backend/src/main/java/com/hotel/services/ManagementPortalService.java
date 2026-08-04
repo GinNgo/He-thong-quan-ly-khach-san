@@ -85,6 +85,11 @@ public class ManagementPortalService {
                 .map(this::propertySummary).toList();
     }
 
+    @Transactional(readOnly = true)
+    public Map<String, Object> property(Long id) {
+        return propertySummary(propertyAccessService.requireAssignedHotel(id));
+    }
+
     @Transactional
     public Map<String, Object> createProperty(ManagementPropertyRequest request) {
         User user = propertyAccessService.currentUser();
@@ -160,6 +165,48 @@ public class ManagementPortalService {
         userPropertyRepository.save(mapping);
         audit("PROPERTY", "PROPERTY_CREATED", hotel.getId(), null, propertySummary(hotel), "Property profile created");
         return propertySummary(hotel);
+    }
+
+    @Transactional
+    public Map<String, Object> updateProperty(Long id, ManagementPropertyRequest request) {
+        Hotel hotel = propertyAccessService.requireAssignedHotel(id);
+        if (request == null || request.getNameVi() == null || request.getNameVi().isBlank()
+                || request.getProvinceId() == null || request.getWardId() == null
+                || request.getAddress() == null || request.getAddress().isBlank()) {
+            throw new IllegalArgumentException("Tên, tỉnh, phường/xã và địa chỉ là bắt buộc.");
+        }
+        Location province = locationRepository.findById(request.getProvinceId())
+                .filter(location -> "PROVINCE".equals(location.getLocationType()))
+                .orElseThrow(() -> new IllegalArgumentException("Tỉnh/thành phố không hợp lệ."));
+        Location ward = locationRepository.findById(request.getWardId())
+                .filter(location -> "WARD".equals(location.getLocationType()))
+                .orElseThrow(() -> new IllegalArgumentException("Phường/xã không hợp lệ."));
+        if (ward.getParent() == null || !province.getId().equals(ward.getParent().getId())) {
+            throw new IllegalArgumentException("Phường/xã không thuộc tỉnh/thành phố đã chọn.");
+        }
+        Map<String, Object> before = propertySummary(hotel);
+        hotel.setName(request.getNameVi().trim());
+        hotel.setNameVi(request.getNameVi().trim());
+        hotel.setNameEn(trimToNull(request.getNameEn()));
+        hotel.setPropertyType(request.getPropertyType() == null ? "HOTEL" : request.getPropertyType());
+        hotel.setProvinceId(province.getId());
+        hotel.setWardId(ward.getId());
+        hotel.setAddressLine(request.getAddress().trim());
+        hotel.setCity(province.getNameVi());
+        hotel.setPhone(trimToNull(request.getPhone()));
+        hotel.setEmail(trimToNull(request.getEmail()));
+        hotel.setWebsite(trimToNull(request.getWebsite()));
+        hotel.setDescription(trimToNull(request.getDescriptionVi()));
+        hotel.setDescriptionVi(trimToNull(request.getDescriptionVi()));
+        hotel.setDescriptionEn(trimToNull(request.getDescriptionEn()));
+        hotel.setCheckinTime(trimToNull(request.getCheckinTime()));
+        hotel.setCheckoutTime(trimToNull(request.getCheckoutTime()));
+        hotel.setStarRating(request.getStarRating());
+        hotel.setMainImage(trimToNull(request.getMainImage()));
+        Hotel saved = hotelRepository.saveAndFlush(hotel);
+        Map<String, Object> after = propertySummary(saved);
+        audit("PROPERTY", "PROPERTY_PROFILE_UPDATED", saved.getId(), before, after, "Property profile updated");
+        return after;
     }
 
     @Transactional(readOnly = true)
@@ -336,8 +383,22 @@ public class ManagementPortalService {
         data.put("operationStatus", hotel.getOperationStatus());
         data.put("operational", propertyAccessService.isOperational(hotel));
         data.put("mainImage", hotel.getMainImage());
+        data.put("nameEn", hotel.getNameEn());
+        data.put("phone", hotel.getPhone());
+        data.put("email", hotel.getEmail());
+        data.put("website", hotel.getWebsite());
+        data.put("descriptionVi", hotel.getDescriptionVi());
+        data.put("descriptionEn", hotel.getDescriptionEn());
+        data.put("checkinTime", hotel.getCheckinTime());
+        data.put("checkoutTime", hotel.getCheckoutTime());
+        data.put("starRating", hotel.getStarRating());
         data.put("isDemo", hotel.getIsDemo());
         return data;
+    }
+
+    private String trimToNull(String value) {
+        if (value == null || value.isBlank()) return null;
+        return value.trim();
     }
 
     private RoomTypeDTO roomTypeDto(RoomType entity) {

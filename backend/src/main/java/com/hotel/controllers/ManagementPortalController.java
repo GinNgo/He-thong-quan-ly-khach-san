@@ -25,9 +25,20 @@ public class ManagementPortalController {
     @GetMapping("/properties")
     public ResponseEntity<List<Map<String, Object>>> properties() { return ResponseEntity.ok(service.properties()); }
 
+    @GetMapping("/properties/{id}")
+    public ResponseEntity<Map<String, Object>> property(@PathVariable Long id) {
+        return ResponseEntity.ok(service.property(id));
+    }
+
     @PostMapping("/properties")
     public ResponseEntity<Map<String, Object>> createProperty(@RequestBody ManagementPropertyRequest request) {
         return ResponseEntity.ok(service.createProperty(request));
+    }
+
+    @PutMapping("/properties/{id}")
+    public ResponseEntity<Map<String, Object>> updateProperty(@PathVariable Long id,
+                                                              @RequestBody ManagementPropertyRequest request) {
+        return ResponseEntity.ok(service.updateProperty(id, request));
     }
 
     @GetMapping("/room-types")
