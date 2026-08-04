@@ -30,6 +30,7 @@ below after merging or cherry-picking the task commits.
 | Task | Evidence | Stop gate |
 |---|---|---|
 | T308 | `docs/testing/evidence/007/remediation/T308-debt-overpayment-policy-gate.md` | Missing owner-approved debt limits/approval rules and overpayment refund-versus-credit/accounting policy; current behavior remains fail-closed. |
+| T315 | `docs/testing/evidence/007/remediation/T315-promotion-policy-gate.md` | Missing owner-approved OQ-002 through OQ-005 promotion, membership, stacking, redemption and sponsored-placement policy; current presentation retains zero financial effect. |
 
 ## Coordinator Updates
 
@@ -62,6 +63,8 @@ below after merging or cherry-picking the task commits.
   `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md`.
 - Keep T308 open and classify STAY-018 as `BLOCKED_EXTERNAL` in the aggregate
   inventories until the versioned debt/overpayment policy described in the handoff is approved.
+- Keep T315 open and classify STAY-027 as `BLOCKED_EXTERNAL` in the aggregate
+  inventories until the versioned OQ-002 through OQ-005 commercial policy is approved.
 - T310 was not edited because its mandatory invoice backend/customer/admin files overlap
   the active exclusive T309 claim. Re-run it after that claim is released.
 - Mark T313 complete in `specs/007-payment-billing-completion/tasks.md` and promote
