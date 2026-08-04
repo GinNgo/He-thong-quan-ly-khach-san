@@ -16,6 +16,7 @@ public class ReservationDTO {
     private String status;
     private String paymentMethod;
     private String specialRequests;
+    private DepositPolicySnapshotDTO depositPolicySnapshot;
     private List<ReservationDetailDTO> details;
 
     public Long getId() {
@@ -104,6 +105,14 @@ public class ReservationDTO {
 
     public void setSpecialRequests(String specialRequests) {
         this.specialRequests = specialRequests;
+    }
+
+    public DepositPolicySnapshotDTO getDepositPolicySnapshot() {
+        return depositPolicySnapshot;
+    }
+
+    public void setDepositPolicySnapshot(DepositPolicySnapshotDTO depositPolicySnapshot) {
+        this.depositPolicySnapshot = depositPolicySnapshot;
     }
 
     public List<ReservationDetailDTO> getDetails() {

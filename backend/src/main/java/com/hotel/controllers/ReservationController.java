@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Locale;
@@ -36,7 +37,7 @@ public class ReservationController {
     @PostMapping
     @Permission(function = FunctionCode.RESERVATION, action = ActionCode.CREATE)
     public ResponseEntity<ReservationDTO> createReservation(Authentication authentication,
-                                                             @RequestBody ReservationRequest request,
+                                                             @Valid @RequestBody ReservationRequest request,
                                                              @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
                                                              HttpServletRequest httpRequest) {
         return createIdempotentReservation(authentication.getName(), request, idempotencyKey, httpRequest);
@@ -139,7 +140,7 @@ public class ReservationController {
     @PostMapping("/book")
     @PreAuthorize("hasAuthority('CUSTOMER')")
     public ResponseEntity<ReservationDTO> createCustomerReservation(Authentication authentication,
-                                                                    @RequestBody ReservationRequest request,
+                                                                    @Valid @RequestBody ReservationRequest request,
                                                                     @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
                                                                     HttpServletRequest httpRequest) {
         return createIdempotentReservation(authentication.getName(), request, idempotencyKey, httpRequest);
