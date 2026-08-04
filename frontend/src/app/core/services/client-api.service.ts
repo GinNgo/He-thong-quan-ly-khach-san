@@ -268,6 +268,10 @@ export class ClientApiService {
     return this.http.get<ReservationSummary[]>(`${this.apiUrl}/reservations/my-bookings`);
   }
 
+  getReservation(reservationId: number): Observable<ReservationSummary> {
+    return this.http.get<ReservationSummary>(`${this.apiUrl}/reservations/${reservationId}`);
+  }
+
   getProfile(): Observable<UserContext> {
     return this.http.get<UserContext>(`${this.apiUrl}/users/me`);
   }

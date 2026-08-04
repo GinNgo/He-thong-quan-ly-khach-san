@@ -5,13 +5,17 @@ import { ClientApiService } from '../../../core/services/client-api.service';
 import { PropertyPaymentService } from '../../../core/services/property-payment.service';
 import { BookingCheckoutComponent } from './booking-checkout.component';
 import { AsyncActionCoordinatorService } from '../../../core/services/async-action-coordinator.service';
+import { BookingCheckoutRecoveryService } from './booking-checkout-recovery.service';
 
 describe('BookingCheckoutComponent', () => {
   let fixture: ComponentFixture<BookingCheckoutComponent>;
   let component: BookingCheckoutComponent;
   let reservation$: Subject<any>;
   let queryParams$: Subject<Record<string, string>>;
-  let clientApi: { bookRoom: ReturnType<typeof vi.fn> };
+  let clientApi: {
+    bookRoom: ReturnType<typeof vi.fn>;
+    getReservation: ReturnType<typeof vi.fn>;
+  };
   let paymentApi: {
     createAttempt: ReturnType<typeof vi.fn>;
     getAttempt: ReturnType<typeof vi.fn>;
@@ -21,7 +25,10 @@ describe('BookingCheckoutComponent', () => {
     localStorage.clear();
     reservation$ = new Subject<any>();
     queryParams$ = new Subject<Record<string, string>>();
-    clientApi = { bookRoom: vi.fn(() => reservation$) };
+    clientApi = {
+      bookRoom: vi.fn(() => reservation$),
+      getReservation: vi.fn(),
+    };
     paymentApi = {
       createAttempt: vi.fn(),
       getAttempt: vi.fn((attemptId: string) => of({ ...attemptResponse(), attemptId })),
@@ -183,6 +190,46 @@ describe('BookingCheckoutComponent', () => {
     expect(paymentApi.createAttempt.mock.calls[1][0]).toBe(91);
     expect(paymentApi.createAttempt.mock.calls[1][2].idempotencyKey).not.toBe(firstKey);
     expect(component.paymentAttempt?.attemptId).toBe('attempt-2');
+  });
+
+  it('resumes an owner-authorized pending attempt after reload without rebooking', () => {
+    fixture.destroy();
+    localStorage.setItem('user', JSON.stringify({ id: 7, username: 'customer' }));
+    const recovery = TestBed.inject(BookingCheckoutRecoveryService);
+    recovery.save({
+      roomTypeId: 1,
+      reservationId: 91,
+      attemptId: 'attempt-resume',
+      paymentMethod: 'MOMO',
+      phase: 'PAYMENT_PENDING',
+    });
+    clientApi.getReservation.mockReturnValue(of({
+      id: 91,
+      checkInDate: '2026-08-10',
+      checkOutDate: '2026-08-12',
+      guests: 2,
+      totalAmount: 1000000,
+      status: 'PENDING_PAYMENT',
+      paymentMethod: 'MOMO',
+    }));
+    paymentApi.getAttempt.mockReturnValue(of({
+      ...attemptResponse(),
+      attemptId: 'attempt-resume',
+      reservationId: 91,
+      status: 'PENDING',
+    }));
+
+    const resumedFixture = TestBed.createComponent(BookingCheckoutComponent);
+    const resumed = resumedFixture.componentInstance;
+    resumedFixture.detectChanges();
+
+    expect(clientApi.getReservation).toHaveBeenCalledWith(91);
+    expect(paymentApi.getAttempt).toHaveBeenCalledWith('attempt-resume');
+    expect(clientApi.bookRoom).not.toHaveBeenCalled();
+    expect(resumed.bookingSuccess).toBe(true);
+    expect(resumed.checkoutPhase).toBe('PAYMENT_PENDING');
+    expect(resumed.paymentAttempt?.attemptId).toBe('attempt-resume');
+    resumedFixture.destroy();
   });
 
   function setValidBooking(
