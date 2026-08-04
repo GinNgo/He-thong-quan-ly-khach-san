@@ -10,6 +10,7 @@ import { AsyncActionCoordinatorService } from '@app/core/services/async-action-c
 import { UserService } from '@app/core/services/user';
 import { EmailVerificationService } from '@app/core/services/email-verification.service';
 import { ReservationAmendmentWorkspaceComponent } from '@app/shared/reservation-amendment/reservation-amendment-workspace.component';
+import { RoomAssignmentCopyService } from '@app/shared/physical-room-picker/room-assignment-copy.service';
 
 @Component({
   selector: 'app-profile', standalone: true,
@@ -27,6 +28,7 @@ export class ProfileComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
   private readonly changeDetector = inject(ChangeDetectorRef);
+  readonly roomAssignmentCopy = inject(RoomAssignmentCopyService);
 
   user: UserContext | null = null;
   activeTab: 'profile' | 'bookings' = 'profile';
@@ -229,7 +231,15 @@ export class ProfileComponent implements OnInit {
   logout(): void { this.authService.logout(); this.router.navigate(['/']); }
   avatarError(): void { this.profileForm.patchValue({ avatarUrl: '' }); }
   getStatusLabel(status: string): string { return ({PENDING:'Chờ xác nhận',PENDING_PAYMENT:'Chờ thanh toán',CONFIRMED:'Đã xác nhận',CHECKED_IN:'Đã nhận phòng',CHECKED_OUT:'Đã trả phòng',CANCELLED:'Đã hủy'} as Record<string,string>)[status] || status; }
-  getEventLabel(eventType: string): string { return ({RESERVATION_CREATED:'Đã tạo đặt phòng',RESERVATION_STATUS_CHANGED:'Đã đổi trạng thái',ROOMS_ASSIGNED:'Đã xếp phòng cụ thể',ROOMS_REASSIGNED:'Đã gán lại phòng',ROOMS_RELEASED:'Đã giải phóng phòng'} as Record<string,string>)[eventType] || eventType; }
+  getEventLabel(eventType: string): string {
+    return ({
+      RESERVATION_CREATED: 'Đã tạo đặt phòng',
+      RESERVATION_STATUS_CHANGED: 'Đã đổi trạng thái',
+      ROOMS_ASSIGNED: this.roomAssignmentCopy.text('historyAssigned'),
+      ROOMS_REASSIGNED: this.roomAssignmentCopy.text('historyReassigned'),
+      ROOMS_RELEASED: this.roomAssignmentCopy.text('historyReleased'),
+    } as Record<string, string>)[eventType] || eventType;
+  }
 
   assignedRoomNumbers(booking: Reservation): string[] {
     return [...new Set((booking.details || []).flatMap(detail => detail.assignedRoomNumbers || []))];

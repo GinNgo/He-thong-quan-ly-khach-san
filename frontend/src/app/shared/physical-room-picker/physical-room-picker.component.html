@@ -1,46 +1,42 @@
 <section class="room-picker" aria-labelledby="room-picker-title">
   <header>
     <div>
-      <span>Kho phòng vật lý</span>
-      <h2 id="room-picker-title">Phân phòng cho đặt phòng</h2>
+      <span>{{ copy.text('eyebrow') }}</span>
+      <h2 id="room-picker-title">{{ copy.text('title') }}</h2>
     </div>
-    <button type="button" class="refresh" (click)="load()" [disabled]="loading || mutationBusy">
+    <button type="button" class="refresh" (click)="load()" [disabled]="loading || mutationBusy || releaseConfirmation">
       <i class="pi pi-refresh" [class.pi-spin]="loading" aria-hidden="true"></i>
-      Làm mới
+      {{ copy.text('refresh') }}
     </button>
   </header>
 
   <div *ngIf="loading" class="picker-state" role="status">
     <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
-    Đang kiểm tra phòng, housekeeping và bảo trì
+    {{ copy.text('loadingTitle') }}
   </div>
 
   <div *ngIf="error && !loading" class="picker-state picker-state--error" role="alert">
-    <strong>Chưa tải được phòng sẵn sàng</strong>
+    <strong>{{ copy.text('loadErrorTitle') }}</strong>
     <span>{{ error }}</span>
-    <button type="button" (click)="load()">Thử lại</button>
+    <button type="button" (click)="load()">{{ copy.text('retry') }}</button>
   </div>
 
   <ng-container *ngIf="context as data">
     <div class="picker-summary">
-      <div><small>Loại phòng</small><strong>{{ data.roomTypeName }}</strong></div>
-      <div><small>Thời gian lưu trú</small><strong>{{ data.checkInDate | date:'dd/MM/yyyy' }} - {{ data.checkOutDate | date:'dd/MM/yyyy' }}</strong></div>
-      <div><small>Cần chọn</small><strong>{{ data.requiredQuantity }} phòng</strong></div>
-      <div><small>Đã chọn</small><strong [class.complete]="selectionComplete">{{ selectedCount }}/{{ data.requiredQuantity }}</strong></div>
+      <div><small>{{ copy.text('roomType') }}</small><strong>{{ data.roomTypeName }}</strong></div>
+      <div><small>{{ copy.text('stay') }}</small><strong>{{ data.checkInDate | date:'dd/MM/yyyy' }} - {{ data.checkOutDate | date:'dd/MM/yyyy' }}</strong></div>
+      <div><small>{{ copy.text('required') }}</small><strong>{{ copy.text('roomCount', { count: data.requiredQuantity }) }}</strong></div>
+      <div><small>{{ copy.text('selected') }}</small><strong [class.complete]="selectionComplete">{{ selectedCount }}/{{ data.requiredQuantity }}</strong></div>
     </div>
 
-    <div *ngIf="hasAssignment" class="assigned-note">
-      Các phòng có nhãn “Đang gán” là phân phòng hiện tại. Giữ nguyên phòng cần bảo toàn và chọn
-      ứng viên mới để gán lại trong một giao dịch.
-    </div>
+    <div *ngIf="hasAssignment" class="assigned-note">{{ copy.text('assignedNote') }}</div>
     <div *ngIf="hasShortage" class="shortage" role="alert">
-      Chỉ có {{ visibleRooms.length }} phòng có thể giữ hoặc chọn cho {{ data.requiredQuantity }} phòng cần gán.
-      Hãy làm mới sau khi housekeeping hoặc bảo trì cập nhật trạng thái.
+      {{ copy.text('shortage', { available: visibleRooms.length, required: data.requiredQuantity }) }}
     </div>
     <div *ngIf="isEmpty" class="picker-state">
       <i class="pi pi-building" aria-hidden="true"></i>
-      <strong>Không có phòng vật lý phù hợp</strong>
-      <span>Cần {{ data.requiredQuantity }} phòng trong khoảng lưu trú này. Hãy làm mới sau khi trạng thái vận hành thay đổi.</span>
+      <strong>{{ copy.text('emptyTitle') }}</strong>
+      <span>{{ copy.text('emptyBody', { required: data.requiredQuantity }) }}</span>
     </div>
 
     <div class="room-grid" *ngIf="visibleRooms.length">
@@ -50,28 +46,28 @@
         class="room-card"
         [class.selected]="isSelected(room.id)"
         [class.current]="isCurrentlyAssigned(room.id)"
-        [disabled]="!allowMutation || mutationBusy || (!isSelected(room.id) && selectedCount >= data.requiredQuantity)"
+        [disabled]="!allowMutation || mutationBusy || loading || releaseConfirmation || (!isSelected(room.id) && selectedCount >= data.requiredQuantity)"
         [attr.aria-pressed]="isSelected(room.id)"
         (click)="toggle(room)">
-        <span class="floor">Tầng {{ room.floor }}</span>
-        <strong>Phòng {{ room.roomNumber }}</strong>
-        <small *ngIf="isCurrentlyAssigned(room.id)" class="current-label">Đang gán</small>
-        <small *ngIf="!isCurrentlyAssigned(room.id)">{{ room.housekeepingStatus === 'INSPECTED' ? 'Đã kiểm tra' : 'Sạch' }} · Không bảo trì</small>
+        <span class="floor">{{ copy.text('floor', { floor: room.floor }) }}</span>
+        <strong>{{ copy.text('room', { room: room.roomNumber }) }}</strong>
+        <small *ngIf="isCurrentlyAssigned(room.id)" class="current-label">{{ copy.text('currentlyAssigned') }}</small>
+        <small *ngIf="!isCurrentlyAssigned(room.id)">{{ copy.text(room.housekeepingStatus === 'INSPECTED' ? 'inspected' : 'clean') }} · {{ copy.text('noMaintenance') }}</small>
         <i class="pi" [class.pi-check-circle]="isSelected(room.id)" [class.pi-circle]="!isSelected(room.id)" aria-hidden="true"></i>
       </button>
     </div>
 
     <div *ngIf="allowMutation" class="assignment-command">
-      <label for="assignment-reason">Lý do phân phòng</label>
+      <label for="assignment-reason">{{ copy.text('reason') }}</label>
       <textarea
         id="assignment-reason"
         [(ngModel)]="reason"
         maxlength="500"
         rows="3"
-        placeholder="Ví dụ: khách yêu cầu tầng cao, đổi phòng do bảo trì..."
-        [disabled]="mutationBusy"
+        [placeholder]="copy.text('reasonPlaceholder')"
+        [disabled]="mutationBusy || loading || releaseConfirmation"
       ></textarea>
-      <small>Nhập từ 3 đến 500 ký tự. Lý do được lưu vào lịch sử đặt phòng.</small>
+      <small>{{ copy.text('reasonHelp') }}</small>
 
       <div *ngIf="mutationError" class="mutation-message mutation-message--error" role="alert">{{ mutationError }}</div>
       <div *ngIf="mutationSuccess" class="mutation-message mutation-message--success" role="status">{{ mutationSuccess }}</div>
@@ -83,7 +79,7 @@
           data-action="apply-room-assignment"
           [disabled]="!canApplyAssignment"
           (click)="applyAssignment()">
-          {{ hasAssignment ? 'Gán lại phòng' : 'Gán phòng' }}
+          {{ copy.text(hasAssignment ? 'reassign' : 'assign') }}
         </button>
         <button
           *ngIf="hasAssignment"
@@ -91,25 +87,33 @@
           class="danger-action"
           data-action="begin-room-release"
           [disabled]="!canReleaseAssignment"
-          (click)="beginRelease()">
-          Giải phóng toàn bộ phòng
+          (click)="beginRelease($event)">
+          {{ copy.text('release') }}
         </button>
       </div>
 
-      <div *ngIf="releaseConfirmation" class="release-confirmation" role="alertdialog" aria-label="Xác nhận giải phóng phòng">
-        <strong>Xác nhận giải phóng {{ currentAssignedIds.length }} phòng đang gán?</strong>
-        <span>Đặt phòng sẽ quay về trạng thái chưa phân phòng và phải gán lại trước khi nhận phòng.</span>
+      <div
+        *ngIf="releaseConfirmation"
+        #releaseDialog
+        class="release-confirmation"
+        role="alertdialog"
+        aria-modal="true"
+        tabindex="-1"
+        [attr.aria-label]="copy.text('releaseDialogLabel')"
+        (keydown)="handleReleaseDialogKeydown($event)">
+        <strong>{{ copy.text('releaseConfirmTitle', { count: currentAssignedIds.length }) }}</strong>
+        <span>{{ copy.text('releaseConfirmBody') }}</span>
         <div>
-          <button type="button" (click)="cancelRelease()">Quay lại</button>
-          <button type="button" class="danger-action" data-action="confirm-room-release" [disabled]="!canReleaseAssignment" (click)="releaseAssignment()">Xác nhận giải phóng</button>
+          <button type="button" (click)="cancelRelease()">{{ copy.text('back') }}</button>
+          <button type="button" class="danger-action" data-action="confirm-room-release" [disabled]="!canReleaseAssignment" (click)="releaseAssignment()">{{ copy.text('confirmRelease') }}</button>
         </div>
       </div>
     </div>
 
     <footer>
-      <span *ngIf="selectionComplete && !selectionChanged">Phân phòng hiện tại đang được giữ nguyên.</span>
-      <span *ngIf="selectionComplete && selectionChanged">Đã chọn đủ số lượng; nhập lý do để xác nhận thay đổi.</span>
-      <span *ngIf="!selectionComplete && !hasShortage && !isEmpty">Chọn đúng {{ data.requiredQuantity }} phòng để tiếp tục.</span>
+      <span *ngIf="selectionComplete && !selectionChanged">{{ copy.text('unchanged') }}</span>
+      <span *ngIf="selectionComplete && selectionChanged">{{ copy.text('changed') }}</span>
+      <span *ngIf="!selectionComplete && !hasShortage && !isEmpty">{{ copy.text('selectExact', { required: data.requiredQuantity }) }}</span>
     </footer>
   </ng-container>
 </section>

@@ -154,6 +154,7 @@ describe('PhysicalRoomPickerComponent', () => {
   });
 
   it('refreshes after a conflict and requires the operator to reconfirm', async () => {
+    const delayedRefresh = new Subject<AvailableRoomContext>();
     const assignedContext: AvailableRoomContext = {
       ...context,
       assignedRooms: [
@@ -163,7 +164,9 @@ describe('PhysicalRoomPickerComponent', () => {
       assignedRoomIds: [11, 12],
       candidates: [context.candidates[2]],
     };
-    getAvailableRoomContext.mockReturnValue(of(assignedContext));
+    getAvailableRoomContext
+      .mockReturnValueOnce(of(assignedContext))
+      .mockReturnValueOnce(delayedRefresh);
     updateRoomAssignment.mockReturnValue(throwError(() => ({
       status: 409,
       error: { code: 'CONCURRENT_MODIFICATION', message: 'Inventory changed' },
@@ -177,6 +180,16 @@ describe('PhysicalRoomPickerComponent', () => {
     await clickAndRender(fixture.nativeElement.querySelector('[data-action="apply-room-assignment"]'));
 
     expect(fixture.componentInstance.mutationError).toContain('Kho phòng vừa thay đổi');
+    expect(fixture.componentInstance.loading).toBe(true);
+    expect(fixture.componentInstance.canApplyAssignment).toBe(false);
+    expect((fixture.nativeElement.querySelector('.room-card') as HTMLButtonElement).disabled).toBe(true);
+    expect((fixture.nativeElement.querySelector('#assignment-reason') as HTMLTextAreaElement).disabled).toBe(true);
+
+    delayedRefresh.next(assignedContext);
+    delayedRefresh.complete();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.loading).toBe(false);
     expect(fixture.componentInstance.selectionChanged).toBe(false);
     expect(getAvailableRoomContext).toHaveBeenCalledTimes(3);
   });
@@ -193,8 +206,19 @@ describe('PhysicalRoomPickerComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-action="begin-room-release"]')?.disabled).toBe(true);
 
     await enterReason('Giải phóng để xử lý bảo trì');
-    await clickAndRender(fixture.nativeElement.querySelector('[data-action="begin-room-release"]'));
-    expect(fixture.nativeElement.querySelector('[data-action="confirm-room-release"]')).toBeTruthy();
+    const releaseTrigger = fixture.nativeElement.querySelector('[data-action="begin-room-release"]') as HTMLButtonElement;
+    await clickAndRender(releaseTrigger);
+    const releaseDialog = fixture.nativeElement.querySelector('.release-confirmation') as HTMLElement;
+    expect(releaseDialog).toBeTruthy();
+    expect(document.activeElement).toBe(releaseDialog);
+    releaseDialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.release-confirmation')).toBeNull();
+    const restoredTrigger = fixture.nativeElement.querySelector('[data-action="begin-room-release"]') as HTMLButtonElement;
+    expect(document.activeElement).toBe(restoredTrigger);
+
+    await clickAndRender(restoredTrigger);
     await clickAndRender(fixture.nativeElement.querySelector('[data-action="confirm-room-release"]'));
 
     expect(releaseRoomAssignment).toHaveBeenCalledWith(88, 'Giải phóng để xử lý bảo trì', expect.any(String));
@@ -209,5 +233,16 @@ describe('PhysicalRoomPickerComponent', () => {
     await clickAndRender(firstCard);
     expect(updateRoomAssignment).not.toHaveBeenCalled();
     expect(releaseRoomAssignment).not.toHaveBeenCalled();
+  });
+
+  it('renders the room-assignment workspace in English when the active locale is English', () => {
+    const previousLanguage = document.documentElement.lang;
+    document.documentElement.lang = 'en';
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Assign rooms to this reservation');
+    expect(fixture.nativeElement.textContent).toContain('Physical room inventory');
+
+    document.documentElement.lang = previousLanguage;
   });
 });

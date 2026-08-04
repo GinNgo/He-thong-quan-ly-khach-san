@@ -90,12 +90,12 @@
         <p>{{ booking.checkInDate | date:'dd/MM/yyyy' }} - {{ booking.checkOutDate | date:'dd/MM/yyyy' }}</p>
         <div class="assigned-room-readonly" *ngIf="assignedRoomNumbers(booking) as roomNumbers">
           <ng-container *ngIf="roomNumbers.length; else roomsPending">
-            <small>Phòng đã được cơ sở sắp xếp</small>
+            <small>{{ roomAssignmentCopy.text('customerAssignedTitle') }}</small>
             <strong>{{ roomNumbers.join(', ') }}</strong>
           </ng-container>
           <ng-template #roomsPending>
-            <small>Phân phòng</small>
-            <span>Chưa có phòng vật lý được gán.</span>
+            <small>{{ roomAssignmentCopy.text('customerPendingTitle') }}</small>
+            <span>{{ roomAssignmentCopy.text('customerPendingBody') }}</span>
           </ng-template>
         </div>
         <h2>Lịch sử chuyến đi</h2>

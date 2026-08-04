@@ -108,7 +108,10 @@ public class ReservationController {
     @PutMapping("/{id}/rooms")
     @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.UPDATE)
     public ResponseEntity<ReservationDTO> assignRooms(@PathVariable Long id, @RequestBody AssignRoomsRequest request) {
-        return ResponseEntity.ok(reservationService.assignRooms(id, request));
+        return ResponseEntity.status(HttpStatus.GONE)
+                .header("Deprecation", "true")
+                .header("Link", "</api/reservations/" + id + "/room-assignment>; rel=successor-version")
+                .build();
     }
 
     @GetMapping("/{id}/available-rooms")
@@ -126,7 +129,10 @@ public class ReservationController {
     @PostMapping("/{id}/assign-rooms")
     @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.UPDATE)
     public ResponseEntity<ReservationDTO> assignRoomsPost(@PathVariable Long id, @RequestBody AssignRoomsRequest request) {
-        return ResponseEntity.ok(reservationService.assignRooms(id, request));
+        return ResponseEntity.status(HttpStatus.GONE)
+                .header("Deprecation", "true")
+                .header("Link", "</api/reservations/" + id + "/room-assignment>; rel=successor-version")
+                .build();
     }
 
     @PostMapping("/{id}/room-assignment")

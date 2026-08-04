@@ -124,11 +124,11 @@
       </div>
       <div class="room-picker-entry" *ngIf="canOpenRoomPicker(reservation.status)">
         <div>
-          <strong>Phòng vật lý sẵn sàng</strong>
-          <span>Kiểm tra đúng loại phòng, trạng thái sạch, bảo trì và xung đột lưu trú.</span>
+          <strong>{{ roomAssignmentCopy.text('sectionTitle') }}</strong>
+          <span>{{ roomAssignmentCopy.text('sectionBody') }}</span>
         </div>
         <button type="button" data-action="open-room-picker" (click)="openRoomPicker(reservation)">
-          Mở bộ chọn phòng
+          {{ roomAssignmentCopy.text('openPicker') }}
         </button>
       </div>
       <h3>Lịch sử sự kiện</h3>
@@ -150,19 +150,19 @@
     [style]="{ width: 'min(920px, 96vw)' }"
     [breakpoints]="{ '640px': '100vw' }"
     styleClass="room-picker-dialog"
-    (onHide)="roomPickerReservationId = null"
+    (onHide)="roomPickerReservationId = null; roomPickerAllowsMutation = false"
   >
     <app-physical-room-picker
       *ngIf="roomPickerReservationId as reservationId"
       [reservationId]="reservationId"
-      [allowMutation]="canManageRoomAssignments"
+      [allowMutation]="roomPickerAllowsMutation"
       (selectionChange)="handleRoomPickerSelection($event)"
       (assignmentApplied)="handleRoomAssignmentApplied($event)"
     ></app-physical-room-picker>
     <div class="room-picker-dialog__footer" *ngIf="roomPickerReservationId">
-      <span *ngIf="canManageRoomAssignments">Đã chọn {{ roomPickerSelection.length }} phòng.</span>
-      <span *ngIf="!canManageRoomAssignments">Chế độ chỉ xem. Cần quyền cập nhật phân phòng để thay đổi.</span>
-      <button type="button" (click)="showRoomPickerDialog = false">Đóng</button>
+      <span *ngIf="roomPickerAllowsMutation">{{ roomAssignmentCopy.text('selectedCount', { count: roomPickerSelection.length }) }}</span>
+      <span *ngIf="!roomPickerAllowsMutation">{{ roomAssignmentCopy.text('viewOnly') }}</span>
+      <button type="button" (click)="showRoomPickerDialog = false">{{ roomAssignmentCopy.text('close') }}</button>
     </div>
   </p-dialog>
 

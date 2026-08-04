@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 
@@ -9,6 +9,7 @@ import {
   Reservation,
   ReservationService,
 } from '@app/core/services/reservation.service';
+import { RoomAssignmentCopyService } from './room-assignment-copy.service';
 
 @Component({
   selector: 'app-physical-room-picker',
@@ -19,8 +20,14 @@ import {
 })
 export class PhysicalRoomPickerComponent implements OnChanges {
   private readonly reservationService = inject(ReservationService);
+  private readonly changeDetector = inject(ChangeDetectorRef);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  readonly copy = inject(RoomAssignmentCopyService);
   private readonly mutationKeys = new Map<string, string>();
   private requestSequence = 0;
+  private releaseTrigger: HTMLElement | null = null;
+
+  @ViewChild('releaseDialog') private releaseDialog?: ElementRef<HTMLElement>;
 
   @Input({ required: true }) reservationId!: number;
   @Input() initialSelectedRoomIds: number[] = [];
@@ -64,14 +71,14 @@ export class PhysicalRoomPickerComponent implements OnChanges {
         if (requestId !== this.requestSequence || reservationId !== this.reservationId) return;
         this.context = null;
         this.selectedRoomIds.clear();
-        this.error = error?.error?.message || 'Không thể tải danh sách phòng vật lý sẵn sàng.';
+        this.error = error?.error?.message || this.copy.text('loadErrorBody');
         this.emitSelection();
       },
     });
   }
 
   toggle(room: AvailablePhysicalRoom): void {
-    if (!this.context || !this.allowMutation || this.mutationBusy) return;
+    if (!this.context || !this.allowMutation || this.mutationBusy || this.loading || this.releaseConfirmation) return;
     if (this.selectedRoomIds.has(room.id)) {
       this.selectedRoomIds.delete(room.id);
     } else if (this.selectedRoomIds.size < this.context.requiredQuantity) {
@@ -95,7 +102,7 @@ export class PhysicalRoomPickerComponent implements OnChanges {
         { roomIds, reason: normalizedReason },
         this.idempotencyKey(signature),
       ),
-      this.hasAssignment ? 'Đã gán lại phòng.' : 'Đã gán phòng.',
+      this.hasAssignment ? this.copy.text('reassignedSuccess') : this.copy.text('assignedSuccess'),
     );
   }
 
@@ -110,16 +117,47 @@ export class PhysicalRoomPickerComponent implements OnChanges {
         normalizedReason,
         this.idempotencyKey(signature),
       ),
-      'Đã giải phóng phòng.',
+      this.copy.text('releasedSuccess'),
     );
   }
 
-  beginRelease(): void {
-    if (this.canReleaseAssignment) this.releaseConfirmation = true;
+  beginRelease(event?: Event): void {
+    if (!this.canReleaseAssignment) return;
+    this.releaseTrigger = event?.currentTarget instanceof HTMLElement
+      ? event.currentTarget
+      : (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null);
+    this.releaseConfirmation = true;
+    this.changeDetector.detectChanges();
+    this.releaseDialog?.nativeElement.focus();
   }
 
   cancelRelease(): void {
     this.releaseConfirmation = false;
+    this.changeDetector.detectChanges();
+    const restoredTrigger = this.host.nativeElement.querySelector<HTMLElement>('[data-action="begin-room-release"]');
+    (restoredTrigger || this.releaseTrigger)?.focus();
+  }
+
+  handleReleaseDialogKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.cancelRelease();
+      return;
+    }
+    if (event.key !== 'Tab' || !this.releaseDialog) return;
+    const controls = [...this.releaseDialog.nativeElement.querySelectorAll<HTMLElement>('button:not([disabled])')];
+    if (!controls.length) return;
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === this.releaseDialog.nativeElement)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 
   isSelected(roomId: number): boolean {
@@ -174,12 +212,12 @@ export class PhysicalRoomPickerComponent implements OnChanges {
   }
 
   get canApplyAssignment(): boolean {
-    return this.allowMutation && !this.mutationBusy && this.selectionComplete
+    return this.allowMutation && !this.mutationBusy && !this.loading && !this.releaseConfirmation && this.selectionComplete
       && this.selectionChanged && this.reasonValid;
   }
 
   get canReleaseAssignment(): boolean {
-    return this.allowMutation && !this.mutationBusy && this.hasAssignment && this.reasonValid;
+    return this.allowMutation && !this.mutationBusy && !this.loading && this.hasAssignment && this.reasonValid;
   }
 
   trackRoom(_: number, room: AvailablePhysicalRoom): number {
@@ -204,8 +242,8 @@ export class PhysicalRoomPickerComponent implements OnChanges {
         const conflict = error?.status === 409
           || ['CONFLICT', 'CONCURRENT_MODIFICATION', 'DATA_CONFLICT'].includes(error?.error?.code);
         this.mutationError = conflict
-          ? 'Kho phòng vừa thay đổi. Danh sách đã được làm mới; vui lòng xác nhận lại.'
-          : (error?.error?.message || 'Không thể cập nhật phân phòng.');
+          ? this.copy.text('conflict')
+          : (error?.error?.message || this.copy.text('genericError'));
         if (conflict) this.load(true);
       },
     });

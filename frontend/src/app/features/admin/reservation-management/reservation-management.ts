@@ -19,6 +19,7 @@ import { ActionCode, FunctionCode, PermissionService } from '../../../core/servi
 import { Observable, finalize } from 'rxjs';
 import { ReservationAmendmentWorkspaceComponent } from '../../../shared/reservation-amendment/reservation-amendment-workspace.component';
 import { PhysicalRoomPickerComponent } from '../../../shared/physical-room-picker/physical-room-picker.component';
+import { RoomAssignmentCopyService } from '../../../shared/physical-room-picker/room-assignment-copy.service';
 
 @Component({
   selector: 'app-reservation-management',
@@ -64,7 +65,9 @@ export class ReservationManagement implements OnInit {
   showRoomPickerDialog = false;
   roomPickerReservationId: number | null = null;
   roomPickerSelection: number[] = [];
+  roomPickerAllowsMutation = false;
   private permissionService = inject(PermissionService);
+  readonly roomAssignmentCopy = inject(RoomAssignmentCopyService);
   readonly canUpdateReservation = this.permissionService.hasPermission(FunctionCode.RESERVATION, ActionCode.UPDATE);
   readonly canAmendReservation = this.permissionService.hasPermission(FunctionCode.RESERVATION_AMEND, ActionCode.UPDATE);
   readonly canCheckIn = this.permissionService.hasPermission(FunctionCode.CHECKIN, ActionCode.UPDATE);
@@ -170,9 +173,9 @@ export class ReservationManagement implements OnInit {
     return ({
       RESERVATION_CREATED: 'Đã tạo đặt phòng',
       RESERVATION_STATUS_CHANGED: 'Đã đổi trạng thái',
-      ROOMS_ASSIGNED: 'Đã xếp phòng cụ thể',
-      ROOMS_REASSIGNED: 'Đã gán lại phòng',
-      ROOMS_RELEASED: 'Đã giải phóng phòng',
+      ROOMS_ASSIGNED: this.roomAssignmentCopy.text('historyAssigned'),
+      ROOMS_REASSIGNED: this.roomAssignmentCopy.text('historyReassigned'),
+      ROOMS_RELEASED: this.roomAssignmentCopy.text('historyReleased'),
     } as Record<string, string>)[eventType] || eventType;
   }
 
@@ -180,8 +183,13 @@ export class ReservationManagement implements OnInit {
     if (!['ROOMS_ASSIGNED', 'ROOMS_REASSIGNED', 'ROOMS_RELEASED'].includes(event.eventType)) return '';
     const before = this.roomIdsFromState(event.beforeState);
     const after = this.roomIdsFromState(event.afterState);
-    const format = (ids: number[]) => ids.length ? ids.map(id => `#${id}`).join(', ') : 'Chưa gán';
-    return `Trước: ${format(before)} · Sau: ${format(after)}`;
+    const format = (ids: number[]) => ids.length
+      ? ids.map(id => `#${id}`).join(', ')
+      : this.roomAssignmentCopy.text('noneAssigned');
+    return this.roomAssignmentCopy.text('historyBeforeAfter', {
+      before: format(before),
+      after: format(after),
+    });
   }
 
   updateStatus(id: number | undefined, status: string) {
@@ -247,6 +255,8 @@ export class ReservationManagement implements OnInit {
     if (!res.id || !this.canViewRoomAssignments) return;
     this.roomPickerReservationId = res.id;
     this.roomPickerSelection = [];
+    this.roomPickerAllowsMutation = this.canManageRoomAssignments
+      && this.canMutateRoomAssignmentStatus(res.status);
     this.showRoomPickerDialog = true;
   }
 
@@ -257,8 +267,8 @@ export class ReservationManagement implements OnInit {
   handleRoomAssignmentApplied(reservation: Reservation) {
     this.messageService.add({
       severity: 'success',
-      summary: 'Đã cập nhật phân phòng',
-      detail: `Đặt phòng RES-${reservation.id} đã được đồng bộ.`,
+      summary: this.roomAssignmentCopy.text('updatedTitle'),
+      detail: this.roomAssignmentCopy.text('updatedDetail', { id: reservation.id || '' }),
     });
     this.loadReservations();
     if (reservation.id && this.showDetailDialog) this.openReservationDetail(reservation.id);
@@ -268,6 +278,10 @@ export class ReservationManagement implements OnInit {
     return this.canViewRoomAssignments && !new Set([
       'CHECKED_OUT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED', 'NO_SHOW',
     ]).has(status || '');
+  }
+
+  canMutateRoomAssignmentStatus(status: string | undefined): boolean {
+    return new Set(['PENDING', 'PENDING_PAYMENT', 'CONFIRMED']).has(status || '');
   }
 
   handleAmendmentApplied(reservationId: number) {

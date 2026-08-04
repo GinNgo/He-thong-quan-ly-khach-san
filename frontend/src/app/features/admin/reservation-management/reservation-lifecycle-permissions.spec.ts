@@ -135,6 +135,16 @@ describe('ReservationManagement lifecycle permissions', () => {
     expect(fixture.nativeElement.querySelector('.assignment-command')).toBeNull();
   });
 
+  it('keeps checked-in assignments readable but disables mutation controls', () => {
+    component.openRoomPicker({ ...reservation, status: 'CHECKED_IN' });
+    fixture.detectChanges();
+
+    expect(component.showRoomPickerDialog).toBe(true);
+    expect(component.roomPickerAllowsMutation).toBe(false);
+    expect(fixture.nativeElement.querySelector('app-physical-room-picker')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.assignment-command')).toBeNull();
+  });
+
   it('does not render lifecycle controls when the dedicated masks are absent', async () => {
     const permissionService = TestBed.inject(PermissionService) as unknown as { hasPermission: ReturnType<typeof vi.fn> };
     permissionService.hasPermission.mockReturnValue(false);

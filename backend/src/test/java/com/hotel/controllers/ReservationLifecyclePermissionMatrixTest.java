@@ -121,6 +121,18 @@ class ReservationLifecyclePermissionMatrixTest {
         verify(reservationService).markNoShow(13L);
     }
 
+    @Test
+    void legacyAssignmentRoutesAreRetiredWithoutBypassingReasonAndIdempotency() {
+        var putResponse = controller.assignRooms(11L, new AssignRoomsRequest());
+        var postResponse = controller.assignRoomsPost(11L, new AssignRoomsRequest());
+
+        assertThat(putResponse.getStatusCode().value()).isEqualTo(410);
+        assertThat(postResponse.getStatusCode().value()).isEqualTo(410);
+        assertThat(putResponse.getHeaders().getFirst("Deprecation")).isEqualTo("true");
+        assertThat(putResponse.getHeaders().getFirst("Link")).contains("/room-assignment");
+        verify(reservationService, never()).assignRooms(11L, new AssignRoomsRequest());
+    }
+
     private void assertPermission(
             String methodName,
             FunctionCode function,

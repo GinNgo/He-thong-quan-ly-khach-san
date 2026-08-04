@@ -252,6 +252,11 @@ button:disabled {
   gap: 8px;
 }
 
+.release-confirmation:focus-visible {
+  outline: 3px solid #1f5d50;
+  outline-offset: 3px;
+}
+
 .room-picker footer {
   min-height: 44px;
   display: flex;
