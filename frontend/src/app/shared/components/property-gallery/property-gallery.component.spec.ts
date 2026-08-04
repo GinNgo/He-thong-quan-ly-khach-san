@@ -6,6 +6,7 @@ import {
 } from '../../../core/services/property-gallery.service';
 import { PropertyGalleryComponent } from './property-gallery.component';
 import { RoomTypeGalleryService } from '../../../core/services/room-type-gallery.service';
+import { RoomGalleryService } from '../../../core/services/room-gallery.service';
 
 describe('PropertyGalleryComponent', () => {
   const first: PropertyGalleryImage = {
@@ -148,5 +149,14 @@ describe('PropertyGalleryComponent', () => {
     expect(roomTypeApi.list).toHaveBeenCalledWith(44);
     expect(propertyApi.list).not.toHaveBeenCalled();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('loai phong');
+  });
+
+  it('routes the reusable editor to the physical-room gallery API', async () => {
+    const propertyApi = galleryApi(); const roomApi = galleryApi();
+    await TestBed.configureTestingModule({ imports: [PropertyGalleryComponent], providers: [
+      { provide: PropertyGalleryService, useValue: propertyApi }, { provide: RoomGalleryService, useValue: roomApi }
+    ] }).compileComponents();
+    const fixture = TestBed.createComponent(PropertyGalleryComponent); fixture.componentRef.setInput('roomId', 55); fixture.detectChanges();
+    expect(roomApi.list).toHaveBeenCalledWith(55); expect(propertyApi.list).not.toHaveBeenCalled();
   });
 });

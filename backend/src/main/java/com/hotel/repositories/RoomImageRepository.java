@@ -12,4 +12,5 @@ public interface RoomImageRepository extends JpaRepository<RoomImage, Long> {
     List<RoomImage> findByRoomIdOrderBySortOrderAsc(Long roomId);
     long countByRoomHotelId(Long hotelId);
     long countByMediaId(Long mediaId);
+    void deleteByRoomId(Long roomId);
 }

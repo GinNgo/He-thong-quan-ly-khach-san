@@ -5,10 +5,11 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { SharedModule } from '../../../shared/shared.module';
 import { AdminInventoryService, AdminPropertyOption, AdminRoom, AdminRoomType, BulkRoomRequest } from '../../../core/services/admin-inventory.service';
 import { ActionCode, FunctionCode, PermissionService } from '../../../core/services/permission.service';
+import { PropertyGalleryComponent } from '../../../shared/components/property-gallery/property-gallery.component';
 
 @Component({
   selector: 'app-room-management',
-  imports: [SharedModule],
+  imports: [SharedModule, PropertyGalleryComponent],
   providers: [ConfirmationService, MessageService],
   templateUrl: './room-management.html',
   styleUrl: './room-management.css',

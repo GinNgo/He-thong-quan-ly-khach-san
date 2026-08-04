@@ -7,6 +7,7 @@ import {
   PropertyGalleryService
 } from '../../../core/services/property-gallery.service';
 import { RoomTypeGalleryService } from '../../../core/services/room-type-gallery.service';
+import { RoomGalleryService } from '../../../core/services/room-gallery.service';
 
 @Component({
   selector: 'app-property-gallery',
@@ -21,6 +22,7 @@ export class PropertyGalleryComponent implements OnChanges {
 
   @Input() propertyId?: number;
   @Input() roomTypeId?: number;
+  @Input() roomId?: number;
   @Input() editable = true;
 
   images: PropertyGalleryImage[] = [];
@@ -34,7 +36,7 @@ export class PropertyGalleryComponent implements OnChanges {
   selectedFile?: File;
 
   ngOnChanges(changes: SimpleChanges): void {
-    if ((changes['propertyId'] || changes['roomTypeId']) && this.entityId) this.load();
+    if ((changes['propertyId'] || changes['roomTypeId'] || changes['roomId']) && this.entityId) this.load();
   }
 
   load(): void {
@@ -156,9 +158,10 @@ export class PropertyGalleryComponent implements OnChanges {
     return [...existing, created].sort((left, right) => left.sortOrder - right.sortOrder);
   }
 
-  get galleryLabel(): string { return this.roomTypeId ? 'loai phong' : 'co so'; }
-  private get entityId(): number { return this.roomTypeId || this.propertyId || 0; }
-  private get api(): PropertyGalleryService | RoomTypeGalleryService {
+  get galleryLabel(): string { return this.roomId ? 'phong' : (this.roomTypeId ? 'loai phong' : 'co so'); }
+  private get entityId(): number { return this.roomId || this.roomTypeId || this.propertyId || 0; }
+  private get api(): PropertyGalleryService | RoomTypeGalleryService | RoomGalleryService {
+    if (this.roomId) return this.injector.get(RoomGalleryService);
     return this.roomTypeId ? this.injector.get(RoomTypeGalleryService) : this.galleryService;
   }
 

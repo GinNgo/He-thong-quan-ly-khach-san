@@ -33,4 +33,7 @@
   @if (mode === 'room-types' && selectedGalleryRoomTypeId) {
     <app-property-gallery [roomTypeId]="selectedGalleryRoomTypeId" [editable]="canUpdateRoomType"></app-property-gallery>
   }
+  @if (mode === 'rooms' && editingRoomId) {
+    <app-property-gallery [roomId]="editingRoomId" [editable]="canUpdateRoom"></app-property-gallery>
+  }
 </section>

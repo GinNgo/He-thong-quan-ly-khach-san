@@ -45,6 +45,7 @@
     <label class="wide">Ghi chú<textarea pInputTextarea rows="3" [(ngModel)]="form.note"></textarea></label>
   </div>
   <ng-template pTemplate="footer"><button pButton label="Hủy" class="p-button-text" (click)="dialogVisible=false"></button><button pButton [label]="saving?'Đang lưu...':'Lưu'" icon="pi pi-check" (click)="save()" [disabled]="saving"></button></ng-template>
+  <app-property-gallery *ngIf="editingId && dialogVisible" [roomId]="editingId" [editable]="canUpdate"></app-property-gallery>
 </p-dialog>
 
 <p-dialog [(visible)]="bulkVisible" [modal]="true" [draggable]="false" [style]="{width:'min(700px,96vw)'}" header="Thêm phòng hàng loạt" [closable]="!saving">

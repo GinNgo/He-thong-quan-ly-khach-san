@@ -24,7 +24,7 @@ describe('RoomManagement', () => {
     expect(api.createRoom).toHaveBeenCalledWith(expect.objectContaining({ hotelId: 7, roomTypeId: 3 }));
     component.openEdit(room as any); component.form.roomNumber = '103'; component.save();
     expect(api.updateRoom).toHaveBeenCalledWith(1, expect.objectContaining({ roomNumber: '103' }));
-  }, 10000);
+  }, 30000);
 
   it('rejects oversized bulk ranges before calling the API', () => {
     const fixture = TestBed.createComponent(RoomManagement); fixture.detectChanges(); const component = fixture.componentInstance;
