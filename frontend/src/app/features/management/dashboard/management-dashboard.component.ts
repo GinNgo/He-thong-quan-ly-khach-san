@@ -5,9 +5,10 @@ import { RouterLink } from '@angular/router';
 import { ManagedProperty, ManagementApiService, ManagementContext, ManagementLocation } from '../../../core/services/management-api.service';
 import { PropertyProfile } from '../../../core/models/property-profile.model';
 import { FeedbackStateComponent } from '../../../shared/components/feedback-state/feedback-state.component';
+import { PropertyGalleryComponent } from '../../../shared/components/property-gallery/property-gallery.component';
 
 @Component({
-  selector: 'app-management-dashboard', standalone: true, imports: [CommonModule, FormsModule, RouterLink, FeedbackStateComponent],
+  selector: 'app-management-dashboard', standalone: true, imports: [CommonModule, FormsModule, RouterLink, FeedbackStateComponent, PropertyGalleryComponent],
   templateUrl: './management-dashboard.component.html', styleUrl: './management-dashboard.component.css'
 })
 export class ManagementDashboardComponent implements OnInit {

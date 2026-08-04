@@ -102,6 +102,7 @@
           </form>
         }
       </section>
+      <app-property-gallery [propertyId]="activeProperty.id!" [editable]="canEditProfile" />
     }
     @if (!activePropertyOperational && activeProperty) {
       <div class="operation-gate" role="status">

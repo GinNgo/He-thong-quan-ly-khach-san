@@ -136,6 +136,12 @@
       </label>
     </div>
 
+    <app-property-gallery
+      *ngIf="editingProperty?.id"
+      [propertyId]="editingProperty!.id!"
+      [editable]="isAdmin">
+    </app-property-gallery>
+
   </form>
   <ng-template pTemplate="footer">
     <button pButton type="button" label="Hủy" class="p-button-text" (click)="closeDialog()" [disabled]="saving"></button>

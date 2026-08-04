@@ -63,6 +63,19 @@ class FileUploadServiceTest {
     }
 
     @Test
+    void storesAndDeletesPropertyManagedImageWithPropertyScopedRandomName() throws Exception {
+        FileUploadService.StoredImage result = service.storePropertyImage(
+                77L,
+                new MockMultipartFile("file", "gallery.png", "image/png", png(4, 3)));
+
+        assertTrue(result.url().matches(
+                "^/api/public/uploads/property-77-[0-9a-f-]+\\.png$"));
+        assertTrue(Files.isRegularFile(pathFromUrl(result.url())));
+        assertTrue(service.deleteManagedImage(result.url()));
+        assertFalse(Files.exists(pathFromUrl(result.url())));
+    }
+
+    @Test
     void rejectsSpoofedMimeWithoutWritingAFile() throws Exception {
         MultipartFile upload = new MockMultipartFile(
                 "file", "profile.png", "image/png", "not-an-image".getBytes());

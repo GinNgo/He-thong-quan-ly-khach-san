@@ -124,4 +124,28 @@ describe('PropertyManagementComponent', () => {
     http.expectOne(`${environment.apiUrl}/v1/hotels`).flush([]);
     fixture.destroy();
   });
+
+  it('renders the property-scoped gallery inside the admin editor', () => {
+    const fixture = TestBed.createComponent(PropertyManagementComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    http.expectOne(`${environment.apiUrl}/v1/hotels`).flush([]);
+    http.expectOne(`${environment.apiUrl}/public/locations/provinces`).flush([
+      { id: 1, nameVi: 'Da Nang', locationType: 'PROVINCE' }
+    ]);
+
+    component.openEdit({
+      id: 9, nameVi: 'Gallery property', propertyType: 'HOTEL', addressLine: '01 Beach Road',
+      provinceId: 1, wardId: 10
+    });
+    http.expectOne(`${environment.apiUrl}/public/locations/provinces/1/wards`).flush([
+      { id: 10, nameVi: 'Hai Chau', locationType: 'WARD' }
+    ]);
+    fixture.detectChanges();
+    http.expectOne(`${environment.apiUrl}/v1/properties/9/gallery`).flush([]);
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Thu vien anh');
+    fixture.destroy();
+  });
 });

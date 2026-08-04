@@ -1,0 +1,73 @@
+<section class="property-gallery" aria-labelledby="property-gallery-title">
+  <header>
+    <div>
+      <p class="eyebrow">Hinh anh co so</p>
+      <h3 id="property-gallery-title">Thu vien anh</h3>
+      <p>Anh dau tien tu dong tro thanh anh dai dien. Thu tu nay cung duoc dung tren trang tim kiem.</p>
+    </div>
+    <button type="button" class="secondary" (click)="load()" [disabled]="loading || saving">
+      Tai lai
+    </button>
+  </header>
+
+  @if (error) {
+    <p class="gallery-error" role="alert">{{ error }}</p>
+  }
+
+  @if (editable) {
+    <div class="composer" aria-label="Them anh vao thu vien">
+      <label class="wide">Lien ket anh HTTPS
+        <input type="url" [(ngModel)]="linkUrl" [ngModelOptions]="{standalone: true}" maxlength="1000" placeholder="https://cdn.example/property.jpg" />
+      </label>
+      <label>Mo ta tieng Viet
+        <input [(ngModel)]="altTextVi" [ngModelOptions]="{standalone: true}" maxlength="255" />
+      </label>
+      <label>Mo ta tieng Anh
+        <input [(ngModel)]="altTextEn" [ngModelOptions]="{standalone: true}" maxlength="255" />
+      </label>
+      <label class="file-field">Tai tep JPG, PNG hoac WebP
+        <input type="file" accept="image/jpeg,image/png,image/webp" (change)="onFileSelected($event)" />
+      </label>
+      <label class="primary-choice">
+        <input type="checkbox" [(ngModel)]="makePrimary" [ngModelOptions]="{standalone: true}" /> Dat lam anh dai dien
+      </label>
+      <div class="composer-actions">
+        <button type="button" class="secondary" (click)="addLink()" [disabled]="saving || !linkUrl.trim()">
+          Them lien ket
+        </button>
+        <button type="button" (click)="upload()" [disabled]="saving || !selectedFile">
+          {{ saving ? 'Dang xu ly...' : 'Tai anh len' }}
+        </button>
+      </div>
+    </div>
+  }
+
+  @if (loading) {
+    <p class="gallery-state" role="status">Dang tai thu vien anh...</p>
+  } @else if (!images.length) {
+    <p class="gallery-state">Chua co anh nao cho co so nay.</p>
+  } @else {
+    <ol class="gallery-grid">
+      @for (image of images; track image.id; let index = $index) {
+        <li [class.primary]="image.primary">
+          <div class="preview">
+            <img [src]="image.imageUrl" [alt]="image.altTextVi || image.altTextEn || 'Anh co so luu tru'" />
+            @if (image.primary) { <span>Anh dai dien</span> }
+          </div>
+          <div class="image-meta">
+            <strong>{{ image.altTextVi || image.altTextEn || 'Chua co mo ta' }}</strong>
+            <small>{{ image.managedUpload ? 'Tep do he thong quan ly' : 'Lien ket ben ngoai' }}</small>
+          </div>
+          @if (editable) {
+            <div class="image-actions">
+              <button type="button" class="icon" (click)="move(index, -1)" [disabled]="saving || index === 0" aria-label="Dua anh len truoc">&#8592;</button>
+              <button type="button" class="icon" (click)="move(index, 1)" [disabled]="saving || index === images.length - 1" aria-label="Dua anh ra sau">&#8594;</button>
+              <button type="button" class="secondary" (click)="setPrimary(image)" [disabled]="saving || image.primary">Dat dai dien</button>
+              <button type="button" class="danger" (click)="remove(image)" [disabled]="saving">Xoa</button>
+            </div>
+          }
+        </li>
+      }
+    </ol>
+  }
+</section>

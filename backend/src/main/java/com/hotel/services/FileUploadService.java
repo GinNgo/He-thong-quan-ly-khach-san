@@ -104,6 +104,17 @@ public class FileUploadService {
         return storedAvatar;
     }
 
+    public StoredImage storePropertyImage(Long propertyId, MultipartFile file) {
+        if (propertyId == null) {
+            throw new IllegalArgumentException("Property id is required.");
+        }
+        StoredAvatar stored = storeValidatedImage(
+                "property-" + propertyId + "-",
+                ".property-",
+                file);
+        return new StoredImage(stored.url(), stored.contentType(), stored.width(), stored.height());
+    }
+
     public StoredImageResource loadImageResource(String filename) {
         Path imagePath = resolveSafeFilename(filename);
         if (!Files.isRegularFile(imagePath) || !Files.isReadable(imagePath)) {
@@ -124,6 +135,10 @@ public class FileUploadService {
     }
 
     boolean deleteManagedAvatar(String publicUrl) {
+        return deleteManagedImage(publicUrl);
+    }
+
+    public boolean deleteManagedImage(String publicUrl) {
         if (publicUrl == null || publicUrl.isBlank()) {
             return false;
         }
@@ -141,6 +156,10 @@ public class FileUploadService {
     }
 
     private StoredAvatar storeValidatedAvatar(Long userId, MultipartFile file) {
+        return storeValidatedImage("avatar-" + userId + "-", ".avatar-", file);
+    }
+
+    private StoredAvatar storeValidatedImage(String filenamePrefix, String temporaryPrefix, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw AvatarUploadException.emptyFile();
         }
@@ -157,9 +176,9 @@ public class FileUploadService {
                 throw AvatarUploadException.tooLarge();
             }
             ImageMetadata metadata = inspectImage(bytes, file.getContentType());
-            String filename = "avatar-" + userId + "-" + UUID.randomUUID() + metadata.extension();
+            String filename = filenamePrefix + UUID.randomUUID() + metadata.extension();
             Path destination = resolveSafeFilename(filename);
-            Path temporary = Files.createTempFile(rootLocation, ".avatar-", ".tmp");
+            Path temporary = Files.createTempFile(rootLocation, temporaryPrefix, ".tmp");
             try {
                 Files.write(temporary, bytes);
                 moveAtomically(temporary, destination);
@@ -457,6 +476,9 @@ public class FileUploadService {
     }
 
     public record StoredAvatar(String url, String contentType, int width, int height) {
+    }
+
+    public record StoredImage(String url, String contentType, int width, int height) {
     }
 
     public record StoredImageResource(Resource resource, String contentType, int width, int height) {

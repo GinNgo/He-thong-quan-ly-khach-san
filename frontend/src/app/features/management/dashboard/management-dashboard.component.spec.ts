@@ -3,6 +3,9 @@ import { provideRouter } from '@angular/router';
 import { of, Subject } from 'rxjs';
 import { ManagementApiService, ManagementContext } from '../../../core/services/management-api.service';
 import { ManagementDashboardComponent } from './management-dashboard.component';
+import { PropertyGalleryService } from '../../../core/services/property-gallery.service';
+
+const galleryApi = { list: vi.fn(() => of([])) };
 
 describe('ManagementDashboardComponent', () => {
   it('submits an owner-scoped profile edit with a reason', async () => {
@@ -25,7 +28,11 @@ describe('ManagementDashboardComponent', () => {
     };
     await TestBed.configureTestingModule({
       imports: [ManagementDashboardComponent],
-      providers: [provideRouter([]), { provide: ManagementApiService, useValue: api }]
+      providers: [
+        provideRouter([]),
+        { provide: ManagementApiService, useValue: api },
+        { provide: PropertyGalleryService, useValue: galleryApi }
+      ]
     }).compileComponents();
 
     const fixture = TestBed.createComponent(ManagementDashboardComponent);
@@ -65,6 +72,7 @@ describe('ManagementDashboardComponent', () => {
       providers: [
         provideRouter([]),
         { provide: ManagementApiService, useValue: { context: () => context$ } },
+        { provide: PropertyGalleryService, useValue: galleryApi },
       ],
     }).compileComponents();
 
@@ -99,6 +107,7 @@ describe('ManagementDashboardComponent', () => {
       providers: [
         provideRouter([]),
         { provide: ManagementApiService, useValue: { context: () => context$ } },
+        { provide: PropertyGalleryService, useValue: galleryApi },
       ],
     }).compileComponents();
 
