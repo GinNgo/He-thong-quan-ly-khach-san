@@ -134,9 +134,14 @@ export class ServiceManagement implements OnInit {
       acceptLabel: 'Ngừng cung cấp',
       rejectLabel: 'Hủy',
       accept: () => {
+        const reason = globalThis.prompt('Nhap ly do ngung cung cap dich vu:')?.trim();
+        if (!reason) {
+          this.errorMessage = 'Vui long nhap ly do ngung cung cap dich vu.';
+          return;
+        }
         this.deactivatingId = service.id;
         this.errorMessage = '';
-        this.hotelService.deleteService(service.id!).pipe(finalize(() => this.deactivatingId = undefined)).subscribe({
+        this.hotelService.deleteService(service.id!, reason).pipe(finalize(() => this.deactivatingId = undefined)).subscribe({
           next: () => {
             this.messages.add({ severity: 'success', summary: 'Thành công', detail: 'Đã ngừng cung cấp dịch vụ.' });
             this.loadServices();

@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 import java.util.List;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 
 @Repository
 public interface HotelServiceRepository extends JpaRepository<HotelService, Long> {
@@ -18,6 +20,10 @@ public interface HotelServiceRepository extends JpaRepository<HotelService, Long
 
     @Query(value = "SELECT * FROM services WHERE id = :id", nativeQuery = true)
     Optional<HotelService> findUnfilteredById(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select service from HotelService service where service.id = :id")
+    Optional<HotelService> findByIdForUpdate(@Param("id") Long id);
 
     @Query(value = "SELECT COUNT(*) FROM services WHERE hotel_id = :hotelId AND LOWER(code) = LOWER(:code)", nativeQuery = true)
     long countByHotelIdAndCodeIgnoreCase(@Param("hotelId") Long hotelId, @Param("code") String code);

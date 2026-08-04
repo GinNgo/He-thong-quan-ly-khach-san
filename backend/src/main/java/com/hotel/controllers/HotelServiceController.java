@@ -13,6 +13,7 @@ import com.hotel.security.ActionCode;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/services")
@@ -43,22 +44,22 @@ public class HotelServiceController {
     @Operation(summary = "Create new service")
     public ResponseEntity<HotelServiceDTO> createService(
             @RequestParam(required = false) Long hotelId,
-            @RequestBody HotelServiceDTO dto) {
+            @Valid @RequestBody HotelServiceDTO dto) {
         return ResponseEntity.ok(hotelServiceLogic.createService(hotelId, dto));
     }
 
     @PutMapping("/{id}")
     @Permission(function = FunctionCode.HOTEL_SERVICE, action = ActionCode.UPDATE)
     @Operation(summary = "Update service")
-    public ResponseEntity<HotelServiceDTO> updateService(@PathVariable Long id, @RequestBody HotelServiceDTO dto) {
+    public ResponseEntity<HotelServiceDTO> updateService(@PathVariable Long id, @Valid @RequestBody HotelServiceDTO dto) {
         return ResponseEntity.ok(hotelServiceLogic.updateService(id, dto));
     }
 
     @DeleteMapping("/{id}")
     @Permission(function = FunctionCode.HOTEL_SERVICE, action = ActionCode.DELETE)
     @Operation(summary = "Delete service")
-    public ResponseEntity<Void> deleteService(@PathVariable Long id) {
-        hotelServiceLogic.deleteService(id);
+    public ResponseEntity<Void> deleteService(@PathVariable Long id, @RequestParam String reason) {
+        hotelServiceLogic.deleteService(id, reason);
         return ResponseEntity.noContent().build();
     }
 }

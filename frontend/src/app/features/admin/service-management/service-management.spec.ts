@@ -73,8 +73,9 @@ describe('ServiceManagement', () => {
 
     const confirmations = fixture.debugElement.injector.get(ConfirmationService);
     vi.spyOn(confirmations, 'confirm').mockImplementation(options => { options.accept?.(); return confirmations; });
+    vi.spyOn(globalThis, 'prompt').mockReturnValue('Khong con cung cap');
     component.deactivate(catalogItem);
-    expect(hotelService.deleteService).toHaveBeenCalledWith(4);
+    expect(hotelService.deleteService).toHaveBeenCalledWith(4, 'Khong con cung cap');
   });
 
   it('shows a retryable error when catalog loading fails', () => {

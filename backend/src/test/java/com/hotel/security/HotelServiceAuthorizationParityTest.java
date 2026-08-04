@@ -35,7 +35,7 @@ class HotelServiceAuthorizationParityTest {
         assertPermission("getServiceById", new Class<?>[]{Long.class}, ActionCode.VIEW);
         assertPermission("createService", new Class<?>[]{Long.class, HotelServiceDTO.class}, ActionCode.CREATE);
         assertPermission("updateService", new Class<?>[]{Long.class, HotelServiceDTO.class}, ActionCode.UPDATE);
-        assertPermission("deleteService", new Class<?>[]{Long.class}, ActionCode.DELETE);
+        assertPermission("deleteService", new Class<?>[]{Long.class, String.class}, ActionCode.DELETE);
     }
 
     @Test
@@ -62,7 +62,7 @@ class HotelServiceAuthorizationParityTest {
 
     @Test
     void updateCannotAuthorizeDeleteButDeleteCan() throws Exception {
-        HandlerMethod delete = handler("deleteService", Long.class);
+        HandlerMethod delete = handler("deleteService", Long.class, String.class);
         authenticate(Map.of(FunctionCode.HOTEL_SERVICE, ActionCode.UPDATE));
         assertFalse(interceptor.preHandle(request("DELETE", "/api/services/1"),
                 new MockHttpServletResponse(), delete));
