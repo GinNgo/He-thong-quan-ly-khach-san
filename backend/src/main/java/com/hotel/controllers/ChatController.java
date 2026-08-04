@@ -1,7 +1,7 @@
 package com.hotel.controllers;
 
-import com.hotel.dtos.ChatConversationDTO;
 import com.hotel.dtos.ChatConversationCreateRequest;
+import com.hotel.dtos.ChatConversationDTO;
 import com.hotel.dtos.ChatMessageDTO;
 import com.hotel.dtos.ChatPageDTO;
 import com.hotel.dtos.CustomerChatMessageRequest;
@@ -19,7 +19,12 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
 import java.util.List;
@@ -27,7 +32,6 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 public class ChatController {
-
     private final ChatService chatService;
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatAuthorizationService authorizationService;
@@ -37,13 +41,12 @@ public class ChatController {
             @Valid @Payload CustomerChatMessageRequest request,
             Principal principal) {
         CustomUserDetails customer = authorizationService.requireUser(principal);
-        ChatMessageDTO savedMessage = chatService.sendToSupport(
-                customer, request.getConversationId(), request.getContent());
-        messagingTemplate.convertAndSendToUser(
-                customer.getUsername(),
-                "/queue/messages",
-                savedMessage);
-        messagingTemplate.convertAndSend("/topic/support/messages", savedMessage);
+        ChatMessageDTO savedMessage = request.getConversationId() == null
+                ? chatService.sendToSupport(
+                        customer, request.getHotelId(), request.getReservationId(), request.getContent())
+                : chatService.sendToSupport(customer, request.getConversationId(), request.getContent());
+        messagingTemplate.convertAndSendToUser(customer.getUsername(), "/queue/messages", savedMessage);
+        publishToSupportRecipients(savedMessage);
     }
 
     @MessageMapping("/chat.support.reply")
@@ -51,22 +54,12 @@ public class ChatController {
             @Valid @Payload SupportChatReplyRequest request,
             Principal principal) {
         CustomUserDetails support = authorizationService.requireUser(principal);
-        ChatMessageDTO savedMessage;
-        Long customerId;
-        if (request.getConversationId() != null) {
-            savedMessage = chatService.replyToConversation(
-                    support, request.getConversationId(), request.getContent());
-            customerId = chatService.getConversationCustomerId(request.getConversationId());
-        } else {
-            savedMessage = chatService.replyToCustomer(
-                    support, request.getCustomerId(), request.getContent());
-            customerId = request.getCustomerId();
-        }
+        ChatMessageDTO savedMessage = chatService.replyToConversation(
+                support, request.getConversationId(), request.getContent(), request.getExpectedVersion());
+        Long customerId = chatService.getConversationCustomerId(request.getConversationId());
         messagingTemplate.convertAndSendToUser(
-                chatService.getUsername(customerId),
-                "/queue/messages",
-                savedMessage);
-        messagingTemplate.convertAndSend("/topic/support/messages", savedMessage);
+                chatService.getUsername(customerId), "/queue/messages", savedMessage);
+        publishToSupportRecipients(savedMessage);
     }
 
     @GetMapping("/api/chat/me/history")
@@ -91,7 +84,8 @@ public class ChatController {
             Principal principal,
             @Valid @RequestBody ChatConversationCreateRequest request) {
         return ResponseEntity.ok(chatService.createConversation(
-                authorizationService.requireUser(principal), request.subject()));
+                authorizationService.requireUser(principal),
+                request.subject(), request.hotelId(), request.reservationId()));
     }
 
     @GetMapping("/api/chat/me/conversations/{conversationId}/messages")
@@ -114,14 +108,20 @@ public class ChatController {
         CustomUserDetails customer = authorizationService.requireUser(principal);
         ChatMessageDTO savedMessage = chatService.sendToSupport(customer, conversationId, request.getContent());
         messagingTemplate.convertAndSendToUser(customer.getUsername(), "/queue/messages", savedMessage);
-        messagingTemplate.convertAndSend("/topic/support/messages", savedMessage);
+        publishToSupportRecipients(savedMessage);
         return ResponseEntity.ok(savedMessage);
     }
 
     @GetMapping("/api/chat/support/conversations")
     @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.VIEW)
-    public ResponseEntity<List<ChatConversationDTO>> getSupportConversations(Principal principal) {
-        return ResponseEntity.ok(chatService.getSupportConversations(authorizationService.requireUser(principal)));
+    public ResponseEntity<List<ChatConversationDTO>> getSupportConversations(
+            Principal principal,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "ALL") String assignment,
+            @RequestParam(defaultValue = "ALL") String sla,
+            @RequestParam(required = false) Long hotelId) {
+        return ResponseEntity.ok(chatService.getSupportConversations(
+                authorizationService.requireUser(principal), status, assignment, sla, hotelId));
     }
 
     @GetMapping("/api/chat/support/conversations/{conversationId}")
@@ -130,8 +130,7 @@ public class ChatController {
             @PathVariable Long conversationId,
             Principal principal) {
         return ResponseEntity.ok(chatService.getSupportHistory(
-                authorizationService.requireUser(principal),
-                conversationId));
+                authorizationService.requireUser(principal), conversationId));
     }
 
     @GetMapping("/api/chat/support/conversations/{conversationId}/messages")
@@ -152,11 +151,59 @@ public class ChatController {
             @Valid @RequestBody SupportChatReplyRequest request,
             Principal principal) {
         ChatMessageDTO savedMessage = chatService.replyToConversation(
-                authorizationService.requireUser(principal), conversationId, request.getContent());
+                authorizationService.requireUser(principal), conversationId,
+                request.getContent(), request.getExpectedVersion());
         Long customerId = chatService.getConversationCustomerId(conversationId);
         messagingTemplate.convertAndSendToUser(
                 chatService.getUsername(customerId), "/queue/messages", savedMessage);
-        messagingTemplate.convertAndSend("/topic/support/messages", savedMessage);
+        publishToSupportRecipients(savedMessage);
         return ResponseEntity.ok(savedMessage);
+    }
+
+    @PostMapping("/api/chat/support/conversations/{conversationId}/assign")
+    @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.CREATE)
+    public ResponseEntity<ChatConversationDTO> assignConversation(
+            @PathVariable Long conversationId,
+            @RequestParam(required = false) Long expectedVersion,
+            Principal principal) {
+        return ResponseEntity.ok(chatService.claimConversation(
+                authorizationService.requireUser(principal), conversationId, expectedVersion));
+    }
+
+    @PostMapping("/api/chat/support/conversations/{conversationId}/unassign")
+    @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.CREATE)
+    public ResponseEntity<ChatConversationDTO> unassignConversation(
+            @PathVariable Long conversationId,
+            @RequestParam(required = false) Long expectedVersion,
+            Principal principal) {
+        return ResponseEntity.ok(chatService.unassignConversation(
+                authorizationService.requireUser(principal), conversationId, expectedVersion));
+    }
+
+    @PostMapping("/api/chat/support/conversations/{conversationId}/escalate")
+    @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.CREATE)
+    public ResponseEntity<ChatConversationDTO> escalateConversation(
+            @PathVariable Long conversationId,
+            @RequestParam(required = false) Long expectedVersion,
+            Principal principal) {
+        return ResponseEntity.ok(chatService.escalateConversation(
+                authorizationService.requireUser(principal), conversationId, expectedVersion));
+    }
+
+    @PostMapping("/api/chat/support/conversations/{conversationId}/reopen")
+    @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.CREATE)
+    public ResponseEntity<ChatConversationDTO> reopenConversation(
+            @PathVariable Long conversationId,
+            @RequestParam(required = false) Long expectedVersion,
+            Principal principal) {
+        return ResponseEntity.ok(chatService.reopenConversation(
+                authorizationService.requireUser(principal), conversationId, expectedVersion));
+    }
+
+    private void publishToSupportRecipients(ChatMessageDTO message) {
+        List<String> recipients = chatService.getSupportRecipients(message.getHotelId());
+        if (recipients == null) return;
+        recipients.forEach(username ->
+                messagingTemplate.convertAndSendToUser(username, "/queue/support/messages", message));
     }
 }

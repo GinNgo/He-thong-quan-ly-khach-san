@@ -90,11 +90,32 @@ describe('ChatService', () => {
   });
 
   it('persists support replies through the selected conversation endpoint', () => {
-    service.sendSupportConversationMessage(33, 'Da tiep nhan').subscribe();
+    service.sendSupportConversationMessage(33, 'Da tiep nhan', 4).subscribe();
 
     const request = http.expectOne('http://localhost:8080/api/chat/support/conversations/33/messages');
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({ content: 'Da tiep nhan' });
+    expect(request.request.body).toEqual({ conversationId: 33, content: 'Da tiep nhan', expectedVersion: 4 });
     request.flush({ id: 1, conversationId: 33, senderId: 7, receiverId: 42, content: 'Da tiep nhan' });
+  });
+
+  it('sends tenant queue filters without redundant ALL values', () => {
+    service.getSupportConversations({ status: 'OPEN', assignment: 'ALL', sla: 'BREACHED', hotelId: 9 })
+      .subscribe();
+
+    const request = http.expectOne(item => item.url.endsWith('/api/chat/support/conversations'));
+    expect(request.request.params.get('status')).toBe('OPEN');
+    expect(request.request.params.has('assignment')).toBe(false);
+    expect(request.request.params.get('sla')).toBe('BREACHED');
+    expect(request.request.params.get('hotelId')).toBe('9');
+    request.flush([]);
+  });
+
+  it('includes the optimistic version for queue lifecycle mutations', () => {
+    service.unassignSupportConversation(33, 5).subscribe();
+
+    const request = http.expectOne(item => item.url.endsWith('/api/chat/support/conversations/33/unassign'));
+    expect(request.request.method).toBe('POST');
+    expect(request.request.params.get('expectedVersion')).toBe('5');
+    request.flush({ conversationId: 33, version: 6, status: 'OPEN' });
   });
 });

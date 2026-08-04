@@ -5,11 +5,13 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageType;
+import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
@@ -23,7 +25,9 @@ public class ChatChannelInterceptor implements ChannelInterceptor {
     private static final String CUSTOMER_SEND_DESTINATION = "/app/chat.support.send";
     private static final String SUPPORT_REPLY_DESTINATION = "/app/chat.support.reply";
     private static final String CUSTOMER_QUEUE_DESTINATION = "/user/queue/messages";
-    private static final String SUPPORT_TOPIC_DESTINATION = "/topic/support/messages";
+    private static final String SUPPORT_QUEUE_DESTINATION = "/user/queue/support/messages";
+    private static final String CHAT_AUTHENTICATION_ATTRIBUTE =
+            ChatChannelInterceptor.class.getName() + ".AUTHENTICATION";
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
@@ -40,7 +44,12 @@ public class ChatChannelInterceptor implements ChannelInterceptor {
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
-        SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.wrap(message);
+        SimpMessageHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(
+                message, SimpMessageHeaderAccessor.class);
+        boolean usingOriginalAccessor = accessor != null;
+        if (accessor == null) {
+            accessor = SimpMessageHeaderAccessor.wrap(message);
+        }
         if (!isChatSession(accessor)) {
             return message;
         }
@@ -48,13 +57,14 @@ public class ChatChannelInterceptor implements ChannelInterceptor {
         SimpMessageType messageType = accessor.getMessageType();
         if (messageType == SimpMessageType.CONNECT) {
             authenticate(accessor);
-            return MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders());
+            return authenticatedMessage(message, accessor, usingOriginalAccessor);
         }
 
         if (messageType == SimpMessageType.DISCONNECT || messageType == SimpMessageType.HEARTBEAT) {
             return message;
         }
 
+        restoreAuthentication(accessor);
         CustomUserDetails userDetails = authorizationService.requireUser(accessor.getUser());
         String destination = accessor.getDestination();
 
@@ -64,7 +74,16 @@ public class ChatChannelInterceptor implements ChannelInterceptor {
             authorizeSubscribe(userDetails, destination);
         }
 
-        return message;
+        return authenticatedMessage(message, accessor, usingOriginalAccessor);
+    }
+
+    private Message<?> authenticatedMessage(
+            Message<?> message,
+            SimpMessageHeaderAccessor accessor,
+            boolean usingOriginalAccessor) {
+        return usingOriginalAccessor
+                ? message
+                : MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders());
     }
 
     private boolean isChatSession(SimpMessageHeaderAccessor accessor) {
@@ -94,6 +113,16 @@ public class ChatChannelInterceptor implements ChannelInterceptor {
                 null,
                 userDetails.getAuthorities());
         accessor.setUser(authentication);
+        Map<String, Object> attributes = accessor.getSessionAttributes();
+        if (attributes != null) attributes.put(CHAT_AUTHENTICATION_ATTRIBUTE, authentication);
+    }
+
+    private void restoreAuthentication(SimpMessageHeaderAccessor accessor) {
+        if (accessor.getUser() != null) return;
+        Map<String, Object> attributes = accessor.getSessionAttributes();
+        if (attributes != null && attributes.get(CHAT_AUTHENTICATION_ATTRIBUTE) instanceof Authentication authentication) {
+            accessor.setUser(authentication);
+        }
     }
 
     private void authorizeSend(CustomUserDetails userDetails, String destination) {
@@ -111,7 +140,7 @@ public class ChatChannelInterceptor implements ChannelInterceptor {
         if (CUSTOMER_QUEUE_DESTINATION.equals(destination)) {
             return;
         }
-        if (SUPPORT_TOPIC_DESTINATION.equals(destination)) {
+        if (SUPPORT_QUEUE_DESTINATION.equals(destination)) {
             authorizationService.requirePermission(userDetails, ActionCode.VIEW);
             return;
         }

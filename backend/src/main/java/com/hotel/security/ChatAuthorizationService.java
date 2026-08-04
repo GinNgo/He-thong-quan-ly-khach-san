@@ -27,15 +27,18 @@ public class ChatAuthorizationService {
     }
 
     public boolean hasPermission(CustomUserDetails userDetails, int action) {
-        boolean isSuperAdmin = userDetails.getAuthorities().stream()
-                .anyMatch(authority -> "SUPER_ADMIN".equals(authority.getAuthority())
-                        || "ROLE_SUPER_ADMIN".equals(authority.getAuthority()));
-        if (isSuperAdmin) {
+        if (isSystemAdministrator(userDetails)) {
             return true;
         }
 
         Map<FunctionCode, Integer> masks = userDetails.getPermissionMasks();
         Integer mask = masks == null ? null : masks.get(FunctionCode.AI_CHAT);
         return mask != null && (mask & action) == action;
+    }
+
+    public boolean isSystemAdministrator(CustomUserDetails userDetails) {
+        return userDetails.getAuthorities().stream()
+                .anyMatch(authority -> "SUPER_ADMIN".equals(authority.getAuthority())
+                        || "ROLE_SUPER_ADMIN".equals(authority.getAuthority()));
     }
 }

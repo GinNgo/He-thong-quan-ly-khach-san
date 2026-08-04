@@ -16,6 +16,42 @@
       <button type="button" class="text-action" (click)="retryConnection()">Thu lai</button>
     </div>
 
+    <div *ngIf="conflictRecovery()" class="dashboard-state" role="status">
+      {{ conflictRecovery() }}
+    </div>
+
+    <fieldset class="queue-filters" [disabled]="conversationState() === 'loading'">
+      <legend class="visually-hidden">Loc hang doi</legend>
+      <label>
+        <span>Trang thai</span>
+        <select name="supportStatusFilter" [(ngModel)]="statusFilter" (change)="applyFilters()">
+          <option value="ALL">Tat ca</option>
+          <option value="OPEN">Dang cho</option>
+          <option value="ASSIGNED">Dang xu ly</option>
+          <option value="ESCALATED">Da chuyen cap</option>
+          <option value="CLOSED">Da dong</option>
+        </select>
+      </label>
+      <label>
+        <span>Phan cong</span>
+        <select name="supportAssignmentFilter" [(ngModel)]="assignmentFilter" (change)="applyFilters()">
+          <option value="ALL">Tat ca</option>
+          <option value="UNASSIGNED">Chua nhan</option>
+          <option value="MINE">Cua toi</option>
+        </select>
+      </label>
+      <label>
+        <span>SLA</span>
+        <select name="supportSlaFilter" [(ngModel)]="slaFilter" (change)="applyFilters()">
+          <option value="ALL">Tat ca</option>
+          <option value="BREACHED">Qua SLA</option>
+          <option value="AT_RISK">Sap qua SLA</option>
+          <option value="ON_TRACK">Trong SLA</option>
+          <option value="NO_PENDING_RESPONSE">Da phan hoi</option>
+        </select>
+      </label>
+    </fieldset>
+
     <div *ngIf="conversationState() === 'loading'" class="dashboard-state" aria-label="Dang tai hoi thoai">
       <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
       <span>Dang tai hang doi...</span>
@@ -46,6 +82,14 @@
         <span class="conversation-copy">
           <strong>{{ conversation.subject }}</strong>
           <span>{{ conversation.customerName }} / {{ conversation.lastMessage || 'Cuoc hoi thoai moi' }}</span>
+          <span class="queue-meta">
+            <span class="queue-badge" [attr.data-state]="conversation.status">
+              {{ statusLabel(conversation) }}
+            </span>
+            <span class="queue-badge" [attr.data-sla]="conversation.slaState">
+              {{ slaLabel(conversation) }}
+            </span>
+          </span>
         </span>
         <time *ngIf="conversation.lastMessageAt" [attr.datetime]="conversation.lastMessageAt">
           {{ conversation.lastMessageAt | date:'HH:mm' }}
@@ -63,9 +107,46 @@
         <div>
           <p class="eyebrow">CUSTOMER CONVERSATION</p>
           <h2>{{ getConversation(selectedId)?.subject || ('Hoi thoai #' + selectedId) }}</h2>
-          <p>{{ getConversation(selectedId)?.customerName }}</p>
+          <p>
+            {{ getConversation(selectedId)?.customerName }}
+            <span *ngIf="getConversation(selectedId)?.hotelName">
+              / {{ getConversation(selectedId)?.hotelName }}
+            </span>
+          </p>
+        </div>
+        <div class="conversation-status" *ngIf="getConversation(selectedId) as selectedConversation">
+          <span class="queue-badge" [attr.data-state]="selectedConversation.status">
+            {{ statusLabel(selectedConversation) }}
+          </span>
+          <span class="queue-badge" [attr.data-sla]="selectedConversation.slaState">
+            {{ slaLabel(selectedConversation) }}
+          </span>
+          <small *ngIf="selectedConversation.assignedAgentName">
+            Nhan vien: {{ selectedConversation.assignedAgentName }}
+          </small>
         </div>
       </header>
+
+      <div class="queue-actions" *ngIf="getConversation(selectedId) as selectedConversation">
+        <button type="button" (click)="claimConversation()"
+          [disabled]="isMutating() || selectedConversation.status === 'CLOSED'">
+          Nhan xu ly
+        </button>
+        <button type="button" (click)="unassignConversation()"
+          [disabled]="isMutating() || !selectedConversation.assignedAgentId">
+          Tra lai hang doi
+        </button>
+        <button type="button" (click)="escalateConversation()"
+          [disabled]="isMutating() || selectedConversation.status === 'CLOSED'">
+          Chuyen cap
+        </button>
+        <button type="button" (click)="reopenConversation()"
+          [disabled]="isMutating() || (selectedConversation.status !== 'CLOSED'
+            && selectedConversation.status !== 'ESCALATED')">
+          Mo lai
+        </button>
+        <p *ngIf="mutationError()" class="action-feedback is-error" role="alert">{{ mutationError() }}</p>
+      </div>
 
       <div class="message-stream" #scrollMe role="log" aria-relevant="additions">
         <div *ngIf="messagesState() === 'loading'" class="dashboard-state">

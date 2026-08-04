@@ -12,6 +12,8 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Observable } from 'rxjs';
 
 import {
   ChatConnectionState,
@@ -51,8 +53,14 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
   readonly messagesError = signal('');
   readonly isSending = signal(false);
   readonly sendError = signal('');
+  readonly isMutating = signal(false);
+  readonly mutationError = signal('');
+  readonly conflictRecovery = signal('');
 
   newMessage = '';
+  statusFilter: 'ALL' | 'OPEN' | 'ASSIGNED' | 'ESCALATED' | 'CLOSED' = 'ALL';
+  assignmentFilter: 'ALL' | 'UNASSIGNED' | 'MINE' = 'ALL';
+  slaFilter: 'ALL' | 'BREACHED' | 'AT_RISK' | 'ON_TRACK' | 'NO_PENDING_RESPONSE' = 'ALL';
   private messagePage = 0;
   private renderedMessageCount = 0;
   private skipAutoScrollOnce = false;
@@ -98,7 +106,11 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
   loadConversations(): void {
     this.conversationState.set('loading');
     this.conversationError.set('');
-    this.chatService.getSupportConversations().subscribe({
+    this.chatService.getSupportConversations({
+      status: this.statusFilter,
+      assignment: this.assignmentFilter,
+      sla: this.slaFilter,
+    }).subscribe({
       next: conversations => {
         this.conversations.set(conversations);
         this.conversationState.set('ready');
@@ -117,6 +129,10 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
 
   retryConnection(): void {
     this.chatService.connect('support');
+    this.loadConversations();
+  }
+
+  applyFilters(): void {
     this.loadConversations();
   }
 
@@ -178,15 +194,46 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
       this.isSending.set(false);
       this.sendError.set('Chua nhan duoc xac nhan gui. Ban co the thu lai.');
     }, SEND_ACK_TIMEOUT_MS);
-    this.chatService.sendSupportConversationMessage(conversationId, content).subscribe({
-      next: message => this.handleIncomingMessage(message),
-      error: () => {
+    const conversation = this.getConversation(conversationId);
+    this.chatService.sendSupportConversationMessage(
+      conversationId, content, conversation?.version
+    ).subscribe({
+      next: message => {
+        this.handleIncomingMessage(message);
+        this.loadConversations();
+      },
+      error: error => {
         this.clearSendTimeout();
         this.isSending.set(false);
         this.newMessage = content;
-        this.sendError.set('Khong the gui phan hoi. Hay thu lai.');
+        if (error instanceof HttpErrorResponse && error.status === 409) {
+          this.sendError.set('Hoi thoai da thay doi. Danh sach da duoc tai lai; hay kiem tra truoc khi gui lai.');
+          this.loadConversations();
+        } else {
+          this.sendError.set('Khong the gui phan hoi. Hay thu lai.');
+        }
       }
     });
+  }
+
+  claimConversation(): void {
+    this.runMutation(conversation => this.chatService.claimSupportConversation(
+      conversation.conversationId, conversation.version));
+  }
+
+  unassignConversation(): void {
+    this.runMutation(conversation => this.chatService.unassignSupportConversation(
+      conversation.conversationId, conversation.version));
+  }
+
+  escalateConversation(): void {
+    this.runMutation(conversation => this.chatService.escalateSupportConversation(
+      conversation.conversationId, conversation.version));
+  }
+
+  reopenConversation(): void {
+    this.runMutation(conversation => this.chatService.reopenSupportConversation(
+      conversation.conversationId, conversation.version));
   }
 
   isOwnMessage(message: ChatMessage): boolean {
@@ -216,6 +263,24 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
     return this.conversations().find(conversation => conversation.conversationId === conversationId);
   }
 
+  statusLabel(conversation: ChatConversation): string {
+    switch (conversation.status) {
+      case 'ASSIGNED': return 'Dang xu ly';
+      case 'ESCALATED': return 'Da chuyen cap';
+      case 'CLOSED': return 'Da dong';
+      default: return 'Dang cho';
+    }
+  }
+
+  slaLabel(conversation: ChatConversation): string {
+    switch (conversation.slaState) {
+      case 'BREACHED': return 'Qua SLA';
+      case 'AT_RISK': return 'Sap qua SLA';
+      case 'ON_TRACK': return 'Trong SLA';
+      default: return 'Khong cho phan hoi';
+    }
+  }
+
   private handleIncomingMessage(message: ChatMessage | null): void {
     if (!message) return;
     if (message.conversationId
@@ -235,7 +300,38 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
     if (message.senderId === this.currentUserId()) {
       this.isSending.set(false);
       this.clearSendTimeout();
+    } else {
+      this.loadConversations();
     }
+  }
+
+  private runMutation(
+    operation: (conversation: ChatConversation) => Observable<ChatConversation>
+  ): void {
+    const conversationId = this.selectedConversationId();
+    const conversation = conversationId ? this.getConversation(conversationId) : undefined;
+    if (!conversation || this.isMutating()) return;
+    this.isMutating.set(true);
+    this.mutationError.set('');
+    this.conflictRecovery.set('');
+    operation(conversation).subscribe({
+      next: updated => {
+        this.conversations.update(items => items.map(item =>
+          item.conversationId === updated.conversationId ? updated : item));
+        this.isMutating.set(false);
+      },
+      error: error => {
+        this.isMutating.set(false);
+        if (error instanceof HttpErrorResponse && error.status === 409) {
+          this.conflictRecovery.set('Hang doi da thay doi boi mot nhan vien khac. Da tai lai trang thai moi nhat.');
+          this.loadConversations();
+        } else if (error instanceof HttpErrorResponse && error.status === 403) {
+          this.mutationError.set('Hoi thoai dang thuoc nhan vien khac. Ban khong the thay doi phan cong.');
+        } else {
+          this.mutationError.set('Khong the cap nhat hoi thoai. Hay thu lai.');
+        }
+      }
+    });
   }
 
   private clearSendTimeout(): void {

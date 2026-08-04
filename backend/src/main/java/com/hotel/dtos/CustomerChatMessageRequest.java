@@ -11,6 +11,12 @@ public class CustomerChatMessageRequest {
     @Positive
     private Long conversationId;
 
+    @Positive
+    private Long hotelId;
+
+    @Positive
+    private Long reservationId;
+
     @NotBlank
     @Size(max = 2000)
     private String content;

@@ -37,9 +37,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 
 @SpringBootTest(
         classes = BackendApplication.class,
@@ -155,6 +157,65 @@ class ChatControllerIntegrationTest {
         assertEquals(1L, eventRepository.countByConversationIdAndEventType(conversation.getId(), "ESCALATED"));
     }
 
+    @Test
+    void supportQueueFiltersSlaAndRecoversFromOptimisticLifecycleConflicts() throws Exception {
+        User customer = saveUser("chat-lifecycle-customer");
+        User agent = saveUser("chat-lifecycle-agent");
+        Hotel hotel = saveHotel("chat-lifecycle-hotel");
+        assign(agent, hotel);
+        SupportConversation conversation = saveConversation(customer, hotel, Instant.now());
+        conversation.setSlaDeadlineAt(Instant.now().minusSeconds(60));
+        conversation = conversationRepository.saveAndFlush(conversation);
+        saveMessage(conversation, customer.getId(), 0L, "breached request");
+
+        CustomUserDetails support = support(agent);
+        mockMvc.perform(get("/api/chat/support/conversations")
+                        .param("assignment", "UNASSIGNED")
+                        .param("sla", "BREACHED")
+                        .param("hotelId", hotel.getId().toString())
+                        .with(user(support)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].conversationId").value(conversation.getId()))
+                .andExpect(jsonPath("$[0].slaState").value("BREACHED"));
+
+        mockMvc.perform(post("/api/chat/support/conversations/{conversationId}/assign", conversation.getId())
+                        .with(user(support)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ASSIGNED"));
+
+        SupportConversation assigned = conversationRepository.findById(conversation.getId()).orElseThrow();
+        mockMvc.perform(post("/api/chat/support/conversations/{conversationId}/unassign", conversation.getId())
+                        .param("expectedVersion", String.valueOf(assigned.getVersion() - 1))
+                        .with(user(support)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONCURRENT_MODIFICATION"));
+
+        mockMvc.perform(post("/api/chat/support/conversations/{conversationId}/unassign", conversation.getId())
+                        .param("expectedVersion", assigned.getVersion().toString())
+                        .with(user(support)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("OPEN"));
+
+        SupportConversation unassigned = conversationRepository.findById(conversation.getId()).orElseThrow();
+        mockMvc.perform(post("/api/chat/support/conversations/{conversationId}/escalate", conversation.getId())
+                        .param("expectedVersion", unassigned.getVersion().toString())
+                        .with(user(support)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ESCALATED"));
+
+        SupportConversation escalated = conversationRepository.findById(conversation.getId()).orElseThrow();
+        mockMvc.perform(post("/api/chat/support/conversations/{conversationId}/reopen", conversation.getId())
+                        .param("expectedVersion", escalated.getVersion().toString())
+                        .with(user(support)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("OPEN"))
+                .andExpect(jsonPath("$.assignedAgentId").doesNotExist());
+
+        assertEquals(1L, eventRepository.countByConversationIdAndEventType(conversation.getId(), "UNASSIGNED"));
+        assertEquals(1L, eventRepository.countByConversationIdAndEventType(conversation.getId(), "REOPENED"));
+    }
+
     private User saveUser(String prefix) {
         String suffix = prefix + "-" + UUID.randomUUID();
         User user = new User();
@@ -191,6 +252,7 @@ class ChatControllerIntegrationTest {
         conversation.setPublicId(UUID.randomUUID().toString());
         conversation.setCustomer(customer);
         conversation.setHotel(hotel);
+        conversation.setSubject("Support request");
         conversation.setChannel("IN_APP");
         conversation.setStatus("OPEN");
         conversation.setLastActivityAt(lastActivityAt);
@@ -228,5 +290,20 @@ class ChatControllerIntegrationTest {
                 user.getId(),
                 null,
                 Map.of());
+    }
+
+    @Test
+    void chatMutationCorsAllowsSharedCorrelationAndIdempotencyHeaders() throws Exception {
+        mockMvc.perform(options("/api/chat/me/conversations")
+                        .header("Origin", "http://localhost:4200")
+                        .header("Access-Control-Request-Method", "POST")
+                        .header("Access-Control-Request-Headers",
+                                "authorization,content-type,x-correlation-id,idempotency-key"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:4200"))
+                .andExpect(header().string("Access-Control-Allow-Headers",
+                        org.hamcrest.Matchers.containsStringIgnoringCase("x-correlation-id")))
+                .andExpect(header().string("Access-Control-Allow-Headers",
+                        org.hamcrest.Matchers.containsStringIgnoringCase("idempotency-key")));
     }
 }

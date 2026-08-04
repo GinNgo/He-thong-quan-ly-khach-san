@@ -9,6 +9,7 @@ public class ChatMessageDTO {
     private Long senderId;
     private Long receiverId;
     private Long conversationId;
+    private Long hotelId;
     private String content;
     private Instant timestamp;
     private boolean isRead;

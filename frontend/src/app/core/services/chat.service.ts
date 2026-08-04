@@ -10,6 +10,7 @@ import { ClientObservabilityService } from './client-observability.service';
 export interface ChatMessage {
   id?: number;
   conversationId?: number;
+  hotelId?: number;
   senderId: number;
   receiverId: number;
   content: string;
@@ -22,6 +23,15 @@ export interface ChatConversation {
   customerId: number;
   customerName: string;
   subject: string;
+  hotelId?: number;
+  hotelName?: string;
+  reservationId?: number;
+  assignedAgentId?: number;
+  assignedAgentName?: string;
+  status?: 'OPEN' | 'ASSIGNED' | 'ESCALATED' | 'CLOSED';
+  version?: number;
+  slaDeadlineAt?: string;
+  slaState?: 'BREACHED' | 'AT_RISK' | 'ON_TRACK' | 'NO_PENDING_RESPONSE';
   lastMessage: string;
   lastMessageAt?: string;
 }
@@ -35,6 +45,13 @@ export interface ChatPage<T> {
   first: boolean;
   last: boolean;
   retentionDays: number;
+}
+
+export interface SupportQueueFilters {
+  status?: 'ALL' | 'OPEN' | 'ASSIGNED' | 'ESCALATED' | 'CLOSED';
+  assignment?: 'ALL' | 'UNASSIGNED' | 'MINE';
+  sla?: 'ALL' | 'BREACHED' | 'AT_RISK' | 'ON_TRACK' | 'NO_PENDING_RESPONSE';
+  hotelId?: number;
 }
 
 export type ChatMode = 'customer' | 'support';
@@ -92,7 +109,7 @@ export class ChatService {
         this.setConnectionState('connected', '');
         client.subscribe('/user/queue/messages', (message: Message) => this.publishIncoming(message));
         if (mode === 'support') {
-          client.subscribe('/topic/support/messages', (message: Message) => this.publishIncoming(message));
+          client.subscribe('/user/queue/support/messages', (message: Message) => this.publishIncoming(message));
         }
       },
       onStompError: (frame) => {
@@ -148,8 +165,12 @@ export class ChatService {
     });
   }
 
-  createMyConversation(subject: string): Observable<ChatConversation> {
-    return this.http.post<ChatConversation>(`${this.apiUrl}/me/conversations`, { subject });
+  createMyConversation(subject: string, hotelId?: number, reservationId?: number): Observable<ChatConversation> {
+    return this.http.post<ChatConversation>(`${this.apiUrl}/me/conversations`, {
+      subject,
+      ...(hotelId ? { hotelId } : {}),
+      ...(reservationId ? { reservationId } : {}),
+    });
   }
 
   getMyConversationMessages(conversationId: number, page = 0, size = 50): Observable<ChatPage<ChatMessage>> {
@@ -162,8 +183,13 @@ export class ChatService {
       `${this.apiUrl}/me/conversations/${conversationId}/messages`, { content });
   }
 
-  getSupportConversations(): Observable<ChatConversation[]> {
-    return this.http.get<ChatConversation[]>(`${this.apiUrl}/support/conversations`);
+  getSupportConversations(filters: SupportQueueFilters = {}): Observable<ChatConversation[]> {
+    const params: Record<string, string | number> = {};
+    if (filters.status && filters.status !== 'ALL') params['status'] = filters.status;
+    if (filters.assignment && filters.assignment !== 'ALL') params['assignment'] = filters.assignment;
+    if (filters.sla && filters.sla !== 'ALL') params['sla'] = filters.sla;
+    if (filters.hotelId) params['hotelId'] = filters.hotelId;
+    return this.http.get<ChatConversation[]>(`${this.apiUrl}/support/conversations`, { params });
   }
 
   getSupportHistory(conversationId: number): Observable<ChatMessage[]> {
@@ -175,9 +201,31 @@ export class ChatService {
       `${this.apiUrl}/support/conversations/${conversationId}/messages`, { params: { page, size } });
   }
 
-  sendSupportConversationMessage(conversationId: number, content: string): Observable<ChatMessage> {
+  sendSupportConversationMessage(
+    conversationId: number, content: string, expectedVersion?: number
+  ): Observable<ChatMessage> {
     return this.http.post<ChatMessage>(
-      `${this.apiUrl}/support/conversations/${conversationId}/messages`, { content });
+      `${this.apiUrl}/support/conversations/${conversationId}/messages`, {
+        conversationId,
+        content,
+        ...(expectedVersion === undefined ? {} : { expectedVersion }),
+      });
+  }
+
+  claimSupportConversation(conversationId: number, expectedVersion?: number): Observable<ChatConversation> {
+    return this.mutateConversation(conversationId, 'assign', expectedVersion);
+  }
+
+  unassignSupportConversation(conversationId: number, expectedVersion?: number): Observable<ChatConversation> {
+    return this.mutateConversation(conversationId, 'unassign', expectedVersion);
+  }
+
+  escalateSupportConversation(conversationId: number, expectedVersion?: number): Observable<ChatConversation> {
+    return this.mutateConversation(conversationId, 'escalate', expectedVersion);
+  }
+
+  reopenSupportConversation(conversationId: number, expectedVersion?: number): Observable<ChatConversation> {
+    return this.mutateConversation(conversationId, 'reopen', expectedVersion);
   }
 
   isConnected(): boolean {
@@ -201,6 +249,17 @@ export class ChatService {
       this.setConnectionState('error', 'Không thể gửi tin nhắn. Hãy thử lại.');
       return false;
     }
+  }
+
+  private mutateConversation(
+    conversationId: number,
+    action: 'assign' | 'unassign' | 'escalate' | 'reopen',
+    expectedVersion?: number,
+  ): Observable<ChatConversation> {
+    const params: Record<string, number> = {};
+    if (expectedVersion !== undefined) params['expectedVersion'] = expectedVersion;
+    return this.http.post<ChatConversation>(
+      `${this.apiUrl}/support/conversations/${conversationId}/${action}`, null, { params });
   }
 
   private publishIncoming(message: Message): void {

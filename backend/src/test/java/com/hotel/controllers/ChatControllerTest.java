@@ -45,11 +45,12 @@ class ChatControllerTest {
         request.setContent("Can ho tro");
         ChatMessageDTO saved = message(9L, 42L, 0L, "Can ho tro");
         when(chatService.sendToSupport(customer, 9L, "Can ho tro")).thenReturn(saved);
+        when(chatService.getSupportRecipients(5L)).thenReturn(java.util.List.of("support"));
 
         controller.sendToSupport(request, authentication(customer));
 
         verify(messagingTemplate).convertAndSendToUser("customer", "/queue/messages", saved);
-        verify(messagingTemplate).convertAndSend("/topic/support/messages", saved);
+        verify(messagingTemplate).convertAndSendToUser("support", "/queue/support/messages", saved);
     }
 
     @Test
@@ -58,14 +59,15 @@ class ChatControllerTest {
         request.setConversationId(9L);
         request.setContent("Da tiep nhan");
         ChatMessageDTO saved = message(9L, 7L, 42L, "Da tiep nhan");
-        when(chatService.replyToConversation(support, 9L, "Da tiep nhan")).thenReturn(saved);
+        when(chatService.replyToConversation(support, 9L, "Da tiep nhan", null)).thenReturn(saved);
         when(chatService.getConversationCustomerId(9L)).thenReturn(42L);
         when(chatService.getUsername(42L)).thenReturn("customer");
+        when(chatService.getSupportRecipients(5L)).thenReturn(java.util.List.of("support"));
 
         controller.replyToCustomer(request, authentication(support));
 
         verify(messagingTemplate).convertAndSendToUser("customer", "/queue/messages", saved);
-        verify(messagingTemplate).convertAndSend("/topic/support/messages", saved);
+        verify(messagingTemplate).convertAndSendToUser("support", "/queue/support/messages", saved);
     }
 
     @Test
@@ -74,11 +76,12 @@ class ChatControllerTest {
         request.setContent("Can ho tro qua HTTP");
         ChatMessageDTO saved = message(9L, 42L, 0L, "Can ho tro qua HTTP");
         when(chatService.sendToSupport(customer, 9L, "Can ho tro qua HTTP")).thenReturn(saved);
+        when(chatService.getSupportRecipients(5L)).thenReturn(java.util.List.of("support"));
 
         controller.sendMyConversationMessage(authentication(customer), 9L, request);
 
         verify(messagingTemplate).convertAndSendToUser("customer", "/queue/messages", saved);
-        verify(messagingTemplate).convertAndSend("/topic/support/messages", saved);
+        verify(messagingTemplate).convertAndSendToUser("support", "/queue/support/messages", saved);
     }
 
     @Test
@@ -86,14 +89,15 @@ class ChatControllerTest {
         SupportChatReplyRequest request = new SupportChatReplyRequest();
         request.setContent("Da tiep nhan qua HTTP");
         ChatMessageDTO saved = message(9L, 7L, 42L, "Da tiep nhan qua HTTP");
-        when(chatService.replyToConversation(support, 9L, "Da tiep nhan qua HTTP")).thenReturn(saved);
+        when(chatService.replyToConversation(support, 9L, "Da tiep nhan qua HTTP", null)).thenReturn(saved);
         when(chatService.getConversationCustomerId(9L)).thenReturn(42L);
         when(chatService.getUsername(42L)).thenReturn("customer");
+        when(chatService.getSupportRecipients(5L)).thenReturn(java.util.List.of("support"));
 
         controller.sendSupportConversationMessage(9L, request, authentication(support));
 
         verify(messagingTemplate).convertAndSendToUser("customer", "/queue/messages", saved);
-        verify(messagingTemplate).convertAndSend("/topic/support/messages", saved);
+        verify(messagingTemplate).convertAndSendToUser("support", "/queue/support/messages", saved);
     }
 
     private UsernamePasswordAuthenticationToken authentication(CustomUserDetails user) {
@@ -115,6 +119,7 @@ class ChatControllerTest {
         ChatMessageDTO dto = new ChatMessageDTO();
         dto.setId(1L);
         dto.setConversationId(conversationId);
+        dto.setHotelId(5L);
         dto.setSenderId(senderId);
         dto.setReceiverId(receiverId);
         dto.setContent(content);

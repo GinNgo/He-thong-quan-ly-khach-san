@@ -33,4 +33,6 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
             Long conversationId, Instant cutoff, Pageable pageable);
 
     Optional<ChatMessage> findFirstByConversationIdOrderByTimestampDesc(Long conversationId);
+
+    List<ChatMessage> findByConversationIdAndLegacyUnscopedFalseOrderByTimestampAsc(Long conversationId);
 }

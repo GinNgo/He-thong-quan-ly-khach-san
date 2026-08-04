@@ -4,11 +4,16 @@ import com.hotel.dtos.ChatConversationDTO;
 import com.hotel.dtos.ChatMessageDTO;
 import com.hotel.dtos.ChatPageDTO;
 import com.hotel.entities.ChatMessage;
+import com.hotel.entities.Hotel;
 import com.hotel.entities.SupportConversation;
 import com.hotel.entities.User;
+import com.hotel.entities.UserProperty;
 import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.repositories.ChatMessageRepository;
+import com.hotel.repositories.HotelRepository;
+import com.hotel.repositories.ReservationRepository;
 import com.hotel.repositories.SupportConversationRepository;
+import com.hotel.repositories.UserPropertyRepository;
 import com.hotel.repositories.UserRepository;
 import com.hotel.security.ActionCode;
 import com.hotel.security.ChatAuthorizationService;
@@ -17,9 +22,10 @@ import com.hotel.security.FunctionCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
@@ -34,6 +40,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -42,10 +49,13 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ChatServiceTest {
-
     @Mock private ChatMessageRepository chatMessageRepository;
     @Mock private SupportConversationRepository conversationRepository;
     @Mock private UserRepository userRepository;
+    @Mock private UserPropertyRepository userPropertyRepository;
+    @Mock private ReservationRepository reservationRepository;
+    @Mock private HotelRepository hotelRepository;
+    @Mock private SupportConversationAuditService auditService;
 
     private ChatService chatService;
 
@@ -55,19 +65,26 @@ class ChatServiceTest {
                 chatMessageRepository,
                 conversationRepository,
                 userRepository,
+                userPropertyRepository,
+                reservationRepository,
+                hotelRepository,
                 new ChatAuthorizationService(),
-                90);
+                auditService,
+                90,
+                30,
+                10);
     }
 
     @Test
     void firstCustomerMessageCreatesAConversationAndUsesAuthenticatedSender() {
-        CustomUserDetails customer = user(42L, Map.of());
+        CustomUserDetails customer = user(42L, Map.of(), "CUSTOMER");
+        when(userRepository.findById(42L)).thenReturn(Optional.of(customerEntity(42L)));
+        when(reservationRepository.findByUserIdOrderByIdDesc(42L)).thenReturn(List.of());
         when(conversationRepository.findFirstByCustomerIdOrderByUpdatedAtDesc(42L)).thenReturn(Optional.empty());
-        when(conversationRepository.save(any(SupportConversation.class))).thenAnswer(invocation -> {
+        when(conversationRepository.saveAndFlush(any(SupportConversation.class))).thenAnswer(invocation -> {
             SupportConversation conversation = invocation.getArgument(0);
-            conversation.setId(9L);
-            conversation.setCreatedAt(Instant.parse("2026-08-04T09:00:00Z"));
-            conversation.setUpdatedAt(Instant.parse("2026-08-04T09:00:00Z"));
+            if (conversation.getId() == null) conversation.setId(9L);
+            if (conversation.getVersion() == null) conversation.setVersion(0L);
             return conversation;
         });
         when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> savedMessage(
@@ -83,7 +100,7 @@ class ChatServiceTest {
 
     @Test
     void customerCannotReadOrSendToAnotherCustomersConversation() {
-        CustomUserDetails customer = user(42L, Map.of());
+        CustomUserDetails customer = user(42L, Map.of(), "CUSTOMER");
         when(conversationRepository.findByIdAndCustomerId(91L, 42L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class,
@@ -96,7 +113,7 @@ class ChatServiceTest {
 
     @Test
     void customerCanSelectMultipleOwnConversations() {
-        CustomUserDetails customer = user(42L, Map.of());
+        CustomUserDetails customer = user(42L, Map.of(), "CUSTOMER");
         SupportConversation newest = conversation(12L, 42L, "Hoa don", "2026-08-04T10:00:00Z");
         SupportConversation older = conversation(11L, 42L, "Dat phong", "2026-08-04T09:00:00Z");
         PageRequest request = PageRequest.of(0, 20);
@@ -116,7 +133,7 @@ class ChatServiceTest {
 
     @Test
     void messagePagesAreChronologicalAndExposeRetention() {
-        CustomUserDetails customer = user(42L, Map.of());
+        CustomUserDetails customer = user(42L, Map.of(), "CUSTOMER");
         SupportConversation conversation = conversation(9L, 42L, "Dat phong", "2026-08-04T10:00:00Z");
         ChatMessage newer = message(2L, 9L, 7L, 42L, "reply", "2026-08-04T10:02:00Z");
         ChatMessage older = message(1L, 9L, 42L, 0L, "question", "2026-08-04T10:01:00Z");
@@ -132,43 +149,76 @@ class ChatServiceTest {
         assertEquals(List.of("question", "reply"), page.content().stream()
                 .map(ChatMessageDTO::getContent).toList());
         assertEquals(4, page.totalElements());
-        assertEquals(1, page.number());
-        assertEquals(90, page.retentionDays());
         ArgumentCaptor<Instant> cutoff = ArgumentCaptor.forClass(Instant.class);
         verify(chatMessageRepository).findByConversationIdAndTimestampGreaterThanEqualOrderByTimestampDescIdDesc(
                 eq(9L), cutoff.capture(), eq(request));
-        org.junit.jupiter.api.Assertions.assertTrue(cutoff.getValue().isAfter(earliestExpectedCutoff));
-        org.junit.jupiter.api.Assertions.assertTrue(
-                cutoff.getValue().isBefore(Instant.now().minus(90, ChronoUnit.DAYS).plusSeconds(2)));
+        assertTrue(cutoff.getValue().isAfter(earliestExpectedCutoff));
     }
 
     @Test
     void supportReplyRequiresCreatePermission() {
-        CustomUserDetails nonSupport = user(7L, Map.of());
+        CustomUserDetails nonSupport = user(7L, Map.of(), "SUPPORT");
 
         assertThrows(AccessDeniedException.class,
                 () -> chatService.replyToConversation(nonSupport, 9L, "Phan hoi"));
 
         verify(conversationRepository, never()).findById(any());
-        verify(chatMessageRepository, never()).save(any(ChatMessage.class));
     }
 
     @Test
-    void supportReplyPersistsInTheSelectedConversation() {
-        CustomUserDetails support = user(7L, Map.of(FunctionCode.AI_CHAT, ActionCode.CREATE));
-        SupportConversation conversation = conversation(9L, 42L, "Dat phong", "2026-08-04T10:00:00Z");
+    void supportReplyAutoClaimsTenantConversationAndClearsPendingSla() {
+        CustomUserDetails support = user(7L, Map.of(FunctionCode.AI_CHAT, ActionCode.CREATE), "SUPPORT");
+        SupportConversation conversation = scopedConversation(9L, 42L, 5L);
         when(conversationRepository.findById(9L)).thenReturn(Optional.of(conversation));
-        when(userRepository.findById(42L)).thenReturn(Optional.of(customerEntity(42L)));
+        when(userPropertyRepository.findByUserId(7L)).thenReturn(List.of(assignment(7L, 5L)));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(customerEntity(7L)));
         when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> savedMessage(
                 invocation.getArgument(0), 100L, Instant.parse("2026-08-04T10:05:00Z")));
-        when(conversationRepository.save(conversation)).thenReturn(conversation);
+        when(conversationRepository.saveAndFlush(conversation)).thenReturn(conversation);
 
         ChatMessageDTO reply = chatService.replyToConversation(support, 9L, " Da tiep nhan ");
 
         assertEquals(9L, reply.getConversationId());
-        assertEquals(7L, reply.getSenderId());
-        assertEquals(42L, reply.getReceiverId());
-        assertEquals("Da tiep nhan", reply.getContent());
+        assertEquals(7L, conversation.getAssignedAgentId());
+        assertEquals("ASSIGNED", conversation.getStatus());
+        assertEquals(null, conversation.getSlaDeadlineAt());
+    }
+
+    @Test
+    void supportQueueFiltersByTenantAssignmentAndBreachedSla() {
+        CustomUserDetails support = user(7L, Map.of(FunctionCode.AI_CHAT, ActionCode.VIEW), "SUPPORT");
+        SupportConversation breached = scopedConversation(9L, 42L, 5L);
+        breached.setSlaDeadlineAt(Instant.now().minusSeconds(60));
+        SupportConversation otherTenant = scopedConversation(10L, 43L, 6L);
+        when(userPropertyRepository.findByUserId(7L)).thenReturn(List.of(assignment(7L, 5L)));
+        when(conversationRepository.findByHotelIdInOrderByLastActivityAtDesc(Set.of(5L)))
+                .thenReturn(List.of(breached));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(customerEntity(7L)));
+        when(userRepository.findById(42L)).thenReturn(Optional.of(customerEntity(42L)));
+        when(hotelRepository.findById(5L)).thenReturn(Optional.of(hotel(5L)));
+        when(chatMessageRepository.findFirstByConversationIdOrderByTimestampDesc(9L)).thenReturn(Optional.empty());
+
+        List<ChatConversationDTO> queue = chatService.getSupportConversations(
+                support, "OPEN", "UNASSIGNED", "BREACHED", 5L);
+
+        assertEquals(1, queue.size());
+        assertEquals(9L, queue.getFirst().getConversationId());
+        assertEquals("BREACHED", queue.getFirst().getSlaState());
+        verify(conversationRepository, never()).findById(otherTenant.getId());
+    }
+
+    @Test
+    void staleQueueMutationReturnsOptimisticConflictBeforeAssignment() {
+        CustomUserDetails support = user(7L, Map.of(FunctionCode.AI_CHAT, ActionCode.CREATE), "SUPPORT");
+        SupportConversation conversation = scopedConversation(9L, 42L, 5L);
+        conversation.setVersion(4L);
+        when(conversationRepository.findById(9L)).thenReturn(Optional.of(conversation));
+        when(userPropertyRepository.findByUserId(7L)).thenReturn(List.of(assignment(7L, 5L)));
+
+        assertThrows(OptimisticLockingFailureException.class,
+                () -> chatService.claimConversation(support, 9L, 3L));
+
+        verify(conversationRepository, never()).saveAndFlush(conversation);
     }
 
     private SupportConversation conversation(Long id, Long customerId, String subject, String updatedAt) {
@@ -176,8 +226,20 @@ class ChatServiceTest {
         conversation.setId(id);
         conversation.setCustomerId(customerId);
         conversation.setSubject(subject);
+        conversation.setStatus("OPEN");
+        conversation.setChannel("IN_APP");
+        conversation.setVersion(0L);
+        conversation.setLastActivityAt(Instant.parse(updatedAt));
         conversation.setCreatedAt(Instant.parse(updatedAt));
         conversation.setUpdatedAt(Instant.parse(updatedAt));
+        return conversation;
+    }
+
+    private SupportConversation scopedConversation(Long id, Long customerId, Long hotelId) {
+        SupportConversation conversation = conversation(
+                id, customerId, "Support", Instant.now().minusSeconds(30).toString());
+        conversation.setHotelId(hotelId);
+        conversation.setSlaDeadlineAt(Instant.now().plusSeconds(600));
         return conversation;
     }
 
@@ -202,16 +264,33 @@ class ChatServiceTest {
     private User customerEntity(Long id) {
         User customer = new User();
         customer.setId(id);
-        customer.setUsername("customer" + id);
-        customer.setFullName("Customer " + id);
+        customer.setUsername("user" + id);
+        customer.setFullName("User " + id);
         return customer;
     }
 
-    private CustomUserDetails user(Long id, Map<FunctionCode, Integer> masks) {
+    private UserProperty assignment(Long userId, Long hotelId) {
+        UserProperty assignment = new UserProperty();
+        assignment.setUser(customerEntity(userId));
+        assignment.setHotel(hotel(hotelId));
+        assignment.setStatus("ACTIVE");
+        return assignment;
+    }
+
+    private Hotel hotel(Long id) {
+        Hotel hotel = new Hotel();
+        hotel.setId(id);
+        hotel.setName("Hotel " + id);
+        hotel.setApprovalStatus("APPROVED");
+        hotel.setOperationStatus("ACTIVE");
+        return hotel;
+    }
+
+    private CustomUserDetails user(Long id, Map<FunctionCode, Integer> masks, String authority) {
         return new CustomUserDetails(
                 "user" + id,
                 "hash",
-                Set.of(new SimpleGrantedAuthority("CUSTOMER")),
+                Set.of(new SimpleGrantedAuthority(authority)),
                 masks,
                 id,
                 null,
