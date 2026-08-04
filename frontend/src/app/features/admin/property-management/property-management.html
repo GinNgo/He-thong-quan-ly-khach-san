@@ -46,6 +46,7 @@
               <button *ngIf="statusCode(property) === 'INACTIVE'" pButton type="button" icon="pi pi-send" class="p-button-rounded p-button-text" pTooltip="Gửi yêu cầu duyệt" (click)="submit(property)" aria-label="Gửi yêu cầu duyệt"></button>
             </ng-container>
             <ng-container *ngIf="isAdmin">
+              <button pButton type="button" icon="pi pi-pencil" class="p-button-rounded p-button-text" pTooltip="Chỉnh sửa hồ sơ" (click)="openEdit(property)" aria-label="Chỉnh sửa hồ sơ cơ sở"></button>
               <button *ngIf="statusCode(property) === 'PENDING'" pButton type="button" icon="pi pi-check" class="p-button-rounded p-button-text p-button-success" pTooltip="Duyệt" (click)="approve(property)" aria-label="Duyệt cơ sở"></button>
               <button *ngIf="statusCode(property) === 'PENDING'" pButton type="button" icon="pi pi-times" class="p-button-rounded p-button-text p-button-danger" pTooltip="Từ chối" (click)="reject(property)" aria-label="Từ chối cơ sở"></button>
             </ng-container>
@@ -59,8 +60,8 @@
   </div>
 </section>
 
-<p-dialog [(visible)]="dialogVisible" [modal]="true" [draggable]="false" [style]="{width:'min(820px, 96vw)'}" header="Thêm cơ sở lưu trú" [closable]="!saving" (onHide)="closeCreate()">
-  <form id="property-create-form" [formGroup]="form" class="property-form" (ngSubmit)="save()" novalidate>
+<p-dialog [(visible)]="dialogVisible" [modal]="true" [draggable]="false" [style]="{width:'min(920px, 96vw)'}" [header]="editingProperty ? 'Chỉnh sửa hồ sơ cơ sở' : 'Thêm cơ sở lưu trú'" [closable]="!saving" (onHide)="closeDialog()">
+  <form id="property-profile-form" [formGroup]="form" class="property-form" (ngSubmit)="save()" novalidate>
     <div *ngIf="formError" class="form-error" role="alert"><i class="pi pi-exclamation-circle"></i><span>{{ formError }}</span></div>
     <p class="form-intro">Các trường có dấu * là bắt buộc. Cơ sở sẽ được lưu ở trạng thái bản nháp.</p>
 
@@ -84,9 +85,16 @@
         <small *ngIf="isInvalid('wardId')" class="field-error">Chọn phường/xã.</small>
       </label>
       <label class="wide" for="property-address">Địa chỉ *
-        <input id="property-address" pInputText formControlName="address" autocomplete="street-address" [class.invalid]="isInvalid('address')" />
-        <small *ngIf="isInvalid('address')" class="field-error">Nhập địa chỉ cơ sở.</small>
+        <input id="property-address" pInputText formControlName="addressLine" autocomplete="street-address" [class.invalid]="isInvalid('addressLine')" />
+        <small *ngIf="isInvalid('addressLine')" class="field-error">Nhập địa chỉ cơ sở.</small>
       </label>
+      <label for="property-latitude">Vĩ độ
+        <input id="property-latitude" pInputText type="number" min="-90" max="90" step="any" formControlName="latitude" />
+      </label>
+      <label for="property-longitude">Kinh độ
+        <input id="property-longitude" pInputText type="number" min="-180" max="180" step="any" formControlName="longitude" />
+      </label>
+      <small *ngIf="form.hasError('coordinatePair')" class="wide field-error">Vĩ độ và kinh độ phải được nhập cùng nhau.</small>
       <label for="property-stars">Hạng sao
         <input id="property-stars" pInputText type="number" min="0" max="5" formControlName="starRating" />
       </label>
@@ -98,8 +106,22 @@
         <small *ngIf="isInvalid('email')" class="field-error">Email chưa đúng định dạng.</small>
       </label>
       <label for="property-website">Website
-        <input id="property-website" pInputText formControlName="website" inputmode="url" />
+        <input id="property-website" pInputText type="url" formControlName="website" inputmode="url" [class.invalid]="isInvalid('website')" />
+        <small *ngIf="isInvalid('website')" class="field-error">Website phải bắt đầu bằng http:// hoặc https://.</small>
       </label>
+      <label for="property-checkin">Giờ nhận phòng
+        <input id="property-checkin" pInputText type="time" formControlName="checkinTime" />
+      </label>
+      <label for="property-checkout">Giờ trả phòng
+        <input id="property-checkout" pInputText type="time" formControlName="checkoutTime" />
+      </label>
+      <label for="property-min-price">Giá tối thiểu
+        <input id="property-min-price" pInputText type="number" min="0" formControlName="minPrice" />
+      </label>
+      <label for="property-max-price">Giá tối đa
+        <input id="property-max-price" pInputText type="number" min="0" formControlName="maxPrice" />
+      </label>
+      <small *ngIf="form.hasError('priceRange')" class="wide field-error">Giá tối thiểu không được lớn hơn giá tối đa.</small>
       <label class="wide" for="property-image">Ảnh đại diện (URL)
         <input id="property-image" pInputText formControlName="mainImage" placeholder="/assets/properties/..." />
       </label>
@@ -109,11 +131,14 @@
       <label class="wide" for="property-description-en">Mô tả tiếng Anh
         <textarea id="property-description-en" pInputTextarea rows="3" formControlName="descriptionEn"></textarea>
       </label>
+      <label *ngIf="editingProperty" class="wide" for="property-reason">Lý do cập nhật *
+        <textarea id="property-reason" pInputTextarea rows="2" formControlName="reason" maxlength="500"></textarea>
+      </label>
     </div>
 
   </form>
   <ng-template pTemplate="footer">
-    <button pButton type="button" label="Hủy" class="p-button-text" (click)="closeCreate()" [disabled]="saving"></button>
-    <button pButton type="submit" form="property-create-form" [label]="saving ? 'Đang lưu...' : 'Lưu bản nháp'" icon="pi pi-check" [disabled]="saving || locationsLoading"></button>
+    <button pButton type="button" label="Hủy" class="p-button-text" (click)="closeDialog()" [disabled]="saving"></button>
+    <button pButton type="submit" form="property-profile-form" [label]="saving ? 'Đang lưu...' : (editingProperty ? 'Lưu hồ sơ' : 'Lưu bản nháp')" icon="pi pi-check" [disabled]="saving || locationsLoading"></button>
   </ng-template>
 </p-dialog>

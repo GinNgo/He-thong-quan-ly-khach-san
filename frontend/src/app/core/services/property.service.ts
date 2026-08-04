@@ -3,14 +3,9 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Hotel } from './client-api.service';
+import { PropertyProfile, PropertyProfileUpdateRequest } from '../models/property-profile.model';
 
-export interface AdminProperty extends Hotel {
-  nameVi?: string;
-  nameEn?: string;
-  status?: string;
-  operationStatus?: string;
-  approvalStatus?: string;
-}
+export type AdminProperty = PropertyProfile & Partial<Hotel>;
 
 export interface PropertyLocation {
   id: number;
@@ -18,26 +13,6 @@ export interface PropertyLocation {
   nameEn?: string;
   locationType: 'PROVINCE' | 'WARD';
   parent?: { id: number };
-}
-
-export interface CreatePropertyRequest {
-  nameVi: string;
-  nameEn?: string;
-  propertyType: string;
-  addressLine: string;
-  provinceId: number;
-  wardId: number;
-  descriptionVi?: string;
-  descriptionEn?: string;
-  starRating?: number;
-  phone?: string;
-  email?: string;
-  website?: string;
-  mainImage?: string;
-}
-
-export interface UpdatePropertyRequest extends Partial<CreatePropertyRequest> {
-  reason: string;
 }
 
 @Injectable({
@@ -59,11 +34,11 @@ export class PropertyService {
     return this.http.get<PropertyLocation[]>(`${environment.apiUrl}/public/locations/provinces/${provinceId}/wards`);
   }
 
-  createProperty(property: CreatePropertyRequest): Observable<AdminProperty> {
+  createProperty(property: PropertyProfile): Observable<AdminProperty> {
     return this.http.post<AdminProperty>(this.apiUrl, property);
   }
 
-  updateProperty(id: number, property: UpdatePropertyRequest): Observable<AdminProperty> {
+  updateProperty(id: number, property: PropertyProfileUpdateRequest): Observable<AdminProperty> {
     return this.http.put<AdminProperty>(`${this.apiUrl}/${id}`, property);
   }
 

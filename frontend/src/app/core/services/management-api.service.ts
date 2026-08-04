@@ -1,10 +1,10 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
+import { PropertyProfile, PropertyProfileUpdateRequest } from '../models/property-profile.model';
 
-export interface ManagedProperty { id: number; code: string; nameVi: string; nameEn?: string; propertyType: string; address: string; descriptionVi?: string; descriptionEn?: string; approvalStatus: string; operationStatus: string; operational?: boolean; mainImage?: string; isDemo: boolean; }
-export interface ManagedPropertyUpdate { nameVi?: string; nameEn?: string; propertyType?: string; addressLine?: string; descriptionVi?: string; descriptionEn?: string; starRating?: number; phone?: string; email?: string; website?: string; mainImage?: string; reason: string; }
-export interface ManagedPropertyProfile { id: number; code?: string; nameVi?: string; nameEn?: string; propertyType?: string; addressLine?: string; approvalStatus: string; operationStatus: string; status: string; }
+export type ManagedProperty = PropertyProfile;
+export interface ManagementLocation { id: number; nameVi: string; locationType: 'PROVINCE' | 'WARD'; }
 export interface ManagementUsage { properties?: number; roomTypes?: number; rooms?: number; staff?: number; images?: number; }
 export interface ManagementContext { properties: ManagedProperty[]; activePropertyId?: number; activePropertyOperational?: boolean; planCode: string; subscriptionStatus: string; subscriptionSource?: string; endAt?: string; lifetime: boolean; limits: Record<string, number>; usage: ManagementUsage; upgradeRequired: boolean; dashboard?: Record<string, number>; }
 
@@ -16,8 +16,16 @@ export class ManagementApiService {
   context(activePropertyId?: number) {
     return this.http.get<ManagementContext>(`${this.baseUrl}/context`, { params: activePropertyId ? { activePropertyId } : {} });
   }
-  updateProperty(propertyId: number, body: ManagedPropertyUpdate) {
-    return this.http.put<ManagedPropertyProfile>(`${this.baseUrl}/properties/${propertyId}`, body);
+  provinces() { return this.http.get<ManagementLocation[]>(`${environment.apiUrl}/public/locations/provinces`); }
+  wards(provinceId: number) { return this.http.get<ManagementLocation[]>(`${environment.apiUrl}/public/locations/provinces/${provinceId}/wards`); }
+  property(propertyId: number) {
+    return this.http.get<PropertyProfile>(`${this.baseUrl}/properties/${propertyId}`);
+  }
+  createProperty(profile: PropertyProfile) {
+    return this.http.post<PropertyProfile>(`${this.baseUrl}/properties`, profile);
+  }
+  updateProperty(propertyId: number, body: PropertyProfileUpdateRequest) {
+    return this.http.put<PropertyProfile>(`${this.baseUrl}/properties/${propertyId}`, body);
   }
   roomTypes(propertyId: number) { return this.http.get<any[]>(`${this.baseUrl}/room-types`, { params: { propertyId } }); }
   rooms(propertyId: number) { return this.http.get<any[]>(`${this.baseUrl}/rooms`, { params: { propertyId } }); }

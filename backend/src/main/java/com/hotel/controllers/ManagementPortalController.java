@@ -26,17 +26,22 @@ public class ManagementPortalController {
     }
 
     @GetMapping("/properties")
-    public ResponseEntity<List<Map<String, Object>>> properties() { return ResponseEntity.ok(service.properties()); }
+    public ResponseEntity<List<PropertyProfileDTO>> properties() { return ResponseEntity.ok(service.properties()); }
+
+    @GetMapping("/properties/{id}")
+    public ResponseEntity<PropertyProfileDTO> property(@PathVariable Long id) {
+        return ResponseEntity.ok(hotelManagementService.getOwnedProfile(id));
+    }
 
     @PostMapping("/properties")
-    public ResponseEntity<Map<String, Object>> createProperty(@Valid @RequestBody ManagementPropertyRequest request) {
+    public ResponseEntity<PropertyProfileDTO> createProperty(@Valid @RequestBody PropertyProfileDTO request) {
         return ResponseEntity.ok(service.createProperty(request));
     }
 
     @PutMapping("/properties/{id}")
     public ResponseEntity<PropertyProfileDTO> updateProperty(
             @PathVariable Long id,
-            @Valid @RequestBody PropertyUpdateRequest request) {
+            @Valid @RequestBody PropertyProfileUpdateRequest request) {
         return ResponseEntity.ok(hotelManagementService.updateOwnedHotel(id, request));
     }
 

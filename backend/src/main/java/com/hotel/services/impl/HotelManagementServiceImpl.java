@@ -1,20 +1,18 @@
 package com.hotel.services.impl;
 
 import com.hotel.dtos.PropertyClosureRequest;
-import com.hotel.dtos.PropertyCreateRequest;
 import com.hotel.dtos.PropertyProfileDTO;
-import com.hotel.dtos.PropertyUpdateRequest;
+import com.hotel.dtos.PropertyProfileUpdateRequest;
 import com.hotel.entities.Hotel;
-import com.hotel.entities.Location;
 import com.hotel.entities.User;
 import com.hotel.entities.UserProperty;
 import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.repositories.HotelRepository;
-import com.hotel.repositories.LocationRepository;
 import com.hotel.repositories.UserPropertyRepository;
 import com.hotel.services.HotelManagementService;
 import com.hotel.services.OperationalAuditService;
 import com.hotel.services.PropertyAccessService;
+import com.hotel.services.PropertyProfileMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -32,13 +30,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class HotelManagementServiceImpl implements HotelManagementService {
 
-    private static final Set<String> PROPERTY_TYPES = Set.of("HOTEL", "MOTEL", "HOMESTAY", "APARTMENT", "VILLA", "RESORT");
     private static final Set<String> OWNER_EDITABLE_APPROVAL_STATES = Set.of("DRAFT", "REJECTED", "APPROVED");
 
     private final HotelRepository hotelRepository;
-    private final LocationRepository locationRepository;
     private final UserPropertyRepository userPropertyRepository;
     private final PropertyAccessService propertyAccessService;
+    private final PropertyProfileMapper propertyProfileMapper;
 
     @Autowired(required = false)
     private OperationalAuditService operationalAuditService;
@@ -63,14 +60,13 @@ public class HotelManagementServiceImpl implements HotelManagementService {
 
     @Override
     @Transactional
-    public PropertyProfileDTO createHotel(PropertyCreateRequest request) {
+    public PropertyProfileDTO createHotel(PropertyProfileDTO request) {
         requireSystemAdministrator();
-        LocationPair location = validateLocation(request.getProvinceId(), request.getWardId());
         String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         Hotel hotel = new Hotel();
         hotel.setCode("ADMIN-" + suffix.toUpperCase(Locale.ROOT));
         hotel.setSlug("admin-property-" + suffix);
-        applyCreateProfile(hotel, request, location);
+        propertyProfileMapper.apply(hotel, request);
         hotel.setStatus("DRAFT");
         hotel.setApprovalStatus("DRAFT");
         hotel.setOperationStatus("INACTIVE");
@@ -83,28 +79,46 @@ public class HotelManagementServiceImpl implements HotelManagementService {
 
     @Override
     @Transactional
-    public PropertyProfileDTO updateHotel(Long id, PropertyUpdateRequest request) {
+    public PropertyProfileDTO updateHotel(Long id, PropertyProfileUpdateRequest request) {
         requireSystemAdministrator();
         return updateLocked(id, request, false);
     }
 
     @Override
     @Transactional
-    public PropertyProfileDTO updateOwnedHotel(Long id, PropertyUpdateRequest request) {
+    public PropertyProfileDTO updateOwnedHotel(Long id, PropertyProfileUpdateRequest request) {
         requireActiveOwner(id);
         return updateLocked(id, request, true);
     }
 
-    private PropertyProfileDTO updateLocked(Long id, PropertyUpdateRequest request, boolean ownerMutation) {
-        requireChanges(request);
+    private PropertyProfileDTO updateLocked(Long id, PropertyProfileUpdateRequest request, boolean ownerMutation) {
+        if (request == null || request.profile() == null) {
+            throw new IllegalArgumentException("Property profile update is required.");
+        }
         Hotel hotel = requireLocked(id);
         requireEditableState(hotel, ownerMutation);
         Map<String, Object> before = snapshot(hotel);
-        applyUpdateProfile(hotel, request);
+        propertyProfileMapper.apply(hotel, request.profile());
         Hotel saved = hotelRepository.saveAndFlush(hotel);
         audit(saved, ownerMutation ? "PROPERTY_OWNER_UPDATED" : "PROPERTY_ADMIN_UPDATED",
-                before, snapshot(saved), request.getReason().trim());
+                before, snapshot(saved), request.reason().trim());
         return PropertyProfileDTO.from(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PropertyProfileDTO getProfile(Long id) {
+        requireSystemAdministrator();
+        return PropertyProfileDTO.from(hotelRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Property not found.")));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PropertyProfileDTO getOwnedProfile(Long id) {
+        requireActiveOwner(id);
+        return PropertyProfileDTO.from(hotelRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Property not found.")));
     }
 
     @Override
@@ -151,67 +165,6 @@ public class HotelManagementServiceImpl implements HotelManagementService {
         return hotelRepository.findByOwnerId(ownerId);
     }
 
-    private void applyCreateProfile(Hotel hotel, PropertyCreateRequest request, LocationPair location) {
-        hotel.setName(requireText(request.getNameVi(), "Property name is required."));
-        hotel.setNameVi(request.getNameVi().trim());
-        hotel.setNameEn(trimToNull(request.getNameEn()));
-        hotel.setPropertyType(requirePropertyType(request.getPropertyType()));
-        hotel.setAddressLine(requireText(request.getAddressLine(), "Property address is required."));
-        hotel.setProvinceId(location.province().getId());
-        hotel.setWardId(location.ward().getId());
-        hotel.setCity(location.province().getNameVi());
-        hotel.setCountry("Vietnam");
-        hotel.setDescription(trimToNull(request.getDescriptionVi()));
-        hotel.setDescriptionVi(trimToNull(request.getDescriptionVi()));
-        hotel.setDescriptionEn(trimToNull(request.getDescriptionEn()));
-        hotel.setStarRating(request.getStarRating());
-        hotel.setPhone(trimToNull(request.getPhone()));
-        hotel.setEmail(trimToNull(request.getEmail()));
-        hotel.setWebsite(trimToNull(request.getWebsite()));
-        hotel.setMainImage(trimToNull(request.getMainImage()));
-    }
-
-    private void applyUpdateProfile(Hotel hotel, PropertyUpdateRequest request) {
-        if (request.getNameVi() != null) {
-            hotel.setName(requireText(request.getNameVi(), "Property name cannot be blank."));
-            hotel.setNameVi(request.getNameVi().trim());
-        }
-        if (request.getNameEn() != null) hotel.setNameEn(trimToNull(request.getNameEn()));
-        if (request.getPropertyType() != null) hotel.setPropertyType(requirePropertyType(request.getPropertyType()));
-        if (request.getAddressLine() != null) hotel.setAddressLine(requireText(request.getAddressLine(), "Property address cannot be blank."));
-        if (request.getProvinceId() != null || request.getWardId() != null) {
-            Long provinceId = request.getProvinceId() == null ? hotel.getProvinceId() : request.getProvinceId();
-            Long wardId = request.getWardId() == null ? hotel.getWardId() : request.getWardId();
-            LocationPair location = validateLocation(provinceId, wardId);
-            hotel.setProvinceId(location.province().getId());
-            hotel.setWardId(location.ward().getId());
-            hotel.setCity(location.province().getNameVi());
-        }
-        if (request.getDescriptionVi() != null) {
-            hotel.setDescription(trimToNull(request.getDescriptionVi()));
-            hotel.setDescriptionVi(trimToNull(request.getDescriptionVi()));
-        }
-        if (request.getDescriptionEn() != null) hotel.setDescriptionEn(trimToNull(request.getDescriptionEn()));
-        if (request.getStarRating() != null) hotel.setStarRating(request.getStarRating());
-        if (request.getPhone() != null) hotel.setPhone(trimToNull(request.getPhone()));
-        if (request.getEmail() != null) hotel.setEmail(trimToNull(request.getEmail()));
-        if (request.getWebsite() != null) hotel.setWebsite(trimToNull(request.getWebsite()));
-        if (request.getMainImage() != null) hotel.setMainImage(trimToNull(request.getMainImage()));
-    }
-
-    private LocationPair validateLocation(Long provinceId, Long wardId) {
-        Location province = locationRepository.findById(provinceId)
-                .filter(item -> "PROVINCE".equals(normalize(item.getLocationType())))
-                .orElseThrow(() -> new IllegalArgumentException("Province is invalid."));
-        Location ward = locationRepository.findById(wardId)
-                .filter(item -> "WARD".equals(normalize(item.getLocationType())))
-                .orElseThrow(() -> new IllegalArgumentException("Ward is invalid."));
-        if (ward.getParent() == null || !province.getId().equals(ward.getParent().getId())) {
-            throw new IllegalArgumentException("Ward does not belong to the selected province.");
-        }
-        return new LocationPair(province, ward);
-    }
-
     private void requireEditableState(Hotel hotel, boolean ownerMutation) {
         String approval = normalize(hotel.getApprovalStatus());
         String operation = normalize(hotel.getOperationStatus());
@@ -225,17 +178,6 @@ public class HotelManagementServiceImpl implements HotelManagementService {
                 || ("APPROVED".equals(approval) && !"ACTIVE".equals(operation)))) {
             throw new IllegalStateException("The property lifecycle does not allow owner profile edits.");
         }
-    }
-
-    private void requireChanges(PropertyUpdateRequest request) {
-        if (request == null) throw new IllegalArgumentException("Property update is required.");
-        boolean changed = request.getNameVi() != null || request.getNameEn() != null
-                || request.getPropertyType() != null || request.getAddressLine() != null
-                || request.getProvinceId() != null || request.getWardId() != null
-                || request.getDescriptionVi() != null || request.getDescriptionEn() != null
-                || request.getStarRating() != null || request.getPhone() != null
-                || request.getEmail() != null || request.getWebsite() != null || request.getMainImage() != null;
-        if (!changed) throw new IllegalArgumentException("At least one editable property field is required.");
     }
 
     private void requireActiveOwner(Long hotelId) {
@@ -260,25 +202,6 @@ public class HotelManagementServiceImpl implements HotelManagementService {
         }
     }
 
-    private String requirePropertyType(String value) {
-        String normalized = normalize(value);
-        if (!PROPERTY_TYPES.contains(normalized)) {
-            throw new IllegalArgumentException("Property type is invalid.");
-        }
-        return normalized;
-    }
-
-    private String requireText(String value, String message) {
-        if (value == null || value.isBlank()) throw new IllegalArgumentException(message);
-        return value.trim();
-    }
-
-    private String trimToNull(String value) {
-        if (value == null) return null;
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
-
     private String normalize(String value) {
         return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
     }
@@ -292,6 +215,19 @@ public class HotelManagementServiceImpl implements HotelManagementService {
         state.put("addressLine", hotel.getAddressLine());
         state.put("provinceId", hotel.getProvinceId());
         state.put("wardId", hotel.getWardId());
+        state.put("latitude", hotel.getLatitude());
+        state.put("longitude", hotel.getLongitude());
+        state.put("descriptionVi", hotel.getDescriptionVi());
+        state.put("descriptionEn", hotel.getDescriptionEn());
+        state.put("starRating", hotel.getStarRating());
+        state.put("phone", hotel.getPhone());
+        state.put("email", hotel.getEmail());
+        state.put("website", hotel.getWebsite());
+        state.put("checkinTime", hotel.getCheckinTime());
+        state.put("checkoutTime", hotel.getCheckoutTime());
+        state.put("minPrice", hotel.getMinPrice());
+        state.put("maxPrice", hotel.getMaxPrice());
+        state.put("mainImage", hotel.getMainImage());
         state.put("status", hotel.getStatus());
         state.put("approvalStatus", hotel.getApprovalStatus());
         state.put("operationStatus", hotel.getOperationStatus());
@@ -305,6 +241,4 @@ public class HotelManagementServiceImpl implements HotelManagementService {
                 null, null, reason, before, after, null));
     }
 
-    private record LocationPair(Location province, Location ward) {
-    }
 }

@@ -40,7 +40,14 @@ describe('PropertyManagementComponent', () => {
       propertyType: 'HOTEL',
       provinceId: 1,
       wardId: 10,
-      address: '01 Đường Biển',
+      addressLine: '01 Đường Biển',
+      latitude: 16.05,
+      longitude: 108.2,
+      website: 'https://luxestay.example',
+      checkinTime: '14:00',
+      checkoutTime: '12:00',
+      minPrice: 500000,
+      maxPrice: 1500000,
       starRating: 4
     });
     component.save();
@@ -50,7 +57,14 @@ describe('PropertyManagementComponent', () => {
       nameVi: 'LuxeStay T046',
       addressLine: '01 Đường Biển',
       provinceId: 1,
-      wardId: 10
+      wardId: 10,
+      latitude: 16.05,
+      longitude: 108.2,
+      website: 'https://luxestay.example',
+      checkinTime: '14:00',
+      checkoutTime: '12:00',
+      minPrice: 500000,
+      maxPrice: 1500000
     });
     expect(create.request.body.status).toBeUndefined();
     expect(create.request.body.approvalStatus).toBeUndefined();
@@ -80,7 +94,34 @@ describe('PropertyManagementComponent', () => {
 
     expect(component.formError).toContain('bắt buộc');
     expect(http.match({ method: 'POST', url: `${environment.apiUrl}/v1/hotels` })).toHaveLength(0);
-    component.closeCreate();
+    component.closeDialog();
+    fixture.destroy();
+  });
+
+  it('round-trips a complete admin profile through the canonical update wrapper', () => {
+    const fixture = TestBed.createComponent(PropertyManagementComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    http.expectOne(`${environment.apiUrl}/v1/hotels`).flush([]);
+    http.expectOne(`${environment.apiUrl}/public/locations/provinces`).flush([{ id: 1, nameVi: 'Đà Nẵng', locationType: 'PROVINCE' }]);
+
+    component.openEdit({
+      id: 9, nameVi: 'Old property', propertyType: 'HOTEL', addressLine: 'Old address',
+      provinceId: 1, wardId: 10, latitude: 16.05, longitude: 108.2,
+      website: 'https://old.example', checkinTime: '14:00', checkoutTime: '12:00'
+    });
+    http.expectOne(`${environment.apiUrl}/public/locations/provinces/1/wards`).flush([{ id: 10, nameVi: 'Hải Châu', locationType: 'WARD' }]);
+    component.form.patchValue({ website: 'https://new.example', minPrice: 600000, maxPrice: 1800000, reason: 'Correct canonical profile' });
+    component.save();
+
+    const update = http.expectOne({ method: 'PUT', url: `${environment.apiUrl}/v1/hotels/9` });
+    expect(update.request.body.reason).toBe('Correct canonical profile');
+    expect(update.request.body.profile).toMatchObject({
+      nameVi: 'Old property', addressLine: 'Old address', provinceId: 1, wardId: 10,
+      latitude: 16.05, longitude: 108.2, website: 'https://new.example', minPrice: 600000, maxPrice: 1800000
+    });
+    update.flush({ id: 9 });
+    http.expectOne(`${environment.apiUrl}/v1/hotels`).flush([]);
     fixture.destroy();
   });
 });

@@ -76,7 +76,7 @@ describe('PropertyRevenueComponent', () => {
           provide: ManagementApiService,
           useValue: {
             context: () => of({
-              properties: [{ id: 7, code: 'P7', nameVi: 'Bờ biển xanh', propertyType: 'HOTEL', address: 'Đà Nẵng', approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', isDemo: false }],
+              properties: [{ id: 7, code: 'P7', nameVi: 'Bờ biển xanh', propertyType: 'HOTEL', addressLine: 'Đà Nẵng', provinceId: 1, wardId: 2, approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', isDemo: false }],
               activePropertyId: 7,
               planCode: 'PRO',
               subscriptionStatus: 'ACTIVE',

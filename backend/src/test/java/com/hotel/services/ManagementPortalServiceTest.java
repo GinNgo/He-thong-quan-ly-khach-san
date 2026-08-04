@@ -53,6 +53,7 @@ class ManagementPortalServiceTest {
     @Mock private HousekeepingTaskRepository housekeepingTaskRepository;
     @Mock private RoomTypeService roomTypeService;
     @Mock private RoomService roomService;
+    @Mock private PropertyProfileMapper propertyProfileMapper;
 
     @InjectMocks
     private ManagementPortalService service;
@@ -80,14 +81,15 @@ class ManagementPortalServiceTest {
         when(userPropertyRepository.countActiveStaffByHotelId(20L)).thenReturn(2L);
 
         Map<String, Object> context = service.context(20L);
-        List<Map<String, Object>> properties = (List<Map<String, Object>>) context.get("properties");
+        List<com.hotel.dtos.PropertyProfileDTO> properties =
+                (List<com.hotel.dtos.PropertyProfileDTO>) context.get("properties");
 
         assertEquals(20L, context.get("activePropertyId"));
         @SuppressWarnings("unchecked")
         Map<String, Long> usage = (Map<String, Long>) context.get("usage");
         assertEquals(2L, usage.get("staff"));
         assertEquals(false, context.get("activePropertyOperational"));
-        assertFalse((Boolean) properties.getFirst().get("operational"));
+        assertFalse(properties.getFirst().isOperational());
         assertNull(context.get("dashboard"));
         verify(propertyAccessService, never()).requireManagedHotel(20L);
     }

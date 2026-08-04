@@ -31,7 +31,7 @@ describe('ManagementLayout', () => {
     fixture.detectChanges();
 
     context$.next({
-      properties: [{ id: 1, code: 'HOTEL-1', nameVi: 'LuxeStay Hà Nội', propertyType: 'HOTEL', address: 'Hà Nội', approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', isDemo: false }],
+      properties: [{ id: 1, code: 'HOTEL-1', nameVi: 'LuxeStay Hà Nội', propertyType: 'HOTEL', addressLine: 'Hà Nội', provinceId: 1, wardId: 2, approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', isDemo: false }],
       activePropertyId: 1,
       planCode: 'STANDARD',
       subscriptionStatus: 'ACTIVE',
@@ -132,7 +132,7 @@ describe('ManagementLayout', () => {
     const allowedFixture = TestBed.createComponent(ManagementLayout);
     allowedFixture.detectChanges();
     context$.next({
-      properties: [{ id: 1, code: 'HOTEL-1', nameVi: 'LuxeStay Hà Nội', propertyType: 'HOTEL', address: 'Hà Nội', approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', operational: true, isDemo: false }],
+      properties: [{ id: 1, code: 'HOTEL-1', nameVi: 'LuxeStay Hà Nội', propertyType: 'HOTEL', addressLine: 'Hà Nội', provinceId: 1, wardId: 2, approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', operational: true, isDemo: false }],
       activePropertyId: 1,
       activePropertyOperational: true,
       planCode: 'STANDARD',
@@ -181,7 +181,9 @@ describe('ManagementLayout', () => {
         code: 'PENDING-7',
         nameVi: 'Khách sạn đang chờ duyệt',
         propertyType: 'HOTEL',
-        address: 'Đà Nẵng',
+        addressLine: 'Đà Nẵng',
+        provinceId: 1,
+        wardId: 2,
         approvalStatus: 'PENDING_APPROVAL',
         operationStatus: 'INACTIVE',
         operational: false,

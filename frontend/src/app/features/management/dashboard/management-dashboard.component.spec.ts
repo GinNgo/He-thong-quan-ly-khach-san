@@ -8,7 +8,8 @@ describe('ManagementDashboardComponent', () => {
   it('submits an owner-scoped profile edit with a reason', async () => {
     const context: ManagementContext = {
       properties: [{
-        id: 3, code: 'OWNER-3', nameVi: 'Old name', propertyType: 'HOTEL', address: 'Old address',
+        id: 3, code: 'OWNER-3', nameVi: 'Old name', propertyType: 'HOTEL', addressLine: 'Old address',
+        provinceId: 1, wardId: 2,
         approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', operational: true, isDemo: false
       }],
       activePropertyId: 3,
@@ -18,6 +19,8 @@ describe('ManagementDashboardComponent', () => {
     };
     const api = {
       context: vi.fn(() => of(context)),
+      provinces: vi.fn(() => of([{ id: 1, nameVi: 'Đà Nẵng', locationType: 'PROVINCE' }])),
+      wards: vi.fn(() => of([{ id: 2, nameVi: 'Hải Châu', locationType: 'WARD' }])),
       updateProperty: vi.fn(() => of({ id: 3 }))
     };
     await TestBed.configureTestingModule({
@@ -29,16 +32,26 @@ describe('ManagementDashboardComponent', () => {
     fixture.detectChanges();
     const component = fixture.componentInstance;
     component.openProfileEditor();
+    expect(api.provinces).toHaveBeenCalled();
+    expect(api.wards).toHaveBeenCalledWith(1);
     component.profileDraft = {
       nameVi: 'New owner name',
+      propertyType: 'HOTEL',
       addressLine: '3 Tenant Safe Street',
+      provinceId: 1,
+      wardId: 2,
       reason: 'Correct public profile'
     };
     component.saveProfile();
 
     expect(api.updateProperty).toHaveBeenCalledWith(3, {
-      nameVi: 'New owner name',
-      addressLine: '3 Tenant Safe Street',
+      profile: expect.objectContaining({
+        nameVi: 'New owner name',
+        propertyType: 'HOTEL',
+        addressLine: '3 Tenant Safe Street',
+        provinceId: 1,
+        wardId: 2
+      }),
       reason: 'Correct public profile'
     });
     expect(component.profileEditing).toBe(false);
@@ -59,7 +72,7 @@ describe('ManagementDashboardComponent', () => {
     fixture.detectChanges();
 
     context$.next({
-      properties: [{ id: 1, code: 'HOTEL-1', nameVi: 'LuxeStay Hà Nội', propertyType: 'HOTEL', address: 'Hà Nội', approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', isDemo: false }],
+      properties: [{ id: 1, code: 'HOTEL-1', nameVi: 'LuxeStay Hà Nội', propertyType: 'HOTEL', addressLine: 'Hà Nội', provinceId: 1, wardId: 2, approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', isDemo: false }],
       activePropertyId: 1,
       planCode: 'STANDARD',
       subscriptionStatus: 'ACTIVE',
@@ -97,7 +110,9 @@ describe('ManagementDashboardComponent', () => {
         code: 'PENDING-2',
         nameVi: 'Cơ sở mới',
         propertyType: 'HOTEL',
-        address: 'Huế',
+        addressLine: 'Huế',
+        provinceId: 1,
+        wardId: 2,
         approvalStatus: 'PENDING_APPROVAL',
         operationStatus: 'INACTIVE',
         operational: false,

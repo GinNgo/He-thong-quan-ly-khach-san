@@ -1,9 +1,8 @@
 package com.hotel.controllers;
 
 import com.hotel.dtos.PropertyClosureRequest;
-import com.hotel.dtos.PropertyCreateRequest;
 import com.hotel.dtos.PropertyProfileDTO;
-import com.hotel.dtos.PropertyUpdateRequest;
+import com.hotel.dtos.PropertyProfileUpdateRequest;
 import com.hotel.dtos.PublicHotelDetailDTO;
 import com.hotel.entities.Hotel;
 import com.hotel.services.HotelManagementService;
@@ -83,10 +82,11 @@ public class HotelController {
     }
 
     @GetMapping("/my-hotels")
-    public ResponseEntity<List<Hotel>> getMyHotels(
+    public ResponseEntity<List<PropertyProfileDTO>> getMyHotels(
             @AuthenticationPrincipal com.hotel.security.CustomUserDetails userDetails) {
         if (userDetails == null) return ResponseEntity.status(401).build();
-        return ResponseEntity.ok(hotelService.getHotelsByOwnerId(userDetails.getUserId()));
+        return ResponseEntity.ok(hotelService.getHotelsByOwnerId(userDetails.getUserId()).stream()
+                .map(PropertyProfileDTO::from).toList());
     }
 
     @PreAuthorize("hasAuthority('SUPER_ADMIN')")
@@ -96,8 +96,14 @@ public class HotelController {
     }
 
     @PreAuthorize("hasAuthority('SUPER_ADMIN')")
+    @GetMapping("/{id}")
+    public ResponseEntity<PropertyProfileDTO> getProfile(@PathVariable Long id) {
+        return ResponseEntity.ok(hotelService.getProfile(id));
+    }
+
+    @PreAuthorize("hasAuthority('SUPER_ADMIN')")
     @PostMapping
-    public ResponseEntity<PropertyProfileDTO> createHotel(@Valid @RequestBody PropertyCreateRequest request) {
+    public ResponseEntity<PropertyProfileDTO> createHotel(@Valid @RequestBody PropertyProfileDTO request) {
         return ResponseEntity.ok(hotelService.createHotel(request));
     }
 
@@ -105,7 +111,7 @@ public class HotelController {
     @PutMapping("/{id}")
     public ResponseEntity<PropertyProfileDTO> updateHotel(
             @PathVariable Long id,
-            @Valid @RequestBody PropertyUpdateRequest request) {
+            @Valid @RequestBody PropertyProfileUpdateRequest request) {
         return ResponseEntity.ok(hotelService.updateHotel(id, request));
     }
 

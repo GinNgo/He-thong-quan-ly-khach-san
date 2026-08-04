@@ -1,8 +1,8 @@
 package com.hotel.services;
 
 import com.hotel.dtos.PropertyClosureRequest;
-import com.hotel.dtos.PropertyCreateRequest;
-import com.hotel.dtos.PropertyUpdateRequest;
+import com.hotel.dtos.PropertyProfileDTO;
+import com.hotel.dtos.PropertyProfileUpdateRequest;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.Location;
 import com.hotel.entities.User;
@@ -43,7 +43,8 @@ class HotelManagementServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new HotelManagementServiceImpl(
-                hotelRepository, locationRepository, userPropertyRepository, propertyAccessService);
+                hotelRepository, userPropertyRepository, propertyAccessService,
+                new PropertyProfileMapper(locationRepository));
         ReflectionTestUtils.setField(service, "operationalAuditService", operationalAuditService);
     }
 
@@ -59,15 +60,16 @@ class HotelManagementServiceImplTest {
 
         var result = service.createHotel(createRequest());
 
-        assertEquals("DRAFT", result.status());
-        assertEquals("DRAFT", result.approvalStatus());
-        assertEquals("INACTIVE", result.operationStatus());
-        assertEquals("ADMIN", result.dataSource());
+        assertEquals("DRAFT", result.getStatus());
+        assertEquals("DRAFT", result.getApprovalStatus());
+        assertEquals("INACTIVE", result.getOperationStatus());
+        assertEquals("ADMIN", result.getDataSource());
         verify(operationalAuditService).append(any());
     }
 
     @Test
     void activeOwnerCanEditDraftPropertyButCannotChangeLifecycle() {
+        arrangeLocation();
         User owner = user(10L);
         Hotel hotel = hotel(20L, "DRAFT", "INACTIVE");
         UserProperty mapping = ownership(owner, hotel, "ACTIVE");
@@ -77,14 +79,13 @@ class HotelManagementServiceImplTest {
         when(hotelRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(hotel));
         when(hotelRepository.saveAndFlush(hotel)).thenReturn(hotel);
 
-        PropertyUpdateRequest request = new PropertyUpdateRequest();
-        request.setNameVi("Updated property");
-        request.setReason("Correct owner profile");
+        PropertyProfileDTO profile = profile("Updated property");
+        PropertyProfileUpdateRequest request = new PropertyProfileUpdateRequest(profile, "Correct owner profile");
         var result = service.updateOwnedHotel(20L, request);
 
-        assertEquals("Updated property", result.nameVi());
-        assertEquals("DRAFT", result.approvalStatus());
-        assertEquals("INACTIVE", result.operationStatus());
+        assertEquals("Updated property", result.getNameVi());
+        assertEquals("DRAFT", result.getApprovalStatus());
+        assertEquals("INACTIVE", result.getOperationStatus());
         ArgumentCaptor<OperationalAuditService.AuditCommand> audit =
                 ArgumentCaptor.forClass(OperationalAuditService.AuditCommand.class);
         verify(operationalAuditService).append(audit.capture());
@@ -98,13 +99,23 @@ class HotelManagementServiceImplTest {
         when(propertyAccessService.currentUser()).thenReturn(owner);
         when(userPropertyRepository.findByUserIdAndHotelIdAndRelationshipType(10L, 99L, "OWNER"))
                 .thenReturn(Optional.empty());
-        PropertyUpdateRequest request = new PropertyUpdateRequest();
-        request.setNameVi("Unauthorized");
-        request.setReason("Cross property edit");
+        PropertyProfileUpdateRequest request =
+                new PropertyProfileUpdateRequest(profile("Unauthorized"), "Cross property edit");
 
         assertThrows(ResourceNotFoundException.class, () -> service.updateOwnedHotel(99L, request));
         verify(hotelRepository, never()).findByIdForUpdate(any());
         verify(hotelRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void ownerCannotReadAnotherPropertyProfile() {
+        User owner = user(10L);
+        when(propertyAccessService.currentUser()).thenReturn(owner);
+        when(userPropertyRepository.findByUserIdAndHotelIdAndRelationshipType(10L, 99L, "OWNER"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.getOwnedProfile(99L));
+        verify(hotelRepository, never()).findById(99L);
     }
 
     @Test
@@ -115,9 +126,8 @@ class HotelManagementServiceImplTest {
         when(userPropertyRepository.findByUserIdAndHotelIdAndRelationshipType(10L, 20L, "OWNER"))
                 .thenReturn(Optional.of(ownership(owner, hotel, "ACTIVE")));
         when(hotelRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(hotel));
-        PropertyUpdateRequest request = new PropertyUpdateRequest();
-        request.setNameVi("Changed during review");
-        request.setReason("Unsafe review mutation");
+        PropertyProfileUpdateRequest request =
+                new PropertyProfileUpdateRequest(profile("Changed during review"), "Unsafe review mutation");
 
         assertThrows(IllegalStateException.class, () -> service.updateOwnedHotel(20L, request));
         verify(hotelRepository, never()).saveAndFlush(any());
@@ -133,8 +143,8 @@ class HotelManagementServiceImplTest {
 
         var result = service.closeHotel(20L, new PropertyClosureRequest("Owner requested permanent closure"));
 
-        assertEquals("CLOSED", result.status());
-        assertEquals("CLOSED", result.operationStatus());
+        assertEquals("CLOSED", result.getStatus());
+        assertEquals("CLOSED", result.getOperationStatus());
         verify(hotelRepository, never()).delete(any());
         verify(hotelRepository, never()).deleteById(any());
         ArgumentCaptor<OperationalAuditService.AuditCommand> audit =
@@ -143,14 +153,27 @@ class HotelManagementServiceImplTest {
         assertEquals("Owner requested permanent closure", audit.getValue().reason());
     }
 
-    private PropertyCreateRequest createRequest() {
-        PropertyCreateRequest request = new PropertyCreateRequest();
-        request.setNameVi("Administrative draft");
-        request.setPropertyType("HOTEL");
-        request.setAddressLine("1 Test Street");
-        request.setProvinceId(1L);
-        request.setWardId(2L);
-        return request;
+    private PropertyProfileDTO createRequest() {
+        return profile("Administrative draft");
+    }
+
+    private PropertyProfileDTO profile(String nameVi) {
+        PropertyProfileDTO profile = new PropertyProfileDTO();
+        profile.setNameVi(nameVi);
+        profile.setPropertyType("HOTEL");
+        profile.setAddressLine("1 Test Street");
+        profile.setProvinceId(1L);
+        profile.setWardId(2L);
+        profile.setLatitude(10.5);
+        profile.setLongitude(106.7);
+        profile.setPhone("+84 901 234 567");
+        profile.setEmail("owner@example.com");
+        profile.setWebsite("https://example.com/property");
+        profile.setCheckinTime("14:00");
+        profile.setCheckoutTime("12:00");
+        profile.setMinPrice(500000D);
+        profile.setMaxPrice(1500000D);
+        return profile;
     }
 
     private void arrangeLocation() {

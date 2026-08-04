@@ -18,7 +18,6 @@ public class ManagementPortalService {
     private final SubscriptionFeatureService subscriptionFeatureService;
     private final PropertySubscriptionEntitlementService propertyEntitlementService;
     private final HotelRepository hotelRepository;
-    private final LocationRepository locationRepository;
     private final UserPropertyRepository userPropertyRepository;
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
@@ -30,6 +29,7 @@ public class ManagementPortalService {
     private final HousekeepingTaskRepository housekeepingTaskRepository;
     private final RoomTypeService roomTypeService;
     private final RoomService roomService;
+    private final PropertyProfileMapper propertyProfileMapper;
 
     @Autowired(required = false)
     private OperationalAuditService operationalAuditService;
@@ -38,8 +38,8 @@ public class ManagementPortalService {
     public Map<String, Object> context(Long activePropertyId) {
         User user = propertyAccessService.currentUser();
         Set<Long> assignedIds = propertyAccessService.assignedHotelIds();
-        List<Map<String, Object>> properties = hotelRepository.findAllById(assignedIds).stream()
-                .map(this::propertySummary).toList();
+        List<PropertyProfileDTO> properties = hotelRepository.findAllById(assignedIds).stream()
+                .map(PropertyProfileDTO::from).toList();
         Long selectedId = activePropertyId != null ? activePropertyId : assignedIds.stream().findFirst().orElse(null);
         Hotel selectedProperty = selectedId == null ? null : propertyAccessService.requireAssignedHotel(selectedId);
         PropertySubscriptionEntitlementService.EntitlementView entitlement = selectedId == null
@@ -68,57 +68,21 @@ public class ManagementPortalService {
     }
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> properties() {
+    public List<PropertyProfileDTO> properties() {
         return hotelRepository.findAllById(propertyAccessService.assignedHotelIds()).stream()
-                .map(this::propertySummary).toList();
+                .map(PropertyProfileDTO::from).toList();
     }
 
     @Transactional
-    public Map<String, Object> createProperty(ManagementPropertyRequest request) {
+    public PropertyProfileDTO createProperty(PropertyProfileDTO request) {
         User user = propertyAccessService.currentUser();
         requireWithinLimit(user, "MAX_PROPERTIES",
                 userPropertyRepository.countActiveOwnedPropertiesByUserId(user.getId()), 1);
-        if (request == null || request.getNameVi() == null || request.getNameVi().isBlank()
-                || request.getProvinceId() == null || request.getWardId() == null
-                || request.getAddress() == null || request.getAddress().isBlank()) {
-            throw new IllegalArgumentException("Tên, tỉnh, phường/xã và địa chỉ là bắt buộc.");
-        }
-        Location province = locationRepository.findById(request.getProvinceId())
-                .filter(location -> "PROVINCE".equals(location.getLocationType()))
-                .orElseThrow(() -> new IllegalArgumentException("Tỉnh/thành phố không hợp lệ."));
-        Location ward = locationRepository.findById(request.getWardId())
-                .filter(location -> "WARD".equals(location.getLocationType()))
-                .orElseThrow(() -> new IllegalArgumentException("Phường/xã không hợp lệ."));
-        if (ward.getParent() == null || !province.getId().equals(ward.getParent().getId())) {
-            throw new IllegalArgumentException("Phường/xã không thuộc tỉnh/thành phố đã chọn.");
-        }
         String unique = user.getId() + "-" + System.currentTimeMillis();
         Hotel hotel = new Hotel();
         hotel.setCode("OWNER-" + unique);
         hotel.setSlug("owner-property-" + unique);
-        hotel.setName(request.getNameVi());
-        hotel.setNameVi(request.getNameVi());
-        hotel.setNameEn(request.getNameEn());
-        hotel.setDescription(request.getDescriptionVi());
-        hotel.setDescriptionVi(request.getDescriptionVi());
-        hotel.setDescriptionEn(request.getDescriptionEn());
-        hotel.setPropertyType(request.getPropertyType() == null ? "HOTEL" : request.getPropertyType());
-        hotel.setProvinceId(province.getId());
-        hotel.setWardId(ward.getId());
-        hotel.setAddressLine(request.getAddress());
-        hotel.setCity(province.getNameVi());
-        hotel.setCountry("Việt Nam");
-        hotel.setLatitude(request.getLatitude());
-        hotel.setLongitude(request.getLongitude());
-        hotel.setPhone(request.getPhone());
-        hotel.setEmail(request.getEmail());
-        hotel.setWebsite(request.getWebsite());
-        hotel.setCheckinTime(request.getCheckinTime());
-        hotel.setCheckoutTime(request.getCheckoutTime());
-        hotel.setMinPrice(request.getMinPrice());
-        hotel.setMaxPrice(request.getMaxPrice());
-        hotel.setStarRating(request.getStarRating());
-        hotel.setMainImage(request.getMainImage());
+        propertyProfileMapper.apply(hotel, request);
         hotel.setStatus("DRAFT");
         hotel.setApprovalStatus("DRAFT");
         hotel.setOperationStatus("INACTIVE");
@@ -146,8 +110,9 @@ public class ManagementPortalService {
         mapping.setStatus("ACTIVE");
         mapping.setStartDate(LocalDateTime.now());
         userPropertyRepository.save(mapping);
-        audit("PROPERTY", "PROPERTY_CREATED", hotel.getId(), null, propertySummary(hotel), "Property profile created");
-        return propertySummary(hotel);
+        PropertyProfileDTO created = PropertyProfileDTO.from(hotel);
+        audit("PROPERTY", "PROPERTY_CREATED", hotel.getId(), null, created, "Property profile created");
+        return created;
     }
 
     @Transactional(readOnly = true)
@@ -297,26 +262,6 @@ public class ManagementPortalService {
         data.put("dirtyRooms", roomRepository.countByHotelIdAndHousekeepingStatus(hotelId, "DIRTY"));
         data.put("maintenanceRooms", roomRepository.countByHotelIdAndStatus(hotelId, "MAINTENANCE"));
         data.put("pendingHousekeeping", housekeepingTaskRepository.countByHotelIdAndStatus(hotelId, "PENDING"));
-        return data;
-    }
-
-    private Map<String, Object> propertySummary(Hotel hotel) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("id", hotel.getId());
-        data.put("code", hotel.getCode());
-        data.put("nameVi", hotel.getNameVi());
-        data.put("nameEn", hotel.getNameEn());
-        data.put("propertyType", hotel.getPropertyType());
-        data.put("address", hotel.getAddressLine());
-        data.put("descriptionVi", hotel.getDescriptionVi());
-        data.put("descriptionEn", hotel.getDescriptionEn());
-        data.put("provinceId", hotel.getProvinceId());
-        data.put("wardId", hotel.getWardId());
-        data.put("approvalStatus", hotel.getApprovalStatus());
-        data.put("operationStatus", hotel.getOperationStatus());
-        data.put("operational", propertyAccessService.isOperational(hotel));
-        data.put("mainImage", hotel.getMainImage());
-        data.put("isDemo", hotel.getIsDemo());
         return data;
     }
 
