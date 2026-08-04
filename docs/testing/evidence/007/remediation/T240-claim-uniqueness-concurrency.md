@@ -25,7 +25,7 @@
   - Property claim service: 12.
   - Ownership lifecycle: 5.
 - Spring/JPA race tests use independent transactions, executor barriers and bounded timeouts. They verify same-requester duplicate submission, different-requester coexistence, approve-versus-cancel one-winner behavior, no deadlock, and final claim/property/OWNER invariants.
-- Disposable SQL Server 2022 verifier: `V74_SQLSERVER_PASS clean=1 repeat=1 duplicate_fail_closed=1 checksum_unchanged=1`.
+- Disposable SQL Server 2022 verifier passed clean/repeat/duplicate-fail-closed/checksum checks before the final metadata-only included-column rejection was added. The final hardening is covered by the static migration contract test; its executable rerun was blocked when the local Docker daemon became unresponsive, so that last rerun is not claimed.
 - Frontend focused tests: 21/21 PASS for stable conflicts, stale cross-tab review, safe error details and double-submit guards.
 - Independent final review: no blocking finding.
 - `git diff --check`: PASS.
