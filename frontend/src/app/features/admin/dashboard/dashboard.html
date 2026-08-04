@@ -15,19 +15,6 @@
     </div>
   </header>
 
-  <!-- T330 replaces this legacy property onboarding panel with role/context-aware state. -->
-  <section class="bg-white rounded-xl shadow-sm border border-outline-variant overflow-hidden" *ngIf="isPhase1">
-    <div class="p-5 border-b border-outline-variant bg-surface-container-low">
-      <div class="flex items-center justify-between gap-4">
-        <div>
-          <h2 class="text-[18px] font-bold text-primary mb-1">Thiet lap co so</h2>
-          <p class="text-[13px] text-on-surface-variant m-0">Trang thai onboarding tam thoi se duoc xu ly trong T330.</p>
-        </div>
-        <strong>{{ progressPercentage }}%</strong>
-      </div>
-    </div>
-  </section>
-
   <section *ngIf="loadingDashboard" class="bg-white rounded-xl border p-8 text-center" aria-live="polite">
     <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
     <span class="ml-2">Dang doi chieu du lieu bao cao va van hanh...</span>

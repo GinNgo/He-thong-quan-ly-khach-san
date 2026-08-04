@@ -138,3 +138,25 @@ test.describe('T329 authoritative admin dashboard', () => {
     });
   });
 });
+
+test('T330 keeps property onboarding and approval actions out of the system-admin dashboard', async ({ page }) => {
+  await seedSystemAdmin(page);
+  await page.route('**/api/**', async route => {
+    if (new URL(route.request().url()).pathname === '/api/analytics/dashboard') {
+      await json(route, dashboard);
+    } else {
+      await fulfillShellRequest(route);
+    }
+  });
+
+  await page.goto('/admin/dashboard', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByText('SYSTEM_NON_DEMO')).toBeVisible();
+  await expect(page.getByText('Thiet lap co so')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Gui yeu cau/i })).toHaveCount(0);
+  await expect(page.getByText(/Trang thai onboarding/i)).toHaveCount(0);
+
+  await page.screenshot({
+    path: '../docs/testing/evidence/007/remediation/T330-system-admin-dashboard-context.png',
+    fullPage: true,
+  });
+});

@@ -54,6 +54,8 @@ describe('AdminDashboard', () => {
     expect(text).toContain('PLATFORM_BILLING_NET');
     expect(text).toContain('RECONCILED');
     expect(text).toContain('platform-watermark-12');
+    expect(text).not.toContain('Thiet lap co so');
+    expect(text).not.toContain('Gui yeu cau');
     expect(fixture.componentInstance.occupancyChartData.datasets).toHaveLength(1);
   });
 

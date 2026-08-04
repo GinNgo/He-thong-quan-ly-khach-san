@@ -17,16 +17,6 @@ import { FilterRequest, PageRequest, SortRequest } from '../../../shared/models/
   styleUrl: './dashboard.css'
 })
 export class Dashboard implements OnInit {
-  // T330 replaces this legacy onboarding state with authoritative property setup context.
-  isPhase1 = true;
-  onboardingProgress = {
-    profileCompleted: true,
-    roomsCompleted: false,
-    servicesCompleted: false,
-    policiesCompleted: false,
-    isApproved: false
-  };
-
   data: AnalyticsData | null = null;
   loadingDashboard = false;
   dashboardError = '';
@@ -52,19 +42,6 @@ export class Dashboard implements OnInit {
     private readonly cdr: ChangeDetectorRef,
     private readonly router: Router
   ) {}
-
-  get completedSteps(): number {
-    return [
-      this.onboardingProgress.profileCompleted,
-      this.onboardingProgress.roomsCompleted,
-      this.onboardingProgress.servicesCompleted,
-      this.onboardingProgress.policiesCompleted
-    ].filter(Boolean).length;
-  }
-
-  get progressPercentage(): number {
-    return (this.completedSteps / 4) * 100;
-  }
 
   ngOnInit(): void {
     this.loadDashboard();
