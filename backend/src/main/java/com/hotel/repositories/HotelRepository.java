@@ -2,8 +2,12 @@ package com.hotel.repositories;
 
 import com.hotel.entities.Hotel;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
 
@@ -11,6 +15,9 @@ import org.springframework.data.domain.Pageable;
 public interface HotelRepository extends JpaRepository<Hotel, Long> {
     java.util.Optional<Hotel> findByCode(String code);
     java.util.Optional<Hotel> findBySeedKey(String seedKey);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select h from Hotel h where h.id = :id")
+    java.util.Optional<Hotel> findByIdForUpdate(@Param("id") Long id);
     long countByIsDemoTrue();
     java.util.List<Hotel> findByIsDemoTrue();
     List<Hotel> findByAddressLineContainingIgnoreCaseAndStatus(String addressLine, String status);

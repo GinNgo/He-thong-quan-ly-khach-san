@@ -1,7 +1,9 @@
 package com.hotel.controllers;
 
 import com.hotel.dtos.*;
+import com.hotel.services.HotelManagementService;
 import com.hotel.services.ManagementPortalService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,6 +18,7 @@ import java.util.Map;
 @PreAuthorize("hasAnyAuthority('PROPERTY_OWNER','HOTEL_ADMIN','HOTEL_MANAGER','SUPER_ADMIN','ADMIN')")
 public class ManagementPortalController {
     private final ManagementPortalService service;
+    private final HotelManagementService hotelManagementService;
 
     @GetMapping("/context")
     public ResponseEntity<Map<String, Object>> context(@RequestParam(required = false) Long activePropertyId) {
@@ -26,8 +29,15 @@ public class ManagementPortalController {
     public ResponseEntity<List<Map<String, Object>>> properties() { return ResponseEntity.ok(service.properties()); }
 
     @PostMapping("/properties")
-    public ResponseEntity<Map<String, Object>> createProperty(@RequestBody ManagementPropertyRequest request) {
+    public ResponseEntity<Map<String, Object>> createProperty(@Valid @RequestBody ManagementPropertyRequest request) {
         return ResponseEntity.ok(service.createProperty(request));
+    }
+
+    @PutMapping("/properties/{id}")
+    public ResponseEntity<PropertyProfileDTO> updateProperty(
+            @PathVariable Long id,
+            @Valid @RequestBody PropertyUpdateRequest request) {
+        return ResponseEntity.ok(hotelManagementService.updateOwnedHotel(id, request));
     }
 
     @GetMapping("/room-types")

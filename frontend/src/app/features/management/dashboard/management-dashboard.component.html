@@ -15,6 +15,35 @@
     @if (context.upgradeRequired) { <div class="upgrade"><strong>Gói {{ context.planCode }}</strong><span>Một số chức năng nâng cao đang bị giới hạn. Dữ liệu đã nhập vẫn được giữ nguyên.</span><a routerLink="/management/billing">Xem gói dịch vụ</a></div> }
     <div class="summary"><div><span>Gói hiện tại</span><strong>{{ context.planCode }}</strong></div><div><span>Trạng thái</span><strong>{{ context.subscriptionStatus }}</strong></div><div><span>Cơ sở</span><strong>{{ context.usage.properties || 0 }} / {{ limit('MAX_PROPERTIES') }}</strong></div><div><span>Phòng</span><strong>{{ context.usage.rooms || 0 }} / {{ limit('MAX_ROOMS') }}</strong></div><div><span>Nhân viên</span><strong>{{ context.usage.staff || 0 }} / {{ limit('MAX_STAFF') }}</strong></div></div>
     <p class="entitlement-source">Entitlement source: <strong>{{ context.subscriptionSource || 'NONE' }}</strong>. Room usage is scoped to the selected property.</p>
+    @if (activeProperty) {
+      <section class="profile-card" aria-labelledby="profile-title">
+        <div>
+          <h2 id="profile-title">Hồ sơ cơ sở</h2>
+          <p>{{ activeProperty.nameVi }} · {{ activeProperty.address }}</p>
+        </div>
+        @if (canEditProfile && !profileEditing) {
+          <button type="button" (click)="openProfileEditor()">Chỉnh sửa hồ sơ</button>
+        }
+        @if (profileEditing) {
+          <form class="profile-editor" (ngSubmit)="saveProfile()">
+            <label>Tên cơ sở
+              <input name="profileNameVi" [(ngModel)]="profileDraft.nameVi" maxlength="255" required />
+            </label>
+            <label>Địa chỉ
+              <input name="profileAddress" [(ngModel)]="profileDraft.addressLine" maxlength="1000" required />
+            </label>
+            <label>Lý do cập nhật
+              <textarea name="profileReason" [(ngModel)]="profileDraft.reason" maxlength="500" required></textarea>
+            </label>
+            @if (profileError) { <p class="profile-error" role="alert">{{ profileError }}</p> }
+            <div class="profile-actions">
+              <button type="button" (click)="cancelProfileEditor()" [disabled]="profileSaving">Hủy</button>
+              <button type="submit" [disabled]="profileSaving">{{ profileSaving ? 'Đang lưu...' : 'Lưu hồ sơ' }}</button>
+            </div>
+          </form>
+        }
+      </section>
+    }
     @if (!activePropertyOperational && activeProperty) {
       <div class="operation-gate" role="status">
         <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>

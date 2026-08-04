@@ -9,6 +9,7 @@ export interface AdminProperty extends Hotel {
   nameEn?: string;
   status?: string;
   operationStatus?: string;
+  approvalStatus?: string;
 }
 
 export interface PropertyLocation {
@@ -20,16 +21,12 @@ export interface PropertyLocation {
 }
 
 export interface CreatePropertyRequest {
-  name: string;
   nameVi: string;
   nameEn?: string;
   propertyType: string;
   addressLine: string;
-  city: string;
-  country: string;
   provinceId: number;
   wardId: number;
-  description?: string;
   descriptionVi?: string;
   descriptionEn?: string;
   starRating?: number;
@@ -37,11 +34,10 @@ export interface CreatePropertyRequest {
   email?: string;
   website?: string;
   mainImage?: string;
-  status: 'DRAFT';
-  approvalStatus: 'DRAFT';
-  operationStatus: 'INACTIVE';
-  isDemo: false;
-  dataSource: 'ADMIN';
+}
+
+export interface UpdatePropertyRequest extends Partial<CreatePropertyRequest> {
+  reason: string;
 }
 
 @Injectable({
@@ -67,8 +63,12 @@ export class PropertyService {
     return this.http.post<AdminProperty>(this.apiUrl, property);
   }
 
-  updateProperty(id: number, property: Partial<CreatePropertyRequest>): Observable<AdminProperty> {
+  updateProperty(id: number, property: UpdatePropertyRequest): Observable<AdminProperty> {
     return this.http.put<AdminProperty>(`${this.apiUrl}/${id}`, property);
+  }
+
+  closeProperty(id: number, reason: string): Observable<AdminProperty> {
+    return this.http.post<AdminProperty>(`${this.apiUrl}/${id}/close`, { reason });
   }
 
   submitProperty(id: number): Observable<AdminProperty> {

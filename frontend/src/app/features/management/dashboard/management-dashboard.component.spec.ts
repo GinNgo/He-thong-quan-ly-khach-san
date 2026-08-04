@@ -1,10 +1,49 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Subject } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { ManagementApiService, ManagementContext } from '../../../core/services/management-api.service';
 import { ManagementDashboardComponent } from './management-dashboard.component';
 
 describe('ManagementDashboardComponent', () => {
+  it('submits an owner-scoped profile edit with a reason', async () => {
+    const context: ManagementContext = {
+      properties: [{
+        id: 3, code: 'OWNER-3', nameVi: 'Old name', propertyType: 'HOTEL', address: 'Old address',
+        approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', operational: true, isDemo: false
+      }],
+      activePropertyId: 3,
+      activePropertyOperational: true,
+      planCode: 'STANDARD', subscriptionStatus: 'ACTIVE', lifetime: false,
+      limits: {}, usage: {}, upgradeRequired: false, dashboard: {}
+    };
+    const api = {
+      context: vi.fn(() => of(context)),
+      updateProperty: vi.fn(() => of({ id: 3 }))
+    };
+    await TestBed.configureTestingModule({
+      imports: [ManagementDashboardComponent],
+      providers: [provideRouter([]), { provide: ManagementApiService, useValue: api }]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManagementDashboardComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component.openProfileEditor();
+    component.profileDraft = {
+      nameVi: 'New owner name',
+      addressLine: '3 Tenant Safe Street',
+      reason: 'Correct public profile'
+    };
+    component.saveProfile();
+
+    expect(api.updateProperty).toHaveBeenCalledWith(3, {
+      nameVi: 'New owner name',
+      addressLine: '3 Tenant Safe Street',
+      reason: 'Correct public profile'
+    });
+    expect(component.profileEditing).toBe(false);
+  });
+
   it('renders loaded context in zoneless mode', async () => {
     const context$ = new Subject<ManagementContext>();
 

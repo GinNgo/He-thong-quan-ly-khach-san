@@ -4,34 +4,35 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
-public class ManagementPropertyRequest {
-    @NotBlank
+public class PropertyUpdateRequest {
     @Size(max = 255)
     private String nameVi;
 
     @Size(max = 255)
     private String nameEn;
 
-    @NotBlank
     @Size(max = 50)
     private String propertyType;
 
-    @NotNull
-    private Long provinceId;
+    @Size(max = 1000)
+    private String addressLine;
 
-    @NotNull
+    private Long provinceId;
     private Long wardId;
 
-    @NotBlank
-    @Size(max = 1000)
-    private String address;
-    private Double latitude;
-    private Double longitude;
+    @Size(max = 4000)
+    private String descriptionVi;
+
+    @Size(max = 4000)
+    private String descriptionEn;
+
+    @Min(0)
+    @Max(5)
+    private Integer starRating;
 
     @Size(max = 50)
     private String phone;
@@ -43,24 +44,10 @@ public class ManagementPropertyRequest {
     @Size(max = 1000)
     private String website;
 
-    @Size(max = 4000)
-    private String descriptionVi;
-
-    @Size(max = 4000)
-    private String descriptionEn;
-
-    @Size(max = 20)
-    private String checkinTime;
-
-    @Size(max = 20)
-    private String checkoutTime;
-    private Double minPrice;
-    private Double maxPrice;
-
-    @Min(0)
-    @Max(5)
-    private Integer starRating;
-
     @Size(max = 1000)
     private String mainImage;
+
+    @NotBlank
+    @Size(min = 3, max = 500)
+    private String reason;
 }

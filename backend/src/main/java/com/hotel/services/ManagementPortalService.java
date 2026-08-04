@@ -305,8 +305,11 @@ public class ManagementPortalService {
         data.put("id", hotel.getId());
         data.put("code", hotel.getCode());
         data.put("nameVi", hotel.getNameVi());
+        data.put("nameEn", hotel.getNameEn());
         data.put("propertyType", hotel.getPropertyType());
         data.put("address", hotel.getAddressLine());
+        data.put("descriptionVi", hotel.getDescriptionVi());
+        data.put("descriptionEn", hotel.getDescriptionEn());
         data.put("provinceId", hotel.getProvinceId());
         data.put("wardId", hotel.getWardId());
         data.put("approvalStatus", hotel.getApprovalStatus());

@@ -176,28 +176,19 @@ export class PropertyManagementComponent implements OnInit {
     }
 
     const request: CreatePropertyRequest = {
-      name: value.nameVi.trim(),
       nameVi: value.nameVi.trim(),
       nameEn: value.nameEn.trim() || undefined,
       propertyType: value.propertyType,
       addressLine: value.address.trim(),
-      city: province.nameVi,
-      country: 'Việt Nam',
       provinceId: value.provinceId,
       wardId: value.wardId,
-      description: value.descriptionVi.trim() || undefined,
       descriptionVi: value.descriptionVi.trim() || undefined,
       descriptionEn: value.descriptionEn.trim() || undefined,
       starRating: value.starRating,
       phone: value.phone.trim() || undefined,
       email: value.email.trim() || undefined,
       website: value.website.trim() || undefined,
-      mainImage: value.mainImage.trim() || undefined,
-      status: 'DRAFT',
-      approvalStatus: 'DRAFT',
-      operationStatus: 'INACTIVE',
-      isDemo: false,
-      dataSource: 'ADMIN'
+      mainImage: value.mainImage.trim() || undefined
     };
 
     this.saving = true;

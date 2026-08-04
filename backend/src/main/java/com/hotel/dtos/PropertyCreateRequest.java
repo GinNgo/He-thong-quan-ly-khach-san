@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
-public class ManagementPropertyRequest {
+public class PropertyCreateRequest {
     @NotBlank
     @Size(max = 255)
     private String nameVi;
@@ -21,17 +21,25 @@ public class ManagementPropertyRequest {
     @Size(max = 50)
     private String propertyType;
 
+    @NotBlank
+    @Size(max = 1000)
+    private String addressLine;
+
     @NotNull
     private Long provinceId;
 
     @NotNull
     private Long wardId;
 
-    @NotBlank
-    @Size(max = 1000)
-    private String address;
-    private Double latitude;
-    private Double longitude;
+    @Size(max = 4000)
+    private String descriptionVi;
+
+    @Size(max = 4000)
+    private String descriptionEn;
+
+    @Min(0)
+    @Max(5)
+    private Integer starRating;
 
     @Size(max = 50)
     private String phone;
@@ -42,24 +50,6 @@ public class ManagementPropertyRequest {
 
     @Size(max = 1000)
     private String website;
-
-    @Size(max = 4000)
-    private String descriptionVi;
-
-    @Size(max = 4000)
-    private String descriptionEn;
-
-    @Size(max = 20)
-    private String checkinTime;
-
-    @Size(max = 20)
-    private String checkoutTime;
-    private Double minPrice;
-    private Double maxPrice;
-
-    @Min(0)
-    @Max(5)
-    private Integer starRating;
 
     @Size(max = 1000)
     private String mainImage;

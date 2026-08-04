@@ -47,15 +47,14 @@ describe('PropertyManagementComponent', () => {
 
     const create = http.expectOne({ method: 'POST', url: `${environment.apiUrl}/v1/hotels` });
     expect(create.request.body).toMatchObject({
-      name: 'LuxeStay T046',
+      nameVi: 'LuxeStay T046',
       addressLine: '01 Đường Biển',
-      city: 'Đà Nẵng',
-      country: 'Việt Nam',
-      status: 'DRAFT',
-      approvalStatus: 'DRAFT',
-      operationStatus: 'INACTIVE',
-      isDemo: false
+      provinceId: 1,
+      wardId: 10
     });
+    expect(create.request.body.status).toBeUndefined();
+    expect(create.request.body.approvalStatus).toBeUndefined();
+    expect(create.request.body.operationStatus).toBeUndefined();
     create.flush({ id: 99, name: 'LuxeStay T046' });
     http.expectOne(`${environment.apiUrl}/v1/hotels`).flush([]);
     fixture.detectChanges();
