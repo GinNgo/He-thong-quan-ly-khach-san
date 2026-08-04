@@ -24,6 +24,7 @@ describe('ManagementLayout', () => {
         provideRouter([]),
         { provide: AuthService, useValue: { currentUser$: user$, logout: () => undefined } },
         { provide: ManagementApiService, useValue: { context: () => context$ } },
+        { provide: PermissionService, useValue: { hasPermission: vi.fn(() => false) } },
       ],
     }).compileComponents();
 
@@ -79,6 +80,7 @@ describe('ManagementLayout', () => {
           },
         },
         { provide: ManagementApiService, useValue: { context: () => new Subject<ManagementContext>() } },
+        { provide: PermissionService, useValue: { hasPermission: vi.fn(() => false) } },
       ],
     }).compileComponents();
 

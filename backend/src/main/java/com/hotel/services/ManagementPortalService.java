@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 
 @Service
@@ -57,11 +58,22 @@ public class ManagementPortalService {
         result.put("planCode", entitlement.planCode());
         result.put("subscriptionStatus", entitlement.status());
         result.put("subscriptionSource", entitlement.source());
+        result.put("entitlementAuthoritative", entitlement.platformAuthoritative());
+        result.put("entitlementReference", entitlement.sourceReference());
         result.put("startAt", entitlement.effectiveFrom());
         result.put("endAt", entitlement.effectiveUntil());
         result.put("lifetime", entitlement.lifetime());
         result.put("limits", limits);
         result.put("usage", usage);
+        result.put("usageScope", Map.of(
+                "properties", "OWNER_ACCOUNT",
+                "roomTypes", "SELECTED_PROPERTY",
+                "rooms", "SELECTED_PROPERTY",
+                "staff", "SELECTED_PROPERTY",
+                "images", "SELECTED_PROPERTY"));
+        result.put("scope", "SELECTED_PROPERTY");
+        result.put("generatedAt", LocalDateTime.now(ZoneOffset.UTC).toString() + "Z");
+        result.put("sourceWatermark", selectedId == null ? "PROPERTY_NOT_SELECTED" : "PROPERTY:" + selectedId);
         result.put("upgradeRequired", limits.isEmpty() || !"ACTIVE".equals(entitlement.status()));
         if (activePropertyOperational) result.put("dashboard", dashboard(selectedId));
         return result;
@@ -290,13 +302,24 @@ public class ManagementPortalService {
 
     private Map<String, Object> dashboard(Long hotelId) {
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("totalRooms", roomRepository.countByHotelId(hotelId));
-        data.put("availableRooms", roomRepository.countByHotelIdAndStatus(hotelId, "AVAILABLE"));
-        data.put("reservedRooms", roomRepository.countByHotelIdAndStatus(hotelId, "RESERVED"));
-        data.put("occupiedRooms", roomRepository.countByHotelIdAndStatus(hotelId, "OCCUPIED"));
+        long totalRooms = roomRepository.countByHotelId(hotelId);
+        long availableRooms = roomRepository.countByHotelIdAndStatus(hotelId, "AVAILABLE");
+        long reservedRooms = roomRepository.countByHotelIdAndStatus(hotelId, "RESERVED");
+        long occupiedRooms = roomRepository.countByHotelIdAndStatus(hotelId, "OCCUPIED");
+        long maintenanceRooms = roomRepository.countByHotelIdAndStatus(hotelId, "MAINTENANCE");
+        long classifiedRooms = availableRooms + reservedRooms + occupiedRooms + maintenanceRooms;
+        long unclassifiedRooms = Math.max(0, totalRooms - classifiedRooms);
+        data.put("totalRooms", totalRooms);
+        data.put("availableRooms", availableRooms);
+        data.put("reservedRooms", reservedRooms);
+        data.put("occupiedRooms", occupiedRooms);
         data.put("dirtyRooms", roomRepository.countByHotelIdAndHousekeepingStatus(hotelId, "DIRTY"));
-        data.put("maintenanceRooms", roomRepository.countByHotelIdAndStatus(hotelId, "MAINTENANCE"));
+        data.put("maintenanceRooms", maintenanceRooms);
+        data.put("unclassifiedRooms", unclassifiedRooms);
         data.put("pendingHousekeeping", housekeepingTaskRepository.countByHotelIdAndStatus(hotelId, "PENDING"));
+        data.put("classifiedRooms", classifiedRooms);
+        data.put("reconciliationStatus", classifiedRooms + unclassifiedRooms == totalRooms ? "RECONCILED" : "MISMATCH");
+        data.put("countBasis", "ROOM_STATUS_BY_SELECTED_PROPERTY");
         return data;
     }
 

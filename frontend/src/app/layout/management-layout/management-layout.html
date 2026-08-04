@@ -105,7 +105,7 @@
               (change)="selectProperty(propertySelect.value)"
             >
               @for (property of properties; track property.id) {
-                <option [value]="property.id">{{ property.nameVi }}</option>
+                <option [value]="property.id" [selected]="property.id === activePropertyId">{{ property.nameVi }}</option>
               }
             </select>
           }

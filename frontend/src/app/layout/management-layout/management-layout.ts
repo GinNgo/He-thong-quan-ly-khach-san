@@ -7,6 +7,7 @@ import {
   ManagedProperty,
   ManagementApiService,
 } from '../../core/services/management-api.service';
+import { ManagementPropertyContextService } from '../../core/services/management-property-context.service';
 import { ActionCode, FunctionCode, PermissionService } from '../../core/services/permission.service';
 
 interface ManagementLink {
@@ -32,6 +33,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   private permissionService = inject(PermissionService);
+  private propertyContext = inject(ManagementPropertyContextService);
 
   readonly navigationGroups: ReadonlyArray<{
     label: string;
@@ -99,6 +101,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
   activePropertyOperational = false;
 
   private subscriptions = new Subscription();
+  private contextRequestSequence = 0;
 
   ngOnInit(): void {
     this.updateViewportState();
@@ -120,8 +123,9 @@ export class ManagementLayout implements OnInit, OnDestroy {
     );
 
     this.updatePageTitle(this.router.url);
+    this.subscriptions.add(this.propertyContext.propertyId$.subscribe(propertyId => this.loadContext(propertyId)));
     const propertyId = Number(this.route.snapshot.queryParamMap.get('propertyId'));
-    this.loadContext(Number.isInteger(propertyId) && propertyId > 0 ? propertyId : undefined);
+    if (Number.isInteger(propertyId) && propertyId > 0) this.propertyContext.select(propertyId);
   }
 
   ngOnDestroy(): void {
@@ -129,12 +133,14 @@ export class ManagementLayout implements OnInit, OnDestroy {
   }
 
   loadContext(propertyId?: number, updateUrl = false): void {
+    const requestSequence = ++this.contextRequestSequence;
     this.contextLoading = true;
     this.contextError = '';
 
     this.subscriptions.add(
       this.managementApi.context(propertyId).subscribe({
         next: (context) => {
+          if (requestSequence !== this.contextRequestSequence) return;
           this.properties = context.properties;
           this.activePropertyId = context.activePropertyId;
           this.activePropertyOperational = context.activePropertyOperational
@@ -151,6 +157,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         },
         error: () => {
+          if (requestSequence !== this.contextRequestSequence) return;
           this.properties = [];
           this.activePropertyId = undefined;
           this.activePropertyOperational = false;
@@ -165,8 +172,11 @@ export class ManagementLayout implements OnInit, OnDestroy {
   selectProperty(rawValue: string): void {
     const requestedId = Number(rawValue);
     if (!Number.isInteger(requestedId) || requestedId <= 0) return;
-
-    this.loadContext(requestedId, true);
+    this.propertyContext.select(requestedId);
+    void this.router.navigate([], {
+      queryParams: { propertyId: requestedId },
+      queryParamsHandling: 'merge',
+    });
   }
 
   logout(): void {

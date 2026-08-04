@@ -29,7 +29,9 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
@@ -56,6 +58,77 @@ class ManagementPortalServiceTest {
 
     @InjectMocks
     private ManagementPortalService service;
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void selectedPropertyCountsAndEntitlementReconcileIndependently() {
+        User owner = new User();
+        owner.setId(10L);
+        owner.setFullName("Owner");
+        Hotel first = operationalHotel(20L, "First");
+        Hotel second = operationalHotel(21L, "Second");
+
+        when(propertyAccessService.currentUser()).thenReturn(owner);
+        when(propertyAccessService.assignedHotelIds()).thenReturn(Set.of(20L, 21L));
+        when(hotelRepository.findAllById(Set.of(20L, 21L))).thenReturn(List.of(first, second));
+        when(propertyAccessService.requireAssignedHotel(21L)).thenReturn(second);
+        when(propertyAccessService.isOperational(first)).thenReturn(true);
+        when(propertyAccessService.isOperational(second)).thenReturn(true);
+        when(propertyEntitlementService.getCurrent(21L)).thenReturn(new PropertySubscriptionEntitlementService.EntitlementView(
+                21L, "PLATFORM", true, 4L, "STANDARD", "Standard", "ACTIVE",
+                null, null, false, Map.of("MAX_PROPERTIES", 3, "MAX_ROOMS", 40, "MAX_STAFF", 10),
+                "CONTRACT:88", null));
+        when(userPropertyRepository.countActiveOwnedPropertiesByUserId(10L)).thenReturn(2L);
+        when(roomTypeRepository.countByHotelId(21L)).thenReturn(3L);
+        when(roomRepository.countByHotelId(21L)).thenReturn(8L);
+        when(userPropertyRepository.countActiveStaffByHotelId(21L)).thenReturn(5L);
+        when(roomRepository.countByHotelIdAndStatus(21L, "AVAILABLE")).thenReturn(3L);
+        when(roomRepository.countByHotelIdAndStatus(21L, "RESERVED")).thenReturn(1L);
+        when(roomRepository.countByHotelIdAndStatus(21L, "OCCUPIED")).thenReturn(2L);
+        when(roomRepository.countByHotelIdAndStatus(21L, "MAINTENANCE")).thenReturn(1L);
+        when(roomRepository.countByHotelIdAndHousekeepingStatus(21L, "DIRTY")).thenReturn(2L);
+        when(housekeepingTaskRepository.countByHotelIdAndStatus(21L, "PENDING")).thenReturn(1L);
+
+        Map<String, Object> context = service.context(21L);
+        Map<String, Long> usage = (Map<String, Long>) context.get("usage");
+        Map<String, Object> dashboard = (Map<String, Object>) context.get("dashboard");
+
+        assertEquals(21L, context.get("activePropertyId"));
+        assertEquals("SELECTED_PROPERTY", context.get("scope"));
+        assertEquals("PLATFORM", context.get("subscriptionSource"));
+        assertEquals(true, context.get("entitlementAuthoritative"));
+        assertEquals("CONTRACT:88", context.get("entitlementReference"));
+        assertEquals(2L, usage.get("properties"));
+        assertEquals(8L, usage.get("rooms"));
+        assertEquals(5L, usage.get("staff"));
+        assertEquals(7L, dashboard.get("classifiedRooms"));
+        assertEquals(1L, dashboard.get("unclassifiedRooms"));
+        assertEquals("RECONCILED", dashboard.get("reconciliationStatus"));
+        verify(propertyEntitlementService).getCurrent(21L);
+        verify(roomRepository, times(2)).countByHotelId(21L);
+        verify(roomRepository, never()).countByHotelId(20L);
+    }
+
+    @Test
+    void foreignPropertyIsRejectedBeforeEntitlementOrOperationalQueries() {
+        User owner = new User();
+        owner.setId(10L);
+        owner.setFullName("Owner");
+        Hotel assigned = operationalHotel(20L, "Assigned");
+
+        when(propertyAccessService.currentUser()).thenReturn(owner);
+        when(propertyAccessService.assignedHotelIds()).thenReturn(Set.of(20L));
+        when(hotelRepository.findAllById(Set.of(20L))).thenReturn(List.of(assigned));
+        when(propertyAccessService.requireAssignedHotel(999L))
+                .thenThrow(new com.hotel.exceptions.ResourceNotFoundException("Property not found"));
+
+        assertThrows(com.hotel.exceptions.ResourceNotFoundException.class, () -> service.context(999L));
+
+        verify(propertyEntitlementService, never()).getCurrent(999L);
+        verify(roomRepository, never()).countByHotelId(999L);
+        verify(userPropertyRepository, never()).countActiveStaffByHotelId(999L);
+        verify(housekeepingTaskRepository, never()).countByHotelIdAndStatus(999L, "PENDING");
+    }
 
     @Test
     @SuppressWarnings("unchecked")
@@ -118,5 +191,16 @@ class ManagementPortalServiceTest {
         verify(roomRepository).findByIdForUpdate(30L);
         verify(roomRepository).save(room);
         verify(housekeepingTaskRepository).save(task);
+    }
+
+    private Hotel operationalHotel(Long id, String name) {
+        Hotel hotel = new Hotel();
+        hotel.setId(id);
+        hotel.setCode("HOTEL-" + id);
+        hotel.setNameVi(name);
+        hotel.setApprovalStatus("APPROVED");
+        hotel.setOperationStatus("ACTIVE");
+        hotel.setIsDemo(false);
+        return hotel;
     }
 }
