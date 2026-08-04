@@ -62,6 +62,6 @@ The normal Maven lifecycle remains blocked by unrelated base and parallel-branch
 
 ## Migration And Recovery
 
-- Migration: `V60__property_approval_review_metadata.sql` adds nullable submit/review metadata columns only; it does not rewrite existing property rows.
+- Migration: `V70__property_approval_review_metadata.sql` adds nullable submit/review metadata columns only; it does not rewrite existing property rows. The auth/property-subscription branch uses the V70 range to avoid V60/V61 collisions with active parallel worktrees.
 - Safe forward recovery: deploy the additive migration before the application commit. Existing legacy pending rows remain reviewable without submit metadata.
 - Rollback: revert the application commit and leave the nullable columns unused. Do not drop the columns during an emergency rollback because that would discard review evidence.
