@@ -25,6 +25,8 @@ public class TenantFilterInterceptor implements HandlerInterceptor {
             "supportConversationEventTenantFilter",
             "financialAuditTenantFilter",
             "housekeepingTaskTenantFilter",
+            "maintenanceWorkOrderTenantFilter",
+            "maintenanceWorkOrderHistoryTenantFilter",
             "hotelServiceTenantFilter",
             "propertyMediaTenantFilter",
             "propertyImageTenantFilter",

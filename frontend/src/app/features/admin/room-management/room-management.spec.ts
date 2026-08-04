@@ -11,7 +11,6 @@ describe('RoomManagement', () => {
     getRooms: vi.fn(() => of([room])), getRoomTypes: vi.fn(() => of([{ id: 3, hotelId: 7, code: 'DLX', nameVi: 'Deluxe', maxGuests: 2, basePrice: 1, status: 'ACTIVE' }])),
     getProperties: vi.fn(() => of([{ id: 7, name: 'Hotel 7' }])), createRoom: vi.fn(() => of(room)), updateRoom: vi.fn(() => of(room)),
     bulkCreateRooms: vi.fn(() => of({ created: [room], failedRoomNumbers: [] })), deleteRoom: vi.fn(() => of(undefined)),
-    startRoomMaintenance: vi.fn(() => of(room)), completeRoomMaintenance: vi.fn(() => of(room))
   };
   beforeEach(async () => { vi.clearAllMocks(); await TestBed.configureTestingModule({ imports: [RoomManagement], providers: [
     { provide: AdminInventoryService, useValue: api }, { provide: PermissionService, useValue: { hasPermission: () => true } }
@@ -30,6 +29,13 @@ describe('RoomManagement', () => {
     const fixture = TestBed.createComponent(RoomManagement); fixture.detectChanges(); const component = fixture.componentInstance;
     component.bulk = { hotelId: 7, roomTypeId: 3, floor: 1, fromNumber: 1, toNumber: 201, prefix: '' }; component.createBulk();
     expect(api.bulkCreateRooms).not.toHaveBeenCalled();
+  });
+
+  it('opens work-order management without mutating room state directly', () => {
+    const fixture = TestBed.createComponent(RoomManagement); fixture.detectChanges(); const component = fixture.componentInstance;
+    component.openMaintenance(room as any);
+    expect(component.maintenanceRoom).toEqual(room);
+    expect(component.maintenanceRoom?.id).toBe(1);
   });
 
   it('submits one bulk request and confirmed soft-disable', () => {

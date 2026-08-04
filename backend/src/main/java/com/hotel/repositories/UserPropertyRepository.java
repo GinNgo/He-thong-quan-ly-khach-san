@@ -23,6 +23,7 @@ public interface UserPropertyRepository extends JpaRepository<UserProperty, Long
     long countByHotelIdAndRelationshipTypeAndStatus(Long hotelId, String relationshipType, String status);
     long countByUserIdAndRelationshipTypeAndStatus(Long userId, String relationshipType, String status);
     long countByUserIdAndStatus(Long userId, String status);
+    boolean existsByUserIdAndHotelIdAndStatus(Long userId, Long hotelId, String status);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

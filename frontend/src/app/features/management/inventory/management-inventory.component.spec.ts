@@ -13,8 +13,6 @@ describe('ManagementInventoryComponent', () => {
     context: ReturnType<typeof vi.fn>;
     rooms: ReturnType<typeof vi.fn>;
     roomTypes: ReturnType<typeof vi.fn>;
-    startRoomMaintenance: ReturnType<typeof vi.fn>;
-    completeRoomMaintenance: ReturnType<typeof vi.fn>;
     createRoomType: ReturnType<typeof vi.fn>;
     updateRoomType: ReturnType<typeof vi.fn>;
     deleteRoomType: ReturnType<typeof vi.fn>;
@@ -28,8 +26,6 @@ describe('ManagementInventoryComponent', () => {
       context: vi.fn(() => of({ properties: [{ id: 3, nameVi: 'Hotel' }], activePropertyId: 3 })),
       rooms: vi.fn(() => of([{ id: 12, status: 'AVAILABLE', maintenanceStatus: 'NONE' }])),
       roomTypes: vi.fn(() => of([])),
-      startRoomMaintenance: vi.fn(() => of({})),
-      completeRoomMaintenance: vi.fn(() => of({})),
       createRoomType: vi.fn(() => of({ id: 21 })),
       updateRoomType: vi.fn(() => of({ id: 21 })),
       deleteRoomType: vi.fn(() => of(undefined)),
@@ -52,12 +48,12 @@ describe('ManagementInventoryComponent', () => {
     fixture.detectChanges();
   });
 
-  it('uses dedicated maintenance commands instead of a generic room update', () => {
-    component.toggleMaintenance({ id: 12, status: 'AVAILABLE', maintenanceStatus: 'NONE' });
-    component.toggleMaintenance({ id: 12, status: 'MAINTENANCE', maintenanceStatus: 'MAINTENANCE' });
-
-    expect(api.startRoomMaintenance).toHaveBeenCalledWith(12);
-    expect(api.completeRoomMaintenance).toHaveBeenCalledWith(12);
+  it('opens the reasoned work-order workflow instead of toggling room state', () => {
+    const room = { id: 12, status: 'AVAILABLE', maintenanceStatus: 'NONE' };
+    component.openMaintenance(room);
+    expect(component.maintenanceRoom).toBe(room);
+    component.closeMaintenance();
+    expect(component.maintenanceRoom).toBeUndefined();
   });
 
   it('updates and soft-disables room types through management parity endpoints', () => {

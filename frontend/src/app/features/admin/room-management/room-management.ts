@@ -6,10 +6,11 @@ import { SharedModule } from '../../../shared/shared.module';
 import { AdminInventoryService, AdminPropertyOption, AdminRoom, AdminRoomType, BulkRoomRequest } from '../../../core/services/admin-inventory.service';
 import { ActionCode, FunctionCode, PermissionService } from '../../../core/services/permission.service';
 import { PropertyGalleryComponent } from '../../../shared/components/property-gallery/property-gallery.component';
+import { MaintenanceWorkOrdersComponent } from '../../../shared/components/maintenance-work-orders/maintenance-work-orders.component';
 
 @Component({
   selector: 'app-room-management',
-  imports: [SharedModule, PropertyGalleryComponent],
+  imports: [SharedModule, PropertyGalleryComponent, MaintenanceWorkOrdersComponent],
   providers: [ConfirmationService, MessageService],
   templateUrl: './room-management.html',
   styleUrl: './room-management.css',
@@ -26,7 +27,7 @@ export class RoomManagement implements OnInit {
   searchText = ''; propertyFilter: number | null = null; roomTypeFilter: number | null = null;
   floorFilter: number | null = null; statusFilter = ''; housekeepingFilter = ''; maintenanceFilter = '';
   dialogVisible = false; bulkVisible = false; editingId: number | null = null;
-  stateChangingId: number | null = null;
+  maintenanceRoom: AdminRoom | null = null;
   form: Partial<AdminRoom> = this.emptyForm();
   bulk: BulkRoomRequest = this.emptyBulk();
 
@@ -52,7 +53,8 @@ export class RoomManagement implements OnInit {
 
   save():void{if(this.saving||!this.form.hotelId||!this.form.roomTypeId||!this.form.roomNumber?.trim()){this.messages.add({severity:'warn',summary:'Thiếu thông tin',detail:'Vui lòng chọn cơ sở, loại phòng và nhập số phòng.'});return;}this.saving=true;const req=this.editingId?this.api.updateRoom(this.editingId,this.form):this.api.createRoom(this.form);req.pipe(finalize(()=>{this.saving=false;this.cdr.detectChanges();})).subscribe({next:()=>{this.dialogVisible=false;this.messages.add({severity:'success',summary:'Thành công',detail:'Đã lưu phòng.'});this.loadData();},error:e=>this.messages.add({severity:'error',summary:'Lỗi',detail:e?.error?.message||'Không thể lưu phòng.'})});}
   createBulk():void{const requested=this.bulk.toNumber-this.bulk.fromNumber+1;if(this.saving||!this.bulk.hotelId||!this.bulk.roomTypeId||this.bulk.fromNumber>this.bulk.toNumber||requested>200){this.messages.add({severity:'warn',summary:'Dữ liệu chưa hợp lệ',detail:'Vui lòng kiểm tra cơ sở, loại phòng và dải tối đa 200 số.'});return;}this.saving=true;this.api.bulkCreateRooms(this.bulk).pipe(finalize(()=>{this.saving=false;this.cdr.detectChanges();})).subscribe({next:r=>{this.bulkVisible=false;const failed=r.failedRoomNumbers?.length?` Không tạo: ${r.failedRoomNumbers.join(', ')}.`:'';this.messages.add({severity:r.created.length?'success':'warn',summary:'Kết quả tạo phòng',detail:`Đã tạo ${r.created.length} phòng.${failed}`});this.loadData();},error:e=>this.messages.add({severity:'error',summary:'Lỗi',detail:e?.error?.message||'Không thể tạo phòng hàng loạt.'})});}
-  setMaintenance(room:AdminRoom, enabled:boolean):void{if(this.stateChangingId!==null)return;this.stateChangingId=room.id;const request=enabled?this.api.startRoomMaintenance(room.id):this.api.completeRoomMaintenance(room.id);request.pipe(finalize(()=>{this.stateChangingId=null;this.cdr.detectChanges();})).subscribe({next:()=>{this.messages.add({severity:'success',summary:'Thành công',detail:enabled?'Đã bắt đầu bảo trì.':'Đã hoàn tất bảo trì.'});this.loadData();},error:e=>this.messages.add({severity:'error',summary:'Lỗi',detail:e?.error?.message||'Không thể chuyển trạng thái bảo trì.'})});}
+  openMaintenance(room:AdminRoom):void{this.maintenanceRoom=room;}
+  closeMaintenance():void{this.maintenanceRoom=null;}
   deactivate(room:AdminRoom):void{this.confirmations.confirm({header:'Xác nhận ngừng sử dụng',message:`Ngừng sử dụng phòng ${room.roomNumber}?`,acceptLabel:'Ngừng sử dụng',rejectLabel:'Hủy',accept:()=>this.api.deleteRoom(room.id).subscribe({next:()=>{this.messages.add({severity:'success',summary:'Thành công',detail:'Đã ngừng sử dụng phòng.'});this.loadData();},error:e=>this.messages.add({severity:'error',summary:'Lỗi',detail:e?.error?.message||'Không thể ngừng sử dụng phòng.'})})});}
   private emptyForm():Partial<AdminRoom>{return{hotelId:undefined,roomTypeId:undefined,roomNumber:'',floor:1,note:''};}
   private emptyBulk():BulkRoomRequest{return{hotelId:0,roomTypeId:0,floor:1,fromNumber:101,toNumber:110,prefix:''};}
