@@ -90,12 +90,27 @@ describe('ChatService', () => {
   });
 
   it('persists support replies through the selected conversation endpoint', () => {
-    service.sendSupportConversationMessage(33, 'Da tiep nhan', 4).subscribe();
+    service.sendSupportConversationMessage(33, 'Da tiep nhan', 4, 'support-1').subscribe();
 
     const request = http.expectOne('http://localhost:8080/api/chat/support/conversations/33/messages');
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({ conversationId: 33, content: 'Da tiep nhan', expectedVersion: 4 });
+    expect(request.request.body).toEqual({
+      conversationId: 33, content: 'Da tiep nhan', expectedVersion: 4, clientMessageId: 'support-1'
+    });
     request.flush({ id: 1, conversationId: 33, senderId: 7, receiverId: 42, content: 'Da tiep nhan' });
+  });
+
+  it('sends client message ids and records delivery acknowledgements', () => {
+    service.sendMyConversationMessage(91, 'Xin chao', 'customer-1').subscribe();
+    const send = http.expectOne('http://localhost:8080/api/chat/me/conversations/91/messages');
+    expect(send.request.body).toEqual({ content: 'Xin chao', clientMessageId: 'customer-1' });
+    send.flush({ id: 5, conversationId: 91, senderId: 42, receiverId: 0, content: 'Xin chao' });
+
+    service.acknowledgeMessage(5, 'READ').subscribe();
+    const state = http.expectOne(request => request.url.endsWith('/api/chat/messages/5/state'));
+    expect(state.request.method).toBe('POST');
+    expect(state.request.params.get('state')).toBe('READ');
+    state.flush({ id: 5, deliveryStatus: 'READ' });
   });
 
   it('sends tenant queue filters without redundant ALL values', () => {

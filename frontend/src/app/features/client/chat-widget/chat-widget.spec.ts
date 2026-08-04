@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Subject, of } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 
 import { ChatWidgetComponent } from './chat-widget';
 import { ChatConversation, ChatMessage, ChatService } from '../../../core/services/chat.service';
@@ -49,6 +49,11 @@ describe('ChatWidget', () => {
             connectionError$: of(''),
             getMyConversations: () => of(page(conversations)),
             createMyConversation: (subject: string) => of({ ...conversations[0], conversationId: 13, subject }),
+            createClientMessageId: () => 'customer-client-1',
+            acknowledgeMessage: vi.fn(messageId => of({
+              id: messageId, conversationId: 11, senderId: 7, receiverId: 42,
+              content: 'reply', deliveryStatus: 'READ' as const
+            })),
             isConnected: () => false,
           }
         }
@@ -81,7 +86,7 @@ describe('ChatWidget', () => {
     component.newMessage = 'hello';
     component.sendMessage();
 
-    expect(chatService.sendMyConversationMessage).toHaveBeenCalledWith(11, 'hello');
+    expect(chatService.sendMyConversationMessage).toHaveBeenCalledWith(11, 'hello', 'customer-client-1');
     expect(component.messages()).toEqual([expect.objectContaining({ id: 50, conversationId: 11 })]);
   });
 
@@ -91,8 +96,27 @@ describe('ChatWidget', () => {
     component.sendMessage();
     incoming.next({ id: 99, conversationId: 12, senderId: 7, receiverId: 42, content: 'other' });
 
-    expect(chatService.sendMyConversationMessage).toHaveBeenCalledWith(11, 'Can ho tro');
+    expect(chatService.sendMyConversationMessage).toHaveBeenCalledWith(11, 'Can ho tro', 'customer-client-1');
     expect(component.messages()).toEqual([expect.objectContaining({ conversationId: 11 })]);
+  });
+
+  it('reuses the client message id after a retryable send failure', () => {
+    chatService.sendMyConversationMessage
+      .mockReturnValueOnce(throwError(() => new Error('offline')))
+      .mockReturnValueOnce(of({
+        id: 51, conversationId: 11, senderId: 42, receiverId: 0,
+        content: 'Thu lai', clientMessageId: 'customer-client-1', deliveryStatus: 'PERSISTED'
+      }));
+    component.newMessage = 'Thu lai';
+
+    component.sendMessage();
+    component.sendMessage();
+
+    expect(chatService.sendMyConversationMessage).toHaveBeenNthCalledWith(
+      1, 11, 'Thu lai', 'customer-client-1');
+    expect(chatService.sendMyConversationMessage).toHaveBeenNthCalledWith(
+      2, 11, 'Thu lai', 'customer-client-1');
+    expect(component.messages()).toEqual([expect.objectContaining({ id: 51 })]);
   });
 
   function page<T>(content: T[]) {

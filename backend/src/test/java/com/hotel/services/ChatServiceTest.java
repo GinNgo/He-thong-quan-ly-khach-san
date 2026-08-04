@@ -50,6 +50,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ChatServiceTest {
     @Mock private ChatMessageRepository chatMessageRepository;
+    @Mock private ChatMessageIdempotencyWriter messageWriter;
     @Mock private SupportConversationRepository conversationRepository;
     @Mock private UserRepository userRepository;
     @Mock private UserPropertyRepository userPropertyRepository;
@@ -63,6 +64,7 @@ class ChatServiceTest {
     void setUp() {
         chatService = new ChatService(
                 chatMessageRepository,
+                messageWriter,
                 conversationRepository,
                 userRepository,
                 userPropertyRepository,
@@ -73,6 +75,30 @@ class ChatServiceTest {
                 90,
                 30,
                 10);
+    }
+
+    @Test
+    void duplicateClientMessageReplaySkipsConversationAndAuditMutation() {
+        CustomUserDetails customer = user(42L, Map.of(), "CUSTOMER");
+        SupportConversation conversation = scopedConversation(9L, 42L, 5L);
+        ChatMessage replay = savedMessage(new ChatMessage(), 99L, Instant.parse("2026-08-04T10:00:00Z"));
+        replay.setConversationId(9L);
+        replay.setHotelId(5L);
+        replay.setSenderId(42L);
+        replay.setReceiverId(0L);
+        replay.setClientMessageId("client-1");
+        replay.setContent("Xin chao");
+        replay.setDeliveryStatus("PERSISTED");
+        when(conversationRepository.findLockedById(9L)).thenReturn(Optional.of(conversation));
+        when(messageWriter.createOrLoad(conversation, 42L, 0L, "client-1", "Xin chao"))
+                .thenReturn(new ChatMessageIdempotencyWriter.WriteResult(replay, false));
+
+        ChatMessageDTO result = chatService.sendToSupport(customer, 9L, "Xin chao", "client-1");
+
+        assertEquals(99L, result.getId());
+        assertEquals("client-1", result.getClientMessageId());
+        verify(conversationRepository, never()).saveAndFlush(conversation);
+        verify(auditService, never()).record(any(), any(), any(), any());
     }
 
     @Test

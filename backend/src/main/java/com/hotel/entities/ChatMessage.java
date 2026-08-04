@@ -42,6 +42,9 @@ public class ChatMessage {
     @Column(name = "legacy_unscoped", nullable = false)
     private boolean legacyUnscoped;
 
+    @Column(name = "client_message_id", length = 64, updatable = false)
+    private String clientMessageId;
+
     @Column(columnDefinition = "NVARCHAR(MAX)")
     private String content;
 
@@ -51,10 +54,20 @@ public class ChatMessage {
     @Column(name = "is_read")
     private boolean isRead;
 
+    @Column(name = "delivery_status", nullable = false, length = 20)
+    private String deliveryStatus = "PERSISTED";
+
+    @Column(name = "delivered_at")
+    private Instant deliveredAt;
+
+    @Column(name = "read_at")
+    private Instant readAt;
+
     @PrePersist
     protected void onCreate() {
         this.timestamp = Instant.now();
         this.isRead = false;
+        if (this.deliveryStatus == null) this.deliveryStatus = "PERSISTED";
     }
 
     public void setConversation(SupportConversation conversation) {

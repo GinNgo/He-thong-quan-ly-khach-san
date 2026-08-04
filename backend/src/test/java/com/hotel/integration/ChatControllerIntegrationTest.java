@@ -1,6 +1,7 @@
 package com.hotel.integration;
 
 import com.hotel.BackendApplication;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hotel.dtos.ChatMessageDTO;
 import com.hotel.entities.ChatMessage;
 import com.hotel.entities.Hotel;
@@ -21,8 +22,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -31,6 +34,9 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -59,6 +65,8 @@ class ChatControllerIntegrationTest {
     @Autowired private SupportConversationRepository conversationRepository;
     @Autowired private SupportConversationEventRepository eventRepository;
     @Autowired private ChatMessageRepository chatMessageRepository;
+    @Autowired private ObjectMapper objectMapper;
+    @MockBean private UserDetailsService userDetailsService;
 
     @Test
     void unauthenticatedHistoryRequestIsDenied() throws Exception {
@@ -216,6 +224,148 @@ class ChatControllerIntegrationTest {
         assertEquals(1L, eventRepository.countByConversationIdAndEventType(conversation.getId(), "REOPENED"));
     }
 
+    @Test
+    void customerMessageReplayReturnsOnePersistedAcknowledgementAndRejectsKeyReuse() throws Exception {
+        User customer = saveUser("chat-idempotent-customer");
+        Hotel hotel = saveHotel("chat-idempotent-hotel");
+        SupportConversation conversation = saveConversation(customer, hotel, Instant.now());
+        String clientMessageId = "customer-" + UUID.randomUUID();
+        String body = objectMapper.writeValueAsString(Map.of(
+                "content", "Gui mot lan",
+                "clientMessageId", clientMessageId));
+
+        String first = mockMvc.perform(post("/api/chat/me/conversations/{id}/messages", conversation.getId())
+                        .with(user(customer(customer)))
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.deliveryStatus").value("PERSISTED"))
+                .andReturn().getResponse().getContentAsString();
+        String replay = mockMvc.perform(post("/api/chat/me/conversations/{id}/messages", conversation.getId())
+                        .with(user(customer(customer)))
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertEquals(objectMapper.readTree(first).get("id"), objectMapper.readTree(replay).get("id"));
+        assertEquals(1L, chatMessageRepository.findAll().stream()
+                .filter(message -> clientMessageId.equals(message.getClientMessageId()))
+                .count());
+
+        mockMvc.perform(post("/api/chat/me/conversations/{id}/messages", conversation.getId())
+                        .with(user(customer(customer)))
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "content", "Noi dung khac",
+                                "clientMessageId", clientMessageId))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CLIENT_MESSAGE_ID_REUSED"));
+    }
+
+    @Test
+    void concurrentDuplicateCustomerSendsConvergeOnOneMessage() throws Exception {
+        User customer = saveUser("chat-concurrent-customer");
+        Hotel hotel = saveHotel("chat-concurrent-hotel");
+        SupportConversation conversation = saveConversation(customer, hotel, Instant.now());
+        CustomUserDetails principal = customer(customer);
+        String clientMessageId = "concurrent-" + UUID.randomUUID();
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var send = (java.util.concurrent.Callable<ChatMessageDTO>) () -> {
+                ready.countDown();
+                start.await(10, TimeUnit.SECONDS);
+                return chatService.sendToSupport(
+                        principal, conversation.getId(), "Dong thoi", clientMessageId);
+            };
+            var first = executor.submit(send);
+            var second = executor.submit(send);
+            ready.await(10, TimeUnit.SECONDS);
+            start.countDown();
+
+            assertEquals(first.get(20, TimeUnit.SECONDS).getId(), second.get(20, TimeUnit.SECONDS).getId());
+            assertEquals(1L, chatMessageRepository.findAll().stream()
+                    .filter(message -> clientMessageId.equals(message.getClientMessageId()))
+                    .count());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void deliveryAndReadAcknowledgementsAreMonotonicAndRecipientScoped() throws Exception {
+        User customer = saveUser("chat-read-customer");
+        User foreign = saveUser("chat-read-foreign");
+        User support = saveUser("chat-read-support");
+        Hotel hotel = saveHotel("chat-read-hotel");
+        assign(support, hotel);
+        SupportConversation conversation = saveConversation(customer, hotel, Instant.now());
+        ChatMessage message = saveMessage(
+                conversation, support.getId(), customer.getId(), "Da tiep nhan");
+
+        mockMvc.perform(post("/api/chat/messages/{id}/state", message.getId())
+                        .with(user(customer(customer)))
+                        .param("state", "DELIVERED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.deliveryStatus").value("DELIVERED"))
+                .andExpect(jsonPath("$.deliveredAt").isNotEmpty());
+
+        mockMvc.perform(post("/api/chat/messages/{id}/state", message.getId())
+                        .with(user(customer(customer)))
+                        .param("state", "READ"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.deliveryStatus").value("READ"))
+                .andExpect(jsonPath("$.isRead").value(true))
+                .andExpect(jsonPath("$.readAt").isNotEmpty());
+
+        mockMvc.perform(post("/api/chat/messages/{id}/state", message.getId())
+                        .with(user(customer(foreign)))
+                        .param("state", "READ"))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/api/chat/messages/{id}/state", message.getId())
+                        .with(user(support(support)))
+                        .param("state", "READ"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void concurrentDeliveryAndReadAcknowledgementsCannotRegressReadState() throws Exception {
+        User customer = saveUser("chat-state-race-customer");
+        User support = saveUser("chat-state-race-support");
+        Hotel hotel = saveHotel("chat-state-race-hotel");
+        SupportConversation conversation = saveConversation(customer, hotel, Instant.now());
+        ChatMessage message = saveMessage(
+                conversation, support.getId(), customer.getId(), "Doc dong thoi");
+        CustomUserDetails principal = customer(customer);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var delivered = executor.submit(() -> {
+                ready.countDown();
+                start.await(10, TimeUnit.SECONDS);
+                return chatService.acknowledgeMessage(principal, message.getId(), "DELIVERED");
+            });
+            var read = executor.submit(() -> {
+                ready.countDown();
+                start.await(10, TimeUnit.SECONDS);
+                return chatService.acknowledgeMessage(principal, message.getId(), "READ");
+            });
+            ready.await(10, TimeUnit.SECONDS);
+            start.countDown();
+
+            delivered.get(20, TimeUnit.SECONDS);
+            read.get(20, TimeUnit.SECONDS);
+            ChatMessage persisted = chatMessageRepository.findById(message.getId()).orElseThrow();
+            assertEquals("READ", persisted.getDeliveryStatus());
+            assertEquals(true, persisted.isRead());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
     private User saveUser(String prefix) {
         String suffix = prefix + "-" + UUID.randomUUID();
         User user = new User();
@@ -259,7 +409,8 @@ class ChatControllerIntegrationTest {
         return conversationRepository.saveAndFlush(conversation);
     }
 
-    private void saveMessage(SupportConversation conversation, Long senderId, Long receiverId, String content) {
+    private ChatMessage saveMessage(
+            SupportConversation conversation, Long senderId, Long receiverId, String content) {
         ChatMessage message = new ChatMessage();
         message.setConversation(conversation);
         message.setHotel(conversation.getHotel());
@@ -267,7 +418,7 @@ class ChatControllerIntegrationTest {
         message.setSenderId(senderId);
         message.setReceiverId(receiverId);
         message.setContent(content);
-        chatMessageRepository.saveAndFlush(message);
+        return chatMessageRepository.saveAndFlush(message);
     }
 
     private CustomUserDetails customer(User user) {

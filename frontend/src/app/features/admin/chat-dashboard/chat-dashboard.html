@@ -176,6 +176,9 @@
             <time *ngIf="message.timestamp" [attr.datetime]="message.timestamp">
               {{ message.timestamp | date:'dd/MM/yyyy HH:mm' }}
             </time>
+            <small *ngIf="isOwnMessage(message)" class="message-state">
+              {{ messageStateLabel(message) }}
+            </small>
           </div>
         </article>
       </div>

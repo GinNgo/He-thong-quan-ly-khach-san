@@ -1,9 +1,11 @@
 package com.hotel.repositories;
 
 import com.hotel.entities.ChatMessage;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -33,6 +35,13 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
             Long conversationId, Instant cutoff, Pageable pageable);
 
     Optional<ChatMessage> findFirstByConversationIdOrderByTimestampDesc(Long conversationId);
+
+    Optional<ChatMessage> findByConversationIdAndSenderIdAndClientMessageId(
+            Long conversationId, Long senderId, String clientMessageId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select message from ChatMessage message where message.id = :id")
+    Optional<ChatMessage> findLockedById(@Param("id") Long id);
 
     List<ChatMessage> findByConversationIdAndLegacyUnscopedFalseOrderByTimestampAsc(Long conversationId);
 }

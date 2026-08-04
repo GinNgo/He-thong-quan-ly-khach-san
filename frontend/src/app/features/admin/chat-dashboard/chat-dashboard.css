@@ -395,7 +395,8 @@
   font-size: var(--hotel-text-sm);
 }
 
-.message-bubble time {
+.message-bubble time,
+.message-state {
   display: block;
   margin-top: 0.35rem;
   color: var(--hotel-text-muted);
@@ -403,7 +404,8 @@
   text-align: right;
 }
 
-.message-bubble.is-own time {
+.is-own time,
+.is-own .message-state {
   color: color-mix(in srgb, var(--hotel-card-bg) 72%, transparent);
 }
 

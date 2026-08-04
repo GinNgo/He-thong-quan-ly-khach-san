@@ -64,6 +64,8 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
   private renderedMessageCount = 0;
   private skipAutoScrollOnce = false;
   private sendTimeoutId?: ReturnType<typeof setTimeout>;
+  private pendingClientMessageId?: string;
+  private pendingContent?: string;
 
   ngOnInit(): void {
     const userId = this.authService.getCurrentUserId();
@@ -168,6 +170,7 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
     this.chatService.getMyConversationMessages(conversation.conversationId, 0, 50).subscribe({
       next: page => {
         this.messages.set(page.content);
+        this.acknowledgeVisibleMessages(page.content);
         this.hasOlderMessages.set(!page.last);
         this.historyState.set('ready');
       },
@@ -219,6 +222,7 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
       return;
     }
     this.isOpen.set(true);
+    this.acknowledgeVisibleMessages(this.messages());
     queueMicrotask(() => this.messageInput?.nativeElement.focus());
   }
 
@@ -245,13 +249,19 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
     this.sendError.set('');
     this.isSending.set(true);
     this.newMessage = '';
+    const clientMessageId = this.pendingContent === content && this.pendingClientMessageId
+      ? this.pendingClientMessageId
+      : this.chatService.createClientMessageId();
+    this.pendingClientMessageId = clientMessageId;
+    this.pendingContent = content;
     this.clearSendTimeout();
     this.sendTimeoutId = setTimeout(() => {
       if (!this.isSending()) return;
       this.isSending.set(false);
+      if (!this.newMessage) this.newMessage = content;
       this.sendError.set('Chua nhan duoc xac nhan gui. Ban co the thu lai.');
     }, SEND_ACK_TIMEOUT_MS);
-    this.chatService.sendMyConversationMessage(conversationId, content).subscribe({
+    this.chatService.sendMyConversationMessage(conversationId, content, clientMessageId).subscribe({
       next: message => this.handleIncomingMessage(message),
       error: () => {
         this.clearSendTimeout();
@@ -276,19 +286,23 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
     return message.senderId === this.currentUserId();
   }
 
+  messageStateLabel(message: ChatMessage): string {
+    if (message.deliveryStatus === 'READ') return 'Da doc';
+    if (message.deliveryStatus === 'DELIVERED') return 'Da nhan';
+    return 'Da gui';
+  }
+
   private handleIncomingMessage(message: ChatMessage | null): void {
     if (!message) return;
     const userId = this.currentUserId();
     if (message.senderId !== userId && message.receiverId !== userId) return;
     if (message.conversationId !== this.selectedConversationId()) {
+      if (message.senderId !== userId) this.acknowledgeIncoming(message, 'DELIVERED');
       this.loadConversations();
       return;
     }
 
-    this.messages.update(messages => {
-      if (message.id && messages.some(item => item.id === message.id)) return messages;
-      return [...messages, message];
-    });
+    this.mergeMessage(message);
     this.conversations.update(items => items.map(item => item.conversationId === message.conversationId
       ? { ...item, lastMessage: message.content, lastMessageAt: message.timestamp }
       : item));
@@ -296,7 +310,44 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
     if (message.senderId === userId) {
       this.isSending.set(false);
       this.clearSendTimeout();
+      if (!message.clientMessageId || message.clientMessageId === this.pendingClientMessageId) {
+        if (this.newMessage === this.pendingContent) this.newMessage = '';
+        this.pendingClientMessageId = undefined;
+        this.pendingContent = undefined;
+      }
+    } else {
+      this.acknowledgeIncoming(message, 'READ');
     }
+  }
+
+  private acknowledgeVisibleMessages(messages: ChatMessage[]): void {
+    const userId = this.currentUserId();
+    const state = this.isOpen() ? 'READ' : 'DELIVERED';
+    messages
+      .filter(message => message.senderId !== userId && message.deliveryStatus !== 'READ')
+      .forEach(message => this.acknowledgeIncoming(message, state));
+  }
+
+  private acknowledgeIncoming(message: ChatMessage, state: 'DELIVERED' | 'READ'): void {
+    if (!message.id || message.deliveryStatus === 'READ'
+        || (state === 'DELIVERED' && message.deliveryStatus === 'DELIVERED')) return;
+    this.chatService.acknowledgeMessage(message.id, state).subscribe({
+      next: updated => {
+        if (message.conversationId === this.selectedConversationId()
+            && updated.conversationId === message.conversationId) {
+          this.mergeMessage(updated);
+        }
+      },
+      error: () => undefined,
+    });
+  }
+
+  private mergeMessage(message: ChatMessage): void {
+    this.messages.update(messages => {
+      const index = message.id ? messages.findIndex(item => item.id === message.id) : -1;
+      if (index < 0) return [...messages, message];
+      return messages.map((item, itemIndex) => itemIndex === index ? { ...item, ...message } : item);
+    });
   }
 
   private clearSendTimeout(): void {

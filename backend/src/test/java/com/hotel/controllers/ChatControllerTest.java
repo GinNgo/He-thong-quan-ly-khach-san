@@ -43,8 +43,9 @@ class ChatControllerTest {
         CustomerChatMessageRequest request = new CustomerChatMessageRequest();
         request.setConversationId(9L);
         request.setContent("Can ho tro");
+        request.setClientMessageId("customer-1");
         ChatMessageDTO saved = message(9L, 42L, 0L, "Can ho tro");
-        when(chatService.sendToSupport(customer, 9L, "Can ho tro")).thenReturn(saved);
+        when(chatService.sendToSupport(customer, 9L, "Can ho tro", "customer-1")).thenReturn(saved);
         when(chatService.getSupportRecipients(5L)).thenReturn(java.util.List.of("support"));
 
         controller.sendToSupport(request, authentication(customer));
@@ -58,8 +59,9 @@ class ChatControllerTest {
         SupportChatReplyRequest request = new SupportChatReplyRequest();
         request.setConversationId(9L);
         request.setContent("Da tiep nhan");
+        request.setClientMessageId("support-1");
         ChatMessageDTO saved = message(9L, 7L, 42L, "Da tiep nhan");
-        when(chatService.replyToConversation(support, 9L, "Da tiep nhan", null)).thenReturn(saved);
+        when(chatService.replyToConversation(support, 9L, "Da tiep nhan", null, "support-1")).thenReturn(saved);
         when(chatService.getConversationCustomerId(9L)).thenReturn(42L);
         when(chatService.getUsername(42L)).thenReturn("customer");
         when(chatService.getSupportRecipients(5L)).thenReturn(java.util.List.of("support"));
@@ -74,8 +76,10 @@ class ChatControllerTest {
     void customerRestSendPersistsAndBroadcastsTheSelectedConversation() {
         CustomerChatMessageRequest request = new CustomerChatMessageRequest();
         request.setContent("Can ho tro qua HTTP");
+        request.setClientMessageId("customer-http-1");
         ChatMessageDTO saved = message(9L, 42L, 0L, "Can ho tro qua HTTP");
-        when(chatService.sendToSupport(customer, 9L, "Can ho tro qua HTTP")).thenReturn(saved);
+        when(chatService.sendToSupport(customer, 9L, "Can ho tro qua HTTP", "customer-http-1"))
+                .thenReturn(saved);
         when(chatService.getSupportRecipients(5L)).thenReturn(java.util.List.of("support"));
 
         controller.sendMyConversationMessage(authentication(customer), 9L, request);
@@ -88,8 +92,10 @@ class ChatControllerTest {
     void supportRestSendPersistsAndNotifiesTheOwningCustomer() {
         SupportChatReplyRequest request = new SupportChatReplyRequest();
         request.setContent("Da tiep nhan qua HTTP");
+        request.setClientMessageId("support-http-1");
         ChatMessageDTO saved = message(9L, 7L, 42L, "Da tiep nhan qua HTTP");
-        when(chatService.replyToConversation(support, 9L, "Da tiep nhan qua HTTP", null)).thenReturn(saved);
+        when(chatService.replyToConversation(support, 9L, "Da tiep nhan qua HTTP", null, "support-http-1"))
+                .thenReturn(saved);
         when(chatService.getConversationCustomerId(9L)).thenReturn(42L);
         when(chatService.getUsername(42L)).thenReturn("customer");
         when(chatService.getSupportRecipients(5L)).thenReturn(java.util.List.of("support"));
@@ -98,6 +104,20 @@ class ChatControllerTest {
 
         verify(messagingTemplate).convertAndSendToUser("customer", "/queue/messages", saved);
         verify(messagingTemplate).convertAndSendToUser("support", "/queue/support/messages", saved);
+    }
+
+    @Test
+    void acknowledgementNotifiesTheOriginalSenderAndSupportQueue() {
+        ChatMessageDTO read = message(9L, 42L, 0L, "Can ho tro");
+        read.setDeliveryStatus("READ");
+        when(chatService.acknowledgeMessage(support, 1L, "READ")).thenReturn(read);
+        when(chatService.getUsername(42L)).thenReturn("customer");
+        when(chatService.getSupportRecipients(5L)).thenReturn(java.util.List.of("support"));
+
+        controller.acknowledgeMessage(1L, "READ", authentication(support));
+
+        verify(messagingTemplate).convertAndSendToUser("customer", "/queue/messages", read);
+        verify(messagingTemplate).convertAndSendToUser("support", "/queue/support/messages", read);
     }
 
     private UsernamePasswordAuthenticationToken authentication(CustomUserDetails user) {

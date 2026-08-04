@@ -59,6 +59,11 @@ describe('ChatDashboard', () => {
             getSupportConversations: getConversations,
             getSupportConversationMessages: getMessages,
             sendSupportConversationMessage: sendSupportMessage,
+            createClientMessageId: () => 'support-client-1',
+            acknowledgeMessage: vi.fn(messageId => of({
+              id: messageId, conversationId: 21, senderId: 42, receiverId: 0,
+              content: 'Can ho tro', deliveryStatus: 'READ' as const
+            })),
             claimSupportConversation: claimConversation,
             unassignSupportConversation: vi.fn(),
             escalateSupportConversation: vi.fn(),
@@ -88,7 +93,7 @@ describe('ChatDashboard', () => {
 
     component.sendMessage();
 
-    expect(sendSupportMessage).toHaveBeenCalledWith(21, 'Da tiep nhan', 3);
+    expect(sendSupportMessage).toHaveBeenCalledWith(21, 'Da tiep nhan', 3, 'support-client-1');
   });
 
   it('ignores realtime messages from a different conversation', () => {

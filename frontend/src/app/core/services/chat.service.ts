@@ -11,11 +11,15 @@ export interface ChatMessage {
   id?: number;
   conversationId?: number;
   hotelId?: number;
+  clientMessageId?: string;
   senderId: number;
   receiverId: number;
   content: string;
   timestamp?: string;
   isRead?: boolean;
+  deliveryStatus?: 'PERSISTED' | 'DELIVERED' | 'READ';
+  deliveredAt?: string;
+  readAt?: string;
 }
 
 export interface ChatConversation {
@@ -147,12 +151,12 @@ export class ChatService {
     }
   }
 
-  sendCustomerMessage(content: string, conversationId?: number): boolean {
-    return this.publish('/app/chat.support.send', { content, conversationId });
+  sendCustomerMessage(content: string, conversationId?: number, clientMessageId?: string): boolean {
+    return this.publish('/app/chat.support.send', { content, conversationId, clientMessageId });
   }
 
-  sendSupportReply(conversationId: number, content: string): boolean {
-    return this.publish('/app/chat.support.reply', { conversationId, content });
+  sendSupportReply(conversationId: number, content: string, clientMessageId?: string): boolean {
+    return this.publish('/app/chat.support.reply', { conversationId, content, clientMessageId });
   }
 
   getMyHistory(): Observable<ChatMessage[]> {
@@ -178,9 +182,14 @@ export class ChatService {
       `${this.apiUrl}/me/conversations/${conversationId}/messages`, { params: { page, size } });
   }
 
-  sendMyConversationMessage(conversationId: number, content: string): Observable<ChatMessage> {
+  sendMyConversationMessage(
+    conversationId: number, content: string, clientMessageId?: string
+  ): Observable<ChatMessage> {
     return this.http.post<ChatMessage>(
-      `${this.apiUrl}/me/conversations/${conversationId}/messages`, { content });
+      `${this.apiUrl}/me/conversations/${conversationId}/messages`, {
+        content,
+        ...(clientMessageId ? { clientMessageId } : {}),
+      });
   }
 
   getSupportConversations(filters: SupportQueueFilters = {}): Observable<ChatConversation[]> {
@@ -202,14 +211,28 @@ export class ChatService {
   }
 
   sendSupportConversationMessage(
-    conversationId: number, content: string, expectedVersion?: number
+    conversationId: number, content: string, expectedVersion?: number, clientMessageId?: string
   ): Observable<ChatMessage> {
     return this.http.post<ChatMessage>(
       `${this.apiUrl}/support/conversations/${conversationId}/messages`, {
         conversationId,
         content,
         ...(expectedVersion === undefined ? {} : { expectedVersion }),
+        ...(clientMessageId ? { clientMessageId } : {}),
       });
+  }
+
+  acknowledgeMessage(
+    messageId: number, state: 'DELIVERED' | 'READ'
+  ): Observable<ChatMessage> {
+    return this.http.post<ChatMessage>(`${this.apiUrl}/messages/${messageId}/state`, null, {
+      params: { state },
+    });
+  }
+
+  createClientMessageId(): string {
+    if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+    return `chat-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 
   claimSupportConversation(conversationId: number, expectedVersion?: number): Observable<ChatConversation> {

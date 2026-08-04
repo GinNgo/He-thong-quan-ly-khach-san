@@ -1,9 +1,11 @@
 package com.hotel.repositories;
 
 import com.hotel.entities.SupportConversation;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -34,4 +36,8 @@ public interface SupportConversationRepository extends JpaRepository<SupportConv
 
     @Query("select conversation from SupportConversation conversation where conversation.id = :id")
     Optional<SupportConversation> findCurrentById(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select conversation from SupportConversation conversation where conversation.id = :id")
+    Optional<SupportConversation> findLockedById(@Param("id") Long id);
 }

@@ -2,6 +2,7 @@ package com.hotel.controllers;
 
 import com.hotel.exceptions.ApiErrorResponse;
 import com.hotel.exceptions.CorrelationIdSupport;
+import com.hotel.exceptions.ChatMessageConflictException;
 import com.hotel.exceptions.PropertyNotOperationalException;
 import com.hotel.exceptions.RegistrationConflictException;
 import com.hotel.exceptions.ResourceNotFoundException;
@@ -149,6 +150,14 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
         return response(HttpStatus.CONFLICT, ex.code(), ex.getMessage(), request,
                 ex.fieldErrors(), false, null);
+    }
+
+    @ExceptionHandler(ChatMessageConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleChatMessageConflict(
+            ChatMessageConflictException ex,
+            HttpServletRequest request) {
+        return response(HttpStatus.CONFLICT, ChatMessageConflictException.ERROR_CODE,
+                ex.getMessage(), request, Map.of(), false, null);
     }
 
     @ExceptionHandler(PasswordChangeException.class)

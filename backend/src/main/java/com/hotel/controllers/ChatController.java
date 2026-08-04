@@ -43,8 +43,10 @@ public class ChatController {
         CustomUserDetails customer = authorizationService.requireUser(principal);
         ChatMessageDTO savedMessage = request.getConversationId() == null
                 ? chatService.sendToSupport(
-                        customer, request.getHotelId(), request.getReservationId(), request.getContent())
-                : chatService.sendToSupport(customer, request.getConversationId(), request.getContent());
+                        customer, request.getHotelId(), request.getReservationId(), request.getContent(),
+                        request.getClientMessageId())
+                : chatService.sendToSupport(
+                        customer, request.getConversationId(), request.getContent(), request.getClientMessageId());
         messagingTemplate.convertAndSendToUser(customer.getUsername(), "/queue/messages", savedMessage);
         publishToSupportRecipients(savedMessage);
     }
@@ -55,7 +57,8 @@ public class ChatController {
             Principal principal) {
         CustomUserDetails support = authorizationService.requireUser(principal);
         ChatMessageDTO savedMessage = chatService.replyToConversation(
-                support, request.getConversationId(), request.getContent(), request.getExpectedVersion());
+                support, request.getConversationId(), request.getContent(), request.getExpectedVersion(),
+                request.getClientMessageId());
         Long customerId = chatService.getConversationCustomerId(request.getConversationId());
         messagingTemplate.convertAndSendToUser(
                 chatService.getUsername(customerId), "/queue/messages", savedMessage);
@@ -106,7 +109,8 @@ public class ChatController {
             @PathVariable Long conversationId,
             @Valid @RequestBody CustomerChatMessageRequest request) {
         CustomUserDetails customer = authorizationService.requireUser(principal);
-        ChatMessageDTO savedMessage = chatService.sendToSupport(customer, conversationId, request.getContent());
+        ChatMessageDTO savedMessage = chatService.sendToSupport(
+                customer, conversationId, request.getContent(), request.getClientMessageId());
         messagingTemplate.convertAndSendToUser(customer.getUsername(), "/queue/messages", savedMessage);
         publishToSupportRecipients(savedMessage);
         return ResponseEntity.ok(savedMessage);
@@ -152,7 +156,7 @@ public class ChatController {
             Principal principal) {
         ChatMessageDTO savedMessage = chatService.replyToConversation(
                 authorizationService.requireUser(principal), conversationId,
-                request.getContent(), request.getExpectedVersion());
+                request.getContent(), request.getExpectedVersion(), request.getClientMessageId());
         Long customerId = chatService.getConversationCustomerId(conversationId);
         messagingTemplate.convertAndSendToUser(
                 chatService.getUsername(customerId), "/queue/messages", savedMessage);
@@ -198,6 +202,20 @@ public class ChatController {
             Principal principal) {
         return ResponseEntity.ok(chatService.reopenConversation(
                 authorizationService.requireUser(principal), conversationId, expectedVersion));
+    }
+
+    @PostMapping("/api/chat/messages/{messageId}/state")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ChatMessageDTO> acknowledgeMessage(
+            @PathVariable Long messageId,
+            @RequestParam String state,
+            Principal principal) {
+        ChatMessageDTO message = chatService.acknowledgeMessage(
+                authorizationService.requireUser(principal), messageId, state);
+        messagingTemplate.convertAndSendToUser(
+                chatService.getUsername(message.getSenderId()), "/queue/messages", message);
+        publishToSupportRecipients(message);
+        return ResponseEntity.ok(message);
     }
 
     private void publishToSupportRecipients(ChatMessageDTO message) {

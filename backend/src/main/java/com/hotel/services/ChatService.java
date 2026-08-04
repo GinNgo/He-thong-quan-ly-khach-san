@@ -49,6 +49,7 @@ public class ChatService {
             "ALL", "BREACHED", "AT_RISK", "ON_TRACK", "NO_PENDING_RESPONSE");
 
     private final ChatMessageRepository chatMessageRepository;
+    private final ChatMessageIdempotencyWriter messageWriter;
     private final SupportConversationRepository conversationRepository;
     private final UserRepository userRepository;
     private final UserPropertyRepository userPropertyRepository;
@@ -62,6 +63,7 @@ public class ChatService {
 
     public ChatService(
             ChatMessageRepository chatMessageRepository,
+            ChatMessageIdempotencyWriter messageWriter,
             SupportConversationRepository conversationRepository,
             UserRepository userRepository,
             UserPropertyRepository userPropertyRepository,
@@ -73,6 +75,7 @@ public class ChatService {
             @Value("${app.chat.sla-response-minutes:30}") int slaResponseMinutes,
             @Value("${app.chat.sla-at-risk-minutes:10}") int slaAtRiskMinutes) {
         this.chatMessageRepository = chatMessageRepository;
+        this.messageWriter = messageWriter;
         this.conversationRepository = conversationRepository;
         this.userRepository = userRepository;
         this.userPropertyRepository = userPropertyRepository;
@@ -101,18 +104,44 @@ public class ChatService {
 
     @Transactional
     public ChatMessageDTO sendToSupport(CustomUserDetails sender, Long conversationId, String content) {
+        return sendToSupport(sender, conversationId, content, null);
+    }
+
+    @Transactional
+    public ChatMessageDTO sendToSupport(
+            CustomUserDetails sender, Long conversationId, String content, String clientMessageId) {
+        String normalizedClientMessageId = normalizeClientMessageId(clientMessageId);
         SupportConversation conversation = conversationId == null
                 ? conversationRepository.findFirstByCustomerIdOrderByUpdatedAtDesc(sender.getUserId())
                         .filter(item -> !"CLOSED".equals(item.getStatus()))
                         .orElseGet(() -> createEntity(sender.getUserId(), "Ho tro chung", resolveCustomerContext(
                                 sender.getUserId(), null, null)))
-                : requireOwnedConversation(conversationId, sender.getUserId());
-        return persistCustomerMessage(sender, conversation, content);
+                : normalizedClientMessageId == null
+                        ? requireOwnedConversation(conversationId, sender.getUserId())
+                        : requireLockedConversation(conversationId);
+        if (conversationId == null) {
+            conversation = lockConversationForIdempotentSend(conversation, normalizedClientMessageId);
+        }
+        if (!sender.getUserId().equals(conversation.getCustomerId())) {
+            throw new ResourceNotFoundException("Support conversation not found.");
+        }
+        return persistCustomerMessage(sender, conversation, content, normalizedClientMessageId);
     }
 
     @Transactional
     public ChatMessageDTO sendToSupport(
             CustomUserDetails sender, Long requestedHotelId, Long reservationId, String content) {
+        return sendToSupport(sender, requestedHotelId, reservationId, content, null);
+    }
+
+    @Transactional
+    public ChatMessageDTO sendToSupport(
+            CustomUserDetails sender,
+            Long requestedHotelId,
+            Long reservationId,
+            String content,
+            String clientMessageId) {
+        String normalizedClientMessageId = normalizeClientMessageId(clientMessageId);
         CustomerContext context = resolveCustomerContext(sender.getUserId(), requestedHotelId, reservationId);
         SupportConversation conversation;
         if (context.hotel() == null) {
@@ -128,7 +157,11 @@ public class ChatService {
         if (conversation.getReservationId() == null && context.reservation() != null) {
             conversation.setReservation(context.reservation());
         }
-        return persistCustomerMessage(sender, conversation, content);
+        conversation = lockConversationForIdempotentSend(conversation, normalizedClientMessageId);
+        if (!sender.getUserId().equals(conversation.getCustomerId())) {
+            throw new ResourceNotFoundException("Support conversation not found.");
+        }
+        return persistCustomerMessage(sender, conversation, content, normalizedClientMessageId);
     }
 
     @Transactional
@@ -145,17 +178,40 @@ public class ChatService {
     @Transactional
     public ChatMessageDTO replyToConversation(
             CustomUserDetails support, Long conversationId, String content, Long expectedVersion) {
+        return replyToConversation(support, conversationId, content, expectedVersion, null);
+    }
+
+    @Transactional
+    public ChatMessageDTO replyToConversation(
+            CustomUserDetails support,
+            Long conversationId,
+            String content,
+            Long expectedVersion,
+            String clientMessageId) {
         authorizationService.requirePermission(support, ActionCode.CREATE);
-        SupportConversation conversation = requireAccessibleConversation(support, conversationId, "REPLY");
+        String normalizedClientMessageId = normalizeClientMessageId(clientMessageId);
+        SupportConversation conversation;
+        if (normalizedClientMessageId == null) {
+            conversation = requireAccessibleConversation(support, conversationId, "REPLY");
+        } else {
+            conversation = requireLockedConversation(conversationId);
+            assertAccessibleConversation(support, conversation, "REPLY");
+        }
+        String normalizedContent = normalizeContent(content);
+        MessageWrite write = writeMessage(
+                conversation,
+                support.getUserId(),
+                conversation.getCustomerId(),
+                normalizedContent,
+                normalizedClientMessageId);
+        if (!write.created()) return write.message();
         assertExpectedVersion(conversation, expectedVersion);
         assignForReply(conversation, support);
         conversation.setLastActivityAt(Instant.now());
         conversation.setSlaDeadlineAt(null);
         conversationRepository.saveAndFlush(conversation);
-        ChatMessageDTO result = saveMessage(
-                conversation, support.getUserId(), conversation.getCustomerId(), normalizeContent(content));
         auditService.record(conversation, support.getUserId(), "REPLIED", "Support reply accepted");
-        return result;
+        return write.message();
     }
 
     @Transactional
@@ -364,8 +420,41 @@ public class ChatService {
                 : userRepository.findSupportRecipientUsernames(hotelId);
     }
 
+    @Transactional
+    public ChatMessageDTO acknowledgeMessage(
+            CustomUserDetails actor, Long messageId, String requestedState) {
+        ChatMessage message = chatMessageRepository.findLockedById(messageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Chat message was not found."));
+        SupportConversation conversation = conversationRepository.findById(message.getConversationId())
+                .orElseThrow(() -> new ResourceNotFoundException("Chat message was not found."));
+        authorizeAcknowledgement(actor, message, conversation);
+        String state = normalizeDeliveryState(requestedState);
+        Instant now = Instant.now();
+        if ("READ".equals(state)) {
+            if (message.getDeliveredAt() == null) message.setDeliveredAt(now);
+            if (message.getReadAt() == null) message.setReadAt(now);
+            message.setRead(true);
+            message.setDeliveryStatus("READ");
+        } else if ("PERSISTED".equals(message.getDeliveryStatus())) {
+            message.setDeliveredAt(now);
+            message.setDeliveryStatus("DELIVERED");
+        }
+        return mapToDTO(chatMessageRepository.saveAndFlush(message));
+    }
+
     private ChatMessageDTO persistCustomerMessage(
-            CustomUserDetails sender, SupportConversation conversation, String content) {
+            CustomUserDetails sender,
+            SupportConversation conversation,
+            String content,
+            String clientMessageId) {
+        String normalizedContent = normalizeContent(content);
+        MessageWrite write = writeMessage(
+                conversation,
+                sender.getUserId(),
+                0L,
+                normalizedContent,
+                clientMessageId);
+        if (!write.created()) return write.message();
         if ("CLOSED".equals(conversation.getStatus())) {
             throw new IllegalStateException("Closed conversations must be reopened before sending another message.");
         }
@@ -373,9 +462,8 @@ public class ChatService {
         conversation.setLastActivityAt(now);
         conversation.setSlaDeadlineAt(now.plus(slaResponseMinutes, ChronoUnit.MINUTES));
         conversationRepository.saveAndFlush(conversation);
-        ChatMessageDTO result = saveMessage(conversation, sender.getUserId(), 0L, normalizeContent(content));
         auditService.record(conversation, sender.getUserId(), "CUSTOMER_MESSAGE", "Customer message queued for support");
-        return result;
+        return write.message();
     }
 
     private SupportConversation createEntity(Long customerId, String subject, CustomerContext context) {
@@ -403,6 +491,12 @@ public class ChatService {
         }
         SupportConversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Support conversation not found."));
+        assertAccessibleConversation(support, conversation, action);
+        return conversation;
+    }
+
+    private void assertAccessibleConversation(
+            CustomUserDetails support, SupportConversation conversation, String action) {
         if (!authorizationService.isSystemAdministrator(support)
                 && (conversation.getHotelId() == null
                 || !accessibleHotelIds(support.getUserId()).contains(conversation.getHotelId()))) {
@@ -413,11 +507,34 @@ public class ChatService {
                     "Actor is outside the conversation tenant");
             throw new ResourceNotFoundException("Support conversation not found.");
         }
-        return conversation;
     }
 
-    private ChatMessageDTO saveMessage(
-            SupportConversation conversation, Long senderId, Long receiverId, String content) {
+    private SupportConversation requireLockedConversation(Long conversationId) {
+        if (conversationId == null) {
+            throw new ResourceNotFoundException("Support conversation not found.");
+        }
+        return conversationRepository.findLockedById(conversationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Support conversation not found."));
+    }
+
+    private SupportConversation lockConversationForIdempotentSend(
+            SupportConversation conversation, String clientMessageId) {
+        if (clientMessageId == null) return conversation;
+        return conversationRepository.findLockedById(conversation.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Support conversation not found."));
+    }
+
+    private MessageWrite writeMessage(
+            SupportConversation conversation,
+            Long senderId,
+            Long receiverId,
+            String content,
+            String clientMessageId) {
+        if (clientMessageId != null) {
+            ChatMessageIdempotencyWriter.WriteResult result = messageWriter.createOrLoad(
+                    conversation, senderId, receiverId, clientMessageId, content);
+            return new MessageWrite(mapToDTO(result.message()), result.created());
+        }
         ChatMessage entity = new ChatMessage();
         entity.setConversationId(conversation.getId());
         entity.setHotelId(conversation.getHotelId());
@@ -425,7 +542,8 @@ public class ChatService {
         entity.setSenderId(senderId);
         entity.setReceiverId(receiverId);
         entity.setContent(content);
-        return mapToDTO(chatMessageRepository.save(entity));
+        entity.setDeliveryStatus("PERSISTED");
+        return new MessageWrite(mapToDTO(chatMessageRepository.save(entity)), true);
     }
 
     private ChatPageDTO<ChatMessageDTO> messagePage(Long conversationId, int page, int size) {
@@ -479,10 +597,33 @@ public class ChatService {
         dto.setHotelId(entity.getHotelId());
         dto.setSenderId(entity.getSenderId());
         dto.setReceiverId(entity.getReceiverId());
+        dto.setClientMessageId(entity.getClientMessageId());
         dto.setContent(entity.getContent());
         dto.setTimestamp(entity.getTimestamp());
         dto.setRead(entity.isRead());
+        dto.setDeliveryStatus(entity.getDeliveryStatus());
+        dto.setDeliveredAt(entity.getDeliveredAt());
+        dto.setReadAt(entity.getReadAt());
         return dto;
+    }
+
+    private void authorizeAcknowledgement(
+            CustomUserDetails actor,
+            ChatMessage message,
+            SupportConversation conversation) {
+        if (actor.getUserId().equals(message.getSenderId())) {
+            throw new ResourceNotFoundException("Chat message was not found.");
+        }
+        if (actor.getUserId().equals(conversation.getCustomerId())) {
+            if (!actor.getUserId().equals(message.getReceiverId())) {
+                throw new ResourceNotFoundException("Chat message was not found.");
+            }
+            return;
+        }
+        if (!authorizationService.hasPermission(actor, ActionCode.VIEW)) {
+            throw new ResourceNotFoundException("Chat message was not found.");
+        }
+        requireAccessibleConversation(actor, conversation.getId(), "ACKNOWLEDGE");
     }
 
     private void assignForReply(SupportConversation conversation, CustomUserDetails support) {
@@ -640,10 +781,30 @@ public class ChatService {
         return normalized;
     }
 
+    private String normalizeClientMessageId(String clientMessageId) {
+        if (clientMessageId == null || clientMessageId.isBlank()) return null;
+        String normalized = clientMessageId.trim();
+        if (normalized.length() > 64 || !normalized.matches("[A-Za-z0-9._:-]+")) {
+            throw new IllegalArgumentException("Client message id is invalid.");
+        }
+        return normalized;
+    }
+
+    private String normalizeDeliveryState(String state) {
+        String normalized = state == null ? "" : state.trim().toUpperCase(Locale.ROOT);
+        if (!Set.of("DELIVERED", "READ").contains(normalized)) {
+            throw new IllegalArgumentException("Unsupported chat delivery state.");
+        }
+        return normalized;
+    }
+
     private <T> List<T> safeList(Collection<T> values) {
         return values == null ? List.of() : List.copyOf(values);
     }
 
     private record CustomerContext(Hotel hotel, Reservation reservation) {
+    }
+
+    private record MessageWrite(ChatMessageDTO message, boolean created) {
     }
 }
