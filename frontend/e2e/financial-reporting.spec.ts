@@ -204,6 +204,7 @@ test.describe('Financial reporting browser journey', () => {
       permissions: [{ function: 'PLATFORM_REVENUE', actionMask: 17 }],
     });
     const platformRequests: string[] = [];
+    const exportChecksum = 'a'.repeat(64);
     let propertyReportRequests = 0;
     await page.route('**/api/**', async route => {
       const url = new URL(route.request().url());
@@ -213,9 +214,10 @@ test.describe('Financial reporting browser journey', () => {
           status: 200,
           headers: {
             'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'X-Report-Checksum': 'playwright-checksum',
+            'X-Report-Checksum': exportChecksum,
+            'X-Report-Row-Count': '1',
           },
-          body: 'deterministic-excel-fixture',
+          body: `deterministic-excel-fixture checksum=${exportChecksum}`,
         });
       } else if (url.pathname === '/api/admin/reports/platform-revenue') {
         platformRequests.push(url.toString());
@@ -247,9 +249,17 @@ test.describe('Financial reporting browser journey', () => {
     })).toBe(true);
 
     const downloadPromise = page.waitForEvent('download');
+    const exportResponsePromise = page.waitForResponse(response =>
+      new URL(response.url()).pathname === '/api/admin/reports/platform-revenue/export');
     await page.getByRole('button', { name: 'Excel' }).click();
-    const download = await downloadPromise;
+    const [download, exportResponse] = await Promise.all([downloadPromise, exportResponsePromise]);
     expect(download.suggestedFilename()).toBe('luxestay-platform-revenue.xlsx');
+    expect(exportResponse.headers()['x-report-checksum']).toBe(exportChecksum);
+    expect(exportResponse.headers()['x-report-row-count']).toBe('1');
+    const stream = await download.createReadStream();
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+    expect(Buffer.concat(chunks).toString('utf8')).toContain(exportChecksum);
     expect(platformRequests.some(request => {
       const url = new URL(request);
       return url.pathname.endsWith('/export')
@@ -257,6 +267,10 @@ test.describe('Financial reporting browser journey', () => {
         && url.searchParams.get('planCode') === 'PRO';
     })).toBe(true);
     expect(propertyReportRequests).toBe(0);
+    await page.screenshot({
+      path: '../docs/testing/evidence/007/remediation/T335-platform-revenue-database-export.png',
+      fullPage: true,
+    });
   });
 
   test('property report permission cannot open the platform dashboard', async ({ page }) => {
