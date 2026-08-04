@@ -3,7 +3,9 @@ package com.hotel.integration;
 import com.hotel.BackendApplication;
 import com.hotel.config.SecurityConfig;
 import com.hotel.controllers.PropertyClaimController;
+import com.hotel.dtos.PropertyClaimRequestDTO;
 import com.hotel.dtos.PropertyClaimResponseDTO;
+import com.hotel.exceptions.PropertyClaimRateLimitException;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.JwtAccessDeniedHandler;
@@ -15,6 +17,8 @@ import com.hotel.services.PropertyClaimService;
 import com.hotel.observability.OperationalMetrics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -28,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -84,9 +89,7 @@ class PropertyClaimControllerIntegrationTest {
         when(claimService.requestClaim(
                 17L,
                 42L,
-                "EMAIL",
-                "owner@example.com",
-                "Please verify"))
+                new PropertyClaimRequestDTO("EMAIL", "owner@example.com", "Please verify")))
                 .thenReturn(claim);
 
         mockMvc.perform(post("/api/properties/{propertyId}/claim", 17L)
@@ -95,9 +98,9 @@ class PropertyClaimControllerIntegrationTest {
                         .content("""
                                 {
                                   "userId": "999",
-                                  "verificationMethod": "EMAIL",
-                                  "verificationData": "owner@example.com",
-                                  "note": "Please verify"
+                                  "verificationMethod": " email ",
+                                  "verificationData": " owner@example.com ",
+                                  "note": " Please verify "
                                 }
                                 """))
                 .andExpect(status().isOk())
@@ -111,9 +114,43 @@ class PropertyClaimControllerIntegrationTest {
         verify(claimService).requestClaim(
                 17L,
                 42L,
-                "EMAIL",
-                "owner@example.com",
-                "Please verify");
+                new PropertyClaimRequestDTO("EMAIL", "owner@example.com", "Please verify"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidClaimPayloads")
+    void invalidClaimFieldsAreRejectedBeforeLifecycleServiceRuns(String payload) throws Exception {
+        mockMvc.perform(post("/api/properties/{propertyId}/claim", 17L)
+                        .with(user(principal(42L, "USER")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        verifyNoInteractions(claimService);
+    }
+
+    @Test
+    void rateLimitedClaimReturnsStableCodeAndRetryAfter() throws Exception {
+        PropertyClaimRequestDTO request = new PropertyClaimRequestDTO(
+                "PHONE", "+84 901 234 567", null);
+        when(claimService.requestClaim(17L, 42L, request))
+                .thenThrow(new PropertyClaimRateLimitException(120));
+
+        mockMvc.perform(post("/api/properties/{propertyId}/claim", 17L)
+                        .with(user(principal(42L, "USER")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "verificationMethod": "PHONE",
+                                  "verificationData": "+84 901 234 567"
+                                }
+                                """))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("PROPERTY_CLAIM_RATE_LIMITED"))
+                .andExpect(jsonPath("$.retryable").value(true))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .header().string("Retry-After", "120"));
     }
 
     @Test
@@ -225,5 +262,19 @@ class PropertyClaimControllerIntegrationTest {
                 userId,
                 null,
                 Map.of());
+    }
+
+    private static Stream<String> invalidClaimPayloads() {
+        return Stream.of(
+                """
+                        {"verificationMethod":"FAX","verificationData":"proof"}
+                        """,
+                """
+                        {"verificationMethod":"EMAIL","verificationData":"   "}
+                        """,
+                "{\"verificationMethod\":\"EMAIL\",\"verificationData\":\""
+                        + "x".repeat(1001) + "\"}",
+                "{\"verificationMethod\":\"EMAIL\",\"verificationData\":\"proof\",\"note\":\""
+                        + "x".repeat(501) + "\"}");
     }
 }

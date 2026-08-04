@@ -21,14 +21,22 @@ describe('PropertyClaimsComponent', () => {
 
   it('renders the safe claim summary contract', async () => {
     fixture.detectChanges();
-    http.expectOne(`${environment.apiUrl}/admin/property-claims`).flush({
+    http.expectOne(request =>
+      request.url === `${environment.apiUrl}/admin/property-claims`
+      && request.params.get('page') === '0'
+      && request.params.get('size') === '20'
+    ).flush({
       content: [{
         id: 81,
         property: { id: 17, code: 'HOTEL-17', name: 'Safe Hotel', approvalStatus: 'PENDING_APPROVAL', operationStatus: 'INACTIVE' },
         requesterUser: { id: 42, username: 'owner', email: 'owner@example.com', fullName: 'Owner' },
         verificationMethod: 'EMAIL', verificationData: 'owner@example.com', note: null,
         status: 'PENDING', reviewedBy: null, reviewedAt: null, rejectionReason: null, createdAt: null
-      }]
+      }],
+      totalElements: 1,
+      totalPages: 1,
+      number: 0,
+      size: 20
     });
     await fixture.whenStable();
     fixture.detectChanges();

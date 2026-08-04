@@ -3,7 +3,9 @@ package com.hotel.services;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.PropertyClaimRequest;
 import com.hotel.entities.User;
+import com.hotel.dtos.PropertyClaimRequestDTO;
 import com.hotel.dtos.PropertyClaimResponseDTO;
+import com.hotel.exceptions.PropertyClaimRateLimitException;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.PropertyClaimRequestRepository;
 import com.hotel.repositories.UserPropertyRepository;
@@ -11,16 +13,20 @@ import com.hotel.repositories.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -32,6 +38,7 @@ class PropertyClaimServiceTest {
     @Mock private UserPropertyRepository userPropertyRepository;
     @Mock private SubscriptionFeatureService subscriptionFeatureService;
     @Mock private PropertyOwnershipLifecycleService ownershipLifecycleService;
+    @Mock private PropertyClaimRateLimiter rateLimiter;
 
     @InjectMocks
     private PropertyClaimService claimService;
@@ -72,11 +79,69 @@ class PropertyClaimServiceTest {
         when(claimRepository.save(any(PropertyClaimRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         PropertyClaimResponseDTO result = claimService.requestClaim(
-                10L, 7L, "EMAIL", "owner@example.com", "Verify ownership");
+                10L,
+                7L,
+                new PropertyClaimRequestDTO(
+                        " email ", " owner@example.com ", "   "));
 
         assertEquals("PENDING", result.status());
+        assertEquals("EMAIL", result.verificationMethod());
+        assertEquals("owner@example.com", result.verificationData());
+        assertNull(result.note());
+        InOrder mutationOrder = inOrder(rateLimiter, claimRepository, ownershipLifecycleService);
+        mutationOrder.verify(rateLimiter).check(7L);
+        mutationOrder.verify(claimRepository).save(any(PropertyClaimRequest.class));
+        mutationOrder.verify(ownershipLifecycleService).createPendingOwner(requester, property);
         verify(ownershipLifecycleService).createPendingOwner(requester, property);
         verify(ownershipLifecycleService, never()).activateOwner(any(), any());
+    }
+
+    @Test
+    void requestClaim_WhenAccountRateLimited_CreatesNoClaimOrPendingOwner() {
+        User requester = user(7L);
+        Hotel property = hotel(10L, "IMPORTED_PENDING_REVIEW");
+        when(hotelRepository.findById(10L)).thenReturn(Optional.of(property));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(requester));
+        doThrow(new PropertyClaimRateLimitException(90)).when(rateLimiter).check(7L);
+
+        PropertyClaimRateLimitException exception = assertThrows(
+                PropertyClaimRateLimitException.class,
+                () -> claimService.requestClaim(
+                        10L,
+                        7L,
+                        new PropertyClaimRequestDTO("PHONE", "+84 901 234 567", null)));
+
+        assertEquals(90, exception.getRetryAfterSeconds());
+        verify(claimRepository, never()).save(any());
+        verify(ownershipLifecycleService, never()).createPendingOwner(any(), any());
+    }
+
+    @Test
+    void requestClaim_RejectsInvalidDirectDtosBeforeAnyRepositoryCall() {
+        PropertyClaimRequestDTO invalidMethod = new PropertyClaimRequestDTO("FAX", "proof", null);
+        PropertyClaimRequestDTO blankData = new PropertyClaimRequestDTO("EMAIL", "   ", null);
+        PropertyClaimRequestDTO oversizedData = new PropertyClaimRequestDTO(
+                "EMAIL", "x".repeat(1001), null);
+        PropertyClaimRequestDTO oversizedNote = new PropertyClaimRequestDTO(
+                "EMAIL", "proof", "x".repeat(501));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> claimService.requestClaim(10L, 7L, invalidMethod));
+        assertThrows(IllegalArgumentException.class,
+                () -> claimService.requestClaim(10L, 7L, blankData));
+        assertThrows(IllegalArgumentException.class,
+                () -> claimService.requestClaim(10L, 7L, oversizedData));
+        assertThrows(IllegalArgumentException.class,
+                () -> claimService.requestClaim(10L, 7L, oversizedNote));
+
+        verifyNoInteractions(
+                claimRepository,
+                hotelRepository,
+                userRepository,
+                userPropertyRepository,
+                subscriptionFeatureService,
+                ownershipLifecycleService,
+                rateLimiter);
     }
 
     @Test

@@ -1,40 +1,6 @@
-import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../../environments/environment';
-
-interface ClaimPropertySummary {
-  id: number;
-  code: string | null;
-  name: string | null;
-  approvalStatus: string | null;
-  operationStatus: string | null;
-}
-
-interface ClaimUserSummary {
-  id: number;
-  username: string | null;
-  email: string | null;
-  fullName: string | null;
-}
-
-interface PropertyClaimResponse {
-  id: number;
-  property: ClaimPropertySummary | null;
-  requesterUser: ClaimUserSummary | null;
-  verificationMethod: string | null;
-  verificationData: string | null;
-  note: string | null;
-  status: string;
-  reviewedBy: ClaimUserSummary | null;
-  reviewedAt: string | null;
-  rejectionReason: string | null;
-  createdAt: string | null;
-}
-
-interface PropertyClaimPage {
-  content: PropertyClaimResponse[];
-}
+import { Component, OnInit, inject } from '@angular/core';
+import { PropertyClaimResponse, PropertyClaimService } from '../../../core/services/property-claim.service';
 
 @Component({
   selector: 'app-property-claims',
@@ -86,36 +52,33 @@ interface PropertyClaimPage {
   `
 })
 export class PropertyClaimsComponent implements OnInit {
+  private readonly propertyClaims = inject(PropertyClaimService);
   claims: PropertyClaimResponse[] = [];
 
-  constructor(private http: HttpClient) {}
-
-  ngOnInit() {
+  ngOnInit(): void {
     this.loadClaims();
   }
 
-  loadClaims() {
-    this.http.get<PropertyClaimPage | PropertyClaimResponse[]>(`${environment.apiUrl}/admin/property-claims`).subscribe({
-      next: (res) => {
-        this.claims = Array.isArray(res) ? res : res.content;
-      },
+  loadClaims(): void {
+    this.propertyClaims.list().subscribe({
+      next: (res) => this.claims = res.content,
       error: (err) => console.error(err)
     });
   }
 
-  approve(id: number) {
+  approve(id: number): void {
     if (confirm('Are you sure you want to approve this claim? The user will become the OWNER of this property.')) {
-      this.http.post(`${environment.apiUrl}/admin/property-claims/${id}/approve`, {}).subscribe({
+      this.propertyClaims.approve(id).subscribe({
         next: () => this.loadClaims(),
         error: (err) => console.error(err)
       });
     }
   }
 
-  reject(id: number) {
+  reject(id: number): void {
     const reason = prompt('Enter rejection reason:');
     if (reason !== null) {
-      this.http.post(`${environment.apiUrl}/admin/property-claims/${id}/reject`, { reason }).subscribe({
+      this.propertyClaims.reject(id, reason).subscribe({
         next: () => this.loadClaims(),
         error: (err) => console.error(err)
       });

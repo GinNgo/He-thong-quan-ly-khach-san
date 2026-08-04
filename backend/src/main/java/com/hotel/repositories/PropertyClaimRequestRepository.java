@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,6 +19,10 @@ public interface PropertyClaimRequestRepository extends JpaRepository<PropertyCl
     Page<PropertyClaimRequest> findByStatus(String status, Pageable pageable);
     boolean existsByPropertyIdAndRequesterUserIdAndStatus(Long propertyId, Long requesterUserId, String status);
     Optional<PropertyClaimRequest> findFirstByRequesterUserIdOrderByCreatedAtDesc(Long requesterUserId);
+    long countByRequesterUserIdAndCreatedAtGreaterThan(Long requesterUserId, LocalDateTime cutoff);
+    Optional<PropertyClaimRequest> findFirstByRequesterUserIdAndCreatedAtGreaterThanOrderByCreatedAtAscIdAsc(
+            Long requesterUserId,
+            LocalDateTime cutoff);
 
     @Query("""
             select claim

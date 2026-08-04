@@ -1,6 +1,7 @@
 package com.hotel.services;
 
 import com.hotel.dtos.PropertyClaimResponseDTO;
+import com.hotel.dtos.PropertyClaimRequestDTO;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.PropertyClaimRequest;
 import com.hotel.entities.User;
@@ -26,9 +27,11 @@ public class PropertyClaimService {
     private final UserPropertyRepository userPropertyRepository;
     private final SubscriptionFeatureService subscriptionFeatureService;
     private final PropertyOwnershipLifecycleService ownershipLifecycleService;
+    private final PropertyClaimRateLimiter rateLimiter;
 
     @Transactional
-    public PropertyClaimResponseDTO requestClaim(Long propertyId, Long userId, String verificationMethod, String verificationData, String note) {
+    public PropertyClaimResponseDTO requestClaim(Long propertyId, Long userId, PropertyClaimRequestDTO request) {
+        PropertyClaimRequestDTO validatedRequest = requireValidRequest(request);
         Hotel property = hotelRepository.findById(propertyId)
                 .orElseThrow(() -> new IllegalArgumentException("Property not found"));
         
@@ -44,17 +47,24 @@ public class PropertyClaimService {
             throw new IllegalStateException("You already have a pending claim request for this property.");
         }
 
+        rateLimiter.check(userId);
+
         PropertyClaimRequest claim = new PropertyClaimRequest();
         claim.setProperty(property);
         claim.setRequesterUser(user);
-        claim.setVerificationMethod(verificationMethod);
-        claim.setVerificationData(verificationData);
-        claim.setNote(note);
+        claim.setVerificationMethod(validatedRequest.verificationMethod());
+        claim.setVerificationData(validatedRequest.verificationData());
+        claim.setNote(validatedRequest.note());
         claim.setStatus("PENDING");
 
         PropertyClaimRequest saved = claimRepository.save(claim);
         ownershipLifecycleService.createPendingOwner(user, property);
         return toResponse(saved);
+    }
+
+    private PropertyClaimRequestDTO requireValidRequest(PropertyClaimRequestDTO request) {
+        if (request == null) throw new IllegalArgumentException("Claim request is required.");
+        return request.requireValid();
     }
 
     @Transactional
