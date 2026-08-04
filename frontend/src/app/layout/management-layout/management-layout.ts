@@ -84,6 +84,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
           functionCode: FunctionCode.AUDIT_LOG,
           actionCode: ActionCode.VIEW,
         },
+        { label: 'Nhat ky tai chinh', url: '/management/financial-audit', icon: 'policy', functionCode: FunctionCode.AUDIT_LOG, actionCode: ActionCode.VIEW },
       ],
     },
   ];
