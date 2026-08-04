@@ -24,6 +24,7 @@ Base: `origin/codex/ui-functional-audit-polish`
 | T241 | COMPLETE_VERIFIED | `92ef7f2` | Approved policy encoded in spec; backend compile and 16/16 focused tests; frontend 13/13; independent no-blocker review; `git diff --check` | Mark T241 complete in Feature 007 `tasks.md`; merge PROP-SUB-015 completion into shared aggregates; retain documented necessary-only deferrals and wire authoritative invoice/dispute readiness during T242/T243. |
 | T242 | COMPLETE_VERIFIED | `d403540` | Backend production compile and 18/18 focused tests; frontend 15/15; shared authoritative usage refactor; independent no-blocker review; `git diff --check` | Mark T242 complete in Feature 007 `tasks.md`; merge PROP-SUB-019 into shared aggregates; preserve property-scoped compatibility and legacy-ID redaction. |
 | T243 | COMPLETE_VERIFIED | `e505a7f`; controller contract `00c7409` | Backend production compile and 16/16 focused tests; frontend 24/24 combined and 16/16 final focused; independent no-blocker review; `git diff --check` | Mark T243 complete in Feature 007 `tasks.md`; merge PROP-SUB-022 into shared aggregates; preserve expiry-over-revoke boundary and historical read/export. |
+| T244 | COMPLETE_VERIFIED | `4dd6f8b` | Backend clean compile and 10/10 focused tests; frontend 22/22; V89 collision scan; independent no-blocker review; `git diff --check` | Mark T244 complete in Feature 007 `tasks.md`; merge PROP-SUB-024 into shared aggregates; preserve V89, immutable snapshots and create-only initializer behavior. |
 
 ## Shared files intentionally not edited
 
