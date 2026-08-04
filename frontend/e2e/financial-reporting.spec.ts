@@ -155,7 +155,9 @@ test.describe('Financial reporting browser journey', () => {
           status: 200,
           headers: {
             'content-type': 'text/csv',
-            'content-disposition': 'attachment; filename="property-revenue.csv"',
+            'content-disposition': 'attachment; filename="property-ledger-11.csv"',
+            'x-report-checksum': 'c'.repeat(64),
+            'x-report-row-count': '120',
           },
           body: 'publicId,netAmount\nPROP-TX-001,1400000\n',
         });
@@ -192,7 +194,10 @@ test.describe('Financial reporting browser journey', () => {
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: 'CSV', exact: true }).click();
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toContain('property-revenue');
+    expect(download.suggestedFilename()).toBe('property-ledger-11.csv');
+    await expect(page.getByText('Da tai property-ledger-11.csv (120 dong).')).toBeVisible();
+    await expect(page.getByText(`SHA-256 ${'c'.repeat(64)}`)).toBeVisible();
+    await page.screenshot({ path: '../docs/testing/evidence/007/remediation/T336-property-revenue-export-feedback.png' });
   });
 
   test('system admin filters and exports Platform Billing without property leakage', async ({ page }) => {

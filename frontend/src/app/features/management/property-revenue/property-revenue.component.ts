@@ -26,6 +26,7 @@ import {
   RevenueTransactionRow,
 } from '../../../core/services/revenue-report.service';
 import { FeedbackStateComponent } from '../../../shared/components/feedback-state/feedback-state.component';
+import { ActionCode, FunctionCode, PermissionService } from '../../../core/services/permission.service';
 
 @Component({
   selector: 'app-property-revenue',
@@ -39,6 +40,7 @@ export class PropertyRevenueComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly managementApi = inject(ManagementApiService);
   private readonly reportService = inject(RevenueReportService);
+  private readonly permissionService = inject(PermissionService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly report = signal<RevenueReportResult | null>(null);
@@ -48,6 +50,9 @@ export class PropertyRevenueComponent implements OnInit {
   readonly contextLoading = signal(true);
   readonly errorMessage = signal('');
   readonly exportLoading = signal<RevenueExportFormat | null>(null);
+  readonly exportMessage = signal('');
+  readonly exportChecksum = signal('');
+  readonly canExport = this.permissionService.hasPermission(FunctionCode.REPORT, ActionCode.EXPORT);
   readonly page = signal(0);
   readonly pageSize = 50;
 
@@ -173,20 +178,24 @@ export class PropertyRevenueComponent implements OnInit {
 
   export(format: RevenueExportFormat): void {
     const propertyId = this.propertyId();
-    if (!propertyId || this.exportLoading()) return;
+    if (!propertyId || !this.canExport || this.exportLoading()) return;
     this.exportLoading.set(format);
+    this.exportMessage.set(`Dang tao tep ${format}...`);
+    this.exportChecksum.set('');
     this.reportService.exportPropertyRevenue(this.filters(propertyId), format)
       .pipe(finalize(() => this.exportLoading.set(null)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: blob => {
-          const url = URL.createObjectURL(blob);
+        next: download => {
+          const url = URL.createObjectURL(download.blob);
           const anchor = document.createElement('a');
           anchor.href = url;
-          anchor.download = `property-revenue-${propertyId}-${this.fromDate}-${this.toDate}.${format.toLowerCase()}`;
+          anchor.download = download.filename;
           anchor.click();
           URL.revokeObjectURL(url);
+          this.exportChecksum.set(download.checksum);
+          this.exportMessage.set(`Da tai ${download.filename} (${download.rowCount} dong).`);
         },
-        error: (error: HttpErrorResponse) => this.errorMessage.set(this.errorMessageFrom(error)),
+        error: (error: HttpErrorResponse) => this.exportMessage.set(this.errorMessageFrom(error)),
       });
   }
 

@@ -8,6 +8,9 @@
 .watermark { display: grid; gap: var(--hotel-space-1); min-width: 15rem; padding: var(--hotel-space-3) var(--hotel-space-4); border: 1px solid rgb(15 118 110 / .25); border-radius: var(--hotel-radius-md); background: rgb(255 255 255 / .65); }
 .watermark span { color: var(--hotel-text-muted); font-size: var(--hotel-text-xs); }
 .watermark strong { overflow-wrap: anywhere; color: var(--hotel-heading); font: 600 var(--hotel-text-xs) / 1.4 var(--hotel-font-body); }
+.export-feedback, .export-permission-note { margin: 0; padding: 10px 14px; border-radius: 10px; background: #ecfdf5; color: #065f46; }
+.export-feedback code { display: block; margin-top: 4px; overflow-wrap: anywhere; }
+.export-permission-note { background: #fff7ed; color: #9a3412; }
 .report-filters, .panel { border: 1px solid var(--hotel-border); border-radius: var(--hotel-radius-lg); background: var(--hotel-card-bg); box-shadow: var(--hotel-shadow-sm); }
 .report-filters { display: grid; gap: var(--hotel-space-4); padding: var(--hotel-space-5); }
 .filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--hotel-space-4); }
