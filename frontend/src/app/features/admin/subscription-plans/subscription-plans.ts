@@ -72,7 +72,7 @@ export class SubscriptionPlansComponent implements OnInit {
     this.catalogError = '';
     this.subscriptions.getPlans().subscribe({
       next: plans => { this.plans = plans; this.loadingCatalog = false; },
-      error: () => { this.plans = []; this.catalogError = 'Không thể tải catalog gói dịch vụ từ máy chủ.'; this.loadingCatalog = false; }
+      error: error => { this.plans = []; this.catalogError = error?.error?.message || 'Không thể tải catalog gói dịch vụ từ máy chủ.'; this.loadingCatalog = false; }
     });
   }
 

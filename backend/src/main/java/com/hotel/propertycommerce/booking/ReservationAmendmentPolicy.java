@@ -2,6 +2,7 @@ package com.hotel.propertycommerce.booking;
 
 import com.hotel.paymentprovider.error.FinancialErrorCode;
 import com.hotel.paymentprovider.error.FinancialException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -27,6 +28,7 @@ public class ReservationAmendmentPolicy {
     private final LocalTime defaultArrivalTime;
     private final ZoneId propertyZone;
 
+    @Autowired
     public ReservationAmendmentPolicy(
             @Value("${app.reservation-amendment.cutoff-minutes:1440}") long cutoffMinutes,
             @Value("${app.reservation-amendment.quote-ttl-minutes:15}") long quoteTtlMinutes,

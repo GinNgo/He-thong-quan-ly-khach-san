@@ -3,6 +3,7 @@ package com.hotel.services;
 import com.hotel.platformbilling.subscription.SubscriptionEntitlementRepository;
 import com.hotel.platformbilling.subscription.SubscriptionLifecycleService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ public class SubscriptionScheduler {
     private final SubscriptionLifecycleService lifecycleService;
     private final Clock clock;
 
+    @Autowired
     public SubscriptionScheduler(SubscriptionEntitlementRepository entitlementRepository,
                                  SubscriptionLifecycleService lifecycleService) {
         this(entitlementRepository, lifecycleService, Clock.systemUTC());

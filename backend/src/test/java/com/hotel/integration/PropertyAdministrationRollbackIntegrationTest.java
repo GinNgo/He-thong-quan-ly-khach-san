@@ -5,6 +5,7 @@ import com.hotel.entities.Hotel;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.services.OperationalAuditService;
 import com.hotel.services.PropertyAccessService;
+import com.hotel.services.PropertyProfileMapper;
 import com.hotel.services.impl.HotelManagementServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +35,7 @@ class PropertyAdministrationRollbackIntegrationTest {
     @Autowired private jakarta.persistence.EntityManager entityManager;
 
     @MockBean private PropertyAccessService propertyAccessService;
+    @MockBean private PropertyProfileMapper propertyProfileMapper;
     @MockBean private OperationalAuditService operationalAuditService;
 
     @Test

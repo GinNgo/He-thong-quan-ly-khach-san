@@ -13,6 +13,7 @@ import com.hotel.security.TenantFilterInterceptor;
 import com.hotel.services.EmailService;
 import com.hotel.services.PropertyAccessService;
 import com.hotel.controllers.GlobalExceptionHandler;
+import com.hotel.observability.OperationalMetrics;
 import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -83,6 +84,8 @@ class InvoiceAccessIntegrationTest {
     private EntityManagerFactory entityManagerFactory;
     @MockBean
     private TenantFilterInterceptor tenantFilterInterceptor;
+    @MockBean
+    private OperationalMetrics operationalMetrics;
 
     private PropertyInvoice invoice;
     private User customer;

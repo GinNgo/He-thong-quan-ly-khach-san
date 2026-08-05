@@ -350,6 +350,7 @@ public class PropertySearchServiceImpl implements PropertySearchService {
                 .collect(java.util.stream.Collectors.groupingBy(
                         image -> image.getHotel().getId(), java.util.LinkedHashMap::new,
                         java.util.stream.Collectors.toList()));
+        Map<Long, List<String>> amenitiesByHotel = amenityService.publicDisplayNames(hotelIds);
         Set<Long> provinceIds = rows.stream().map(MappedRow::storedProvinceId)
                 .filter(java.util.Objects::nonNull)
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
@@ -361,13 +362,14 @@ public class PropertySearchServiceImpl implements PropertySearchService {
                     ? null : currentProvinces.get(row.storedProvinceId());
             dto.setProvinceName(currentProvince == null ? row.storedProvinceName() : currentProvince.getNameVi());
             enrichRoomAndMedia(dto, roomTypesByHotel.getOrDefault(dto.getId(), List.of()), availability,
-                    imagesByHotel.getOrDefault(dto.getId(), List.of()), checkIn, checkOut, roomCount);
+                    imagesByHotel.getOrDefault(dto.getId(), List.of()),
+                    amenitiesByHotel.getOrDefault(dto.getId(), List.of()), checkIn, checkOut, roomCount);
         }
         return rows.stream().map(MappedRow::dto).toList();
     }
 
     private void enrichRoomAndMedia(PropertySearchResponseDTO dto, List<RoomType> roomTypes,
-                                    Map<Long, Long> availability, List<PropertyImage> images,
+                                    Map<Long, Long> availability, List<PropertyImage> images, List<String> amenities,
                                     LocalDate checkIn, LocalDate checkOut, int roomCount) {
         long available = roomTypes.stream()
                 .mapToLong(roomType -> availability.getOrDefault(roomType.getId(), 0L)).sum();
@@ -406,7 +408,7 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         if (gallery.isEmpty() && catalogMainImage != null) gallery.add(catalogMainImage);
         dto.setGalleryUrls(List.copyOf(gallery));
         dto.setImageCount(dto.getGalleryUrls().size());
-        dto.setAmenities(amenityService.publicDisplayNames(dto.getId()));
+        dto.setAmenities(amenities);
         dto.setBadges(List.of());
         dto.setFreeCancellation(false);
         dto.setPayAtProperty(false);

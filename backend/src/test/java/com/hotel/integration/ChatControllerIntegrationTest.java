@@ -17,6 +17,7 @@ import com.hotel.repositories.UserPropertyRepository;
 import com.hotel.repositories.UserRepository;
 import com.hotel.security.ActionCode;
 import com.hotel.security.CustomUserDetails;
+import com.hotel.security.CustomUserDetailsService;
 import com.hotel.security.FunctionCode;
 import com.hotel.services.ChatService;
 import org.junit.jupiter.api.Test;
@@ -26,7 +27,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -70,7 +70,7 @@ class ChatControllerIntegrationTest {
     @Autowired private SupportConversationAttachmentRepository attachmentRepository;
     @Autowired private ChatMessageRepository chatMessageRepository;
     @Autowired private ObjectMapper objectMapper;
-    @MockBean private UserDetailsService userDetailsService;
+    @MockBean private CustomUserDetailsService userDetailsService;
 
     @Test
     void unauthenticatedHistoryRequestIsDenied() throws Exception {

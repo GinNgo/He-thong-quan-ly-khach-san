@@ -3,6 +3,7 @@ package com.hotel.controllers;
 import com.hotel.notifications.preferences.NotificationPreferenceService;
 import com.hotel.security.CustomUserDetails;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -14,6 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/customer/notifications/preferences")
+@PreAuthorize("isAuthenticated()")
 public class CustomerNotificationPreferenceController {
 
     private final NotificationPreferenceService preferenceService;

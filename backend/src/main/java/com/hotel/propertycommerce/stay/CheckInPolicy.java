@@ -2,6 +2,7 @@ package com.hotel.propertycommerce.stay;
 
 import com.hotel.entities.Reservation;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -22,6 +23,7 @@ public class CheckInPolicy {
     private final long earlyWindowMinutes;
     private final long demoEarlyWindowMinutes;
 
+    @Autowired
     public CheckInPolicy(
             @Value("${app.stay-check-in.property-zone-id:Asia/Ho_Chi_Minh}") String propertyZoneId,
             @Value("${app.stay-check-in.default-arrival-time:14:00}") String defaultArrivalTime,

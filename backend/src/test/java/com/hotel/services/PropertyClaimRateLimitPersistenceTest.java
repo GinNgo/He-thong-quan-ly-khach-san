@@ -76,7 +76,8 @@ class PropertyClaimRateLimitPersistenceTest {
                 mock(SubscriptionFeatureService.class),
                 ownershipLifecycleService,
                 new PropertyClaimRateLimiter(
-                        claimRepository, clock, 3, Duration.ofMinutes(15)));
+                        claimRepository, clock, 3, Duration.ofMinutes(15)),
+                mock(PropertyApprovalWorkflowService.class));
 
         PropertyClaimRateLimitException exception = assertThrows(
                 PropertyClaimRateLimitException.class,

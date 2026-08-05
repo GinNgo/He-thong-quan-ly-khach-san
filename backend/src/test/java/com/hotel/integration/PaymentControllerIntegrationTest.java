@@ -10,8 +10,11 @@ import com.hotel.security.JwtAccessDeniedHandler;
 import com.hotel.security.JwtAuthFilter;
 import com.hotel.security.JwtAuthenticationEntryPoint;
 import com.hotel.security.JwtTokenProvider;
+import com.hotel.security.TenantFilterInterceptor;
+import com.hotel.observability.OperationalMetrics;
 import com.hotel.services.PaymentService;
 import com.hotel.services.ReservationService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -26,6 +29,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -50,6 +54,17 @@ class PaymentControllerIntegrationTest {
 
     @MockBean
     private UserDetailsService userDetailsService;
+
+    @MockBean
+    private TenantFilterInterceptor tenantFilterInterceptor;
+
+    @MockBean
+    private OperationalMetrics operationalMetrics;
+
+    @BeforeEach
+    void allowRequestsThroughTenantInterceptor() throws Exception {
+        when(tenantFilterInterceptor.preHandle(any(), any(), any())).thenReturn(true);
+    }
 
     @Test
     void createPaymentUrl_AsCustomer_ShouldUseReservationAmount() throws Exception {

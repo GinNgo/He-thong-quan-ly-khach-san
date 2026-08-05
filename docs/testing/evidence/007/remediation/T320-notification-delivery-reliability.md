@@ -26,7 +26,7 @@ No temporary catalog/subscription source, Maven include or test stub is present 
 
 ## Migration and recovery
 
-- Migration `V57__notification_delivery_outbox.sql` is additive: it conditionally adds `notifications.event_key`, the filtered unique index, delivery outbox and append-only attempt table. It does not delete or rewrite notification data.
+- Migration `V90__notification_delivery_outbox.sql` is additive: it conditionally adds `notifications.event_key`, the filtered unique index, delivery outbox and append-only attempt table. It does not delete or rewrite notification data.
 - Forward recovery: stop the dispatcher with `app.notifications.delivery-scan-ms` deployment configuration or revert the code while preserving PENDING/RETRY rows for a corrected forward release. Do not drop outbox/attempt tables during rollback.
 - Permission/tenant isolation: producers resolve the persisted user id/username internally; customers only consume their authenticated user destination and own-user REST reconciliation from T319.
 - External systems: no production credential, external provider or real-money action was used.

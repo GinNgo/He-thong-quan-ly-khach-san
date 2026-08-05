@@ -31,7 +31,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(
         classes = BackendApplication.class,
-        properties = "payment.property.encryption-key=test-property-payment-encryption-key")
+        properties = {
+                "payment.property.encryption-key=test-property-payment-encryption-key",
+                "spring.datasource.url=jdbc:h2:mem:customer-notifications;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE"
+        })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional

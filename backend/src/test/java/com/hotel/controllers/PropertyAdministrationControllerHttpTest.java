@@ -1,8 +1,9 @@
 package com.hotel.controllers;
 
 import com.hotel.services.HotelManagementService;
-import com.hotel.services.PropertyRegistrationService;
-import com.hotel.services.RoomTypeService;
+import com.hotel.services.PropertyApprovalWorkflowService;
+import com.hotel.services.PropertySearchService;
+import com.hotel.services.PublicInventoryEligibilityPolicy;
 import com.hotel.entities.Hotel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,14 +28,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PropertyAdministrationControllerHttpTest {
 
     @Mock private HotelManagementService hotelManagementService;
-    @Mock private RoomTypeService roomTypeService;
-    @Mock private PropertyRegistrationService propertyRegistrationService;
+    @Mock private PropertySearchService propertySearchService;
+    @Mock private PropertyApprovalWorkflowService propertyApprovalWorkflowService;
+    @Mock private PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         HotelController controller = new HotelController(
-                hotelManagementService, roomTypeService, propertyRegistrationService);
+                hotelManagementService, propertySearchService,
+                propertyApprovalWorkflowService, publicInventoryEligibilityPolicy);
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
@@ -69,7 +72,8 @@ class PropertyAdministrationControllerHttpTest {
         closed.setStatus("CLOSED");
         closed.setApprovalStatus("APPROVED");
         closed.setOperationStatus("CLOSED");
-        when(hotelManagementService.getHotelById(7L)).thenReturn(java.util.Optional.of(closed));
+        when(publicInventoryEligibilityPolicy.requirePublicProperty(7L))
+                .thenThrow(new com.hotel.exceptions.ResourceNotFoundException("Property not found."));
 
         mockMvc.perform(get("/api/v1/hotels/public/{id}", 7L))
                 .andExpect(status().isNotFound());

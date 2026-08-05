@@ -55,7 +55,8 @@ public class PublicInventoryEligibilityPolicy {
         }
 
         String predicate = alias + ".approval_status='APPROVED' AND "
-                + alias + ".operation_status='ACTIVE'";
+                + alias + ".operation_status='ACTIVE' AND "
+                + alias + ".status='ACTIVE'";
         if (hidesDemoInventory()) {
             predicate += " AND COALESCE(" + alias + ".is_demo,0)=0";
         }
@@ -64,6 +65,7 @@ public class PublicInventoryEligibilityPolicy {
 
     public boolean isPublicProperty(Hotel hotel) {
         if (hotel == null
+                || !"ACTIVE".equals(hotel.getStatus())
                 || !"APPROVED".equals(hotel.getApprovalStatus())
                 || !"ACTIVE".equals(hotel.getOperationStatus())) {
             return false;

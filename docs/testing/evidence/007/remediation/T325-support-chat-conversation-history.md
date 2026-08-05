@@ -37,7 +37,7 @@ Focused assertions cover authenticated ownership, foreign-conversation read/send
 
 ## Migration and recovery
 
-- `V59__support_conversation_history.sql` conditionally creates `support_conversations`, adds nullable `chat_messages.conversation_id`, backfills one conversation per legacy customer that sent to the central queue, links only queue questions and replies to those customers, then adds the foreign key and paging index.
+- `V92__support_conversation_history.sql` conditionally creates `support_conversations`, adds nullable `chat_messages.conversation_id`, backfills one conversation per legacy customer that sent to the central queue, links only queue questions and replies to those customers, then adds the foreign key and paging index.
 - The migration is additive and does not delete or rewrite message content. Unrelated legacy peer messages remain nullable/unscoped, as proven by the SQL Server fixture.
 - Forward recovery is preferred: retain the new table/column and deploy corrected query or backfill logic. If application rollback is required, the prior customer history endpoint can continue reading legacy rows while new schema remains dormant.
 - Destructive rollback (dropping the FK/index/column/table) is not authorized once new conversations exist and was not executed.

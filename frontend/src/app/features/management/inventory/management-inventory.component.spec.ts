@@ -41,7 +41,11 @@ describe('ManagementInventoryComponent', () => {
       completeRoomMaintenance: vi.fn(() => of({})),
       operationalExport: vi.fn(() => of({ blob: new Blob(['roomRef']), filename: 'rooms-property-3.csv', checksum: 'd'.repeat(64), rowCount: 1, schema: 'operational-rooms-v1' })),
     };
-    vi.stubGlobal('URL', { createObjectURL: () => 'blob:test', revokeObjectURL: () => undefined });
+    const NativeUrl = globalThis.URL;
+    vi.stubGlobal('URL', class extends NativeUrl {
+      static override createObjectURL(): string { return 'blob:test'; }
+      static override revokeObjectURL(): void { /* no-op */ }
+    });
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
 
     await TestBed.configureTestingModule({
@@ -57,6 +61,11 @@ describe('ManagementInventoryComponent', () => {
     component = fixture.componentInstance;
     fixture.detectChanges();
     await fixture.whenStable();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it('opens the reasoned work-order workflow instead of toggling room state', () => {

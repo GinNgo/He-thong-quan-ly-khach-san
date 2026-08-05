@@ -152,6 +152,28 @@ public class AmenityService {
         return amenities.values().stream().map(Amenity::getNameVi).toList();
     }
 
+    @Transactional(readOnly = true)
+    public Map<Long, List<String>> publicDisplayNames(Set<Long> hotelIds) {
+        if (hotelIds == null || hotelIds.isEmpty()) return Map.of();
+
+        Map<Long, LinkedHashMap<Long, String>> namesByHotel = new LinkedHashMap<>();
+        hotelIds.forEach(hotelId -> namesByHotel.put(hotelId, new LinkedHashMap<>()));
+        mergeAmenityNames(namesByHotel, propertyAmenityRepository.findPublicAmenityNamesByHotelIds(hotelIds));
+
+        Map<Long, List<String>> result = new LinkedHashMap<>();
+        namesByHotel.forEach((hotelId, amenities) -> result.put(hotelId, List.copyOf(amenities.values())));
+        return result;
+    }
+
+    private void mergeAmenityNames(Map<Long, LinkedHashMap<Long, String>> namesByHotel, List<Object[]> rows) {
+        for (Object[] row : rows) {
+            Long hotelId = ((Number) row[0]).longValue();
+            Long amenityId = ((Number) row[1]).longValue();
+            namesByHotel.computeIfAbsent(hotelId, ignored -> new LinkedHashMap<>())
+                    .putIfAbsent(amenityId, (String) row[2]);
+        }
+    }
+
     private List<Amenity> requireActiveAmenities(List<Long> requestedIds) {
         LinkedHashSet<Long> uniqueIds = new LinkedHashSet<>(requestedIds);
         if (uniqueIds.size() != requestedIds.size()) {

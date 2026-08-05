@@ -24,7 +24,6 @@ import java.util.Map;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(
@@ -54,9 +53,9 @@ class FeatureGateIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    // 2. Token lacks HOTEL feature -> 403 FORBIDDEN_FEATURE
+    // Property listing remains available so an owner can select a property and manage its plan.
     @Test
-    void whenTokenLacksFeature_thenReturns403() throws Exception {
+    void whenTokenLacksAccountWideFeature_thenPropertyListingRemainsAvailable() throws Exception {
         CustomUserDetails user = new CustomUserDetails(
                 "user1", "pass",
                 List.of(new SimpleGrantedAuthority("PROPERTY_OWNER")),
@@ -64,11 +63,10 @@ class FeatureGateIntegrationTest {
         );
 
         mockMvc.perform(get("/api/v1/hotels/my-hotels").with(user(user)))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("FORBIDDEN_FEATURE"));
+                .andExpect(status().isOk());
     }
 
-    // 3. Token has HOTEL feature (limit > 0) -> 200
+    // Legacy account-wide feature data must not change access to this read-only endpoint.
     @Test
     void whenTokenHasFeature_thenReturns200() throws Exception {
         CustomUserDetails user = new CustomUserDetails(

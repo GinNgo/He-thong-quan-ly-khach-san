@@ -25,7 +25,7 @@ Assertions cover mandatory versus optional defaults, locked mandatory in-app set
 
 ## Migration and recovery
 
-- `V58__notification_preferences_archive.sql` conditionally adds `archived_at`, a user/archive/created index and the preference table with user foreign key, enum checks and unique `(user,event_class,channel)` rows.
+- `V91__notification_preferences_archive.sql` conditionally adds `archived_at`, a user/archive/created index and the preference table with user foreign key, enum checks and unique `(user,event_class,channel)` rows.
 - Migration risk: additive and non-destructive. Existing notification rows remain active; preference defaults are computed by policy and no bulk update is performed.
 - Forward recovery: revert UI/API evaluation while retaining archive timestamps and preference rows for a corrected release. Do not drop stored preferences or archived history during rollback.
 - Permission/tenant isolation: every endpoint derives `userId` from `CustomUserDetails`; no request body/query field can select another user. Foreign and expired notification ids share `NOT_FOUND` behavior.

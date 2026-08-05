@@ -254,7 +254,7 @@ public class PropertySearchControllerIntegrationTest {
     }
 
     @Test
-    void searchProperties_RejectsUnknownAndNotYetSupportedFilters() throws Exception {
+    void searchProperties_RejectsUnknownAndUnavailableFiltersWhileAcceptingAmenities() throws Exception {
         mockMvc.perform(get("/api/public/properties/search")
                         .param("displayLocation", "Da Nang"))
                 .andExpect(status().isBadRequest())
@@ -270,7 +270,7 @@ public class PropertySearchControllerIntegrationTest {
                 .andExpect(status().isBadRequest());
         mockMvc.perform(get("/api/public/properties/search")
                         .param("amenityIds", "1"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
         mockMvc.perform(get("/api/public/properties/search")
                         .param("freeCancellation", "true"))
                 .andExpect(status().isBadRequest());

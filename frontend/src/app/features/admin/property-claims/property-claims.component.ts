@@ -182,7 +182,7 @@ export class PropertyClaimsComponent implements OnInit {
       finalize(() => this.loading = false)
     ).subscribe({
       next: response => this.claims = response.content,
-      error: () => this.loadError = 'Unable to load property claim requests. Please retry.'
+      error: error => this.loadError = error?.error?.message || 'Unable to load property claim requests. Please retry.'
     });
   }
 

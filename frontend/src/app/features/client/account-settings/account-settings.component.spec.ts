@@ -19,7 +19,15 @@ describe('Authenticated password change', () => {
       imports: [AccountSettingsComponent],
       providers: [
         { provide: UserService, useValue: { changePassword } },
-        { provide: AuthService, useValue: { logout } },
+        {
+          provide: AuthService,
+          useValue: {
+            logout,
+            listSocialIdentities: vi.fn(() => of([])),
+            linkSocialIdentity: vi.fn(() => of(void 0)),
+            unlinkSocialIdentity: vi.fn(() => of(void 0)),
+          },
+        },
         { provide: Router, useValue: { navigate } },
         { provide: ActivatedRoute, useValue: { snapshot: {} } },
         { provide: PublicI18nService, useValue: { text: (key: string) => key } },

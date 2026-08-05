@@ -15,6 +15,7 @@ import com.hotel.security.JwtTokenProvider;
 import com.hotel.services.social.FacebookIdentityVerifier;
 import com.hotel.services.social.GoogleIdentityVerifier;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -33,6 +34,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AuthMenuContextTest {
+
+    @BeforeEach
+    void resetContextBeforeTest() {
+        SecurityContextHolder.clearContext();
+    }
 
     @AfterEach
     void clearContext() {

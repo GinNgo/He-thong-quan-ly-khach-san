@@ -86,7 +86,6 @@ export class ManagementPropertiesComponent implements OnInit {
     this.success = '';
     const value = this.form.getRawValue();
     const profile: PropertyProfile = {
-      ...this.selected,
       nameVi: value.nameVi.trim(),
       nameEn: value.nameEn.trim() || undefined,
       propertyType: value.propertyType as PropertyProfile['propertyType'],

@@ -170,6 +170,7 @@ class PlatformRevenueReconciliationIntegrationTest {
     private SubscriptionPlan persistPlan(String code, String billingType, long price) {
         SubscriptionPlan plan = new SubscriptionPlan();
         plan.setCode(code);
+        plan.setFamilyCode(code);
         plan.setNameVi(code + " Plan");
         plan.setNameEn(code + " Plan");
         plan.setBillingType(billingType);

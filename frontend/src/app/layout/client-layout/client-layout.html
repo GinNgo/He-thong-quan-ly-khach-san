@@ -38,7 +38,7 @@
           </header>
           <nav>
             <a routerLink="/profile" [queryParams]="{tab: 'profile'}" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-user"></i><span>Thông tin cá nhân</span></a>
-            <a routerLink="/booking-history" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-suitcase"></i><span>Chuyến đi của tôi</span><b *ngIf="userContext?.pendingBookingCount">{{ userContext?.pendingBookingCount }}</b></a>
+            <a routerLink="/booking-history" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-suitcase"></i><span>Chuyến đi của tôi</span><b *ngIf="userContext?.pendingBookingCount">{{ userContext.pendingBookingCount }}</b></a>
             <a routerLink="/notifications" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-bell"></i><span>Thông báo</span><b *ngIf="unreadNotificationCount">{{ unreadNotificationCount }}</b></a>
             <a routerLink="/my-invoices" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-file"></i><span>Hóa đơn của tôi</span></a>
             <div class="menu-divider"></div>

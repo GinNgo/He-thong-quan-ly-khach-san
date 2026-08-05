@@ -193,7 +193,12 @@ class PropertyApprovalWorkflowServiceTest {
 
         verify(ownershipLifecycleService, never()).activateOwner(any(), any());
         verify(hotelRepository, never()).saveAndFlush(any());
-        verify(notificationService, never()).sendUserNotification(any(), any(), any(), any(), any());
+        verify(notificationService, never()).sendUserNotification(
+                org.mockito.ArgumentMatchers.any(Long.class),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any(java.time.LocalDateTime.class));
     }
 
     @Test
@@ -248,7 +253,12 @@ class PropertyApprovalWorkflowServiceTest {
 
         verify(userPropertyRepository, never()).findPendingOwnerMappingsForUpdate(any());
         verify(ownershipLifecycleService, never()).activateOwner(any(), any());
-        verify(notificationService, never()).sendUserNotification(any(), any(), any(), any(), any());
+        verify(notificationService, never()).sendUserNotification(
+                org.mockito.ArgumentMatchers.any(Long.class),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any(java.time.LocalDateTime.class));
     }
 
     @Test

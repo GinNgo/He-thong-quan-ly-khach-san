@@ -11,6 +11,7 @@ import com.hotel.paymentprovider.error.FinancialException;
 import com.hotel.repositories.SubscriptionFeatureRepository;
 import com.hotel.repositories.SubscriptionPlanRepository;
 import com.hotel.services.PropertyAccessService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,7 @@ public class SubscriptionPlanAdministrationService {
     private final Clock clock;
     private final SubscriptionPlanAdminOperationRepository operationRepository;
 
+    @Autowired
     public SubscriptionPlanAdministrationService(SubscriptionPlanRepository planRepository,
             SubscriptionFeatureRepository featureRepository, PropertyAccessService accessService,
             FinancialAuditService auditService, SubscriptionPlanAdminOperationRepository operationRepository) {

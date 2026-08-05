@@ -200,8 +200,8 @@ public class TenantIsolationIntegrationTest {
         roomB.setHotel(hotelB);
         roomB.setRoomType(typeB);
         roomB.setRoomNumber("101");
-        roomB.setStatus("AVAILABLE");
-        roomB.setHousekeepingStatus("CLEAN");
+        roomB.setStatus("DIRTY");
+        roomB.setHousekeepingStatus("DIRTY");
         roomB.setFloor(1);
         roomB.setMaintenanceStatus("NONE");
         roomB.setMaxGuests(3);
@@ -274,11 +274,15 @@ public class TenantIsolationIntegrationTest {
         limits.put("MAX_ROOMS", 100);
         limits.put("MAX_ROOM_TYPES", 100);
 
+        Map<FunctionCode, Integer> permissions = new HashMap<>();
+        permissions.put(FunctionCode.ROOM, ActionCode.UPDATE);
+        permissions.put(FunctionCode.ROOM_TYPE, ActionCode.UPDATE);
+
         return new CustomUserDetails(
                 user.getUsername(),
                 user.getPasswordHash(),
                 authorities,
-                new HashMap<>(),
+                permissions,
                 user.getId(),
                 hotel.getId(),
                 limits
@@ -320,7 +324,9 @@ public class TenantIsolationIntegrationTest {
         mockMvc.perform(put("/api/management/rooms/{id}", roomB.getId())
                         .with(user(createUserDetails(staffA, hotelA)))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                        .content("""
+                                {"roomNumber":"101","roomTypeId":%d,"hotelId":%d,"floor":1}
+                                """.formatted(typeB.getId(), hotelB.getId())))
                 .andExpect(status().isNotFound());
     }
 
@@ -329,7 +335,9 @@ public class TenantIsolationIntegrationTest {
         mockMvc.perform(put("/api/management/room-types/{id}", typeB.getId())
                         .with(user(createUserDetails(staffA, hotelA)))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                        .content("""
+                                {"hotelId":%d,"code":"DELUXE-B","nameVi":"Deluxe B","basePrice":200000}
+                                """.formatted(hotelB.getId())))
                 .andExpect(status().isNotFound());
     }
 

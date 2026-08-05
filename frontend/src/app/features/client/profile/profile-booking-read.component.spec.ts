@@ -12,6 +12,7 @@ import { ProfileComponent } from './profile.component';
 describe('ProfileComponent seeded booking read journey', () => {
   let fixture: ComponentFixture<ProfileComponent>;
   let getReservationById: ReturnType<typeof vi.fn>;
+  let originalLanguage: string;
 
   const profile: UserContext = {
     id: 42,
@@ -55,6 +56,8 @@ describe('ProfileComponent seeded booking read journey', () => {
   };
 
   beforeEach(async () => {
+    originalLanguage = document.documentElement.lang;
+    document.documentElement.lang = 'vi';
     getReservationById = vi.fn(() => of(detail));
     await TestBed.configureTestingModule({
       imports: [ProfileComponent],
@@ -76,6 +79,10 @@ describe('ProfileComponent seeded booking read journey', () => {
     }).compileComponents();
     fixture = TestBed.createComponent(ProfileComponent);
     fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    document.documentElement.lang = originalLanguage;
   });
 
   it('lists only the signed-in customer bookings and opens event history', () => {

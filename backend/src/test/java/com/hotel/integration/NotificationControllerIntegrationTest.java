@@ -86,12 +86,12 @@ class NotificationControllerIntegrationTest {
     }
 
     @Test
-    void userCannotMarkAnotherUsersNotificationAsRead() throws Exception {
+    void userCannotProbeOrMarkAnotherUsersNotificationAsRead() throws Exception {
         Notification notification = saveNotification(8L, "foreign");
 
         mockMvc.perform(post("/api/notifications/{id}/read", notification.getId())
                         .with(user(principal(7L, Map.of(FunctionCode.REPORT, ActionCode.VIEW)))))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
     }
 
     private Notification saveNotification(Long userId, String title) {

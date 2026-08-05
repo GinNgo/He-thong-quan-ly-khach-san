@@ -30,7 +30,6 @@ import com.hotel.services.EmailService;
 import com.hotel.services.NotificationService;
 import com.hotel.services.PropertyAccessService;
 import com.hotel.services.PublicInventoryEligibilityPolicy;
-import com.hotel.services.RefundService;
 import com.hotel.services.ReservationHoldService;
 import com.hotel.services.ReservationService;
 import com.hotel.services.RoomAvailabilityService;
@@ -105,7 +104,6 @@ class CheckoutAggregateSqlServerIT {
     @MockBean private NotificationService notificationService;
     @MockBean private EmailService emailService;
     @MockBean private InvoiceRepository invoiceRepository;
-    @MockBean private RefundService refundService;
     @MockBean private PropertyAccessService propertyAccessService;
     @MockBean private ReservationHoldService reservationHoldService;
     @MockBean private PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;

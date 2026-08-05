@@ -46,11 +46,7 @@ export class LoginComponent implements OnInit {
         username = JSON.parse(userStr).username;
       }
       const roles = this.authService.getRoles();
-      if (username === 'admin' || roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) {
-        this.router.navigate(['/admin/dashboard']);
-      } else {
-        this.router.navigate(['/']);
-      }
+      this.navigateAfterAuthentication(username, roles);
     }
   }
 
@@ -72,11 +68,7 @@ export class LoginComponent implements OnInit {
             permissions: res.permissions
           });
           
-          if (res.username === 'admin' || res.roles.includes('SUPER_ADMIN') || res.roles.includes('ADMIN')) {
-            this.router.navigate(['/admin/dashboard']);
-          } else {
-            this.router.navigateByUrl(this.returnUrl);
-          }
+          this.navigateAfterAuthentication(res.username, res.roles);
         }
         this.isLoading = false;
         this.cdr.markForCheck();
@@ -87,5 +79,21 @@ export class LoginComponent implements OnInit {
         this.cdr.markForCheck();
       }
     });
+  }
+
+  private navigateAfterAuthentication(username: string, roles: string[]): void {
+    if (isBookingReturnUrl(this.returnUrl) && !roles.includes('CUSTOMER')) {
+      this.router.navigate(['/403'], { queryParams: { reason: 'CUSTOMER_REQUIRED' } });
+      return;
+    }
+    if (username === 'admin' || roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) {
+      this.router.navigate(['/admin/dashboard']);
+      return;
+    }
+    if (this.returnUrl !== '/') {
+      this.router.navigateByUrl(this.returnUrl);
+      return;
+    }
+    this.router.navigate(['/']);
   }
 }

@@ -28,7 +28,6 @@ import com.hotel.services.NotificationService;
 import com.hotel.services.PropertyAccessService;
 import com.hotel.services.PaymentService;
 import com.hotel.services.PublicInventoryEligibilityPolicy;
-import com.hotel.services.RefundService;
 import com.hotel.services.ReservationHoldService;
 import com.hotel.services.ReservationService;
 import com.hotel.services.RoomAvailabilityService;
@@ -100,7 +99,6 @@ class StayLifecycleSqlServerIT {
     @MockBean private InvoiceRepository invoiceRepository;
     @MockBean private PaymentService paymentService;
     @MockBean private PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
-    @MockBean private RefundService refundService;
     @MockBean private PropertyAccessService propertyAccessService;
     @MockBean private ReservationHoldService reservationHoldService;
     @MockBean private InvoiceFinalizationService invoiceFinalizationService;

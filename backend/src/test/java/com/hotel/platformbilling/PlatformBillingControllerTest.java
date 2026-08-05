@@ -9,6 +9,8 @@ import com.hotel.platformbilling.payment.PlatformPaymentAttemptService;
 import com.hotel.platformbilling.subscription.SubscriptionPolicyService;
 import com.hotel.platformbilling.subscription.SubscriptionRenewalService;
 import com.hotel.platformbilling.subscription.SubscriptionUpgradeService;
+import com.hotel.platformbilling.subscription.SubscriptionLifecycleService;
+import com.hotel.platformbilling.subscription.SubscriptionPlanAdministrationService;
 import com.hotel.services.SubscriptionCatalogService;
 import com.hotel.services.PropertySubscriptionEntitlementService;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +40,8 @@ class PlatformBillingControllerTest {
     @Mock private PlatformPaymentConfigurationService configurationService;
     @Mock private PlatformBillingQueryService queryService;
     @Mock private PropertySubscriptionEntitlementService entitlementService;
+    @Mock private SubscriptionLifecycleService lifecycleService;
+    @Mock private SubscriptionPlanAdministrationService planAdministrationService;
 
     private PlatformBillingController controller;
 
@@ -45,7 +49,8 @@ class PlatformBillingControllerTest {
     void setUp() {
         controller = new PlatformBillingController(
                 catalogService, orderService, attemptService, renewalService, upgradeService,
-                policyService, configurationService, queryService, entitlementService);
+                policyService, configurationService, queryService, entitlementService,
+                lifecycleService, planAdministrationService);
     }
 
     @Test

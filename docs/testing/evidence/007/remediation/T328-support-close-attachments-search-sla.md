@@ -15,7 +15,7 @@
 | Backend focused compile and tests | Compile changed chat/attachment sources with Java 21 `-parameters`, then run `ChatControllerTest,ChatServiceTest,ChatControllerIntegrationTest` through Surefire | PASS: 28/28; includes scoped search, reason/version lifecycle, audit events, timestamps, signature/MIME rejection, checksum headers and cross-tenant attachment denial |
 | Angular chat clients and both surfaces | `npx ng test --watch=false --progress=false` with chat service, support dashboard and customer widget specs | PASS: 3 files, 23/23 |
 | Browser support journey | `CAPTURE_T328_EVIDENCE=1 npx playwright test e2e/support-close-attachment-search.spec.ts --config playwright.cross-cutting.config.ts --project=chromium --timeout=90000` | PASS: 1/1; search, safe upload, close reason and reopen reason are visible and asserted |
-| SQL Server migration | Apply `V62__support_close_search_attachments.sql` twice to isolated `T326Queue`, then run `backend/tools/t328-support-sqlserver-validation.sql` | PASS twice: lifecycle columns `6`, attachment table `1`, indexes `2`, checks `2`, foreign keys `3` |
+| SQL Server migration | Apply `V95__support_close_search_attachments.sql` twice to isolated `T326Queue`, then run `backend/tools/t328-support-sqlserver-validation.sql` | PASS twice: lifecycle columns `6`, attachment table `1`, indexes `2`, checks `2`, foreign keys `3` |
 | Angular production build | `npm run build` | PASS; chat component budgets pass. Remaining property-payment CSS and STOMP/SockJS warnings are unrelated to T328 |
 | Static patch check | `git diff --check -- <T328 scoped files>` | PASS; line-ending notices only |
 

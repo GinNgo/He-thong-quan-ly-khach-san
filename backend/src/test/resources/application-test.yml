@@ -21,6 +21,10 @@ jwt:
   refresh-expiration: 604800000
 
 payment:
+  property:
+    encryption-key: test-property-payment-encryption-key
+  demo:
+    signing-secret: test-payment-demo-signing-secret
   vnpay:
     tmn-code: test_code
     hash-secret: test_hash

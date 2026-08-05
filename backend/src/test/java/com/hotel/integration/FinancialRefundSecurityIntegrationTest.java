@@ -34,10 +34,10 @@ import com.hotel.services.PropertyAccessService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
@@ -82,7 +82,7 @@ import static org.mockito.Mockito.when;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class FinancialRefundSecurityIntegrationTest {
 
-    @SpringBootConfiguration
+    @TestConfiguration(proxyBeanMethods = false)
     @EnableAutoConfiguration
     @EntityScan(basePackages = "com.hotel")
     @EnableJpaRepositories(basePackages = "com.hotel")
@@ -230,6 +230,7 @@ class FinancialRefundSecurityIntegrationTest {
     private PlatformFinancialTransaction createPlatformTransaction(Fixture fixture) {
         SubscriptionPlan plan = new SubscriptionPlan();
         plan.setCode("SEC-" + UUID.randomUUID());
+        plan.setFamilyCode(plan.getCode());
         plan.setNameVi("Security plan");
         plan.setNameEn("Security plan");
         plan.setBillingType("YEARLY");

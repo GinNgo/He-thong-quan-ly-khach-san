@@ -20,7 +20,7 @@ describe('ManagementPropertiesComponent', () => {
     const fixture = TestBed.createComponent(ManagementPropertiesComponent);
     fixture.detectChanges();
     const property: ManagedProperty = {
-      id: 10, code: 'HN-10', nameVi: 'LuxeStay Ha Noi', propertyType: 'HOTEL', address: 'Old',
+      id: 10, code: 'HN-10', nameVi: 'LuxeStay Ha Noi', propertyType: 'HOTEL', address: 'Old', addressLine: 'Old',
       provinceId: 1, wardId: 2, approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', operational: true, isDemo: false,
     };
     properties$.next([property]);
@@ -32,12 +32,14 @@ describe('ManagementPropertiesComponent', () => {
     fixture.componentInstance.form.patchValue({ nameVi: 'LuxeStay Capital', address: 'New address' });
     fixture.componentInstance.save();
     const body = updateProperty.mock.calls[0][1] as Record<string, unknown>;
-    expect(body['nameVi']).toBe('LuxeStay Capital');
-    expect(body['approvalStatus']).toBeUndefined();
-    expect(body['operationStatus']).toBeUndefined();
-    expect(body['isDemo']).toBeUndefined();
+    const profile = body['profile'] as Record<string, unknown>;
+    expect(profile['nameVi']).toBe('LuxeStay Capital');
+    expect(body['reason']).toBe('Property profile update');
+    expect(profile['approvalStatus']).toBeUndefined();
+    expect(profile['operationStatus']).toBeUndefined();
+    expect(profile['isDemo']).toBeUndefined();
 
-    update$.next({ ...property, nameVi: 'LuxeStay Capital', address: 'New address' });
+    update$.next({ ...property, nameVi: 'LuxeStay Capital', address: 'New address', addressLine: 'New address' });
     await fixture.whenStable();
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Đã lưu hồ sơ cơ sở.');

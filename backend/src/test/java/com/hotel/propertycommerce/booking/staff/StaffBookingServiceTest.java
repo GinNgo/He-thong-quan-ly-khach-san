@@ -85,7 +85,8 @@ class StaffBookingServiceTest {
         when(configurationRepository.findByHotelId(3L)).thenReturn(Optional.of(configuration));
         when(availabilityService.getNights(any(), any())).thenReturn(2L);
         when(availabilityService.calculateTotal(BigDecimal.valueOf(1_000_000), 2, 1)).thenReturn(BigDecimal.valueOf(2_000_000));
-        when(availabilityService.countAvailableRooms(any(), any(), any())).thenReturn(2L);
+        when(availabilityService.countAvailableRooms(
+                org.mockito.ArgumentMatchers.any(Long.class), any(), any())).thenReturn(2L);
         ReservationDTO created = new ReservationDTO(); created.setId(42L);
         when(reservationService.createStaffReservation(any(), any(), any(), any())).thenReturn(created);
         com.hotel.entities.Reservation entity = new com.hotel.entities.Reservation(); entity.setId(42L);

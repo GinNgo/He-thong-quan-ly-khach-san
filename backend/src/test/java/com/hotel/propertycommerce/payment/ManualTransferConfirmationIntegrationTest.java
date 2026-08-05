@@ -25,10 +25,10 @@ import com.hotel.security.FunctionCode;
 import com.hotel.services.PropertyAccessService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
@@ -60,7 +60,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 })
 class ManualTransferConfirmationIntegrationTest {
 
-    @SpringBootConfiguration
+    @TestConfiguration(proxyBeanMethods = false)
     @EnableAutoConfiguration
     @EntityScan(basePackages = "com.hotel")
     @EnableJpaRepositories(basePackages = "com.hotel")
@@ -105,47 +105,59 @@ class ManualTransferConfirmationIntegrationTest {
     void authorizedStaffConfirmationCreatesOneLedgerAndAuditEffect() {
         Fixture fixture = fixture("authorized");
         authenticate(fixture.staff(), Map.of(FunctionCode.PROPERTY_PAYMENT_CONFIRM_MANUAL, ActionCode.APPROVE));
+        long transactionCountBefore = transactionRepository.count();
+        long auditCountBefore = auditRepository.count();
+        long idempotencyCountBefore = idempotencyRepository.count();
 
         ManualTransferConfirmationService.ConfirmationResult result = confirmationService.confirm(command(
                 fixture.attempt().getPublicId(), "Bank statement reviewed by receptionist", "BANK-TRACE-A", "idem-a"));
 
         assertEquals(PaymentState.SUCCESS, result.status());
-        assertEquals(1, transactionRepository.findByAttemptIdOrderByOccurredAtAsc(fixture.attempt().getId()).size());
-        List<FinancialAuditEvent> events = auditRepository.findAll();
+        assertEquals(transactionCountBefore + 1, transactionRepository.count());
+        List<FinancialAuditEvent> events = auditRepository.findAll().stream()
+                .filter(event -> fixture.attempt().getPublicId().equals(event.getAggregateId()))
+                .toList();
         assertEquals(1, events.size());
         assertEquals("MANUAL_CONFIRMATION", events.get(0).getSource());
         assertEquals(fixture.attempt().getHotel().getId(), events.get(0).getHotelId());
-        assertEquals(1, idempotencyRepository.count());
+        assertEquals(auditCountBefore + 1, auditRepository.count());
+        assertEquals(idempotencyCountBefore + 1, idempotencyRepository.count());
     }
 
     @Test
     void missingApprovalPermissionFailsBeforeAnyFinancialMutation() {
         Fixture fixture = fixture("missing-approval");
         authenticate(fixture.staff(), Map.of(FunctionCode.PROPERTY_PAYMENT_CONFIRM_MANUAL, ActionCode.VIEW));
+        long transactionCountBefore = transactionRepository.count();
+        long auditCountBefore = auditRepository.count();
+        long idempotencyCountBefore = idempotencyRepository.count();
 
         FinancialException exception = assertThrows(FinancialException.class,
                 () -> confirmationService.confirm(command(
                         fixture.attempt().getPublicId(), "Review", "BANK-TRACE-B", "idem-b")));
 
         assertEquals(FinancialErrorCode.TENANT_ACCESS_DENIED, exception.code());
-        assertEquals(0, transactionRepository.count());
-        assertEquals(0, auditRepository.count());
-        assertEquals(0, idempotencyRepository.count());
+        assertEquals(transactionCountBefore, transactionRepository.count());
+        assertEquals(auditCountBefore, auditRepository.count());
+        assertEquals(idempotencyCountBefore, idempotencyRepository.count());
     }
 
     @Test
     void reservationOwnerCannotSelfConfirmEvenWhenAssignedApprovalPermission() {
         Fixture fixture = fixture("self-confirm");
         authenticate(fixture.customer(), Map.of(FunctionCode.PROPERTY_PAYMENT_CONFIRM_MANUAL, ActionCode.APPROVE));
+        long transactionCountBefore = transactionRepository.count();
+        long auditCountBefore = auditRepository.count();
+        long idempotencyCountBefore = idempotencyRepository.count();
 
         FinancialException exception = assertThrows(FinancialException.class,
                 () -> confirmationService.confirm(command(
                         fixture.attempt().getPublicId(), "I paid this transfer", "BANK-TRACE-C", "idem-c")));
 
         assertEquals(FinancialErrorCode.TENANT_ACCESS_DENIED, exception.code());
-        assertEquals(0, transactionRepository.count());
-        assertEquals(0, auditRepository.count());
-        assertEquals(0, idempotencyRepository.count());
+        assertEquals(transactionCountBefore, transactionRepository.count());
+        assertEquals(auditCountBefore, auditRepository.count());
+        assertEquals(idempotencyCountBefore, idempotencyRepository.count());
     }
 
     @Test
@@ -154,21 +166,27 @@ class ManualTransferConfirmationIntegrationTest {
         User otherStaff = userRepository.saveAndFlush(user("other-staff-" + UUID.randomUUID()));
         userPropertyRepository.saveAndFlush(assignment(otherStaff, fixture.otherHotel()));
         authenticate(otherStaff, Map.of(FunctionCode.PROPERTY_PAYMENT_CONFIRM_MANUAL, ActionCode.APPROVE));
+        long transactionCountBefore = transactionRepository.count();
+        long auditCountBefore = auditRepository.count();
+        long idempotencyCountBefore = idempotencyRepository.count();
 
         FinancialException exception = assertThrows(FinancialException.class,
                 () -> confirmationService.confirm(command(
                         fixture.attempt().getPublicId(), "Wrong property", "BANK-TRACE-D", "idem-d")));
 
         assertEquals(FinancialErrorCode.RESOURCE_NOT_FOUND, exception.code());
-        assertEquals(0, transactionRepository.count());
-        assertEquals(0, auditRepository.count());
-        assertEquals(0, idempotencyRepository.count());
+        assertEquals(transactionCountBefore, transactionRepository.count());
+        assertEquals(auditCountBefore, auditRepository.count());
+        assertEquals(idempotencyCountBefore, idempotencyRepository.count());
     }
 
     @Test
     void equivalentReplayReturnsOriginalEffectWithoutSecondLedgerOrAudit() {
         Fixture fixture = fixture("replay");
         authenticate(fixture.staff(), Map.of(FunctionCode.PROPERTY_PAYMENT_CONFIRM_MANUAL, ActionCode.APPROVE));
+        long transactionCountBefore = transactionRepository.count();
+        long auditCountBefore = auditRepository.count();
+        long idempotencyCountBefore = idempotencyRepository.count();
         ManualTransferConfirmationService.ConfirmCommand command = command(
                 fixture.attempt().getPublicId(), "Statement checked", "BANK-TRACE-E", "idem-e");
 
@@ -178,9 +196,9 @@ class ManualTransferConfirmationIntegrationTest {
         assertFalse(first.replayed());
         assertTrue(replay.replayed());
         assertEquals(first.transactionPublicId(), replay.transactionPublicId());
-        assertEquals(1, transactionRepository.findByAttemptIdOrderByOccurredAtAsc(fixture.attempt().getId()).size());
-        assertEquals(1, auditRepository.count());
-        assertEquals(1, idempotencyRepository.count());
+        assertEquals(transactionCountBefore + 1, transactionRepository.count());
+        assertEquals(auditCountBefore + 1, auditRepository.count());
+        assertEquals(idempotencyCountBefore + 1, idempotencyRepository.count());
     }
 
     private ManualTransferConfirmationService.ConfirmCommand command(

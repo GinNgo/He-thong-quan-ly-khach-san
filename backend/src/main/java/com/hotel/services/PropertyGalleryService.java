@@ -195,7 +195,7 @@ public class PropertyGalleryService {
     }
 
     private List<PropertyImage> sortedImages(Long propertyId) {
-        return new ArrayList<>(propertyImageRepository.findByHotelIdOrderBySortOrderAscIdAsc(propertyId));
+        return new ArrayList<>(propertyImageRepository.findByHotelIdOrderBySortOrderAsc(propertyId));
     }
 
     private void ensureUniqueUrl(List<PropertyImage> images, String imageUrl) {

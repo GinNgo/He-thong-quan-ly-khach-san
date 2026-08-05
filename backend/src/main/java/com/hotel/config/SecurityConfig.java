@@ -69,7 +69,7 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/**").hasAnyAuthority("SUPER_ADMIN", "ROLE_SUPER_ADMIN")
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/ws-chat/**").permitAll()
-                .requestMatchers("/api/notifications/**").permitAll()
+                .requestMatchers("/api/notifications/**").authenticated()
                 .requestMatchers("/api/subscriptions/plans").permitAll()
                 .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated()

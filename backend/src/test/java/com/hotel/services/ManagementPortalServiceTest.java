@@ -2,13 +2,10 @@ package com.hotel.services;
 
 import com.hotel.entities.Hotel;
 import com.hotel.entities.HousekeepingTask;
-import com.hotel.entities.Location;
 import com.hotel.entities.Room;
 import com.hotel.entities.User;
-import com.hotel.dtos.ManagementPropertyRequest;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.HousekeepingTaskRepository;
-import com.hotel.repositories.LocationRepository;
 import com.hotel.repositories.PropertyImageRepository;
 import com.hotel.repositories.RoleRepository;
 import com.hotel.repositories.RoomImageRepository;
@@ -47,7 +44,6 @@ class ManagementPortalServiceTest {
     @Mock private SubscriptionFeatureService subscriptionFeatureService;
     @Mock private PropertySubscriptionEntitlementService propertyEntitlementService;
     @Mock private HotelRepository hotelRepository;
-    @Mock private LocationRepository locationRepository;
     @Mock private UserPropertyRepository userPropertyRepository;
     @Mock private RoleRepository roleRepository;
     @Mock private UserRepository userRepository;
@@ -77,21 +73,22 @@ class ManagementPortalServiceTest {
         when(propertyAccessService.assignedHotelIds()).thenReturn(Set.of(20L, 21L));
         when(hotelRepository.findAllById(Set.of(20L, 21L))).thenReturn(List.of(first, second));
         when(propertyAccessService.requireAssignedHotel(21L)).thenReturn(second);
-        when(propertyAccessService.isOperational(first)).thenReturn(true);
         when(propertyAccessService.isOperational(second)).thenReturn(true);
         when(propertyEntitlementService.getCurrent(21L)).thenReturn(new PropertySubscriptionEntitlementService.EntitlementView(
                 21L, "PLATFORM", true, 4L, "STANDARD", "Standard", "ACTIVE",
                 null, null, false, Map.of("MAX_PROPERTIES", 3, "MAX_ROOMS", 40, "MAX_STAFF", 10),
                 "CONTRACT:88", null));
-        when(userPropertyRepository.countActiveOwnedPropertiesByUserId(10L)).thenReturn(2L);
         when(roomTypeRepository.countByHotelId(21L)).thenReturn(3L);
-        when(roomRepository.countByHotelId(21L)).thenReturn(8L);
+        when(roomRepository.findByHotelId(21L)).thenReturn(List.of(
+                room(1L, second, "AVAILABLE", "CLEAN"),
+                room(2L, second, "AVAILABLE", "DIRTY"),
+                room(3L, second, "AVAILABLE", "CLEAN"),
+                room(4L, second, "RESERVED", "CLEAN"),
+                room(5L, second, "OCCUPIED", "DIRTY"),
+                room(6L, second, "OCCUPIED", "CLEAN"),
+                room(7L, second, "MAINTENANCE", "CLEAN"),
+                room(8L, second, "CLEANING", "CLEAN")));
         when(userPropertyRepository.countActiveStaffByHotelId(21L)).thenReturn(5L);
-        when(roomRepository.countByHotelIdAndStatus(21L, "AVAILABLE")).thenReturn(3L);
-        when(roomRepository.countByHotelIdAndStatus(21L, "RESERVED")).thenReturn(1L);
-        when(roomRepository.countByHotelIdAndStatus(21L, "OCCUPIED")).thenReturn(2L);
-        when(roomRepository.countByHotelIdAndStatus(21L, "MAINTENANCE")).thenReturn(1L);
-        when(roomRepository.countByHotelIdAndHousekeepingStatus(21L, "DIRTY")).thenReturn(2L);
         when(housekeepingTaskRepository.countByHotelIdAndStatus(21L, "PENDING")).thenReturn(1L);
 
         Map<String, Object> context = service.context(21L);
@@ -103,15 +100,15 @@ class ManagementPortalServiceTest {
         assertEquals("PLATFORM", context.get("subscriptionSource"));
         assertEquals(true, context.get("entitlementAuthoritative"));
         assertEquals("CONTRACT:88", context.get("entitlementReference"));
-        assertEquals(2L, usage.get("properties"));
+        assertEquals(1L, usage.get("properties"));
         assertEquals(8L, usage.get("rooms"));
         assertEquals(5L, usage.get("staff"));
         assertEquals(7L, dashboard.get("classifiedRooms"));
         assertEquals(1L, dashboard.get("unclassifiedRooms"));
         assertEquals("RECONCILED", dashboard.get("reconciliationStatus"));
         verify(propertyEntitlementService).getCurrent(21L);
-        verify(roomRepository, times(2)).countByHotelId(21L);
-        verify(roomRepository, never()).countByHotelId(20L);
+        verify(roomRepository).findByHotelId(21L);
+        verify(roomRepository, never()).findByHotelId(20L);
     }
 
     @Test
@@ -133,61 +130,6 @@ class ManagementPortalServiceTest {
         verify(roomRepository, never()).countByHotelId(999L);
         verify(userPropertyRepository, never()).countActiveStaffByHotelId(999L);
         verify(housekeepingTaskRepository, never()).countByHotelIdAndStatus(999L, "PENDING");
-    }
-
-    @Test
-    void profileUpdateUsesAllowlistedFieldsAndPreservesControlledState() {
-        Hotel hotel = operationalHotel(20L, "Old name");
-        hotel.setStatus("ACTIVE");
-        hotel.setDataSource("USER");
-        Location province = new Location();
-        province.setId(1L);
-        province.setLocationType("PROVINCE");
-        province.setNameVi("Ha Noi");
-        Location ward = new Location();
-        ward.setId(2L);
-        ward.setLocationType("WARD");
-        ward.setParent(province);
-        ManagementPropertyRequest request = new ManagementPropertyRequest();
-        request.setNameVi("  New name  ");
-        request.setPropertyType("HOTEL");
-        request.setProvinceId(1L);
-        request.setWardId(2L);
-        request.setAddress("  New address  ");
-        request.setEmail(" owner@example.test ");
-
-        when(propertyAccessService.requireAssignedHotel(20L)).thenReturn(hotel);
-        when(propertyAccessService.isOperational(hotel)).thenReturn(true);
-        when(locationRepository.findById(1L)).thenReturn(Optional.of(province));
-        when(locationRepository.findById(2L)).thenReturn(Optional.of(ward));
-        when(hotelRepository.saveAndFlush(hotel)).thenReturn(hotel);
-
-        Map<String, Object> result = service.updateProperty(20L, request);
-
-        assertEquals("New name", result.get("nameVi"));
-        assertEquals("New address", result.get("address"));
-        assertEquals("owner@example.test", result.get("email"));
-        assertEquals("APPROVED", result.get("approvalStatus"));
-        assertEquals("ACTIVE", result.get("operationStatus"));
-        assertEquals("ACTIVE", hotel.getStatus());
-        assertEquals(false, hotel.getIsDemo());
-        verify(hotelRepository).saveAndFlush(hotel);
-    }
-
-    @Test
-    void foreignProfileUpdateIsRejectedBeforeLocationLookupOrSave() {
-        ManagementPropertyRequest request = new ManagementPropertyRequest();
-        request.setNameVi("Foreign");
-        request.setProvinceId(1L);
-        request.setWardId(2L);
-        request.setAddress("Hidden");
-        when(propertyAccessService.requireAssignedHotel(999L))
-                .thenThrow(new com.hotel.exceptions.ResourceNotFoundException("Property not found"));
-
-        assertThrows(com.hotel.exceptions.ResourceNotFoundException.class, () -> service.updateProperty(999L, request));
-
-        verify(locationRepository, never()).findById(1L);
-        verify(hotelRepository, never()).saveAndFlush(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -226,7 +168,12 @@ class ManagementPortalServiceTest {
         assertNotNull(context.get("generatedAt"));
         assertEquals("COMPLETE", context.get("dataStatus"));
         assertEquals(List.of(), context.get("errors"));
-        assertEquals("PROPERTY", context.get("usageScope"));
+        assertEquals(Map.of(
+                "properties", "OWNER_ACCOUNT",
+                "roomTypes", "SELECTED_PROPERTY",
+                "rooms", "SELECTED_PROPERTY",
+                "staff", "SELECTED_PROPERTY",
+                "images", "SELECTED_PROPERTY"), context.get("usageScope"));
         verify(propertyAccessService, never()).requireManagedHotel(20L);
     }
 

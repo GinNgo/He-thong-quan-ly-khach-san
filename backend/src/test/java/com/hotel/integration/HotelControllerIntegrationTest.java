@@ -8,6 +8,7 @@ import com.hotel.entities.User;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.services.HotelManagementService;
 import com.hotel.services.PropertyAccessService;
+import com.hotel.services.PropertyApprovalWorkflowService;
 import com.hotel.services.PropertyRegistrationService;
 import com.hotel.services.PropertySearchService;
 import com.hotel.services.PublicInventoryEligibilityPolicy;
@@ -72,6 +73,9 @@ class HotelControllerIntegrationTest {
 
     @MockBean
     private PropertyRegistrationService propertyRegistrationService;
+
+    @MockBean
+    private PropertyApprovalWorkflowService propertyApprovalWorkflowService;
 
     @MockBean
     private PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;

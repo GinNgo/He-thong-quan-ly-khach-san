@@ -1,6 +1,7 @@
 package com.hotel.services;
 
 import com.hotel.entities.Notification;
+import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.notifications.delivery.NotificationDeliveryOutbox;
 import com.hotel.notifications.delivery.NotificationDeliveryOutboxRepository;
 import com.hotel.notifications.preferences.NotificationChannel;
@@ -105,15 +106,19 @@ public class NotificationService {
         return Optional.of(sendUserNotificationOnce(
                 eventKey, username, userId, type, title, message));
     }
-    public List<Notification> getAdminNotifications() {
-        return notificationRepository.findByUserIdIsNullOrderByCreatedAtDesc();
+    public List<Notification> getNotificationsForUser(Long userId) {
+        return notificationRepository.findByUserIdOrUserIdIsNullOrderByCreatedAtDesc(userId);
     }
 
-    public void markAsRead(Long id) {
-        notificationRepository.findById(id).ifPresent(n -> {
-            n.setRead(true);
-            notificationRepository.save(n);
-        });
+    @Transactional
+    public void markAsRead(Long id, Long userId) {
+        Notification notification = notificationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
+        if (notification.getUserId() != null && !notification.getUserId().equals(userId)) {
+            throw new ResourceNotFoundException("Notification not found");
+        }
+        notification.setRead(true);
+        notificationRepository.save(notification);
     }
 
     private Notification newNotification(Long userId, String type, String title, String message) {

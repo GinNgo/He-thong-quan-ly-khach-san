@@ -2,6 +2,7 @@ package com.hotel.services;
 
 import com.hotel.dto.PropertySearchRequestDTO;
 import com.hotel.repositories.PropertyImageRepository;
+import com.hotel.repositories.LocationRepository;
 import com.hotel.repositories.RoomTypeRepository;
 import com.hotel.services.impl.PropertySearchServiceImpl;
 import jakarta.persistence.EntityManager;
@@ -10,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.env.Environment;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -32,7 +32,10 @@ class PropertySearchAmenityTest {
     @Mock private PropertyImageRepository propertyImageRepository;
     @Mock private RoomAvailabilityService roomAvailabilityService;
     @Mock private AmenityService amenityService;
-    @Mock private Environment environment;
+    @Mock private LocationRepository locationRepository;
+    @Mock private RoomAvailabilityPolicy roomAvailabilityPolicy;
+    @Mock private ProvinceCompatibilityService provinceCompatibilityService;
+    @Mock private PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
 
     @Test
     void amenityFiltersUseIndexedPropertyOrActiveRoomTypePredicatesAndPopulateBadges() {
@@ -49,15 +52,17 @@ class PropertySearchAmenityTest {
         when(dataQuery.setMaxResults(anyInt())).thenReturn(dataQuery);
         Object[] row = {10L, "hotel-10", "Hotel 10", "Address", null, 4, null, null,
                 "HOTEL", null, 0, "Đà Nẵng", "Hải Châu", null};
+        row = java.util.Arrays.copyOf(row, 20);
+        row[19] = 100L;
         when(dataQuery.getResultList()).thenReturn(java.util.Collections.singletonList(row));
         when(countQuery.getSingleResult()).thenReturn(1L);
-        when(roomTypeRepository.findByHotelId(10L)).thenReturn(List.of());
-        when(propertyImageRepository.findByHotelIdOrderBySortOrderAsc(10L)).thenReturn(List.of());
-        when(amenityService.publicDisplayNames(10L)).thenReturn(List.of("Wi-Fi miễn phí", "Hồ bơi"));
+        when(amenityService.publicDisplayNames(java.util.Set.of(10L)))
+                .thenReturn(java.util.Map.of(10L, List.of("Wi-Fi miễn phí", "Hồ bơi")));
 
         PropertySearchServiceImpl service = new PropertySearchServiceImpl(
-                entityManager, roomTypeRepository, propertyImageRepository,
-                roomAvailabilityService, amenityService, environment);
+                entityManager, locationRepository, roomTypeRepository, propertyImageRepository,
+                roomAvailabilityService, amenityService, roomAvailabilityPolicy,
+                provinceCompatibilityService, publicInventoryEligibilityPolicy);
         PropertySearchRequestDTO request = new PropertySearchRequestDTO();
         request.setAmenityIds(List.of(1L, 2L, 2L));
 

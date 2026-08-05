@@ -27,6 +27,7 @@ public class OperationalPolicyController {
     private final OperationalPolicyService service;
 
     @GetMapping("/public/{hotelId}/policies/current")
+    @PreAuthorize("permitAll()")
     public PublicOperationalPolicyDTO current(
             @PathVariable Long hotelId,
             @RequestParam(defaultValue = "vi") String locale,

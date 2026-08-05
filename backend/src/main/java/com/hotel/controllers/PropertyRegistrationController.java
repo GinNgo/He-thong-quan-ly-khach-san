@@ -44,6 +44,7 @@ public class PropertyRegistrationController {
     }
 
     @PostMapping("/convert")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PartnerRegistrationResponse> convertExistingCustomer(
             @Valid @RequestBody PartnerConversionRequest request,
             Authentication authentication) {

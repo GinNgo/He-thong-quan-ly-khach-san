@@ -128,7 +128,8 @@ class PropertySearchBoundedQueryIntegrationTest {
         assertThat(hundred.resultSize()).isEqualTo(100);
         assertThat(dated.resultSize()).isEqualTo(100);
         assertThat(hundred.statementCount()).isLessThanOrEqualTo(one.statementCount() + 1);
-        assertThat(dated.statementCount()).isLessThanOrEqualTo(hundred.statementCount() + 1);
+        // Dated availability adds fixed reservation and active-amendment aggregate queries.
+        assertThat(dated.statementCount()).isLessThanOrEqualTo(hundred.statementCount() + 2);
         assertThat(dated.statementCount()).isLessThanOrEqualTo(8);
     }
 

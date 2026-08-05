@@ -100,6 +100,7 @@ public class HotelController {
     }
 
     @GetMapping("/my-hotels")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<PropertyProfileDTO>> getMyHotels(
             @AuthenticationPrincipal com.hotel.security.CustomUserDetails userDetails) {
         if (userDetails == null) return ResponseEntity.status(401).build();

@@ -105,13 +105,13 @@ class PublicInventoryEligibilityPolicyTest {
     @Test
     void searchAndDetailUseTheSameProfileAwareEligibilityContract() {
         assertEquals(
-                "h.approval_status='APPROVED' AND h.operation_status='ACTIVE'",
+                "h.approval_status='APPROVED' AND h.operation_status='ACTIVE' AND h.status='ACTIVE'",
                 policy(false, "test").publicSearchPredicate("h"));
         assertEquals(
-                "h.approval_status='APPROVED' AND h.operation_status='ACTIVE' AND COALESCE(h.is_demo,0)=0",
+                "h.approval_status='APPROVED' AND h.operation_status='ACTIVE' AND h.status='ACTIVE' AND COALESCE(h.is_demo,0)=0",
                 policy(false, "production").publicSearchPredicate("h"));
         assertEquals(
-                "hotel.approval_status='APPROVED' AND hotel.operation_status='ACTIVE'",
+                "hotel.approval_status='APPROVED' AND hotel.operation_status='ACTIVE' AND hotel.status='ACTIVE'",
                 policy(true, "production").publicSearchPredicate("hotel"));
         assertThrows(IllegalArgumentException.class,
                 () -> policy(false, "production").publicSearchPredicate("h; DELETE"));

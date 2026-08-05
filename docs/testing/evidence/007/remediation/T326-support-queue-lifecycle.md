@@ -40,7 +40,7 @@ The real browser run first exposed two gaps that focused mocks could not prove: 
 
 ## Migration and recovery
 
-- `V60__tenant_support_queue_lifecycle.sql` is additive: it adds property, reservation, assignment, SLA, lifecycle, version and legacy-scope columns; creates support event storage, constraints and queue indexes; and backfills existing rows without deleting message content.
+- `V93__tenant_support_queue_lifecycle.sql` is additive: it adds property, reservation, assignment, SLA, lifecycle, version and legacy-scope columns; creates support event storage, constraints and queue indexes; and backfills existing rows without deleting message content.
 - The migration is rerunnable. Dynamic DDL/DML avoids SQL Server compile-time references to columns that do not exist before the conditional add.
 - Forward recovery is preferred: retain the additive schema and deploy corrected filters, constraints or backfill logic. Existing conversation/message rows remain readable by the V59 compatibility paths.
 - Dropping columns, foreign keys or event history after operators use the queue is destructive and was not attempted.

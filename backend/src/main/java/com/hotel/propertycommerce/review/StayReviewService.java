@@ -8,6 +8,7 @@ import com.hotel.paymentprovider.error.FinancialException;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.ReservationRepository;
 import com.hotel.services.PropertyAccessService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -26,6 +27,7 @@ public class StayReviewService {
     private final PropertyAccessService propertyAccessService;
     private final Clock clock;
 
+    @Autowired
     public StayReviewService(StayReviewRepository reviewRepository, ReservationRepository reservationRepository,
             HotelRepository hotelRepository, PropertyAccessService propertyAccessService) {
         this(reviewRepository, reservationRepository, hotelRepository, propertyAccessService, Clock.systemUTC());

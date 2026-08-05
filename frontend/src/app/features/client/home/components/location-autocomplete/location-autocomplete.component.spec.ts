@@ -2,7 +2,6 @@
 
 import { ChangeDetectorRef, ElementRef, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { BrowserTestingModule, platformBrowserTesting } from '@angular/platform-browser/testing';
 import { of } from 'rxjs';
 import { ClientApiService, SearchSuggestionGroups } from '../../../../../core/services/client-api.service';
 import { ImageFallbackService } from '../../../../../core/services/image-fallback.service';
@@ -21,14 +20,6 @@ describe('LocationAutocompleteComponent', () => {
     removeRecentSearch: ReturnType<typeof vi.fn>;
     clearRecentSearches: ReturnType<typeof vi.fn>;
   };
-
-  beforeAll(() => {
-    TestBed.initTestEnvironment(BrowserTestingModule, platformBrowserTesting());
-  });
-
-  afterAll(() => {
-    TestBed.resetTestEnvironment();
-  });
 
   beforeEach(() => {
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {

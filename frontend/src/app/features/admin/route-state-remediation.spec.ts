@@ -2,12 +2,15 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { ConfirmationService } from 'primeng/api';
 import { of, throwError } from 'rxjs';
 
 import { InvoiceService } from '../../core/services/invoice.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { SubscriptionService } from '../../core/services/subscription.service';
+import { PlatformBillingService } from '../../core/services/platform-billing.service';
+import { PermissionService } from '../../core/services/permission.service';
 import { InvoiceManagement } from './invoice-management/invoice-management';
 import { PropertyClaimsComponent } from './property-claims/property-claims.component';
 import { PropertyImportsComponent } from './property-imports/property-imports.component';
@@ -55,15 +58,17 @@ describe('admin route state remediation', () => {
     http.verify();
   });
 
-  it('shows independent plan and account-subscription errors with retries', async () => {
+  it('shows a retryable catalog error on the property-scoped subscription surface', async () => {
     await TestBed.configureTestingModule({
       imports: [SubscriptionPlansComponent],
       providers: [
         provideNoopAnimations(),
+        provideRouter([]),
         { provide: SubscriptionService, useValue: {
           getPlans: () => throwError(() => ({ error: { message: 'Catalog unavailable' } })),
-          getMySubscriptions: () => throwError(() => ({ error: { message: 'Assignments unavailable' } })),
         } },
+        { provide: PlatformBillingService, useValue: {} },
+        { provide: PermissionService, useValue: { hasPermission: () => false, isSuperAdmin: () => false } },
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(SubscriptionPlansComponent);
@@ -72,8 +77,7 @@ describe('admin route state remediation', () => {
     fixture.detectChanges();
 
     expect(text(fixture)).toContain('Catalog unavailable');
-    expect(text(fixture)).toContain('Assignments unavailable');
-    expect(fixture.nativeElement.querySelectorAll('.feedback-state__action')).toHaveLength(2);
+    expect(fixture.nativeElement.querySelectorAll('button')).toHaveLength(1);
   });
 
   it('shows invoice loading failures and does not render an empty table shell', async () => {

@@ -26,6 +26,7 @@ public class AmenityController {
     private final AmenityService amenityService;
 
     @GetMapping("/public/amenities")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<List<AmenityDTO>> publicCatalog() {
         return ResponseEntity.ok(amenityService.activeCatalog());
     }

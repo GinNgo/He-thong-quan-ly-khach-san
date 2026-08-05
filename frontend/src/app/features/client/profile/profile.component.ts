@@ -68,7 +68,7 @@ export class ProfileComponent implements OnInit {
   readonly profileForm = this.fb.nonNullable.group({
     fullName: ['', [Validators.required, Validators.maxLength(150)]],
     email: ['', [Validators.required, Validators.email]],
-    phone: ['', [Validators.maxLength(30), Validators.pattern(/^[0-9+().\\-\\s]*$/)]],
+    phone: ['', [Validators.maxLength(30), Validators.pattern(/^[0-9+().\s-]*$/)]],
     avatarUrl: ['']
   });
 

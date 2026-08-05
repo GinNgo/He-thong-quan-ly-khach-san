@@ -85,6 +85,27 @@ public class ReservationServiceTest {
     @Mock
     private PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
 
+    @Mock
+    private com.hotel.repositories.InvoiceRepository invoiceRepository;
+
+    @Mock
+    private com.hotel.repositories.PaymentRepository paymentRepository;
+
+    @Mock
+    private com.hotel.propertycommerce.invoice.InvoiceFinalizationService invoiceFinalizationService;
+
+    @Mock
+    private com.hotel.propertycommerce.checkout.CheckoutOperationsService checkoutOperationsService;
+
+    @Mock
+    private OperationalPolicyService operationalPolicyService;
+
+    @Mock
+    private OperationalAuditService operationalAuditService;
+
+    @Mock
+    private com.hotel.propertycommerce.stay.CheckInPolicy checkInPolicy;
+
     @InjectMocks
     private ReservationService reservationService;
 
@@ -112,6 +133,7 @@ public class ReservationServiceTest {
         mockReservation.setStatus("PENDING_PAYMENT");
         mockReservation.setCheckInDate(LocalDate.now());
         mockReservation.setCheckOutDate(LocalDate.now().plusDays(2));
+        lenient().when(operationalPolicyService.capture(any(), any())).thenReturn(Optional.empty());
     }
 
     @Test
@@ -249,7 +271,8 @@ public class ReservationServiceTest {
 
         verify(roomTypeRepository).findByIdForUpdate(5L);
         verify(publicInventoryEligibilityPolicy).requireSellableRoomTypeForBooking(roomType);
-        verify(roomAvailabilityService, never()).countAvailableRooms(any(), any(), any());
+        verify(roomAvailabilityService, never()).countAvailableRooms(
+                org.mockito.ArgumentMatchers.any(Long.class), any(), any());
         verify(reservationRepository, never()).save(any());
         verify(reservationHoldService, never()).createHold(any(), any(), anyInt(), any());
     }
@@ -276,16 +299,15 @@ public class ReservationServiceTest {
         verify(reservationHoldService, never()).createHold(any(), any(), anyInt(), any());
     }
     @Test
-    void testCheckIn_Success() {
+    void legacyStatusUpdateRejectsCheckInSoDedicatedWorkflowCannotBeBypassed() {
         when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
         when(reservationRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(mockReservation));
-        when(reservationDetailRepository.findByReservationId(1L)).thenReturn(java.util.Collections.emptyList());
-        when(reservationRepository.save(any(Reservation.class))).thenReturn(mockReservation);
-        ReservationDTO updatedReservation = reservationService.updateReservationStatus(1L, "CHECKED_IN");
 
-        assertNotNull(updatedReservation);
-        assertEquals("CHECKED_IN", updatedReservation.getStatus());
-        verify(reservationRepository).save(any(Reservation.class));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> reservationService.updateReservationStatus(1L, "CHECKED_IN"));
+
+        assertTrue(exception.getMessage().contains("dedicated check-in endpoint"));
+        verify(reservationRepository, never()).save(any(Reservation.class));
     }
 
     @Test
