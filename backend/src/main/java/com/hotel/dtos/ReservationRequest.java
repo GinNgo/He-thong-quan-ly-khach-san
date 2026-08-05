@@ -16,6 +16,7 @@ public class ReservationRequest {
     private String firstName;
     private String lastName;
     private String phone;
+    private Long operationalPolicyVersion;
 
     // Getters and Setters omitted for brevity
     public Long getRoomTypeId() { return roomTypeId; }
@@ -53,4 +54,7 @@ public class ReservationRequest {
 
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
+
+    public Long getOperationalPolicyVersion() { return operationalPolicyVersion; }
+    public void setOperationalPolicyVersion(Long operationalPolicyVersion) { this.operationalPolicyVersion = operationalPolicyVersion; }
 }

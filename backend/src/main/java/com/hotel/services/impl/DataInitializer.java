@@ -197,9 +197,9 @@ public class DataInitializer implements CommandLineRunner {
         role.setCode(code);
         role.setName(name);
         role.setDescription(description);
-        role.setStatus("ACTIVE");
-        role.setSystemRole(Set.of("SUPER_ADMIN", "ADMIN", "CUSTOMER", "PROPERTY_OWNER", "HOTEL_ADMIN",
-                "HOTEL_MANAGER", "RECEPTIONIST", "ACCOUNTANT").contains(code));
+        role.setStatus(Role.ACTIVE_STATUS);
+        role.setSystemRole(Role.isSystemCode(code));
+        role.enforceSystemIntegrity();
         return roleRepository.save(role);
     }
 

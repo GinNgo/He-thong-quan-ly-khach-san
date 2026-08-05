@@ -28,7 +28,11 @@ class TenantFilterArchitectureTest {
                 "financialAuditTenantFilter",
                 "housekeepingTaskTenantFilter",
                 "hotelServiceTenantFilter",
+                "propertyMediaTenantFilter",
                 "propertyImageTenantFilter",
+                "propertyAmenityTenantFilter",
+                "roomTypeAmenityTenantFilter",
+                "propertyPolicyTenantFilter",
                 "roomTenantFilter",
                 "roomTypeTenantFilter",
                 "reservationTenantFilter",
@@ -52,7 +56,11 @@ class TenantFilterArchitectureTest {
         Map<String, String> entityFilters = Map.ofEntries(
                 Map.entry("HousekeepingTask.java", "housekeepingTaskTenantFilter"),
                 Map.entry("HotelService.java", "hotelServiceTenantFilter"),
+                Map.entry("PropertyMedia.java", "propertyMediaTenantFilter"),
                 Map.entry("PropertyImage.java", "propertyImageTenantFilter"),
+                Map.entry("PropertyAmenity.java", "propertyAmenityTenantFilter"),
+                Map.entry("RoomTypeAmenity.java", "roomTypeAmenityTenantFilter"),
+                Map.entry("OperationalPolicyVersion.java", "propertyPolicyTenantFilter"),
                 Map.entry("Room.java", "roomTenantFilter"),
                 Map.entry("RoomType.java", "roomTypeTenantFilter"),
                 Map.entry("Reservation.java", "reservationTenantFilter"));

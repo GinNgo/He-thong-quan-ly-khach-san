@@ -8,13 +8,40 @@ export interface Role {
   id: number;
   code: string;
   name: string;
-  description: string;
-  status?: string;
+  description?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
   systemRole?: boolean;
   userCount?: number;
   roleType?: 'SYSTEM' | 'CUSTOM';
   updatedAt?: string;
   version?: number;
+}
+
+export const SYSTEM_ROLE_CODES = new Set([
+  'SUPER_ADMIN', 'ADMIN', 'CUSTOMER', 'PROPERTY_OWNER', 'HOTEL_ADMIN',
+  'HOTEL_MANAGER', 'RECEPTIONIST', 'ACCOUNTANT'
+]);
+
+export function isGovernedSystemRole(role: Role | null | undefined): boolean {
+  return Boolean(role?.systemRole)
+    || role?.roleType === 'SYSTEM'
+    || SYSTEM_ROLE_CODES.has((role?.code || '').trim().toUpperCase());
+}
+
+export interface CreateRoleRequest {
+  code: string;
+  name: string;
+  description?: string;
+  reason: string;
+}
+
+export interface UpdateRoleRequest extends CreateRoleRequest {
+  expectedVersion: number;
+}
+
+export interface RoleLifecycleRequest {
+  expectedVersion: number;
+  reason: string;
 }
 
 export interface AppModule {
@@ -63,20 +90,26 @@ export class RoleService {
     );
   }
 
-  createRole(role: any): Observable<Role> {
+  createRole(role: CreateRoleRequest): Observable<Role> {
     return this.http.post<any>(this.apiUrl, role).pipe(
       map(response => response?.data ?? response)
     );
   }
 
-  updateRole(id: number, role: any): Observable<Role> {
+  updateRole(id: number, role: UpdateRoleRequest): Observable<Role> {
     return this.http.put<any>(`${this.apiUrl}/${id}`, role).pipe(
       map(response => response?.data ?? response)
     );
   }
 
-  deleteRole(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  deleteRole(id: number, request: RoleLifecycleRequest): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`, { body: request });
+  }
+
+  reactivateRole(id: number, request: RoleLifecycleRequest): Observable<Role> {
+    return this.http.post<any>(`${this.apiUrl}/${id}/reactivate`, request).pipe(
+      map(response => response?.data ?? response)
+    );
   }
 
   getRolePermissionsTree(roleId: number): Observable<AppModule[]> {

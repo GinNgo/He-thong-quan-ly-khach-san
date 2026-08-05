@@ -6,6 +6,7 @@ import { ActivatedRoute, ParamMap, Router, convertToParamMap, provideRouter } fr
 import { of, Subject, throwError } from 'rxjs';
 import { AuthService } from '../../../core/services/auth';
 import { ClientApiService } from '../../../core/services/client-api.service';
+import { OperationalPolicyService } from '../../../core/services/operational-policy.service';
 import { PropertyClaimResponse, PropertyClaimService } from '../../../core/services/property-claim.service';
 import { HotelDetailComponent } from './hotel-detail.component';
 
@@ -34,6 +35,7 @@ describe('HotelDetailComponent', () => {
         { provide: AuthService, useValue: auth },
         { provide: ClientApiService, useValue: api },
         { provide: PropertyClaimService, useValue: claims },
+        { provide: OperationalPolicyService, useValue: { current: vi.fn(() => of(null)) } },
         { provide: ActivatedRoute, useValue: { queryParams: of({}), paramMap: params$, snapshot: { fragment: null } } }
       ]
     }).compileComponents();

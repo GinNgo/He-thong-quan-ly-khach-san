@@ -11,6 +11,7 @@ import { StickySearchBarComponent } from '../../../client/home/components/sticky
 import { HomeSearchStateService } from '../../../client/home/services/home-search-state.service';
 import { PropertyResultCardComponent } from '../../components/property-result-card/property-result-card';
 import { FilterState, SearchFilterSidebarComponent } from '../../components/search-filter-sidebar/search-filter-sidebar';
+import { Amenity, AmenityService } from '../../../../core/services/amenity.service';
 
 @Component({
   selector: 'app-property-search-page', standalone: true,
@@ -29,13 +30,14 @@ import { FilterState, SearchFilterSidebarComponent } from '../../components/sear
         </header>
 
         <div class="content-grid">
-          <div class="sidebar"><app-search-filter-sidebar [initialState]="currentFilterState" (filtersChanged)="onFiltersChanged($event)"></app-search-filter-sidebar></div>
+          <div class="sidebar"><app-search-filter-sidebar [initialState]="currentFilterState" [amenityOptions]="amenities()" (filtersChanged)="onFiltersChanged($event)"></app-search-filter-sidebar></div>
           <section class="results" [attr.aria-busy]="isLoading()">
             <div class="result-tools">
               <div class="chips">
                 <button *ngFor="let type of currentFilterState.propertyTypes" type="button" (click)="removePropertyType(type)">{{ propertyTypeLabel(type) }} <i class="pi pi-times"></i></button>
                 <button *ngIf="currentFilterState.starRatings.length" type="button" (click)="removeStarRatings()">{{ currentFilterState.starRatings.join(', ') }} sao <i class="pi pi-times"></i></button>
                 <button *ngIf="currentFilterState.minReviewScore" type="button" (click)="removeReviewScore()">{{ currentFilterState.minReviewScore }}+ điểm <i class="pi pi-times"></i></button>
+                <button *ngFor="let amenityId of currentFilterState.amenityIds" type="button" (click)="removeAmenity(amenityId)">{{ amenityName(amenityId) }} <i class="pi pi-times"></i></button>
                 <button *ngIf="hasPriceFilter" type="button" (click)="removePriceFilter()">{{ priceChip }} <i class="pi pi-times"></i></button>
                 <button *ngIf="activeFilterCount" type="button" class="clear-chip" (click)="clearAllFilters()">Xóa tất cả</button>
               </div>
@@ -64,7 +66,7 @@ import { FilterState, SearchFilterSidebarComponent } from '../../components/sear
 
       <div *ngIf="mobileFilterVisible" class="filter-drawer" role="dialog" aria-modal="true" aria-label="Bộ lọc">
         <header><h2>Bộ lọc</h2><button type="button" (click)="mobileFilterVisible=false" aria-label="Đóng"><i class="pi pi-times"></i></button></header>
-        <app-search-filter-sidebar [initialState]="currentFilterState" (filtersChanged)="onFiltersChanged($event); mobileFilterVisible=false"></app-search-filter-sidebar>
+        <app-search-filter-sidebar [initialState]="currentFilterState" [amenityOptions]="amenities()" (filtersChanged)="onFiltersChanged($event); mobileFilterVisible=false"></app-search-filter-sidebar>
       </div>
     </main>
   `,
@@ -75,25 +77,25 @@ import { FilterState, SearchFilterSidebarComponent } from '../../components/sear
   `]
 })
 export class PropertySearchPageComponent implements OnInit, OnDestroy {
-  private readonly route=inject(ActivatedRoute); private readonly router=inject(Router); private readonly api=inject(ClientApiService);
+  private readonly route=inject(ActivatedRoute); private readonly router=inject(Router); private readonly api=inject(ClientApiService); private readonly amenityApi=inject(AmenityService);
   readonly stateService=inject(HomeSearchStateService); private readonly destroy$=new Subject<void>(); private lastParams:Params={};
-  properties=signal<Hotel[]>([]); totalItems=signal(0); isLoading=signal(true); errorMessage=signal(''); pageNumber=signal(1); pageSize=signal(20); displayLocation=signal(''); mobileFilterVisible=false;
+  properties=signal<Hotel[]>([]); amenities=signal<Amenity[]>([]); totalItems=signal(0); isLoading=signal(true); errorMessage=signal(''); pageNumber=signal(1); pageSize=signal(20); displayLocation=signal(''); mobileFilterVisible=false;
   currentFilterState:FilterState={minPrice:0,maxPrice:10000000,propertyTypes:[],starRatings:[],minReviewScore:null,amenityIds:[]};
   selectedSort='POPULAR'; readonly sortOptions=[{label:'Được đề xuất',value:'POPULAR'},{label:'Giá thấp nhất',value:'PRICE_ASC'},{label:'Giá cao nhất',value:'PRICE_DESC'},{label:'Đánh giá cao',value:'RATING'},{label:'Gần nhất',value:'NEAREST'}];
 
-  ngOnInit():void{this.route.queryParams.pipe(takeUntil(this.destroy$),tap(params=>{this.lastParams=params;this.syncFromUrl(params);this.isLoading.set(true);this.errorMessage.set('');}),switchMap(params=>this.api.searchHotels(this.request(params)).pipe(catchError(()=>{this.errorMessage.set('Không thể kết nối dịch vụ tìm kiếm. Trạng thái của bạn vẫn được giữ nguyên.');return of({content:[],totalElements:0,totalPages:0,number:0,size:this.pageSize()});})))).subscribe(res=>{this.properties.set(res.content||[]);this.totalItems.set(res.totalElements||0);this.isLoading.set(false);});}
+  ngOnInit():void{this.amenityApi.publicCatalog().pipe(catchError(()=>of([])),takeUntil(this.destroy$)).subscribe(items=>this.amenities.set(items));this.route.queryParams.pipe(takeUntil(this.destroy$),tap(params=>{this.lastParams=params;this.syncFromUrl(params);this.isLoading.set(true);this.errorMessage.set('');}),switchMap(params=>this.api.searchHotels(this.request(params)).pipe(catchError(()=>{this.errorMessage.set('Không thể kết nối dịch vụ tìm kiếm. Trạng thái của bạn vẫn được giữ nguyên.');return of({content:[],totalElements:0,totalPages:0,number:0,size:this.pageSize()});})))).subscribe(res=>{this.properties.set(res.content||[]);this.totalItems.set(res.totalElements||0);this.isLoading.set(false);});}
   get staySummary():string{const s=this.stateService.state();return `${this.formatDateDisplay(s.checkInDate)} - ${this.formatDateDisplay(s.checkOutDate)}`;}
-  get activeFilterCount():number{return this.currentFilterState.propertyTypes.length+this.currentFilterState.starRatings.length+(this.currentFilterState.minReviewScore?1:0)+(this.hasPriceFilter?1:0);}
+  get activeFilterCount():number{return this.currentFilterState.propertyTypes.length+this.currentFilterState.starRatings.length+this.currentFilterState.amenityIds.length+(this.currentFilterState.minReviewScore?1:0)+(this.hasPriceFilter?1:0);}
   get hasPriceFilter():boolean{return this.currentFilterState.minPrice>0||this.currentFilterState.maxPrice<10000000;}
   get priceChip():string{return `${this.vnd(this.currentFilterState.minPrice)} - ${this.currentFilterState.maxPrice>=10000000?'10.000.000 ₫+':this.vnd(this.currentFilterState.maxPrice)}`;}
-  onFiltersChanged(f:FilterState):void{this.updateRoute({minPrice:f.minPrice>0?f.minPrice:null,maxPrice:f.maxPrice<10000000?f.maxPrice:null,propertyTypes:f.propertyTypes.length?f.propertyTypes.join(','):null,starRatings:f.starRatings.length?f.starRatings.join(','):null,minReviewScore:f.minReviewScore,pageNumber:1});}
+  onFiltersChanged(f:FilterState):void{this.updateRoute({minPrice:f.minPrice>0?f.minPrice:null,maxPrice:f.maxPrice<10000000?f.maxPrice:null,propertyTypes:f.propertyTypes.length?f.propertyTypes.join(','):null,starRatings:f.starRatings.length?f.starRatings.join(','):null,amenityIds:f.amenityIds.length?f.amenityIds.join(','):null,minReviewScore:f.minReviewScore,pageNumber:1});}
   onSortChange():void{this.updateRoute({sortBy:this.selectedSort,pageNumber:1});} onPageChange(e:any):void{this.updateRoute({pageNumber:e.page+1,pageSize:e.rows});window.scrollTo({top:0,behavior:'smooth'});}
-  removePropertyType(t:string):void{const v=this.currentFilterState.propertyTypes.filter(x=>x!==t);this.updateRoute({propertyTypes:v.length?v.join(','):null,pageNumber:1});} removeStarRatings():void{this.updateRoute({starRatings:null,pageNumber:1});} removeReviewScore():void{this.updateRoute({minReviewScore:null,pageNumber:1});} removePriceFilter():void{this.updateRoute({minPrice:null,maxPrice:null,pageNumber:1});}
+  removePropertyType(t:string):void{const v=this.currentFilterState.propertyTypes.filter(x=>x!==t);this.updateRoute({propertyTypes:v.length?v.join(','):null,pageNumber:1});} removeStarRatings():void{this.updateRoute({starRatings:null,pageNumber:1});} removeReviewScore():void{this.updateRoute({minReviewScore:null,pageNumber:1});} removeAmenity(id:number):void{const ids=this.currentFilterState.amenityIds.filter(value=>value!==id);this.updateRoute({amenityIds:ids.length?ids.join(','):null,pageNumber:1});} removePriceFilter():void{this.updateRoute({minPrice:null,maxPrice:null,pageNumber:1});}
   clearAllFilters():void{this.updateRoute({minPrice:null,maxPrice:null,propertyTypes:null,starRatings:null,minReviewScore:null,amenityIds:null,pageNumber:1});} retry():void{this.updateRoute({_retry:Date.now()});}
   goToDetails(id:number):void{this.router.navigate(['/hotel',id],{queryParams:{...this.stateService.bookingQueryParams()},fragment:'rooms'});} trackProperty(_:number,p:Hotel):number{return p.id;}
-  propertyTypeLabel(t:string):string{return ({HOTEL:'Khách sạn',RESORT:'Khu nghỉ dưỡng',APARTMENT:'Căn hộ',VILLA:'Biệt thự',HOMESTAY:'Homestay',MOTEL:'Nhà nghỉ',GUEST_HOUSE:'Nhà khách',HOSTEL:'Hostel'} as Record<string,string>)[t]||t;}
-  private syncFromUrl(p:Params):void{const name=p['displayLocation']||p['keyword']||'Tất cả chỗ nghỉ';this.displayLocation.set(name);this.stateService.updateLocation(p['keyword']||'',name,p['provinceId']?Number(p['provinceId']):null,p['wardId']?Number(p['wardId']):null);if(p['checkInDate'])this.stateService.updateDates(new Date(`${p['checkInDate']}T00:00:00`),p['checkOutDate']?new Date(`${p['checkOutDate']}T00:00:00`):null);if(p['adultCount']||p['roomCount'])this.stateService.updateGuests(Number(p['adultCount'])||1,Number(p['childCount'])||0,Number(p['roomCount'])||1);this.pageNumber.set(Number(p['pageNumber'])||1);this.pageSize.set(Number(p['pageSize'])||20);this.selectedSort=p['sortBy']||'POPULAR';this.currentFilterState={minPrice:Number(p['minPrice'])||0,maxPrice:p['maxPrice']?Number(p['maxPrice']):10000000,propertyTypes:this.list(p['propertyTypes']),starRatings:this.list(p['starRatings']).map(Number),minReviewScore:p['minReviewScore']?Number(p['minReviewScore']):null,amenityIds:[]};}
-  private request(p:Params):any{const r:any={...p,pageNumber:this.pageNumber(),pageSize:this.pageSize(),sortBy:this.selectedSort,propertyTypes:this.currentFilterState.propertyTypes,starRatings:this.currentFilterState.starRatings,minReviewScore:this.currentFilterState.minReviewScore,minPrice:this.currentFilterState.minPrice||null,maxPrice:this.currentFilterState.maxPrice<10000000?this.currentFilterState.maxPrice:null};delete r['_retry'];if(!r.propertyTypes.length)delete r.propertyTypes;if(!r.starRatings.length)delete r.starRatings;return r;}
+  propertyTypeLabel(t:string):string{return ({HOTEL:'Khách sạn',RESORT:'Khu nghỉ dưỡng',APARTMENT:'Căn hộ',VILLA:'Biệt thự',HOMESTAY:'Homestay',MOTEL:'Nhà nghỉ',GUEST_HOUSE:'Nhà khách',HOSTEL:'Hostel'} as Record<string,string>)[t]||t;} amenityName(id:number):string{return this.amenities().find(item=>item.id===id)?.nameVi||`Tiện nghi #${id}`;}
+  private syncFromUrl(p:Params):void{const name=p['displayLocation']||p['keyword']||'Tất cả chỗ nghỉ';this.displayLocation.set(name);this.stateService.updateLocation(p['keyword']||'',name,p['provinceId']?Number(p['provinceId']):null,p['wardId']?Number(p['wardId']):null);if(p['checkInDate'])this.stateService.updateDates(new Date(`${p['checkInDate']}T00:00:00`),p['checkOutDate']?new Date(`${p['checkOutDate']}T00:00:00`):null);if(p['adultCount']||p['roomCount'])this.stateService.updateGuests(Number(p['adultCount'])||1,Number(p['childCount'])||0,Number(p['roomCount'])||1);this.pageNumber.set(Number(p['pageNumber'])||1);this.pageSize.set(Number(p['pageSize'])||20);this.selectedSort=p['sortBy']||'POPULAR';this.currentFilterState={minPrice:Number(p['minPrice'])||0,maxPrice:p['maxPrice']?Number(p['maxPrice']):10000000,propertyTypes:this.list(p['propertyTypes']),starRatings:this.list(p['starRatings']).map(Number),minReviewScore:p['minReviewScore']?Number(p['minReviewScore']):null,amenityIds:this.list(p['amenityIds']).map(Number).filter(Number.isFinite)};}
+  private request(p:Params):any{const r:any={...p,pageNumber:this.pageNumber(),pageSize:this.pageSize(),sortBy:this.selectedSort,propertyTypes:this.currentFilterState.propertyTypes,starRatings:this.currentFilterState.starRatings,amenityIds:this.currentFilterState.amenityIds,minReviewScore:this.currentFilterState.minReviewScore,minPrice:this.currentFilterState.minPrice||null,maxPrice:this.currentFilterState.maxPrice<10000000?this.currentFilterState.maxPrice:null};delete r['_retry'];if(!r.propertyTypes.length)delete r.propertyTypes;if(!r.starRatings.length)delete r.starRatings;if(!r.amenityIds.length)delete r.amenityIds;return r;}
   private updateRoute(q:Params):void{this.router.navigate([],{relativeTo:this.route,queryParams:q,queryParamsHandling:'merge'});} private list(v:any):string[]{return v?String(v).split(',').filter(Boolean):[];} private vnd(v:number):string{return `${new Intl.NumberFormat('vi-VN').format(v)} ₫`;} private formatDateDisplay(v:Date|null):string{return v?new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'}).format(v):'Chưa chọn';}
   ngOnDestroy():void{this.destroy$.next();this.destroy$.complete();}
 }

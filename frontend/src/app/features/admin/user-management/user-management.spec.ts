@@ -1,14 +1,15 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
-import { ClientApiService } from '@app/core/services/client-api.service';
 import { RoleService } from '@app/core/services/role.service';
 import { User, UserService } from '@app/core/services/user';
+import { PermissionService } from '@app/core/services/permission.service';
 import { UserManagement } from './user-management';
 
 describe('UserManagement staff lifecycle', () => {
   const staff: User = {
     id: 42,
+    version: 7,
     username: 'staff-42',
     email: 'staff42@example.com',
     fullName: 'Nguyen Staff',
@@ -27,18 +28,37 @@ describe('UserManagement staff lifecycle', () => {
     ],
   };
 
+  const router = { url: '/admin/users', navigate: vi.fn() };
+  const permissionService = { hasPermission: vi.fn(() => true) };
+
   let userService: {
     getUsers: ReturnType<typeof vi.fn>;
+    getStaff: ReturnType<typeof vi.fn>;
+    getStaffProperties: ReturnType<typeof vi.fn>;
+    getStaffRoles: ReturnType<typeof vi.fn>;
     createUser: ReturnType<typeof vi.fn>;
+    createStaff: ReturnType<typeof vi.fn>;
+    updateStaff: ReturnType<typeof vi.fn>;
     updateUser: ReturnType<typeof vi.fn>;
     deactivateStaff: ReturnType<typeof vi.fn>;
     reactivateStaff: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     userService = {
       getUsers: vi.fn(() => of([staff])),
+      getStaff: vi.fn(() => of([staff])),
+      getStaffProperties: vi.fn(() => of([
+        { id: 10, name: 'LuxeStay Da Nang' },
+        { id: 11, name: 'LuxeStay Hue' },
+      ])),
+      getStaffRoles: vi.fn(() => of([
+        { id: 3, code: 'RECEPTIONIST', name: 'Le tan' },
+      ])),
       createUser: vi.fn(() => of(staff)),
+      createStaff: vi.fn(() => of(staff)),
+      updateStaff: vi.fn(() => of(staff)),
       updateUser: vi.fn(() => of(staff)),
       deactivateStaff: vi.fn(() => of(staff)),
       reactivateStaff: vi.fn(() => of(staff)),
@@ -49,11 +69,12 @@ describe('UserManagement staff lifecycle', () => {
       providers: [
         { provide: UserService, useValue: userService },
         { provide: RoleService, useValue: { getRoles: () => of([]) } },
-        { provide: ClientApiService, useValue: { searchHotels: () => of({ content: [] }) } },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { data: { userType: 'STAFF' } }, data: of({ userType: 'STAFF' }) },
         },
+        { provide: Router, useValue: router },
+        { provide: PermissionService, useValue: permissionService },
       ],
     }).compileComponents();
   });
@@ -85,6 +106,119 @@ describe('UserManagement staff lifecycle', () => {
     expect(userService.reactivateStaff).toHaveBeenCalledWith(42, {
       hotelId: 11,
       reason: 'New seasonal contract',
+      expectedVersion: 7,
+    });
+  }, 15000);
+
+  it('loads the tenant-scoped staff and property options instead of public hotel search data', () => {
+    const fixture = TestBed.createComponent(UserManagement);
+    fixture.detectChanges();
+
+    expect(userService.getStaff).toHaveBeenCalledTimes(1);
+    expect(userService.getStaffProperties).toHaveBeenCalledTimes(1);
+    expect(userService.getStaffRoles).toHaveBeenCalledTimes(1);
+    expect(userService.getUsers).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.hotels.map(hotel => hotel.id)).toEqual([10, 11]);
+  });
+
+  it('does not submit a staff account with an invalid initial password', () => {
+    const fixture = TestBed.createComponent(UserManagement);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    component.openNew();
+    component.userForm = {
+      ...component.userForm,
+      username: 'new-staff',
+      email: 'new-staff@example.test',
+      password: 'short',
+      fullName: 'New Staff',
+      roleIds: [3],
+      hotelId: 10,
+    };
+    component.saveUser();
+
+    expect(userService.createStaff).not.toHaveBeenCalled();
+    expect(component.saving).toBe(false);
+  });
+
+  it('submits staff creation through the dedicated validated endpoint', () => {
+    const fixture = TestBed.createComponent(UserManagement);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    component.openNew();
+    component.userForm = {
+      ...component.userForm,
+      username: '  new-staff  ',
+      email: '  NEW-STAFF@example.test  ',
+      password: 'StrongPass1',
+      fullName: '  New Staff  ',
+      phone: ' 0901000000 ',
+      roleIds: [3],
+      hotelId: 10,
+    };
+    component.saveUser();
+
+    expect(userService.createStaff).toHaveBeenCalledWith({
+      username: 'new-staff',
+      email: 'NEW-STAFF@example.test',
+      password: 'StrongPass1',
+      fullName: 'New Staff',
+      phone: '0901000000',
+      roleIds: [3],
+      hotelId: 10,
+    });
+    expect(userService.createUser).not.toHaveBeenCalled();
+  });
+
+  it('requires a reason before moving staff to another property', () => {
+    const fixture = TestBed.createComponent(UserManagement);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    component.editUser(staff);
+    component.userForm.hotelId = 11;
+    component.userForm.assignmentReason = '';
+    component.userForm.changeReason = 'Approved profile update';
+    component.saveUser();
+
+    expect(userService.updateStaff).not.toHaveBeenCalled();
+  });
+
+  it('submits a validated property move through the dedicated staff endpoint', () => {
+    const fixture = TestBed.createComponent(UserManagement);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    component.editUser(staff);
+    component.userForm.hotelId = 11;
+    component.userForm.assignmentReason = 'Transfer to Hue property';
+    component.userForm.changeReason = 'Approved role and property update';
+    component.userForm.password = '';
+    component.saveUser();
+
+    expect(userService.updateStaff).toHaveBeenCalledWith(42, {
+      fullName: 'Nguyen Staff',
+      phone: null,
+      password: null,
+      roleIds: [3],
+      hotelId: 11,
+      assignmentReason: 'Transfer to Hue property',
+      expectedVersion: 7,
+      changeReason: 'Approved role and property update',
+    });
+    expect(userService.updateUser).not.toHaveBeenCalled();
+  });
+
+  it('opens tenant-safe audit history for the selected staff account', () => {
+    const fixture = TestBed.createComponent(UserManagement);
+    fixture.detectChanges();
+
+    fixture.componentInstance.openHistory(staff);
+
+    expect(router.navigate).toHaveBeenCalledWith(['/admin/audit-log'], {
+      queryParams: { domain: 'STAFF', aggregateType: 'USER', aggregateId: 42 },
     });
   });
 });

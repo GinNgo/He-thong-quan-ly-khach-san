@@ -1,24 +1,31 @@
 package com.hotel.dtos;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.util.List;
 
 public class RoomDTO {
     private Long id;
+    @NotBlank @Size(max = 50) @Pattern(regexp = "[\\p{L}\\p{N}_-]+")
     private String roomNumber;
-    private Long roomTypeId;
-    private Long hotelId;
+    @NotNull private Long roomTypeId;
+    @NotNull private Long hotelId;
     private String roomTypeCode;
     private String roomTypeNameVi;
-    private Integer floor;
+    @NotNull @Min(-10) @Max(500) private Integer floor;
     private String status;
     private String maintenanceStatus;
     private String housekeepingStatus;
     private Boolean isDemo;
-    private Integer maxGuests;
+    @Min(1) private Integer maxGuests;
     private String descriptionVi;
     private String descriptionEn;
-    private String note;
+    @Size(max = 1000) private String note;
     private List<RoomImageDTO> images;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

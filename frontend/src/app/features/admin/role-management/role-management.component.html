@@ -1,5 +1,4 @@
 <p-toast></p-toast>
-<p-confirmDialog></p-confirmDialog>
 
 <div class="card border-0 shadow-sm m-3">
   <div class="card-header bg-white border-0 py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
@@ -48,12 +47,14 @@
           <td class="text-dark fw-bold"><span class="badge bg-secondary">{{ role.code }}</span></td>
           <td class="text-dark fw-bold">{{ role.name }}</td>
           <td class="text-muted">{{ role.description || '-' }}</td>
-          <td>{{ role.systemRole ? 'Hệ thống' : 'Tùy chỉnh' }}</td><td>{{ role.userCount || 0 }}</td><td><span class="badge" [class.bg-success]="role.status !== 'INACTIVE'" [class.bg-secondary]="role.status === 'INACTIVE'">{{ role.status === 'INACTIVE' ? 'Ngừng hoạt động' : 'Đang hoạt động' }}</span></td><td>{{ role.updatedAt ? (role.updatedAt | date:'dd/MM/yyyy HH:mm') : '-' }}</td>
+          <td>{{ isSystemRole(role) ? 'Hệ thống' : 'Tùy chỉnh' }}</td><td>{{ role.userCount || 0 }}</td><td><span class="badge" [class.bg-success]="role.status !== 'INACTIVE'" [class.bg-secondary]="role.status === 'INACTIVE'">{{ role.status === 'INACTIVE' ? 'Ngừng hoạt động' : 'Đang hoạt động' }}</span></td><td>{{ role.updatedAt ? (role.updatedAt | date:'dd/MM/yyyy HH:mm') : '-' }}</td>
           <td class="text-center">
             <div class="d-flex flex-wrap gap-1 justify-content-center">
               <button pButton icon="pi pi-shield" class="p-button-text p-button-info p-button-sm" title="Phân quyền" (click)="openPermissions(role)"></button>
-              <button *ngIf="canUpdate" pButton icon="pi pi-pencil" class="p-button-text p-button-secondary p-button-sm" title="Sửa" (click)="editRole(role)" [disabled]="saving"></button>
-              <button *ngIf="canDelete && !role.systemRole && role.status !== 'INACTIVE'" pButton icon="pi pi-ban" class="p-button-text p-button-danger p-button-sm" title="Ngừng sử dụng" (click)="deleteRole(role)" [disabled]="saving"></button>
+              <button *ngIf="canViewAudit" pButton icon="pi pi-history" class="p-button-text p-button-help p-button-sm" title="Lịch sử thay đổi" (click)="openHistory(role)"></button>
+              <button *ngIf="canUpdate && !isSystemRole(role)" pButton icon="pi pi-pencil" class="p-button-text p-button-secondary p-button-sm" title="Sửa" (click)="editRole(role)" [disabled]="saving"></button>
+              <button *ngIf="canDelete && !isSystemRole(role) && role.status !== 'INACTIVE'" pButton icon="pi pi-ban" class="p-button-text p-button-danger p-button-sm" title="Ngừng sử dụng" (click)="deleteRole(role)" [disabled]="saving"></button>
+              <button *ngIf="canUpdate && !isSystemRole(role) && role.status === 'INACTIVE'" pButton icon="pi pi-replay" class="p-button-text p-button-success p-button-sm" title="Kích hoạt lại" (click)="reactivateRole(role)" [disabled]="saving"></button>
             </div>
           </td>
         </tr>
@@ -91,10 +92,41 @@
       <label for="description" class="fw-bold mb-1">Mô tả</label>
       <textarea pInputTextarea id="description" [(ngModel)]="roleForm.description" rows="3" class="w-100" [disabled]="saving"></textarea>
     </div>
+    <div class="field">
+      <label for="role-change-reason" class="fw-bold mb-1">Lý do thay đổi <span class="text-danger">*</span></label>
+      <textarea pInputTextarea id="role-change-reason" [(ngModel)]="changeReason" rows="3" minlength="3" maxlength="500" class="w-100" [disabled]="saving" placeholder="Ví dụ: Tạo vai trò cho ca trực đêm"></textarea>
+      <small class="text-muted">Lý do, người thực hiện và trạng thái trước/sau được lưu vào nhật ký quản trị.</small>
+    </div>
   </div>
 
   <ng-template pTemplate="footer">
     <button pButton label="Hủy" icon="pi pi-times" class="p-button-text" (click)="displayDialog = false" [disabled]="saving"></button>
     <button pButton [label]="saving ? 'Đang lưu...' : 'Lưu'" [icon]="saving ? 'pi pi-spin pi-spinner' : 'pi pi-check'" class="p-button-primary" (click)="saveRole()" [disabled]="saving"></button>
+  </ng-template>
+</p-dialog>
+
+<p-dialog
+  [(visible)]="lifecycleDialogVisible"
+  [style]="{width: '520px', maxWidth: 'calc(100vw - 2rem)'}"
+  [header]="lifecycleMode === 'deactivate' ? 'Ngừng sử dụng vai trò' : 'Kích hoạt lại vai trò'"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [closable]="!saving"
+  appendTo="body">
+  <div class="d-flex flex-column gap-3 p-2">
+    <div class="alert alert-info mb-0">
+      <strong>{{ lifecycleRole?.name }}</strong>
+      <span class="d-block mt-1">Phiên bản hiện tại: {{ lifecycleRole?.version }}</span>
+    </div>
+    <div class="field">
+      <label for="role-lifecycle-reason" class="fw-bold mb-1">Lý do <span class="text-danger">*</span></label>
+      <textarea id="role-lifecycle-reason" pInputTextarea [(ngModel)]="lifecycleReason" rows="4" minlength="3" maxlength="500" class="w-100" [disabled]="saving"></textarea>
+      <small class="text-muted">Yêu cầu sẽ bị từ chối nếu vai trò đã thay đổi ở một phiên quản trị khác.</small>
+    </div>
+  </div>
+  <ng-template pTemplate="footer">
+    <button pButton label="Hủy" icon="pi pi-times" class="p-button-text" (click)="lifecycleDialogVisible = false" [disabled]="saving"></button>
+    <button pButton [label]="saving ? 'Đang xử lý...' : 'Xác nhận'" [icon]="saving ? 'pi pi-spin pi-spinner' : 'pi pi-check'" (click)="submitLifecycle()" [disabled]="saving || lifecycleReason.trim().length < 3"></button>
   </ng-template>
 </p-dialog>

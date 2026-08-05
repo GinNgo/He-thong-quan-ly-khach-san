@@ -8,5 +8,5 @@ public interface HotelServiceLogic {
     HotelServiceDTO getServiceById(Long id);
     HotelServiceDTO createService(Long hotelId, HotelServiceDTO serviceDTO);
     HotelServiceDTO updateService(Long id, HotelServiceDTO serviceDTO);
-    void deleteService(Long id);
+    void deleteService(Long id, String reason);
 }

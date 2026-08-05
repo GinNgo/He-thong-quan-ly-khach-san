@@ -98,6 +98,27 @@ class ReservationChargeServiceTest {
         assertThat(line.getName()).isEqualTo("Breakfast / Breakfast buffet");
         assertThat(line.getActor()).isSameAs(fixture.actor());
         assertThat(line.getServiceUsedAt()).isEqualTo(USED_AT);
+
+        fixture.catalogService().setPrice(new BigDecimal("999999"));
+        fixture.catalogService().setNameVi("Changed later");
+        fixture.catalogService().setStatus("INACTIVE");
+        assertThat(line.getUnitPrice()).isEqualByComparingTo("150000");
+        assertThat(line.getName()).isEqualTo("Breakfast / Breakfast buffet");
+        assertThat(line.getSourceVersion()).isEqualTo("2026-07-31T10:15");
+    }
+
+    @Test
+    void inactiveCatalogServiceCannotBeNewlyCharged() {
+        Fixture fixture = fixture();
+        authorize(fixture);
+        fixture.catalogService().setStatus("INACTIVE");
+        when(reservationRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(fixture.reservation()));
+        when(hotelServiceRepository.findById(15L)).thenReturn(Optional.of(fixture.catalogService()));
+
+        assertThatThrownBy(() -> service.addServiceCharge(command()))
+                .isInstanceOfSatisfying(FinancialException.class,
+                        exception -> assertThat(exception.code()).isEqualTo(FinancialErrorCode.INVALID_STATE_TRANSITION));
+        verify(chargeLineRepository, never()).saveAndFlush(any());
     }
 
     @Test

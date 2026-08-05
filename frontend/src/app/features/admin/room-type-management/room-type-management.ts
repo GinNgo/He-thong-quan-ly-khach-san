@@ -5,10 +5,12 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { SharedModule } from '../../../shared/shared.module';
 import { AdminInventoryService, AdminPropertyOption, AdminRoomType } from '../../../core/services/admin-inventory.service';
 import { ActionCode, FunctionCode, PermissionService } from '../../../core/services/permission.service';
+import { AmenityAssignmentComponent } from '../../../shared/components/amenity-assignment/amenity-assignment.component';
+import { PropertyGalleryComponent } from '../../../shared/components/property-gallery/property-gallery.component';
 
 @Component({
   selector: 'app-room-type-management',
-  imports: [SharedModule],
+  imports: [SharedModule, AmenityAssignmentComponent, PropertyGalleryComponent],
   providers: [ConfirmationService, MessageService],
   templateUrl: './room-type-management.html',
   styleUrl: './room-type-management.css',
@@ -68,10 +70,14 @@ export class RoomTypeManagement implements OnInit {
   openEdit(item: AdminRoomType): void { this.editingId = item.id; this.form = { ...item }; this.imageText = (item.imageUrls || []).join('\n'); this.dialogVisible = true; }
 
   save(): void {
-    if (this.saving || !this.form.hotelId || !this.form.code?.trim() || !this.form.nameVi?.trim()) {
-      this.messages.add({ severity: 'warn', summary: 'Thiếu thông tin', detail: 'Vui lòng chọn cơ sở, nhập mã và tên loại phòng.' }); return;
+    const adults = Number(this.form.maxAdults ?? 0); const children = Number(this.form.maxChildren ?? 0); const guests = Number(this.form.maxGuests ?? 0);
+    if (this.saving || !this.form.hotelId || !this.form.code?.trim() || !this.form.nameVi?.trim()
+      || Number(this.form.basePrice ?? -1) < 0 || adults < 1 || children < 0 || guests < adults + children) {
+      this.messages.add({ severity: 'warn', summary: 'Dữ liệu chưa hợp lệ', detail: 'Kiểm tra cơ sở, mã, tên, giá và sức chứa loại phòng.' }); return;
     }
-    this.form.imageUrls = this.imageText.split(/\r?\n/).map(v => v.trim()).filter(Boolean);
+    this.form.imageUrls = this.editingId
+      ? undefined
+      : this.imageText.split(/\r?\n/).map(v => v.trim()).filter(Boolean);
     this.saving = true;
     const request = this.editingId ? this.api.updateRoomType(this.editingId, this.form) : this.api.createRoomType(this.form);
     request.pipe(finalize(() => { this.saving = false; this.cdr.detectChanges(); })).subscribe({

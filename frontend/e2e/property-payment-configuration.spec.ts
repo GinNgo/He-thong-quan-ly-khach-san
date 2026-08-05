@@ -38,7 +38,7 @@ test.describe('Property payment configuration', () => {
       contentType: 'application/json',
       body: JSON.stringify({
         properties: [
-          { id: 7, code: 'LUXE-7', nameVi: 'LuxeStay Da Nang', propertyType: 'HOTEL', address: 'Da Nang', approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', isDemo: true },
+          { id: 7, code: 'LUXE-7', nameVi: 'LuxeStay Da Nang', propertyType: 'HOTEL', addressLine: 'Da Nang', provinceId: 1, wardId: 2, approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', isDemo: true },
         ],
         activePropertyId: 7,
         planCode: 'STANDARD',

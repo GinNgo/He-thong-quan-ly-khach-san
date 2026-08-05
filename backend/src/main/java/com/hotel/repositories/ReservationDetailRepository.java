@@ -26,4 +26,15 @@ public interface ReservationDetailRepository extends JpaRepository<ReservationDe
             @Param("checkIn") LocalDate checkIn,
             @Param("checkOut") LocalDate checkOut
     );
+
+    @Query("""
+            select count(detail)
+            from ReservationDetail detail
+            join detail.reservation reservation
+            where detail.roomType.id = :roomTypeId
+              and reservation.status not in :terminalStatuses
+            """)
+    long countActiveByRoomTypeId(
+            @Param("roomTypeId") Long roomTypeId,
+            @Param("terminalStatuses") List<String> terminalStatuses);
 }

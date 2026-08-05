@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/room-types")
@@ -42,14 +43,14 @@ public class RoomTypeController {
     @PostMapping
     @Permission(function = FunctionCode.ROOM_TYPE, action = ActionCode.CREATE)
     @Operation(summary = "Create new room type")
-    public ResponseEntity<RoomTypeDTO> createRoomType(@RequestBody RoomTypeDTO dto) {
+    public ResponseEntity<RoomTypeDTO> createRoomType(@Valid @RequestBody RoomTypeDTO dto) {
         return ResponseEntity.ok(roomTypeService.createRoomType(dto));
     }
 
     @PutMapping("/{id}")
     @Permission(function = FunctionCode.ROOM_TYPE, action = ActionCode.UPDATE)
     @Operation(summary = "Update room type")
-    public ResponseEntity<RoomTypeDTO> updateRoomType(@PathVariable Long id, @RequestBody RoomTypeDTO dto) {
+    public ResponseEntity<RoomTypeDTO> updateRoomType(@PathVariable Long id, @Valid @RequestBody RoomTypeDTO dto) {
         return ResponseEntity.ok(roomTypeService.updateRoomType(id, dto));
     }
 

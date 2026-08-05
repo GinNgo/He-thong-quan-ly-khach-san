@@ -29,6 +29,8 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -53,6 +55,7 @@ class ManagementPortalServiceTest {
     @Mock private HousekeepingTaskRepository housekeepingTaskRepository;
     @Mock private RoomTypeService roomTypeService;
     @Mock private RoomService roomService;
+    @Mock private PropertyProfileMapper propertyProfileMapper;
 
     @InjectMocks
     private ManagementPortalService service;
@@ -80,16 +83,88 @@ class ManagementPortalServiceTest {
         when(userPropertyRepository.countActiveStaffByHotelId(20L)).thenReturn(2L);
 
         Map<String, Object> context = service.context(20L);
-        List<Map<String, Object>> properties = (List<Map<String, Object>>) context.get("properties");
+        List<com.hotel.dtos.PropertyProfileDTO> properties =
+                (List<com.hotel.dtos.PropertyProfileDTO>) context.get("properties");
 
         assertEquals(20L, context.get("activePropertyId"));
         @SuppressWarnings("unchecked")
         Map<String, Long> usage = (Map<String, Long>) context.get("usage");
         assertEquals(2L, usage.get("staff"));
         assertEquals(false, context.get("activePropertyOperational"));
-        assertFalse((Boolean) properties.getFirst().get("operational"));
+        assertFalse(properties.getFirst().isOperational());
         assertNull(context.get("dashboard"));
+        assertNotNull(context.get("generatedAt"));
+        assertEquals("COMPLETE", context.get("dataStatus"));
+        assertEquals(List.of(), context.get("errors"));
+        assertEquals("PROPERTY", context.get("usageScope"));
         verify(propertyAccessService, never()).requireManagedHotel(20L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void dashboardReconcilesOnePropertySnapshotAndUsesItsAuthoritativeEntitlement() {
+        User owner = new User(); owner.setId(10L); owner.setFullName("Owner");
+        Hotel hotel = hotel(20L, "Hotel A");
+        Room available = room(1L, hotel, "AVAILABLE", "CLEAN");
+        Room occupied = room(2L, hotel, "OCCUPIED", "DIRTY");
+        Room cleaning = room(3L, hotel, "CLEANING", "DIRTY");
+        when(propertyAccessService.currentUser()).thenReturn(owner);
+        when(propertyAccessService.assignedHotelIds()).thenReturn(Set.of(20L));
+        when(propertyAccessService.requireAssignedHotel(20L)).thenReturn(hotel);
+        when(propertyAccessService.isOperational(hotel)).thenReturn(true);
+        when(hotelRepository.findAllById(Set.of(20L))).thenReturn(List.of(hotel));
+        when(propertyEntitlementService.getCurrent(20L)).thenReturn(entitlement(20L, "PLAN-A", 25));
+        when(roomRepository.findByHotelId(20L)).thenReturn(List.of(available, occupied, cleaning));
+        when(roomTypeRepository.countByHotelId(20L)).thenReturn(2L);
+        when(housekeepingTaskRepository.countByHotelIdAndStatus(20L, "PENDING")).thenReturn(1L);
+
+        Map<String, Object> context = service.context(20L);
+        Map<String, Long> usage = (Map<String, Long>) context.get("usage");
+        Map<String, Object> dashboard = (Map<String, Object>) context.get("dashboard");
+
+        assertEquals("PLAN-A", context.get("planCode"));
+        assertEquals(1L, usage.get("properties"));
+        assertEquals(3L, usage.get("rooms"));
+        assertEquals(3L, dashboard.get("totalRooms"));
+        assertEquals(2L, dashboard.get("classifiedRooms"));
+        assertEquals(1L, dashboard.get("unclassifiedRooms"));
+        assertEquals(3L, dashboard.get("statusCountTotal"));
+        assertEquals(2L, dashboard.get("dirtyRooms"));
+        assertTrue((Boolean) dashboard.get("reconciled"));
+        verify(roomRepository, never()).countByHotelId(20L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void switchingPropertyDoesNotLeakEntitlementOrUsageCounts() {
+        User owner = new User(); owner.setId(10L); owner.setFullName("Owner");
+        Hotel first = hotel(20L, "Hotel A");
+        Hotel second = hotel(30L, "Hotel B");
+        Set<Long> assigned = Set.of(20L, 30L);
+        when(propertyAccessService.currentUser()).thenReturn(owner);
+        when(propertyAccessService.assignedHotelIds()).thenReturn(assigned);
+        when(hotelRepository.findAllById(assigned)).thenReturn(List.of(first, second));
+        when(propertyAccessService.requireAssignedHotel(20L)).thenReturn(first);
+        when(propertyAccessService.requireAssignedHotel(30L)).thenReturn(second);
+        when(propertyAccessService.isOperational(first)).thenReturn(true);
+        when(propertyAccessService.isOperational(second)).thenReturn(true);
+        when(propertyEntitlementService.getCurrent(20L)).thenReturn(entitlement(20L, "PLAN-A", 10));
+        when(propertyEntitlementService.getCurrent(30L)).thenReturn(entitlement(30L, "PLAN-B", 100));
+        when(roomRepository.findByHotelId(20L)).thenReturn(List.of(room(1L, first, "AVAILABLE", "CLEAN")));
+        when(roomRepository.findByHotelId(30L)).thenReturn(List.of(
+                room(2L, second, "AVAILABLE", "CLEAN"), room(3L, second, "RESERVED", "CLEAN")));
+
+        Map<String, Object> firstContext = service.context(20L);
+        Map<String, Object> secondContext = service.context(30L);
+
+        assertEquals("PLAN-A", firstContext.get("planCode"));
+        assertEquals(10, ((Map<String, Integer>) firstContext.get("limits")).get("MAX_ROOMS"));
+        assertEquals(1L, ((Map<String, Long>) firstContext.get("usage")).get("rooms"));
+        assertEquals("PLAN-B", secondContext.get("planCode"));
+        assertEquals(100, ((Map<String, Integer>) secondContext.get("limits")).get("MAX_ROOMS"));
+        assertEquals(2L, ((Map<String, Long>) secondContext.get("usage")).get("rooms"));
+        verify(propertyEntitlementService).getCurrent(20L);
+        verify(propertyEntitlementService).getCurrent(30L);
     }
 
     @Test
@@ -118,5 +193,22 @@ class ManagementPortalServiceTest {
         verify(roomRepository).findByIdForUpdate(30L);
         verify(roomRepository).save(room);
         verify(housekeepingTaskRepository).save(task);
+    }
+
+    private Hotel hotel(Long id, String name) {
+        Hotel hotel = new Hotel(); hotel.setId(id); hotel.setNameVi(name);
+        hotel.setApprovalStatus("APPROVED"); hotel.setOperationStatus("ACTIVE"); return hotel;
+    }
+
+    private Room room(Long id, Hotel hotel, String status, String housekeepingStatus) {
+        Room room = new Room(); room.setId(id); room.setHotel(hotel); room.setStatus(status);
+        room.setHousekeepingStatus(housekeepingStatus); return room;
+    }
+
+    private PropertySubscriptionEntitlementService.EntitlementView entitlement(
+            Long hotelId, String planCode, int maxRooms) {
+        return new PropertySubscriptionEntitlementService.EntitlementView(
+                hotelId, "PLATFORM", true, hotelId, planCode, planCode, "ACTIVE",
+                null, null, true, Map.of("MAX_ROOMS", maxRooms), "contract", null);
     }
 }

@@ -2,6 +2,7 @@ package com.hotel.services;
 
 import com.hotel.entities.User;
 import com.hotel.exceptions.AvatarUploadException;
+import com.hotel.exceptions.PropertyMediaException;
 import com.hotel.repositories.UserRepository;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
@@ -26,6 +27,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -104,6 +108,20 @@ public class FileUploadService {
         return storedAvatar;
     }
 
+    public StoredImage storePropertyImage(Long propertyId, MultipartFile file) {
+        if (propertyId == null) {
+            throw new IllegalArgumentException("Property id is required.");
+        }
+        try {
+            return storeValidatedImage(
+                    "property-" + propertyId + "-",
+                    ".property-",
+                    file);
+        } catch (AvatarUploadException exception) {
+            throw PropertyMediaException.fromUpload(exception);
+        }
+    }
+
     public StoredImageResource loadImageResource(String filename) {
         Path imagePath = resolveSafeFilename(filename);
         if (!Files.isRegularFile(imagePath) || !Files.isReadable(imagePath)) {
@@ -124,6 +142,10 @@ public class FileUploadService {
     }
 
     boolean deleteManagedAvatar(String publicUrl) {
+        return deleteManagedImage(publicUrl);
+    }
+
+    public boolean deleteManagedImage(String publicUrl) {
         if (publicUrl == null || publicUrl.isBlank()) {
             return false;
         }
@@ -141,6 +163,11 @@ public class FileUploadService {
     }
 
     private StoredAvatar storeValidatedAvatar(Long userId, MultipartFile file) {
+        StoredImage stored = storeValidatedImage("avatar-" + userId + "-", ".avatar-", file);
+        return new StoredAvatar(stored.url(), stored.contentType(), stored.width(), stored.height());
+    }
+
+    private StoredImage storeValidatedImage(String filenamePrefix, String temporaryPrefix, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw AvatarUploadException.emptyFile();
         }
@@ -157,20 +184,23 @@ public class FileUploadService {
                 throw AvatarUploadException.tooLarge();
             }
             ImageMetadata metadata = inspectImage(bytes, file.getContentType());
-            String filename = "avatar-" + userId + "-" + UUID.randomUUID() + metadata.extension();
+            String filename = filenamePrefix + UUID.randomUUID() + metadata.extension();
             Path destination = resolveSafeFilename(filename);
-            Path temporary = Files.createTempFile(rootLocation, ".avatar-", ".tmp");
+            Path temporary = Files.createTempFile(rootLocation, temporaryPrefix, ".tmp");
             try {
                 Files.write(temporary, bytes);
                 moveAtomically(temporary, destination);
             } finally {
                 Files.deleteIfExists(temporary);
             }
-            return new StoredAvatar(
+            return new StoredImage(
                     PUBLIC_UPLOAD_PREFIX + filename,
                     metadata.contentType(),
                     metadata.width(),
-                    metadata.height());
+                    metadata.height(),
+                    bytes.length,
+                    sha256(bytes),
+                    filename);
         } catch (AvatarUploadException exception) {
             throw exception;
         } catch (IOException exception) {
@@ -448,6 +478,14 @@ public class FileUploadService {
         return value & 0xFF;
     }
 
+    private String sha256(byte[] bytes) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable.", exception);
+        }
+    }
+
     private record ImageMetadata(
             int width,
             int height,
@@ -457,6 +495,16 @@ public class FileUploadService {
     }
 
     public record StoredAvatar(String url, String contentType, int width, int height) {
+    }
+
+    public record StoredImage(
+            String url,
+            String contentType,
+            int width,
+            int height,
+            long sizeBytes,
+            String checksumSha256,
+            String storageKey) {
     }
 
     public record StoredImageResource(Resource resource, String contentType, int width, int height) {

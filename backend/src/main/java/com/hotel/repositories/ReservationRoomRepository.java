@@ -11,6 +11,17 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface ReservationRoomRepository extends JpaRepository<ReservationRoom, Long> {
+    @Query("""
+            select case when count(assignment) > 0 then true else false end
+            from ReservationRoom assignment
+            join assignment.reservationDetail detail
+            join detail.reservation reservation
+            where assignment.room.id = :roomId
+              and assignment.status = 'ASSIGNED'
+              and reservation.status not in :excludedStatuses
+            """)
+    boolean hasActiveAssignment(@Param("roomId") Long roomId,
+            @Param("excludedStatuses") List<String> excludedStatuses);
     List<ReservationRoom> findByReservationDetailReservationId(Long reservationId);
     List<ReservationRoom> findByReservationDetailIdAndStatus(Long reservationDetailId, String status);
 

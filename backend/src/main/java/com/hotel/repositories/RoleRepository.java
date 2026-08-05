@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface RoleRepository extends JpaRepository<Role, Long> {
     Optional<Role> findByCode(String code);
+    Optional<Role> findByCodeIgnoreCase(String code);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select role from Role role where role.id = :id")

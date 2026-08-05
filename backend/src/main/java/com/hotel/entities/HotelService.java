@@ -53,6 +53,10 @@ public class HotelService extends AuditableEntity {
     @Column(name = "is_system", nullable = false)
     private Boolean systemService = false;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @PrePersist
     @PreUpdate
     private void validateOwnershipScope() {

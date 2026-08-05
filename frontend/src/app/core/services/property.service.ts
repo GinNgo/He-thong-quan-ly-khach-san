@@ -2,14 +2,10 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { PropertyProfile, PropertyProfileUpdateRequest } from '../models/property-profile.model';
 import { Hotel } from './client-api.service';
 
-export interface AdminProperty extends Hotel {
-  nameVi?: string;
-  nameEn?: string;
-  status?: string;
-  operationStatus?: string;
-}
+export type AdminProperty = PropertyProfile & Partial<Hotel>;
 
 export interface PropertyLocation {
   id: number;
@@ -150,12 +146,25 @@ export class PropertyService {
     return this.http.get<PropertyLocation[]>(`${environment.apiUrl}/public/locations/provinces/${provinceId}/wards`);
   }
 
-  createProperty(property: CreatePropertyRequest): Observable<AdminProperty> {
+  createProperty(property: PropertyProfile): Observable<AdminProperty> {
     return this.http.post<AdminProperty>(this.apiUrl, property);
   }
 
-  updateProperty(id: number, property: Partial<CreatePropertyRequest>): Observable<AdminProperty> {
+  updateProperty(id: number, property: PropertyProfileUpdateRequest): Observable<AdminProperty> {
     return this.http.put<AdminProperty>(`${this.apiUrl}/${id}`, property);
+  }
+
+  closeProperty(id: number, reason: string): Observable<AdminProperty>;
+  closeProperty(id: number, reason: string, idempotencyKey: string): Observable<PropertyLifecycleDecisionResponse>;
+  closeProperty(
+    id: number,
+    reason: string,
+    idempotencyKey?: string
+  ): Observable<AdminProperty | PropertyLifecycleDecisionResponse> {
+    if (!idempotencyKey) {
+      return this.http.post<AdminProperty>(`${this.apiUrl}/${id}/close`, { reason });
+    }
+    return this.propertyLifecycleTransition(id, 'close', reason, idempotencyKey);
   }
 
   submitProperty(id: number): Observable<AdminProperty> {
@@ -203,10 +212,6 @@ export class PropertyService {
 
   reactivateProperty(id: number, reason: string, idempotencyKey: string): Observable<PropertyLifecycleDecisionResponse> {
     return this.propertyLifecycleTransition(id, 'reactivate', reason, idempotencyKey);
-  }
-
-  closeProperty(id: number, reason: string, idempotencyKey: string): Observable<PropertyLifecycleDecisionResponse> {
-    return this.propertyLifecycleTransition(id, 'close', reason, idempotencyKey);
   }
 
   private propertyLifecycleTransition(

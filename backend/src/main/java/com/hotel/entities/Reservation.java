@@ -84,6 +84,18 @@ public class Reservation extends AuditableEntity {
     @Column(name = "booking_idempotency_key", length = 160)
     private String bookingIdempotencyKey;
 
+    @Column(name = "operational_policy_id")
+    private Long operationalPolicyId;
+
+    @Column(name = "operational_policy_version")
+    private Long operationalPolicyVersion;
+
+    @Column(name = "operational_policy_effective_from")
+    private LocalDateTime operationalPolicyEffectiveFrom;
+
+    @Column(name = "operational_policy_snapshot", columnDefinition = "nvarchar(max)")
+    private String operationalPolicySnapshot;
+
 
 
     // Getters and Setters omitted for brevity
@@ -226,4 +238,20 @@ public class Reservation extends AuditableEntity {
     public void setBookingIdempotencyKey(String bookingIdempotencyKey) {
         this.bookingIdempotencyKey = bookingIdempotencyKey;
     }
+
+    public void captureOperationalPolicy(com.hotel.services.OperationalPolicyService.PolicySnapshot snapshot) {
+        if (snapshot == null) return;
+        if (operationalPolicySnapshot != null) {
+            throw new IllegalStateException("Operational policy snapshot is immutable once captured.");
+        }
+        operationalPolicyId = snapshot.policyId();
+        operationalPolicyVersion = snapshot.version();
+        operationalPolicyEffectiveFrom = snapshot.effectiveFrom();
+        operationalPolicySnapshot = snapshot.json();
+    }
+
+    public Long getOperationalPolicyId() { return operationalPolicyId; }
+    public Long getOperationalPolicyVersion() { return operationalPolicyVersion; }
+    public LocalDateTime getOperationalPolicyEffectiveFrom() { return operationalPolicyEffectiveFrom; }
+    public String getOperationalPolicySnapshot() { return operationalPolicySnapshot; }
 }

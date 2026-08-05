@@ -7,6 +7,7 @@ import com.hotel.entities.PropertyImage;
 import com.hotel.repositories.PropertyImageRepository;
 import com.hotel.repositories.RoomTypeRepository;
 import com.hotel.services.PropertySearchService;
+import com.hotel.services.AmenityService;
 import com.hotel.services.RoomAvailabilityService;
 import com.hotel.util.VietnameseTextNormalizer;
 import jakarta.persistence.EntityManager;
@@ -37,6 +38,7 @@ public class PropertySearchServiceImpl implements PropertySearchService {
     private final RoomTypeRepository roomTypeRepository;
     private final PropertyImageRepository propertyImageRepository;
     private final RoomAvailabilityService roomAvailabilityService;
+    private final AmenityService amenityService;
     private final Environment environment;
 
     @Value("${app.demo-data.allow-public-demo:false}")
@@ -44,11 +46,14 @@ public class PropertySearchServiceImpl implements PropertySearchService {
 
     public PropertySearchServiceImpl(EntityManager entityManager, RoomTypeRepository roomTypeRepository,
                                      PropertyImageRepository propertyImageRepository,
-                                     RoomAvailabilityService roomAvailabilityService, Environment environment) {
+                                     RoomAvailabilityService roomAvailabilityService,
+                                     AmenityService amenityService,
+                                     Environment environment) {
         this.entityManager = entityManager;
         this.roomTypeRepository = roomTypeRepository;
         this.propertyImageRepository = propertyImageRepository;
         this.roomAvailabilityService = roomAvailabilityService;
+        this.amenityService = amenityService;
         this.environment = environment;
     }
 
@@ -139,6 +144,18 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         if (request.getMaxPrice() != null) {
             where.append(" AND EXISTS (SELECT 1 FROM room_types rt WHERE rt.hotel_id=h.id AND rt.status='ACTIVE' AND rt.base_price<=:maxPrice) ");
             params.put("maxPrice", request.getMaxPrice());
+        }
+        if (request.getAmenityIds() != null && !request.getAmenityIds().isEmpty()) {
+            List<Long> amenityIds = request.getAmenityIds().stream().distinct().toList();
+            for (int index = 0; index < amenityIds.size(); index++) {
+                String parameter = "amenity" + index;
+                where.append(" AND (EXISTS (SELECT 1 FROM property_amenities pa JOIN amenities pa_a ON pa_a.id=pa.amenity_id WHERE pa.hotel_id=h.id AND pa_a.status='ACTIVE' AND pa.amenity_id=:")
+                        .append(parameter)
+                        .append(") OR EXISTS (SELECT 1 FROM room_type_amenities rta JOIN room_types amenity_rt ON amenity_rt.id=rta.room_type_id JOIN amenities rta_a ON rta_a.id=rta.amenity_id WHERE rta.hotel_id=h.id AND amenity_rt.status='ACTIVE' AND rta_a.status='ACTIVE' AND rta.amenity_id=:")
+                        .append(parameter)
+                        .append(")) ");
+                params.put(parameter, amenityIds.get(index));
+            }
         }
 
         where.append(" AND EXISTS (SELECT 1 FROM room_types rt WHERE rt.hotel_id=h.id AND rt.status='ACTIVE' ")
@@ -246,7 +263,7 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         dto.setImageAltText(primary == null ? null : primary.getAltTextVi());
         dto.setGalleryUrls(images.stream().map(PropertyImage::getImageUrl).distinct().toList());
         dto.setImageCount(dto.getGalleryUrls().size());
-        dto.setAmenities(List.of());
+        dto.setAmenities(amenityService.publicDisplayNames(dto.getId()));
         dto.setBadges(List.of());
         dto.setFreeCancellation(false);
         dto.setPayAtProperty(false);

@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { SharedModule } from '@app/shared/shared.module';
-import { AppFunction, AppModule, Role, RoleService } from '@app/core/services/role.service';
+import { AppFunction, AppModule, isGovernedSystemRole, Role, RoleService } from '@app/core/services/role.service';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { finalize, timeout } from 'rxjs/operators';
 
@@ -39,10 +39,7 @@ export class RolePermissionComponent implements OnInit {
   private cdr = inject(ChangeDetectorRef);
 
   get protectedRole(): boolean {
-    const governedCodes = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER', 'PROPERTY_OWNER', 'HOTEL_ADMIN', 'HOTEL_MANAGER', 'RECEPTIONIST', 'ACCOUNTANT'];
-    return Boolean(this.selectedRole?.systemRole)
-      || this.selectedRole?.roleType === 'SYSTEM'
-      || governedCodes.includes(this.selectedRole?.code || '');
+    return isGovernedSystemRole(this.selectedRole);
   }
 
   ngOnInit(): void {

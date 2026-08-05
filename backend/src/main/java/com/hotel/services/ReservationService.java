@@ -46,6 +46,7 @@ public class ReservationService {
     private final InvoiceFinalizationService invoiceFinalizationService;
     private final CheckoutOperationsService checkoutOperationsService;
     private final PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
+    private final OperationalPolicyService operationalPolicyService;
 
     @Transactional
     public ReservationDTO createReservation(String username, ReservationRequest request) {
@@ -106,6 +107,13 @@ public class ReservationService {
         reservation.setBookingIdempotencyScope(idempotencyScope);
         reservation.setBookingIdempotencyKey(idempotencyKey);
         reservation.captureDepositPolicy(depositPolicySnapshot);
+        operationalPolicyService.capture(hotel.getId(), request.getCheckInDate()).ifPresent(snapshot -> {
+            if (request.getOperationalPolicyVersion() != null
+                    && !request.getOperationalPolicyVersion().equals(snapshot.version())) {
+                throw new IllegalStateException("Chính sách lưu trú đã thay đổi. Vui lòng xem lại trước khi đặt phòng.");
+            }
+            reservation.captureOperationalPolicy(snapshot);
+        });
         Reservation savedReservation = reservationRepository.save(reservation);
 
         ReservationDetail detail = new ReservationDetail();
@@ -549,6 +557,8 @@ public class ReservationService {
         dto.setStatus(reservation.getStatus());
         dto.setPaymentMethod(reservation.getPaymentMethod());
         dto.setSpecialRequests(reservation.getSpecialRequests());
+        dto.setOperationalPolicyVersion(reservation.getOperationalPolicyVersion());
+        dto.setOperationalPolicySnapshot(reservation.getOperationalPolicySnapshot());
         dto.setDetails(reservationDetailRepository.findByReservationId(reservation.getId()).stream()
                 .map(this::mapDetailToDTO).toList());
         return dto;

@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 
 export interface User {
   id: number;
+  version: number;
   username: string;
   email: string;
   fullName?: string;
@@ -12,9 +13,41 @@ export interface User {
   avatarUrl?: string;
   roles: any[];
   status: string;
-  createdAt: string;
+  createdAt?: string;
   hotel?: { id: number; name: string };
   staffAssignments?: StaffAssignment[];
+}
+
+export interface PropertyOption {
+  id: number;
+  name: string;
+}
+
+export interface StaffRoleOption {
+  id: number;
+  code: string;
+  name: string;
+}
+
+export interface StaffCreateRequest {
+  username: string;
+  email: string;
+  password: string;
+  fullName: string;
+  phone?: string | null;
+  roleIds: number[];
+  hotelId: number;
+}
+
+export interface StaffUpdateRequest {
+  fullName: string;
+  phone?: string | null;
+  password?: string | null;
+  roleIds: number[];
+  hotelId: number;
+  assignmentReason?: string | null;
+  expectedVersion: number;
+  changeReason: string;
 }
 
 export interface StaffAssignment {
@@ -30,6 +63,7 @@ export interface StaffAssignment {
 export interface StaffLifecycleRequest {
   hotelId: number;
   reason: string;
+  expectedVersion: number;
 }
 
 export interface ChangePasswordRequest {
@@ -62,12 +96,32 @@ export class UserService {
     return this.http.get<User[]>(this.apiUrl);
   }
 
+  getStaff(): Observable<User[]> {
+    return this.http.get<User[]>(`${this.apiUrl}/staff`);
+  }
+
+  getStaffProperties(): Observable<PropertyOption[]> {
+    return this.http.get<PropertyOption[]>(`${this.apiUrl}/staff/properties`);
+  }
+
+  getStaffRoles(): Observable<StaffRoleOption[]> {
+    return this.http.get<StaffRoleOption[]>(`${this.apiUrl}/staff/roles`);
+  }
+
   getUserById(id: number): Observable<User> {
     return this.http.get<User>(`${this.apiUrl}/${id}`);
   }
 
   createUser(user: any): Observable<User> {
     return this.http.post<User>(this.apiUrl, user);
+  }
+
+  createStaff(request: StaffCreateRequest): Observable<User> {
+    return this.http.post<User>(`${this.apiUrl}/staff`, request);
+  }
+
+  updateStaff(id: number, request: StaffUpdateRequest): Observable<User> {
+    return this.http.put<User>(`${this.apiUrl}/staff/${id}`, request);
   }
 
   updateUser(id: number, user: any): Observable<User> {

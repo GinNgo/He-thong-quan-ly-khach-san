@@ -40,10 +40,11 @@ export class ManagementLayout implements OnInit, OnDestroy {
     {
       label: 'Vận hành',
       links: [
-        { label: 'Tổng quan', url: '/management/dashboard', icon: 'dashboard' },
-        { label: 'Cơ sở lưu trú', url: '/management/properties', icon: 'domain' },
-        { label: 'Loại phòng', url: '/management/room-types', icon: 'bed', operationalOnly: true },
-        { label: 'Phòng vật lý', url: '/management/rooms', icon: 'meeting_room', operationalOnly: true },
+        { label: 'Tổng quan', url: '/management/dashboard', icon: 'dashboard', functionCode: FunctionCode.HOTEL, actionCode: ActionCode.VIEW },
+        { label: 'Cơ sở lưu trú', url: '/management/properties', icon: 'domain', functionCode: FunctionCode.HOTEL, actionCode: ActionCode.VIEW },
+        { label: 'Loại phòng', url: '/management/room-types', icon: 'bed', functionCode: FunctionCode.ROOM_TYPE, actionCode: ActionCode.VIEW, operationalOnly: true },
+        { label: 'Phòng vật lý', url: '/management/rooms', icon: 'meeting_room', functionCode: FunctionCode.ROOM, actionCode: ActionCode.VIEW, operationalOnly: true },
+        { label: 'Dịch vụ cơ sở', url: '/management/services', icon: 'room_service', functionCode: FunctionCode.HOTEL_SERVICE, actionCode: ActionCode.VIEW, operationalOnly: true },
       ],
     },
     {

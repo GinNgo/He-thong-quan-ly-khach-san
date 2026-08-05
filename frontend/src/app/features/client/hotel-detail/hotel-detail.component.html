@@ -17,6 +17,11 @@
     </header>
     <div class="detail-container">
       <section class="description"><h2>Thông tin chỗ nghỉ</h2><p>{{ hotel.description || 'Cơ sở chưa cập nhật mô tả chi tiết.' }}</p></section>
+      <section *ngIf="operationalPolicy" class="description policy-details" aria-labelledby="policy-details-title">
+        <h2 id="policy-details-title">Chính sách lưu trú</h2>
+        <dl><div><dt>Nhận phòng</dt><dd>{{ operationalPolicy.checkIn }}</dd></div><div><dt>Trả phòng</dt><dd>{{ operationalPolicy.checkOut }}</dd></div><div><dt>Hủy đặt phòng</dt><dd>{{ operationalPolicy.cancellation }}</dd></div><div><dt>Trẻ em</dt><dd>{{ operationalPolicy.childPolicy }}</dd></div><div><dt>Thú cưng</dt><dd>{{ operationalPolicy.petPolicy }}</dd></div><div><dt>Hút thuốc</dt><dd>{{ operationalPolicy.smokingPolicy }}</dd></div><div><dt>Nội quy</dt><dd>{{ operationalPolicy.houseRules }}</dd></div></dl>
+        <small>Phiên bản {{ operationalPolicy.version }} · hiệu lực từ {{ operationalPolicy.effectiveFrom | date:'dd/MM/yyyy HH:mm' }}</small>
+      </section>
       <section id="rooms" class="rooms-section">
         <header><div><span class="eyebrow">Availability theo thời gian thực</span><h2>Chọn phòng</h2><p>{{ bookingQueryParams.checkIn }} - {{ bookingQueryParams.checkOut }} · {{ guests }} khách · cần {{ bookingQueryParams.roomCount }} phòng</p></div></header>
         <div *ngIf="roomError" class="message error">{{ roomError }}</div>
