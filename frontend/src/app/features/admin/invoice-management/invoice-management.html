@@ -6,7 +6,17 @@
     </div>
   </div>
 
-  <p-card styleClass="shadow-sm border-0 rounded-4" [style]="{'border-radius': '12px'}">
+  <app-feedback-state *ngIf="loading" state="loading" title="Loading invoice reservations"
+    message="Checking completed and checked-in stays." />
+  <app-feedback-state *ngIf="!loading && loadError" state="error" title="Invoices unavailable"
+    [message]="loadError" actionLabel="Retry" (actionTriggered)="loadReservations()" />
+  <app-feedback-state *ngIf="!loading && !loadError && reservations.length === 0" state="empty"
+    title="No invoice-ready reservations"
+    message="Invoices can be opened after a reservation reaches check-in or checkout." />
+  <p *ngIf="invoiceError" class="alert alert-danger" role="alert">{{ invoiceError }}</p>
+
+  <p-card *ngIf="!loading && !loadError && reservations.length"
+    styleClass="shadow-sm border-0 rounded-4" [style]="{'border-radius': '12px'}">
     <p-table [value]="reservations" [paginator]="true" [rows]="10" responsiveLayout="scroll" [rowHover]="true" styleClass="p-datatable-striped p-datatable-sm border-top">
       <ng-template pTemplate="header">
         <tr>

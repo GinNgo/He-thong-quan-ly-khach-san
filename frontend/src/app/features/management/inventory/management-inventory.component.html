@@ -4,6 +4,18 @@
     <div class="actions"><select [(ngModel)]="propertyId" (change)="reload()">@for (property of properties; track property.id) { <option [ngValue]="property.id">{{ property.nameVi }}</option> }</select><button *ngIf="(mode === 'room-types' && canCreateRoomType) || (mode === 'rooms' && canCreateRoom)" type="button" (click)="mode === 'room-types' ? openCreate() : showForm = !showForm"><i class="pi pi-plus"></i> {{ mode === 'room-types' ? 'Thêm loại phòng' : 'Tạo hàng loạt' }}</button></div>
   </header>
 
+  @if (canExport) {
+    <section class="export-panel" aria-labelledby="operational-export-title">
+      <div><h2 id="operational-export-title">Xuat du lieu van hanh</h2><p>Schema CSV da giam PII va chi lay du lieu cua co so dang chon.</p></div>
+      <label>Tap du lieu<select [(ngModel)]="exportDataset"><option value="RESERVATIONS">Dat phong</option><option value="CUSTOMERS">Khach hang da mask</option><option value="ROOMS">Phong</option><option value="HOUSEKEEPING">Don phong</option></select></label>
+      <label>Trang thai<input [(ngModel)]="exportStatus" placeholder="Tat ca"></label>
+      <label>Tu ngay<input type="date" [(ngModel)]="exportFrom"></label>
+      <label>Den ngay<input type="date" [(ngModel)]="exportTo"></label>
+      <button type="button" (click)="exportOperational()" [disabled]="exporting || !propertyId">{{ exporting ? 'Dang xuat...' : 'Tai CSV' }}</button>
+      @if (exportMessage) { <p class="export-message" role="status">{{ exportMessage }} @if (exportChecksum) { <code>SHA-256 {{ exportChecksum }}</code> }</p> }
+    </section>
+  }
+
   @if (error) { <app-feedback-state state="error" title="Không thể tải dữ liệu" [message]="error" actionLabel="Thử lại" (actionTriggered)="reload()" /> }
   @if (showForm) {
     <form (ngSubmit)="save()">

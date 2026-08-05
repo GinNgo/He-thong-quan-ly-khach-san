@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { ManagementApiService, ManagedProperty } from '../../../core/services/management-api.service';
+import { ManagementApiService, ManagedProperty, OperationalExportDataset } from '../../../core/services/management-api.service';
 import { FeedbackStateComponent } from '../../../shared/components/feedback-state/feedback-state.component';
 import { AmenityAssignmentComponent } from '../../../shared/components/amenity-assignment/amenity-assignment.component';
 import { ActionCode, FunctionCode, PermissionService } from '../../../core/services/permission.service';
@@ -22,6 +22,8 @@ export class ManagementInventoryComponent implements OnInit {
   canCreateRoom = this.permissions.hasPermission(FunctionCode.ROOM, ActionCode.CREATE);
   canUpdateRoom = this.permissions.hasPermission(FunctionCode.ROOM, ActionCode.UPDATE);
   canDeleteRoom = this.permissions.hasPermission(FunctionCode.ROOM, ActionCode.DELETE);
+  readonly canExport = this.permissions.hasPermission(FunctionCode.REPORT, ActionCode.EXPORT);
+  exportDataset: OperationalExportDataset = 'ROOMS'; exportStatus = ''; exportFrom = ''; exportTo = ''; exporting = false; exportMessage = ''; exportChecksum = '';
 
   ngOnInit(): void {
     this.mode = this.route.snapshot.data['mode'] || 'room-types';
@@ -125,4 +127,18 @@ export class ManagementInventoryComponent implements OnInit {
 
   openMaintenance(row: any): void { this.maintenanceRoom = row; }
   closeMaintenance(): void { this.maintenanceRoom = undefined; }
+
+  exportOperational(): void {
+    if (!this.canExport || !this.propertyId || this.exporting) return;
+    this.exporting = true; this.exportMessage = 'Dang tao tep export...'; this.exportChecksum = '';
+    this.api.operationalExport(this.propertyId, this.exportDataset, { status: this.exportStatus, from: this.exportFrom, to: this.exportTo }).subscribe({
+      next: download => {
+        const url = URL.createObjectURL(download.blob); const anchor = document.createElement('a');
+        anchor.href = url; anchor.download = download.filename; anchor.click(); URL.revokeObjectURL(url);
+        this.exporting = false; this.exportChecksum = download.checksum;
+        this.exportMessage = `Da tai ${download.filename} (${download.rowCount} dong, ${download.schema}).`; this.cdr.markForCheck();
+      },
+      error: e => { this.exporting = false; this.exportMessage = e?.error?.message || 'Khong the tao tep export.'; this.cdr.markForCheck(); }
+    });
+  }
 }

@@ -18,7 +18,7 @@
         (attemptChange)="onPaymentAttemptChange($event)"
         (retryRequested)="retryPaymentAttempt()">
       </app-property-payment-panel>
-      <p *ngIf="errorMessage" class="bg-red-50 border border-red-200 text-red-700 rounded p-3 mb-6 text-sm font-medium" role="alert" aria-live="assertive">
+      <p *ngIf="errorMessage" class="bg-red-50 border border-red-200 text-red-700 rounded p-3 mb-6 text-sm font-medium" role="alert" aria-live="assertive" [appFocusOnError]="true">
         {{ errorMessage }}
       </p>
       <div class="flex flex-col sm:flex-row justify-center gap-3">
@@ -31,7 +31,7 @@
       </div>
     </div>
 
-    <section *ngIf="!bookingSuccess && !bookingContextValid" class="checkout-state" role="alert" aria-live="polite">
+    <section *ngIf="!bookingSuccess && !bookingContextValid" class="checkout-state" role="alert" aria-live="polite" [appFocusOnError]="true">
       <span class="checkout-state-icon" aria-hidden="true"><i class="pi pi-link-slash"></i></span>
       <p class="eyebrow">Phiên đặt phòng không hợp lệ</p>
       <h2>Chọn phòng lại để tiếp tục</h2>
@@ -44,7 +44,7 @@
     <div class="bg-white p-6 md:p-8 rounded-lg shadow-md">
       <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-4">Thông tin Đặt phòng</h2>
 
-      <div *ngIf="errorMessage" class="bg-red-50 border border-red-200 text-red-700 rounded p-3 mb-6 text-sm font-medium" role="alert" aria-live="assertive">
+      <div *ngIf="errorMessage" class="bg-red-50 border border-red-200 text-red-700 rounded p-3 mb-6 text-sm font-medium" role="alert" aria-live="assertive" [appFocusOnError]="true">
         {{ errorMessage }}
       </div>
       

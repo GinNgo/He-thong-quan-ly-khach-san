@@ -11,8 +11,10 @@ form { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding:
 label { display: grid; gap: 6px; color: var(--hotel-text); font-size: 13px; }
 .form-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; }
 .table-panel { background: var(--hotel-card-bg); border: 1px solid var(--hotel-border); border-radius: var(--hotel-radius-lg); overflow: auto; box-shadow: var(--hotel-shadow-sm); }
+.export-panel { display: grid; grid-template-columns: 2fr repeat(4, minmax(130px, 1fr)) auto; gap: 12px; align-items: end; padding: 16px; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: var(--hotel-radius-lg); }
+.export-panel h2 { margin: 0; font-size: 1.1rem; }.export-message { grid-column: 1 / -1; color: #065f46; }.export-message code { display: block; overflow-wrap: anywhere; }
 table { width: 100%; border-collapse: collapse; }
 th,td { padding: 12px 14px; border-bottom: 1px solid var(--hotel-surface-muted); text-align: left; }
 th { color: var(--hotel-text-muted); font-size: 12px; background: var(--hotel-surface-muted); }
-@media(max-width:900px){header{flex-direction:column}.actions{width:100%;flex-wrap:wrap}form{grid-template-columns:1fr 1fr}}
+@media(max-width:900px){header{flex-direction:column}.actions{width:100%;flex-wrap:wrap}form{grid-template-columns:1fr 1fr}.export-panel{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){form{grid-template-columns:1fr}.form-actions{justify-content:stretch}.form-actions button{flex:1}}

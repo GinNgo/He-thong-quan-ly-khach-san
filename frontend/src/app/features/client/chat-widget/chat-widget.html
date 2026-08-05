@@ -3,74 +3,146 @@
     *ngIf="isOpen()"
     id="support-chat-panel"
     class="support-panel"
+    pFocusTrap
     role="dialog"
-    aria-modal="false"
+    aria-modal="true"
     aria-labelledby="support-chat-title"
-    aria-describedby="support-chat-description">
+    aria-describedby="support-chat-description"
+    (keydown.escape)="closeChat(); $event.stopPropagation()">
     <header class="support-header">
       <div class="support-brand-mark" aria-hidden="true">
         <i class="pi pi-headphones"></i>
       </div>
       <div class="support-heading">
         <h2 id="support-chat-title">LuxeStay Care</h2>
-        <p id="support-chat-description">Hỗ trợ trực tuyến từ đội ngũ trung tâm</p>
-        <span class="connection-status" [class.is-connected]="connectionState() === 'connected'">
+        <p id="support-chat-description">Ho tro truc tuyen tu doi ngu trung tam</p>
+        <span class="connection-status" role="status" aria-live="polite" [class.is-connected]="connectionState() === 'connected'">
           <span class="connection-dot" aria-hidden="true"></span>
           {{ connectionLabel() }}
         </span>
       </div>
-      <button type="button" class="icon-button close-button" aria-label="Đóng cửa sổ hỗ trợ" (click)="closeChat()">
+      <button type="button" class="icon-button close-button" aria-label="Dong cua so ho tro" (click)="closeChat()">
         <i class="pi pi-times" aria-hidden="true"></i>
       </button>
     </header>
 
+    <ng-container *ngIf="isLoggedIn()">
+      <div class="conversation-tools">
+        <label for="support-conversation">Cuoc tro chuyen</label>
+        <select
+          id="support-conversation"
+          name="supportConversation"
+          [ngModel]="selectedConversationId()"
+          (ngModelChange)="selectConversationById($event)">
+          <option [ngValue]="null" disabled>Chon hoi thoai</option>
+          <option *ngFor="let conversation of conversations()" [ngValue]="conversation.conversationId">
+            {{ conversation.subject }}
+          </option>
+        </select>
+        <div class="new-conversation-row">
+          <label class="visually-hidden" for="support-subject">Chu de hoi thoai moi</label>
+          <input
+            id="support-subject"
+            name="supportSubject"
+            type="text"
+            maxlength="120"
+            [(ngModel)]="newSubject"
+            placeholder="Chu de moi">
+          <button type="button" (click)="createConversation()" [disabled]="isCreatingConversation()">
+            <i class="pi" [class.pi-plus]="!isCreatingConversation()" [class.pi-spin]="isCreatingConversation()"
+              [class.pi-spinner]="isCreatingConversation()" aria-hidden="true"></i>
+            <span>Tao moi</span>
+          </button>
+        </div>
+      </div>
+    </ng-container>
+
     <div class="support-body" #scrollMe role="log" aria-live="polite" aria-relevant="additions">
       <div *ngIf="!isLoggedIn()" class="support-state support-state-centered">
         <span class="state-icon" aria-hidden="true"><i class="pi pi-lock"></i></span>
-        <h3>Đăng nhập để trò chuyện</h3>
-        <p>Bạn cần đăng nhập để xem lịch sử và gửi yêu cầu tới bộ phận CSKH LuxeStay.</p>
-        <a routerLink="/login" class="support-primary-link">Đăng nhập ngay</a>
+        <h3>Dang nhap de tro chuyen</h3>
+        <p>Ban can dang nhap de xem lich su va gui yeu cau toi bo phan cham soc khach hang.</p>
+        <a routerLink="/login" class="support-primary-link">Dang nhap ngay</a>
       </div>
 
       <ng-container *ngIf="isLoggedIn()">
-        <div *ngIf="historyState() === 'loading'" class="support-state" aria-label="Đang tải lịch sử chat">
+        <div *ngIf="conversationState() === 'loading' || historyState() === 'loading'" class="support-state"
+          aria-label="Dang tai lich su chat">
           <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
-          <span>Đang tải lịch sử hỗ trợ…</span>
+          <span>Dang tai lich su ho tro...</span>
         </div>
 
-        <div *ngIf="historyState() === 'error'" class="support-state support-error" role="alert">
+        <div *ngIf="historyState() === 'error' || conversationState() === 'error'"
+          class="support-state support-error" role="alert" aria-live="assertive" [appFocusOnError]="true">
           <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
           <span>{{ historyError() }}</span>
-          <button type="button" class="text-action" (click)="loadHistory()">Thử lại</button>
+          <button type="button" class="text-action" (click)="retryHistory()">Thu lai</button>
         </div>
 
         <div *ngIf="connectionError()" class="connection-alert" role="status">
           <span>{{ connectionError() }}</span>
-          <button type="button" class="text-action" (click)="retryConnection()">Kết nối lại</button>
+          <button type="button" class="text-action" (click)="retryConnection()">Ket noi lai</button>
         </div>
 
-        <div *ngIf="historyState() === 'ready' && messages().length === 0" class="support-state support-state-centered empty-state">
+        <button *ngIf="hasOlderMessages()" type="button" class="load-older"
+          (click)="loadOlderMessages()" [disabled]="isLoadingOlder()">
+          <i class="pi" [class.pi-history]="!isLoadingOlder()" [class.pi-spin]="isLoadingOlder()"
+            [class.pi-spinner]="isLoadingOlder()" aria-hidden="true"></i>
+          {{ isLoadingOlder() ? 'Dang tai...' : 'Tai tin nhan cu hon' }}
+        </button>
+
+        <div *ngIf="conversationState() === 'ready' && conversations().length === 0"
+          class="support-state support-state-centered empty-state">
           <span class="state-icon" aria-hidden="true"><i class="pi pi-comments"></i></span>
-          <h3>Bắt đầu một cuộc trò chuyện</h3>
-          <p>Hãy mô tả ngắn gọn vấn đề để đội ngũ hỗ trợ phản hồi nhanh hơn.</p>
+          <h3>Tao cuoc tro chuyen dau tien</h3>
+          <p>Dat chu de ngan gon de doi ngu ho tro nam duoc van de cua ban.</p>
         </div>
 
-        <article
-          *ngFor="let message of messages()"
-          class="message-row"
-          [class.is-own]="isOwnMessage(message)">
+        <div *ngIf="historyState() === 'ready' && selectedConversationId() && messages().length === 0"
+          class="support-state support-state-centered empty-state">
+          <span class="state-icon" aria-hidden="true"><i class="pi pi-comment"></i></span>
+          <h3>Bat dau trao doi</h3>
+          <p>Gui tin nhan dau tien trong cuoc tro chuyen da chon.</p>
+        </div>
+
+        <article *ngFor="let message of messages()" class="message-row" [class.is-own]="isOwnMessage(message)">
           <div class="message-bubble" [class.is-own]="isOwnMessage(message)">
             <p>{{ message.content }}</p>
             <time *ngIf="message.timestamp" [attr.datetime]="message.timestamp">
               {{ message.timestamp | date:'HH:mm' }}
             </time>
+            <small *ngIf="isOwnMessage(message)" class="message-state">
+              {{ messageStateLabel(message) }}
+            </small>
           </div>
         </article>
       </ng-container>
     </div>
 
+    <section *ngIf="isLoggedIn() && selectedConversationId()" aria-label="Tep dinh kem ho tro"
+      style="padding: .5rem .75rem; border-top: 1px solid var(--hotel-border)">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: .5rem">
+        <small>PDF, PNG, JPEG, TXT; toi da 5 MB</small>
+        <label style="color: var(--hotel-primary); cursor: pointer">
+          <input type="file" accept=".pdf,.png,.jpg,.jpeg,.txt" style="position: absolute; opacity: 0"
+            [disabled]="isUploadingAttachment() || isSelectedConversationClosed()"
+            (change)="uploadAttachment($event)">
+          {{ isUploadingAttachment() ? 'Dang tai...' : 'Dinh kem' }}
+        </label>
+      </div>
+      <p *ngIf="attachmentError()" role="alert" style="margin: .25rem 0; color: var(--hotel-danger); font-size: .75rem">
+        {{ attachmentError() }}
+      </p>
+      <div *ngIf="attachments().length" style="display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .35rem">
+        <button *ngFor="let attachment of attachments()" type="button" (click)="downloadAttachment(attachment)"
+          style="padding: .25rem .5rem; color: var(--hotel-primary); background: var(--hotel-primary-light); border: 1px solid var(--hotel-border); border-radius: .5rem">
+          <i class="pi pi-paperclip" aria-hidden="true"></i> {{ attachment.filename }}
+        </button>
+      </div>
+    </section>
+
     <form *ngIf="isLoggedIn()" class="support-composer" (ngSubmit)="sendMessage()">
-      <label class="visually-hidden" for="support-message">Nội dung tin nhắn hỗ trợ</label>
+      <label class="visually-hidden" for="support-message">Noi dung tin nhan ho tro</label>
       <input
         #messageInput
         id="support-message"
@@ -79,19 +151,20 @@
         maxlength="2000"
         autocomplete="off"
         [(ngModel)]="newMessage"
-        [disabled]="isSending()"
+        [disabled]="isSending() || !selectedConversationId() || isSelectedConversationClosed()"
         aria-describedby="support-send-status"
-        placeholder="Nhập nội dung cần hỗ trợ…">
+        placeholder="Nhap noi dung can ho tro...">
       <button
         type="submit"
         class="send-button"
-        aria-label="Gửi tin nhắn hỗ trợ"
-        [disabled]="!newMessage.trim() || isSending() || connectionState() !== 'connected'">
+        aria-label="Gui tin nhan ho tro"
+        [disabled]="!newMessage.trim() || isSending() || !selectedConversationId() || isSelectedConversationClosed()">
         <i *ngIf="!isSending()" class="pi pi-send" aria-hidden="true"></i>
         <i *ngIf="isSending()" class="pi pi-spin pi-spinner" aria-hidden="true"></i>
       </button>
-      <p id="support-send-status" class="composer-status" [class.has-error]="sendError()" aria-live="polite">
-        {{ sendError() || (isSending() ? 'Đang chờ máy chủ xác nhận…' : '') }}
+      <p id="support-send-status" class="composer-status" [class.has-error]="sendError()" aria-live="polite"
+        [appFocusOnError]="!!sendError()">
+        {{ sendError() || (isSending() ? 'Dang cho may chu xac nhan...' : '') }}
       </p>
     </form>
   </section>
@@ -101,11 +174,11 @@
     #triggerButton
     type="button"
     class="support-trigger"
-    aria-label="Mở hỗ trợ trực tuyến LuxeStay"
+    aria-label="Mo ho tro truc tuyen LuxeStay"
     [attr.aria-expanded]="isOpen()"
     aria-controls="support-chat-panel"
     (click)="toggleChat()">
     <i class="pi pi-comments" aria-hidden="true"></i>
-    <span>Hỗ trợ</span>
+    <span>Ho tro</span>
   </button>
 </div>

@@ -1,4 +1,4 @@
-<div class="card bg-white rounded-3 shadow-sm border-0">
+<section class="card bg-white rounded-3 shadow-sm border-0" role="region" [attr.aria-labelledby]="tableCaptionId">
   <p-table 
     #dt 
     [value]="data" 
@@ -17,6 +17,7 @@
     
     <!-- Toolbar (Search & Export) -->
     <ng-template pTemplate="caption">
+      <h2 class="visually-hidden" [id]="tableCaptionId">{{ tableLabel }}</h2>
       <div class="d-flex justify-content-between align-items-center">
         <p-iconField iconPosition="left">
           <p-inputIcon>
@@ -25,14 +26,15 @@
           <input 
             pInputText 
             type="text" 
+            [attr.aria-label]="'Tim kiem trong ' + tableLabel"
             (input)="onGlobalSearch($event)" 
             placeholder="Tìm kiếm nhanh..." 
             class="form-control" />
         </p-iconField>
         
         <div class="d-flex gap-2">
-          <p-button icon="pi pi-file-excel" (onClick)="exportExcel()" severity="success" pTooltip="Xuất Excel" tooltipPosition="bottom"></p-button>
-          <p-button icon="pi pi-file-pdf" (onClick)="exportPdf()" severity="danger" pTooltip="Xuất PDF" tooltipPosition="bottom"></p-button>
+          <p-button icon="pi pi-file-excel" (onClick)="exportExcel()" severity="success" ariaLabel="Xuat Excel" pTooltip="Xuất Excel" tooltipPosition="bottom"></p-button>
+          <p-button icon="pi pi-file-pdf" (onClick)="exportPdf()" severity="danger" ariaLabel="Xuat PDF" pTooltip="Xuất PDF" tooltipPosition="bottom"></p-button>
         </div>
       </div>
     </ng-template>
@@ -40,23 +42,25 @@
     <!-- Header -->
     <ng-template pTemplate="header" let-columns>
       <tr>
-        <th *ngFor="let col of columns" [pSortableColumn]="col.sortable ? col.field : null" [style.width]="col.width">
+        <th *ngFor="let col of columns" scope="col" [pSortableColumn]="col.sortable ? col.field : null" [style.width]="col.width">
           {{ col.header }}
           <p-sortIcon *ngIf="col.sortable" [field]="col.field"></p-sortIcon>
         </th>
-        <th style="width: 120px;" class="text-center">Thao tác</th>
+        <th scope="col" style="width: 120px;" class="text-center">Thao tác</th>
       </tr>
       <tr>
         <th *ngFor="let col of columns">
-          <p-columnFilter *ngIf="col.filterable" type="text" [field]="col.field"></p-columnFilter>
+          <p-columnFilter *ngIf="col.filterable" type="text" [field]="col.field" [ariaLabel]="'Loc theo ' + col.header"></p-columnFilter>
         </th>
         <th></th>
       </tr>
     </ng-template>
 
     <!-- Body -->
-    <ng-template pTemplate="body" let-rowData let-columns="columns">
-      <tr (click)="rowClick.emit(rowData)" style="cursor: pointer;">
+    <ng-template pTemplate="body" let-rowData let-columns="columns" let-rowIndex="rowIndex">
+      <tr tabindex="0" (click)="rowClick.emit(rowData)" (keydown.enter)="rowClick.emit(rowData)"
+        (keydown.space)="$event.preventDefault(); rowClick.emit(rowData)"
+        [attr.aria-label]="'Mo chi tiet dong ' + (rowIndex + 1)" style="cursor: pointer;">
         <td *ngFor="let col of columns" [ngClass]="'text-' + (col.align || 'left')">
           <ng-container *ngIf="!col.type || col.type === 'text'">
             {{ rowData[col.field] }}
@@ -80,13 +84,13 @@
         <!-- Actions -->
         <td class="text-center" (click)="$event.stopPropagation()">
           <div class="d-flex justify-content-center gap-2">
-            <button *ngIf="permissions.view" [hasPermission]="permissions.view" class="btn btn-sm btn-outline-info" (click)="view.emit(rowData)" pTooltip="Chi tiết" tooltipPosition="top">
+            <button *ngIf="permissions.view" [hasPermission]="permissions.view" class="btn btn-sm btn-outline-info" (click)="view.emit(rowData)" [attr.aria-label]="'Xem chi tiet dong ' + (rowIndex + 1)" pTooltip="Chi tiết" tooltipPosition="top">
               <i class="pi pi-eye"></i>
             </button>
-            <button *ngIf="permissions.edit" [hasPermission]="permissions.edit" class="btn btn-sm btn-outline-primary" (click)="edit.emit(rowData)" pTooltip="Chỉnh sửa" tooltipPosition="top">
+            <button *ngIf="permissions.edit" [hasPermission]="permissions.edit" class="btn btn-sm btn-outline-primary" (click)="edit.emit(rowData)" [attr.aria-label]="'Chinh sua dong ' + (rowIndex + 1)" pTooltip="Chỉnh sửa" tooltipPosition="top">
               <i class="pi pi-pencil"></i>
             </button>
-            <button *ngIf="permissions.delete" [hasPermission]="permissions.delete" class="btn btn-sm btn-outline-danger" (click)="delete.emit(rowData)" pTooltip="Xóa" tooltipPosition="top">
+            <button *ngIf="permissions.delete" [hasPermission]="permissions.delete" class="btn btn-sm btn-outline-danger" (click)="delete.emit(rowData)" [attr.aria-label]="'Xoa dong ' + (rowIndex + 1)" pTooltip="Xóa" tooltipPosition="top">
               <i class="pi pi-trash"></i>
             </button>
           </div>
@@ -109,4 +113,4 @@
       </tr>
     </ng-template>
   </p-table>
-</div>
+</section>

@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { AfterViewChecked, Component, ElementRef, HostListener, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { timeout } from 'rxjs';
+import { FocusTrapModule } from 'primeng/focustrap';
 
 import { AiService } from '../../core/services/ai';
 
@@ -17,7 +18,7 @@ const AI_REQUEST_TIMEOUT_MS = 15_000;
 @Component({
   selector: 'app-ai-assistant',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FocusTrapModule],
   templateUrl: './ai-assistant.html',
   styleUrl: './ai-assistant.css'
 })
@@ -46,7 +47,7 @@ export class AiAssistant implements AfterViewChecked {
   toggleChat(): void {
     if (this.isOpen) {
       this.isOpen = false;
-      this.triggerButton?.nativeElement.focus();
+      setTimeout(() => this.triggerButton?.nativeElement.focus());
       return;
     }
 
@@ -65,7 +66,7 @@ export class AiAssistant implements AfterViewChecked {
     if (!this.isOpen) return;
 
     this.isOpen = false;
-    this.triggerButton?.nativeElement.focus();
+    setTimeout(() => this.triggerButton?.nativeElement.focus());
   }
 
   sendMessage(): void {

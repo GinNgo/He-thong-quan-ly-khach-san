@@ -23,7 +23,8 @@
           <p class="font-body-sm text-[13px] text-on-surface-variant mt-1 text-center m-0">Đăng nhập để truy cập hệ thống</p>
         </div>
 
-        <div *ngIf="errorMessage" id="login-error" role="alert" aria-live="assertive" aria-atomic="true" class="mb-4 p-2.5 bg-red-100/80 border border-red-200 text-red-700 rounded text-center text-sm font-medium backdrop-blur-sm">
+        <div *ngIf="errorMessage" id="login-error" class="mb-4 p-2.5 bg-red-100/80 border border-red-200 text-red-700 rounded text-center text-sm font-medium backdrop-blur-sm"
+          role="alert" aria-live="assertive" aria-atomic="true" [appFocusOnError]="true">
           {{ errorMessage }}
         </div>
 

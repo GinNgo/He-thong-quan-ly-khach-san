@@ -4,6 +4,7 @@ import { of } from 'rxjs';
 import { ManagementApiService } from '../../../core/services/management-api.service';
 import { RevenueReportResult, RevenueReportService } from '../../../core/services/revenue-report.service';
 import { PropertyRevenueComponent } from './property-revenue.component';
+import { PermissionService } from '../../../core/services/permission.service';
 
 const reportFixture: RevenueReportResult = {
   context: 'PROPERTY_COMMERCE',
@@ -87,7 +88,11 @@ describe('PropertyRevenueComponent', () => {
             }),
           },
         },
-        { provide: RevenueReportService, useValue: { getPropertyRevenue: () => of(reportFixture) } },
+        { provide: PermissionService, useValue: { hasPermission: () => true } },
+        { provide: RevenueReportService, useValue: {
+          getPropertyRevenue: () => of(reportFixture),
+          exportPropertyRevenue: () => of({ blob: new Blob(['report']), filename: 'revenue.csv', checksum: 'a'.repeat(64), rowCount: 1 }),
+        } },
       ],
     }).compileComponents();
 
@@ -100,5 +105,6 @@ describe('PropertyRevenueComponent', () => {
     expect(text).toContain('Bờ biển xanh');
     expect(text).toContain('Khớp dữ liệu');
     expect(text).toContain('TX-7');
+    expect(text).toContain('CSV');
   });
 });

@@ -82,4 +82,21 @@ public interface ReservationRoomRepository extends JpaRepository<ReservationRoom
             @Param("checkIn") LocalDate checkIn,
             @Param("checkOut") LocalDate checkOut
     );
+
+    @Query("""
+            select count(distinct assignment.room.id)
+            from ReservationRoom assignment
+            join assignment.room room
+            join room.hotel hotel
+            join assignment.reservationDetail detail
+            join detail.reservation reservation
+            where assignment.status = 'ASSIGNED'
+              and coalesce(assignment.stayStartDate, reservation.checkInDate) <= :stayDate
+              and coalesce(assignment.stayEndDate, reservation.checkOutDate) > :stayDate
+              and reservation.status not in ('CANCELLED','EXPIRED','REJECTED','NO_SHOW')
+              and hotel.approvalStatus = 'APPROVED'
+              and hotel.operationStatus = 'ACTIVE'
+              and hotel.isDemo = false
+            """)
+    long countSystemAssignedOccupiedRoomsOn(@Param("stayDate") LocalDate stayDate);
 }

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import { FocusOnErrorDirective } from '../../directives/focus-management.directive';
 
 export type FeedbackState = 'loading' | 'empty' | 'error' | 'success' | 'confirmation';
 
@@ -33,6 +34,7 @@ const DEFAULT_CONTENT: Record<FeedbackState, { title: string; message: string; i
 @Component({
   selector: 'app-feedback-state',
   standalone: true,
+  imports: [FocusOnErrorDirective],
   templateUrl: './feedback-state.component.html',
   styleUrl: './feedback-state.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -1,11 +1,19 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 
 export type RevenueContext = 'PROPERTY_COMMERCE' | 'PLATFORM_BILLING';
 export type RevenueBasis = 'CASH_COLLECTED' | 'INVOICED' | 'NET';
 export type RevenueExportFormat = 'CSV' | 'EXCEL' | 'PDF';
+
+export interface RevenueExportDownload {
+  blob: Blob;
+  filename: string;
+  checksum: string;
+  rowCount: number;
+}
 
 export interface RevenueReportFilters {
   from: string;
@@ -128,11 +136,17 @@ export class RevenueReportService {
   exportPropertyRevenue(
     filters: PropertyRevenueReportFilters,
     format: RevenueExportFormat,
-  ): Observable<Blob> {
+  ): Observable<RevenueExportDownload> {
     return this.http.get(`${this.apiUrl}/management/reports/property-revenue/export`, {
       params: this.toParams({ ...filters, format }),
       responseType: 'blob',
-    });
+      observe: 'response',
+    }).pipe(map(response => ({
+      blob: response.body ?? new Blob(),
+      filename: this.filename(response.headers.get('Content-Disposition'), `property-revenue.${format === 'EXCEL' ? 'xlsx' : format.toLowerCase()}`),
+      checksum: response.headers.get('X-Report-Checksum') ?? '',
+      rowCount: Number(response.headers.get('X-Report-Row-Count') ?? 0),
+    })));
   }
 
   exportPlatformRevenue(
@@ -166,5 +180,10 @@ export class RevenueReportService {
         ? params
         : params.set(key, String(value));
     }, new HttpParams());
+  }
+
+  private filename(contentDisposition: string | null, fallback: string): string {
+    const match = contentDisposition?.match(/filename="?([^";]+)"?/i);
+    return match?.[1]?.trim() || fallback;
   }
 }

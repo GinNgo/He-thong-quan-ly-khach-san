@@ -1,3 +1,4 @@
+<a class="skip-link" href="#client-main-content">Bo qua dieu huong</a>
 <header class="public-header" [style.visibility]="layoutState.hideMainHeader() ? 'hidden' : 'visible'">
   <div class="header-inner">
     <a routerLink="/" class="brand" aria-label="LuxeStay - Trang chủ">
@@ -17,10 +18,14 @@
       >
         <span aria-hidden="true">VI</span><small aria-hidden="true">VND</small>
       </div>
+      <a *ngIf="isLoggedIn" routerLink="/notifications" class="notification-link" [attr.aria-label]="'Thông báo, ' + unreadNotificationCount + ' chưa đọc'">
+        <i class="pi pi-bell" aria-hidden="true"></i>
+        <b *ngIf="unreadNotificationCount">{{ unreadNotificationCount > 99 ? '99+' : unreadNotificationCount }}</b>
+      </a>
       <button type="button" class="partner-button" (click)="navigatePartner()" [disabled]="partnerLabel === 'Tài khoản bị khóa'">{{ partnerLabel }}</button>
       <a *ngIf="!isLoggedIn" routerLink="/login" class="login-button">Đăng nhập</a>
       <div *ngIf="isLoggedIn" class="account-area">
-        <button type="button" class="account-trigger" (click)="toggleAccountMenu($event)" [attr.aria-expanded]="accountMenuOpen" aria-haspopup="menu">
+        <button #accountTrigger type="button" class="account-trigger" (click)="toggleAccountMenu($event)" [attr.aria-expanded]="accountMenuOpen" aria-haspopup="menu">
           <span class="avatar"><img *ngIf="avatarUrl" [src]="avatarUrl" alt="Ảnh đại diện" (error)="handleAvatarError()"><span *ngIf="!avatarUrl">{{ initials }}</span></span>
           <span class="account-copy"><strong>{{ fullName || username }}</strong><small>{{ isPropertyOwner ? 'Chủ cơ sở' : 'Khách hàng' }}</small></span>
           <i class="pi" [ngClass]="accountMenuOpen ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
@@ -29,11 +34,12 @@
           <header>
             <span class="avatar large"><img *ngIf="avatarUrl" [src]="avatarUrl" alt="Ảnh đại diện" (error)="handleAvatarError()"><span *ngIf="!avatarUrl">{{ initials }}</span></span>
             <span><strong>{{ fullName || username }}</strong><small>{{ userContext?.email || username }}</small></span>
-            <button type="button" class="menu-close" (click)="closeAccountMenu()" title="Đóng"><i class="pi pi-times"></i></button>
+            <button type="button" class="menu-close" (click)="closeAccountMenu(true)" title="Đóng" aria-label="Đóng menu tài khoản"><i class="pi pi-times" aria-hidden="true"></i></button>
           </header>
           <nav>
             <a routerLink="/profile" [queryParams]="{tab: 'profile'}" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-user"></i><span>Thông tin cá nhân</span></a>
             <a routerLink="/booking-history" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-suitcase"></i><span>Chuyến đi của tôi</span><b *ngIf="userContext?.pendingBookingCount">{{ userContext?.pendingBookingCount }}</b></a>
+            <a routerLink="/notifications" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-bell"></i><span>Thông báo</span><b *ngIf="unreadNotificationCount">{{ unreadNotificationCount }}</b></a>
             <a routerLink="/my-invoices" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-file"></i><span>Hóa đơn của tôi</span></a>
             <div class="menu-divider"></div>
             <button type="button" (click)="navigatePartner()" role="menuitem" [disabled]="partnerLabel === 'Tài khoản bị khóa'"><i class="pi pi-building"></i><span>{{ partnerLabel }}</span></button>
@@ -51,14 +57,15 @@
           </nav>
         </section>
       </div>
-      <button type="button" class="mobile-toggle" (click)="toggleMobileMenu()" aria-label="Mở menu"><i class="pi" [ngClass]="isMobileMenuOpen ? 'pi-times' : 'pi-bars'"></i></button>
+      <button #mobileTrigger type="button" class="mobile-toggle" (click)="toggleMobileMenu()" aria-label="Mở menu" [attr.aria-expanded]="isMobileMenuOpen" aria-controls="client-mobile-navigation"><i class="pi" [ngClass]="isMobileMenuOpen ? 'pi-times' : 'pi-bars'"></i></button>
     </div>
   </div>
-  <nav *ngIf="isMobileMenuOpen" class="mobile-nav">
+  <nav *ngIf="isMobileMenuOpen" id="client-mobile-navigation" class="mobile-nav" aria-label="Điều hướng di động">
     <a routerLink="/search" (click)="closeMobileMenu()">Tất cả chỗ nghỉ</a><a routerLink="/" fragment="rooms" (click)="closeMobileMenu()">Khách sạn</a>
+    <a *ngIf="isLoggedIn" routerLink="/notifications" (click)="closeMobileMenu()">Thông báo ({{ unreadNotificationCount }})</a>
     <a routerLink="/" fragment="services" (click)="closeMobileMenu()">Dịch vụ</a><button type="button" (click)="navigatePartner(); closeMobileMenu()">{{ partnerLabel }}</button>
   </nav>
 </header>
-<main class="public-main"><router-outlet></router-outlet></main>
+<main id="client-main-content" class="public-main" appRouteFocusTarget><router-outlet></router-outlet></main>
 <footer class="public-footer"><div><strong>LuxeStay Hotels</strong><span>Đặt chỗ minh bạch, quản lý lưu trú thuận tiện.</span></div><small>&copy; 2026 LuxeStay Hotels.</small></footer>
 <app-chat-widget></app-chat-widget>

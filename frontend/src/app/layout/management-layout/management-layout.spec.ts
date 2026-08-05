@@ -221,7 +221,6 @@ describe('ManagementLayout', () => {
         provideRouter([]),
         { provide: AuthService, useValue: { currentUser$: new BehaviorSubject<AuthState>({ isAuthenticated: true, username: 'manager', fullName: 'Manager', avatarUrl: '', roles: ['HOTEL_MANAGER'], permissions: [] }), logout: () => undefined } },
         { provide: ManagementApiService, useValue: { context: () => new Subject<ManagementContext>() } },
-        { provide: PermissionService, useValue: { hasPermission: vi.fn(() => true) } },
         { provide: PermissionService, useValue: { hasPermission: (fn: FunctionCode, action: ActionCode) => allowed.has(`${fn}:${action}`) } },
       ],
     }).compileComponents();

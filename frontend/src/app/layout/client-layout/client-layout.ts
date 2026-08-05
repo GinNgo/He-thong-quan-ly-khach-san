@@ -1,23 +1,28 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
-import { Subject, takeUntil } from 'rxjs';
+import { distinctUntilChanged, Subject, takeUntil } from 'rxjs';
 import { AuthService } from '../../core/services/auth';
 import { ClientApiService, UserContext } from '../../core/services/client-api.service';
+import { CustomerNotificationService } from '../../core/services/customer-notification.service';
 import { LayoutStateService } from '../../core/services/layout-state.service';
 import { ChatWidgetComponent } from '../../features/client/chat-widget/chat-widget';
+import { RouteFocusTargetDirective } from '../../shared/directives/focus-management.directive';
 
 @Component({
   selector: 'app-client-layout', standalone: true,
-  imports: [CommonModule, RouterModule, ChatWidgetComponent],
-  templateUrl: './client-layout.html', styleUrls: ['./client-layout.css']
+  imports: [CommonModule, RouterModule, ChatWidgetComponent, RouteFocusTargetDirective],
+  templateUrl: './client-layout.html', styleUrls: ['./client-layout.css', './client-layout.notifications.css']
 })
 export class ClientLayout implements OnInit, OnDestroy {
+  @ViewChild('accountTrigger') private accountTrigger?: ElementRef<HTMLButtonElement>;
+  @ViewChild('mobileTrigger') private mobileTrigger?: ElementRef<HTMLButtonElement>;
   private readonly authService = inject(AuthService);
   private readonly api = inject(ClientApiService);
   private readonly router = inject(Router);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly changeDetector = inject(ChangeDetectorRef);
+  private readonly customerNotifications = inject(CustomerNotificationService);
   private readonly destroy$ = new Subject<void>();
   readonly layoutState = inject(LayoutStateService);
 
@@ -28,17 +33,33 @@ export class ClientLayout implements OnInit, OnDestroy {
   username = '';
   fullName = '';
   avatarUrl = '';
+  unreadNotificationCount = 0;
   userContext: UserContext | null = null;
 
   ngOnInit(): void {
-    this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(state => {
-      const becameAuthenticated = state.isAuthenticated && !this.isLoggedIn;
+    this.customerNotifications.notifications$.pipe(takeUntil(this.destroy$)).subscribe(notification => {
+      if (!notification.isRead) this.unreadNotificationCount += 1;
+    });
+    this.customerNotifications.reconciliation$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.refreshUnreadCount());
+    this.authService.currentUser$.pipe(
+      distinctUntilChanged((previous, current) =>
+        previous.isAuthenticated === current.isAuthenticated && previous.username === current.username),
+      takeUntil(this.destroy$),
+    ).subscribe(state => {
       this.isLoggedIn = state.isAuthenticated;
       this.username = state.username;
       this.fullName = state.fullName || state.username;
       this.avatarUrl = state.avatarUrl || '';
-      if (becameAuthenticated) this.loadUserContext();
-      else if (!state.isAuthenticated) this.userContext = null;
+      if (state.isAuthenticated) {
+        this.loadUserContext();
+        this.loadCustomerNotifications();
+      } else {
+        this.userContext = null;
+        this.unreadNotificationCount = 0;
+        this.customerNotifications.disconnect();
+      }
     });
   }
 
@@ -74,9 +95,21 @@ export class ClientLayout implements OnInit, OnDestroy {
     return 'Đăng chỗ nghỉ của bạn';
   }
 
-  toggleAccountMenu(event: Event): void { event.stopPropagation(); this.accountMenuOpen = !this.accountMenuOpen; }
-  closeAccountMenu(): void { this.accountMenuOpen = false; }
-  toggleMobileMenu(): void { this.isMobileMenuOpen = !this.isMobileMenuOpen; }
+  toggleAccountMenu(event: Event): void {
+    event.stopPropagation();
+    const restoreFocus = this.accountMenuOpen;
+    this.accountMenuOpen = !this.accountMenuOpen;
+    if (restoreFocus) queueMicrotask(() => this.accountTrigger?.nativeElement.focus());
+  }
+  closeAccountMenu(restoreFocus = false): void {
+    this.accountMenuOpen = false;
+    if (restoreFocus) queueMicrotask(() => this.accountTrigger?.nativeElement.focus());
+  }
+  toggleMobileMenu(): void {
+    const restoreFocus = this.isMobileMenuOpen;
+    this.isMobileMenuOpen = !this.isMobileMenuOpen;
+    if (restoreFocus) queueMicrotask(() => this.mobileTrigger?.nativeElement.focus());
+  }
   closeMobileMenu(): void { this.isMobileMenuOpen = false; }
   handleAvatarError(): void { this.avatarUrl = ''; }
 
@@ -107,9 +140,37 @@ export class ClientLayout implements OnInit, OnDestroy {
   }
 
   @HostListener('document:keydown.escape')
-  onEscape(): void { this.accountMenuOpen = false; this.isMobileMenuOpen = false; }
+  onEscape(): void {
+    const accountWasOpen = this.accountMenuOpen;
+    const mobileWasOpen = this.isMobileMenuOpen;
+    this.accountMenuOpen = false;
+    this.isMobileMenuOpen = false;
+    if (accountWasOpen) queueMicrotask(() => this.accountTrigger?.nativeElement.focus());
+    else if (mobileWasOpen) queueMicrotask(() => this.mobileTrigger?.nativeElement.focus());
+  }
 
-  ngOnDestroy(): void { this.destroy$.next(); this.destroy$.complete(); }
+  ngOnDestroy(): void {
+    this.customerNotifications.disconnect();
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private loadCustomerNotifications(): void {
+    this.customerNotifications.connect();
+    this.refreshUnreadCount();
+  }
+
+  private refreshUnreadCount(): void {
+    this.customerNotifications.getUnreadCount()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: result => {
+          this.unreadNotificationCount = result.unreadCount;
+          this.changeDetector.detectChanges();
+        },
+        error: () => undefined,
+      });
+  }
 
   private loadUserContext(): void {
     this.contextLoading = true;

@@ -11,7 +11,9 @@ interface SessionUser {
 const propertyId = 11;
 
 async function seedSession(page: Page, user: SessionUser): Promise<void> {
-  await page.addInitScript(sessionUser => {
+  const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
+  const token = `${encode({ alg: 'HS256' })}.${encode({ exp: Math.floor(Date.now() / 1000) + 3600 })}.test`;
+  await page.addInitScript(({ sessionUser, accessToken }) => {
     const rewrite = (source: string) => source.startsWith('http://localhost:8080/api')
       ? source.replace('http://localhost:8080/api', '/api')
       : source;
@@ -28,9 +30,9 @@ async function seedSession(page: Page, user: SessionUser): Promise<void> {
       return originalOpen.call(this, method, rewrite(url.toString()), async, username, password);
     };
     localStorage.setItem('luxestay.locale', 'vi');
-    localStorage.setItem('token', 'financial-reporting-e2e-token');
+    localStorage.setItem('token', accessToken);
     localStorage.setItem('user', JSON.stringify(sessionUser));
-  }, user);
+  }, { sessionUser: user, accessToken: token });
 }
 
 async function json(route: Route, body: unknown, status = 200): Promise<void> {
@@ -118,7 +120,7 @@ function report(context: 'PROPERTY_COMMERCE' | 'PLATFORM_BILLING') {
 }
 
 test.describe('Financial reporting browser journey', () => {
-  test.describe.configure({ mode: 'serial', retries: 0, timeout: 60_000 });
+  test.describe.configure({ mode: 'serial', retries: 0, timeout: 120_000 });
 
   test('owner filters a property report and cross-property scope is denied', async ({ page }) => {
     await seedSession(page, {
@@ -129,6 +131,13 @@ test.describe('Financial reporting browser journey', () => {
       permissions: [{ function: 'REPORT', actionMask: 17 }],
     });
     const reportRequests: string[] = [];
+    const largeReport = report('PROPERTY_COMMERCE');
+    largeReport.rows = Array.from({ length: 120 }, (_, index) => ({
+      ...largeReport.rows[0],
+      publicId: `PROP-TX-${String(index + 1).padStart(3, '0')}`,
+      sourceId: `PROP-TX-${String(index + 1).padStart(3, '0')}`,
+    }));
+    largeReport.totalRowCount = 120;
     await page.route('**/api/**', async route => {
       const url = new URL(route.request().url());
       if (url.pathname === '/api/management/context') {
@@ -139,8 +148,19 @@ test.describe('Financial reporting browser journey', () => {
         if (requestedPropertyId !== propertyId) {
           await json(route, { message: 'Không thể truy cập cơ sở này.' }, 404);
         } else {
-          await json(route, report('PROPERTY_COMMERCE'));
+          await json(route, largeReport);
         }
+      } else if (url.pathname === '/api/management/reports/property-revenue/export') {
+        await route.fulfill({
+          status: 200,
+          headers: {
+            'content-type': 'text/csv',
+            'content-disposition': 'attachment; filename="property-ledger-11.csv"',
+            'x-report-checksum': 'c'.repeat(64),
+            'x-report-row-count': '120',
+          },
+          body: 'publicId,netAmount\nPROP-TX-001,1400000\n',
+        });
       } else {
         await json(route, []);
       }
@@ -148,8 +168,13 @@ test.describe('Financial reporting browser journey', () => {
 
     await page.goto(`/management/property-revenue?propertyId=${propertyId}`, { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: 'Doanh thu cơ sở', level: 2 })).toBeVisible();
-    await expect(page.getByText('PROP-TX-11')).toBeVisible();
+    await expect(page.getByText('PROP-TX-001')).toBeVisible();
     await expect(page.getByText('PLAT-TX-PRO')).toHaveCount(0);
+    await expect(page.getByText('1 / 3', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Trang sau' }).click();
+    await expect(page.getByText('PROP-TX-051')).toBeVisible();
+    await expect(page.getByText('PROP-TX-001')).toHaveCount(0);
+    await page.screenshot({ path: '../docs/testing/evidence/007/remediation/T334-property-revenue-pagination-export.png' });
 
     await page.locator('select[name="basis"]').selectOption('CASH_COLLECTED');
     await page.locator('input[name="fromDate"]').fill('2026-07-10');
@@ -164,6 +189,15 @@ test.describe('Financial reporting browser journey', () => {
     await page.goto('/management/property-revenue?propertyId=99', { waitUntil: 'domcontentloaded' });
     await expect(page.getByText('Không thể truy cập cơ sở này.')).toBeVisible();
     expect(reportRequests.some(request => new URL(request).searchParams.get('propertyId') === '99')).toBe(true);
+
+    await page.goto(`/management/property-revenue?propertyId=${propertyId}`, { waitUntil: 'domcontentloaded' });
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'CSV', exact: true }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe('property-ledger-11.csv');
+    await expect(page.getByText('Da tai property-ledger-11.csv (120 dong).')).toBeVisible();
+    await expect(page.getByText(`SHA-256 ${'c'.repeat(64)}`)).toBeVisible();
+    await page.screenshot({ path: '../docs/testing/evidence/007/remediation/T336-property-revenue-export-feedback.png' });
   });
 
   test('system admin filters and exports Platform Billing without property leakage', async ({ page }) => {
@@ -175,6 +209,7 @@ test.describe('Financial reporting browser journey', () => {
       permissions: [{ function: 'PLATFORM_REVENUE', actionMask: 17 }],
     });
     const platformRequests: string[] = [];
+    const exportChecksum = 'a'.repeat(64);
     let propertyReportRequests = 0;
     await page.route('**/api/**', async route => {
       const url = new URL(route.request().url());
@@ -184,9 +219,10 @@ test.describe('Financial reporting browser journey', () => {
           status: 200,
           headers: {
             'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'X-Report-Checksum': 'playwright-checksum',
+            'X-Report-Checksum': exportChecksum,
+            'X-Report-Row-Count': '1',
           },
-          body: 'deterministic-excel-fixture',
+          body: `deterministic-excel-fixture checksum=${exportChecksum}`,
         });
       } else if (url.pathname === '/api/admin/reports/platform-revenue') {
         platformRequests.push(url.toString());
@@ -218,9 +254,17 @@ test.describe('Financial reporting browser journey', () => {
     })).toBe(true);
 
     const downloadPromise = page.waitForEvent('download');
+    const exportResponsePromise = page.waitForResponse(response =>
+      new URL(response.url()).pathname === '/api/admin/reports/platform-revenue/export');
     await page.getByRole('button', { name: 'Excel' }).click();
-    const download = await downloadPromise;
+    const [download, exportResponse] = await Promise.all([downloadPromise, exportResponsePromise]);
     expect(download.suggestedFilename()).toBe('luxestay-platform-revenue.xlsx');
+    expect(exportResponse.headers()['x-report-checksum']).toBe(exportChecksum);
+    expect(exportResponse.headers()['x-report-row-count']).toBe('1');
+    const stream = await download.createReadStream();
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+    expect(Buffer.concat(chunks).toString('utf8')).toContain(exportChecksum);
     expect(platformRequests.some(request => {
       const url = new URL(request);
       return url.pathname.endsWith('/export')
@@ -228,6 +272,10 @@ test.describe('Financial reporting browser journey', () => {
         && url.searchParams.get('planCode') === 'PRO';
     })).toBe(true);
     expect(propertyReportRequests).toBe(0);
+    await page.screenshot({
+      path: '../docs/testing/evidence/007/remediation/T335-platform-revenue-database-export.png',
+      fullPage: true,
+    });
   });
 
   test('property report permission cannot open the platform dashboard', async ({ page }) => {

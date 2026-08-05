@@ -1,0 +1,40 @@
+<section class="property-page">
+  <header><div><p class="eyebrow">Hồ sơ vận hành</p><h1>Cơ sở lưu trú</h1><p>Chỉnh sửa thông tin công khai; trạng thái duyệt và vận hành do hệ thống kiểm soát.</p></div></header>
+  @if (loading) {
+    <app-feedback-state state="loading" title="Đang tải cơ sở" message="Đang kiểm tra các cơ sở được gán cho tài khoản." />
+  } @else if (error && !properties.length) {
+    <app-feedback-state state="error" title="Không thể tải cơ sở" [message]="error" actionLabel="Thử lại" (actionTriggered)="load()" />
+  } @else if (!properties.length) {
+    <app-feedback-state state="empty" title="Chưa có cơ sở" message="Tài khoản chưa được gán cơ sở lưu trú nào." />
+  } @else {
+    <div class="workspace">
+      <nav aria-label="Danh sách cơ sở">
+        @for (property of properties; track property.id) {
+          <button type="button" [class.active]="selected?.id === property.id" (click)="select(property)">
+            <strong>{{ property.nameVi }}</strong><span>{{ property.code }}</span>
+            <small>{{ property.approvalStatus }} · {{ property.operationStatus }}</small>
+          </button>
+        }
+      </nav>
+      <form [formGroup]="form" (ngSubmit)="save()" aria-labelledby="profile-title">
+        <div class="profile-heading"><div><p class="eyebrow">Hồ sơ cơ sở</p><h2 id="profile-title">{{ selected?.nameVi }}</h2></div><span class="status">{{ selected?.approvalStatus }} · {{ selected?.operationStatus }}</span></div>
+        @if (error) { <p class="message error" role="alert">{{ error }}</p> }
+        @if (success) { <p class="message success" role="status">{{ success }}</p> }
+        <div class="grid">
+          <label>Tên tiếng Việt<input formControlName="nameVi" /></label>
+          <label>Tên tiếng Anh<input formControlName="nameEn" /></label>
+          <label>Loại cơ sở<select formControlName="propertyType"><option value="HOTEL">Khách sạn</option><option value="HOMESTAY">Homestay</option><option value="APARTMENT">Căn hộ/Villa</option><option value="MOTEL">Nhà nghỉ</option></select></label>
+          <label>Hạng sao<input type="number" min="0" max="5" formControlName="starRating" /></label>
+          <label>Tỉnh/thành<select formControlName="provinceId" (change)="provinceChanged()"><option [ngValue]="null">Chọn tỉnh/thành</option>@for (province of provinces; track province.id) { <option [ngValue]="province.id">{{ province.nameVi }}</option> }</select></label>
+          <label>Phường/xã<select formControlName="wardId"><option [ngValue]="null">Chọn phường/xã</option>@for (ward of wards; track ward.id) { <option [ngValue]="ward.id">{{ ward.nameVi }}</option> }</select></label>
+          <label class="wide">Địa chỉ<input formControlName="address" /></label>
+          <label>Điện thoại<input formControlName="phone" /></label>
+          <label>Email<input type="email" formControlName="email" /></label>
+          <label class="wide">Website<input formControlName="website" /></label>
+          <label class="wide">Mô tả<textarea rows="5" formControlName="descriptionVi"></textarea></label>
+        </div>
+        <div class="actions"><p>Không thể chỉnh trạng thái duyệt, trạng thái vận hành, dữ liệu demo hoặc chủ sở hữu tại đây.</p><button type="submit" [disabled]="form.invalid || saving">{{ saving ? 'Đang lưu...' : 'Lưu hồ sơ' }}</button></div>
+      </form>
+    </div>
+  }
+</section>

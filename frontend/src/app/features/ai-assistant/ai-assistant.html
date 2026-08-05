@@ -3,9 +3,11 @@
     *ngIf="isOpen"
     id="ai-assistant-dialog"
     class="ai-chat-window"
+    pFocusTrap
     role="dialog"
-    aria-modal="false"
+    aria-modal="true"
     aria-labelledby="ai-assistant-title"
+    (keydown.escape)="toggleChat(); $event.stopPropagation()"
   >
     <div class="ai-header d-flex justify-content-between align-items-center p-3">
       <div class="d-flex align-items-center">

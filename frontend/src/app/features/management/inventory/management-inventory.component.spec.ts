@@ -20,13 +20,16 @@ describe('ManagementInventoryComponent', () => {
     bulkRooms: ReturnType<typeof vi.fn>;
     updateRoom: ReturnType<typeof vi.fn>;
     deleteRoom: ReturnType<typeof vi.fn>;
+    startRoomMaintenance: ReturnType<typeof vi.fn>;
+    completeRoomMaintenance: ReturnType<typeof vi.fn>;
+    operationalExport: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
     allowActions = true;
     api = {
       context: vi.fn(() => of({ properties: [{ id: 3, nameVi: 'Hotel' }], activePropertyId: 3 })),
-      rooms: vi.fn(() => of([{ id: 12, status: 'AVAILABLE', maintenanceStatus: 'NONE' }])),
+      rooms: vi.fn(() => of([{ id: 12, roomNumber: '201', roomTypeNameVi: 'Deluxe', floor: 2, status: 'AVAILABLE', maintenanceStatus: 'NONE' }])),
       roomTypes: vi.fn(() => of([])),
       createRoomType: vi.fn(() => of({ id: 21 })),
       updateRoomType: vi.fn(() => of({ id: 21 })),
@@ -34,7 +37,12 @@ describe('ManagementInventoryComponent', () => {
       bulkRooms: vi.fn(() => of({ created: [], failedRoomNumbers: [] })),
       updateRoom: vi.fn(() => of({ id: 12 })),
       deleteRoom: vi.fn(() => of(undefined)),
+      startRoomMaintenance: vi.fn(() => of({})),
+      completeRoomMaintenance: vi.fn(() => of({})),
+      operationalExport: vi.fn(() => of({ blob: new Blob(['roomRef']), filename: 'rooms-property-3.csv', checksum: 'd'.repeat(64), rowCount: 1, schema: 'operational-rooms-v1' })),
     };
+    vi.stubGlobal('URL', { createObjectURL: () => 'blob:test', revokeObjectURL: () => undefined });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
 
     await TestBed.configureTestingModule({
       imports: [ManagementInventoryComponent],
@@ -48,6 +56,7 @@ describe('ManagementInventoryComponent', () => {
     fixture = TestBed.createComponent(ManagementInventoryComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+    await fixture.whenStable();
   });
 
   it('opens the reasoned work-order workflow instead of toggling room state', () => {
@@ -95,5 +104,16 @@ describe('ManagementInventoryComponent', () => {
     expect(text).not.toContain('Sửa');
     expect(text).not.toContain('Ngừng');
     expect(text).not.toContain('Phiếu bảo trì');
+  });
+
+  it('exports selected-property operational data and preserves server metadata', () => {
+    component.exportDataset = 'ROOMS';
+    component.exportOperational();
+    fixture.detectChanges();
+
+    expect(api.operationalExport).toHaveBeenCalledWith(3, 'ROOMS', { status: '', from: '', to: '' });
+    expect(fixture.nativeElement.textContent).toContain('rooms-property-3.csv');
+    expect(fixture.nativeElement.textContent).toContain('operational-rooms-v1');
+    expect(fixture.nativeElement.textContent).toContain('SHA-256');
   });
 });

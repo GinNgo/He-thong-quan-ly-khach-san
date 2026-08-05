@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, RouterModule, RouterOutlet } from '@angular/router';
 import { Subscription, filter } from 'rxjs';
 import { AuthService } from '../../core/services/auth';
@@ -7,7 +7,9 @@ import {
   ManagedProperty,
   ManagementApiService,
 } from '../../core/services/management-api.service';
+import { ManagementPropertyContextService } from '../../core/services/management-property-context.service';
 import { ActionCode, FunctionCode, PermissionService } from '../../core/services/permission.service';
+import { RouteFocusTargetDirective } from '../../shared/directives/focus-management.directive';
 
 interface ManagementLink {
   label: string;
@@ -21,17 +23,20 @@ interface ManagementLink {
 @Component({
   selector: 'app-management-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, RouterOutlet],
+  imports: [CommonModule, RouterModule, RouterOutlet, RouteFocusTargetDirective],
   templateUrl: './management-layout.html',
   styleUrls: ['./management-layout.css'],
 })
 export class ManagementLayout implements OnInit, OnDestroy {
+  @ViewChild('navigationTrigger') private navigationTrigger?: ElementRef<HTMLButtonElement>;
+  @ViewChild('profileTrigger') private profileTrigger?: ElementRef<HTMLButtonElement>;
   private authService = inject(AuthService);
   private managementApi = inject(ManagementApiService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   private permissionService = inject(PermissionService);
+  private propertyContext = inject(ManagementPropertyContextService);
 
   readonly navigationGroups: ReadonlyArray<{
     label: string;
@@ -88,6 +93,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
           functionCode: FunctionCode.AUDIT_LOG,
           actionCode: ActionCode.VIEW,
         },
+        { label: 'Nhat ky tai chinh', url: '/management/financial-audit', icon: 'policy', functionCode: FunctionCode.AUDIT_LOG, actionCode: ActionCode.VIEW },
       ],
     },
   ];
@@ -105,6 +111,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
   activePropertyOperational = false;
 
   private subscriptions = new Subscription();
+  private contextRequestSequence = 0;
 
   ngOnInit(): void {
     this.updateViewportState();
@@ -120,14 +127,15 @@ export class ManagementLayout implements OnInit, OnDestroy {
         .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
         .subscribe((event) => {
           this.updatePageTitle(event.urlAfterRedirects);
-          this.closeOverlays();
+          this.closeOverlays(false);
           this.cdr.markForCheck();
         }),
     );
 
     this.updatePageTitle(this.router.url);
+    this.subscriptions.add(this.propertyContext.propertyId$.subscribe(propertyId => this.loadContext(propertyId)));
     const propertyId = Number(this.route.snapshot.queryParamMap.get('propertyId'));
-    this.loadContext(Number.isInteger(propertyId) && propertyId > 0 ? propertyId : undefined);
+    if (Number.isInteger(propertyId) && propertyId > 0) this.propertyContext.select(propertyId);
   }
 
   ngOnDestroy(): void {
@@ -135,12 +143,14 @@ export class ManagementLayout implements OnInit, OnDestroy {
   }
 
   loadContext(propertyId?: number, updateUrl = false): void {
+    const requestSequence = ++this.contextRequestSequence;
     this.contextLoading = true;
     this.contextError = '';
 
     this.subscriptions.add(
       this.managementApi.context(propertyId).subscribe({
         next: (context) => {
+          if (requestSequence !== this.contextRequestSequence) return;
           this.properties = context.properties;
           this.activePropertyId = context.activePropertyId;
           this.activePropertyOperational = context.activePropertyOperational
@@ -157,6 +167,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         },
         error: () => {
+          if (requestSequence !== this.contextRequestSequence) return;
           this.properties = [];
           this.activePropertyId = undefined;
           this.activePropertyOperational = false;
@@ -171,8 +182,11 @@ export class ManagementLayout implements OnInit, OnDestroy {
   selectProperty(rawValue: string): void {
     const requestedId = Number(rawValue);
     if (!Number.isInteger(requestedId) || requestedId <= 0) return;
-
-    this.loadContext(requestedId, true);
+    this.propertyContext.select(requestedId);
+    void this.router.navigate([], {
+      queryParams: { propertyId: requestedId },
+      queryParamsHandling: 'merge',
+    });
   }
 
   logout(): void {
@@ -189,7 +203,9 @@ export class ManagementLayout implements OnInit, OnDestroy {
   }
 
   toggleUserMenu(): void {
+    const restoreFocus = this.isUserMenuOpen;
     this.isUserMenuOpen = !this.isUserMenuOpen;
+    if (restoreFocus) queueMicrotask(() => this.profileTrigger?.nativeElement.focus());
   }
 
   closeMobileNavigation(): void {
@@ -197,9 +213,14 @@ export class ManagementLayout implements OnInit, OnDestroy {
   }
 
   @HostListener('document:keydown.escape')
-  closeOverlays(): void {
+  closeOverlays(restoreFocus = true): void {
+    const navigationWasOpen = this.isMobileSidebarOpen;
+    const profileWasOpen = this.isUserMenuOpen;
     this.isMobileSidebarOpen = false;
     this.isUserMenuOpen = false;
+    if (!restoreFocus) return;
+    if (profileWasOpen) queueMicrotask(() => this.profileTrigger?.nativeElement.focus());
+    else if (navigationWasOpen) queueMicrotask(() => this.navigationTrigger?.nativeElement.focus());
   }
 
   @HostListener('window:resize')

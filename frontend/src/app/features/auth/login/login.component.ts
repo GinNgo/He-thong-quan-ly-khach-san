@@ -8,10 +8,11 @@ import {
   authenticationErrorMessage,
 } from '@app/core/auth/account-status-error';
 import { isBookingReturnUrl, safeClientReturnUrl } from '@app/core/auth/client-return-url';
+import { FocusOnErrorDirective } from '../../../shared/directives/focus-management.directive';
 
 @Component({
   standalone: true,
-  imports: [SharedModule, RouterModule],
+  imports: [SharedModule, RouterModule, FocusOnErrorDirective],
   selector: 'app-login',
   templateUrl: './login.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -59,16 +59,25 @@ public class ManagementPortalService {
         result.put("planCode", entitlement.planCode());
         result.put("subscriptionStatus", entitlement.status());
         result.put("subscriptionSource", entitlement.source());
+        result.put("entitlementAuthoritative", entitlement.platformAuthoritative());
+        result.put("entitlementReference", entitlement.sourceReference());
         result.put("startAt", entitlement.effectiveFrom());
         result.put("endAt", entitlement.effectiveUntil());
         result.put("lifetime", entitlement.lifetime());
         result.put("limits", limits);
         result.put("usage", usage);
+        result.put("usageScope", Map.of(
+                "properties", "OWNER_ACCOUNT",
+                "roomTypes", "SELECTED_PROPERTY",
+                "rooms", "SELECTED_PROPERTY",
+                "staff", "SELECTED_PROPERTY",
+                "images", "SELECTED_PROPERTY"));
+        result.put("scope", selectedId == null ? "NONE" : "SELECTED_PROPERTY");
+        result.put("sourceWatermark", selectedId == null ? "PROPERTY_NOT_SELECTED" : "PROPERTY:" + selectedId);
         result.put("upgradeRequired", limits.isEmpty() || !"ACTIVE".equals(entitlement.status()));
         result.put("generatedAt", Instant.now().toString());
         result.put("dataStatus", "COMPLETE");
         result.put("errors", List.of());
-        result.put("usageScope", selectedId == null ? "NONE" : "PROPERTY");
         if (activePropertyOperational) result.put("dashboard", dashboard(selectedId, dashboardSnapshot));
         return result;
     }
@@ -265,6 +274,8 @@ public class ManagementPortalService {
         data.put("unclassifiedRooms", snapshot.totalRooms() - classified);
         data.put("statusCountTotal", statusCountTotal);
         data.put("reconciled", statusCountTotal == snapshot.totalRooms());
+        data.put("reconciliationStatus", statusCountTotal == snapshot.totalRooms() ? "RECONCILED" : "MISMATCH");
+        data.put("countBasis", "ROOM_STATUS_BY_SELECTED_PROPERTY");
         data.put("pendingHousekeeping", housekeepingTaskRepository.countByHotelIdAndStatus(hotelId, "PENDING"));
         return data;
     }

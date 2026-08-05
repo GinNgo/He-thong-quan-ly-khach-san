@@ -6,6 +6,7 @@ import { BehaviorSubject, Subject, of } from 'rxjs';
 import { AuthService, AuthState } from '../../core/services/auth';
 import { ChatService } from '../../core/services/chat.service';
 import { ClientApiService } from '../../core/services/client-api.service';
+import { CustomerNotificationService } from '../../core/services/customer-notification.service';
 import { ClientLayout } from './client-layout';
 
 describe('ClientLayout', () => {
@@ -50,6 +51,16 @@ describe('ClientLayout', () => {
           },
         },
         { provide: ClientApiService, useValue: { getProfile } },
+        {
+          provide: CustomerNotificationService,
+          useValue: {
+            notifications$: new Subject(),
+            reconciliation$: new Subject(),
+            connect: vi.fn(),
+            disconnect: vi.fn(),
+            getUnreadCount: vi.fn(() => of({ unreadCount: 0 })),
+          },
+        },
         {
           provide: ChatService,
           useValue: {

@@ -25,6 +25,26 @@ public class ChatMessage {
     @Column(name = "receiver_id", nullable = false)
     private Long receiverId;
 
+    @Column(name = "conversation_id")
+    private Long conversationId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "conversation_id", insertable = false, updatable = false)
+    private SupportConversation conversation;
+
+    @Column(name = "hotel_id")
+    private Long hotelId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hotel_id", insertable = false, updatable = false)
+    private Hotel hotel;
+
+    @Column(name = "legacy_unscoped", nullable = false)
+    private boolean legacyUnscoped;
+
+    @Column(name = "client_message_id", length = 64, updatable = false)
+    private String clientMessageId;
+
     @Column(columnDefinition = "NVARCHAR(MAX)")
     private String content;
 
@@ -34,9 +54,29 @@ public class ChatMessage {
     @Column(name = "is_read")
     private boolean isRead;
 
+    @Column(name = "delivery_status", nullable = false, length = 20)
+    private String deliveryStatus = "PERSISTED";
+
+    @Column(name = "delivered_at")
+    private Instant deliveredAt;
+
+    @Column(name = "read_at")
+    private Instant readAt;
+
     @PrePersist
     protected void onCreate() {
         this.timestamp = Instant.now();
         this.isRead = false;
+        if (this.deliveryStatus == null) this.deliveryStatus = "PERSISTED";
+    }
+
+    public void setConversation(SupportConversation conversation) {
+        this.conversation = conversation;
+        this.conversationId = conversation == null ? null : conversation.getId();
+    }
+
+    public void setHotel(Hotel hotel) {
+        this.hotel = hotel;
+        this.hotelId = hotel == null ? null : hotel.getId();
     }
 }

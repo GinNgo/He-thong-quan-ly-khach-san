@@ -9,6 +9,8 @@ import { TooltipModule } from 'primeng/tooltip';
 import { PageRequest, SortRequest, FilterRequest } from '../../models/pagination.model';
 import { PermissionDirective } from '../../directives/permission';
 
+let dataTableSequence = 0;
+
 export interface ColumnDefinition {
   field: string;
   header: string;
@@ -42,6 +44,7 @@ export class DataTable implements OnInit {
   @Input() totalRecords: number = 0;
   @Input() pageSize: number = 20;
   @Input() loading: boolean = false;
+  @Input() tableLabel = 'Bang du lieu';
   @Input() permissions = {
     view: '',
     edit: '',
@@ -57,6 +60,8 @@ export class DataTable implements OnInit {
   @Output() view = new EventEmitter<any>();
 
   globalFilter = signal<string>('');
+
+  readonly tableCaptionId = `data-table-caption-${++dataTableSequence}`;
 
   ngOnInit(): void {}
 

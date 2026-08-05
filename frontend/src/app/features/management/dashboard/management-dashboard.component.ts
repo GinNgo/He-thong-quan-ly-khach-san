@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ManagedProperty, ManagementApiService, ManagementContext, ManagementLocation } from '../../../core/services/management-api.service';
 import { PropertyProfile } from '../../../core/models/property-profile.model';
 import { FeedbackStateComponent } from '../../../shared/components/feedback-state/feedback-state.component';
@@ -9,6 +9,7 @@ import { PropertyGalleryComponent } from '../../../shared/components/property-ga
 import { AmenityAssignmentComponent } from '../../../shared/components/amenity-assignment/amenity-assignment.component';
 import { OperationalPolicyEditorComponent } from '../../../shared/components/operational-policy-editor/operational-policy-editor.component';
 import { ActionCode, FunctionCode, PermissionService } from '../../../core/services/permission.service';
+import { ManagementPropertyContextService } from '../../../core/services/management-property-context.service';
 
 @Component({
   selector: 'app-management-dashboard', standalone: true, imports: [CommonModule, FormsModule, RouterLink, FeedbackStateComponent, PropertyGalleryComponent, AmenityAssignmentComponent, OperationalPolicyEditorComponent],
@@ -18,6 +19,9 @@ export class ManagementDashboardComponent implements OnInit {
   private api = inject(ManagementApiService);
   private cdr = inject(ChangeDetectorRef);
   private permissions = inject(PermissionService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private propertyContext = inject(ManagementPropertyContextService);
   context?: ManagementContext;
   selectedPropertyId?: number;
   loading = true;
@@ -30,7 +34,11 @@ export class ManagementDashboardComponent implements OnInit {
   profileWards: ManagementLocation[] = [];
   private loadRequestId = 0;
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.propertyContext.propertyId$.subscribe(propertyId => this.load(propertyId));
+    const propertyId = Number(this.route.snapshot.queryParamMap.get('propertyId'));
+    if (Number.isInteger(propertyId) && propertyId > 0) this.propertyContext.select(propertyId);
+  }
   load(propertyId?: number): void {
     const requestId = ++this.loadRequestId;
     this.loading = true;
@@ -48,7 +56,11 @@ export class ManagementDashboardComponent implements OnInit {
       }
     });
   }
-  selectProperty(): void { this.load(this.selectedPropertyId); }
+  selectProperty(): void {
+    if (!this.selectedPropertyId) return;
+    this.propertyContext.select(this.selectedPropertyId);
+    void this.router.navigate([], { queryParams: { propertyId: this.selectedPropertyId }, queryParamsHandling: 'merge' });
+  }
   get activeProperty(): ManagedProperty | undefined { return this.context?.properties.find(property => property.id === this.selectedPropertyId); }
   get activePropertyOperational(): boolean { return this.context?.activePropertyOperational ?? this.activeProperty?.operational ?? false; }
   get activePropertySuspended(): boolean { return this.normalizedPropertyState() === 'SUSPENDED'; }
@@ -127,8 +139,13 @@ export class ManagementDashboardComponent implements OnInit {
       }
     });
   }
-  value(name: string): number { const value = this.context?.dashboard?.[name]; return typeof value === 'number' ? value : 0; }
+  value(name: keyof NonNullable<ManagementContext['dashboard']>): number { const value = this.context?.dashboard?.[name]; return typeof value === 'number' ? value : 0; }
   limit(name: string): string { const value = this.context?.limits?.[name]; return value === -1 ? 'Không giới hạn' : String(value ?? 0); }
+  generatedAtLabel(): string {
+    return this.context?.generatedAt
+      ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'medium' }).format(new Date(this.context.generatedAt))
+      : 'Không có dữ liệu';
+  }
 
   private emptyProfile(): PropertyProfile & { reason: string } {
     return { nameVi: '', propertyType: 'HOTEL', addressLine: '', provinceId: 0, wardId: 0, reason: '' };

@@ -1,3 +1,4 @@
+<a class="skip-link" href="#main-content">Bo qua dieu huong quan tri</a>
 <div class="admin-shell" [class.sidebar-collapsed]="isSidebarCollapsed" [class.mobile-nav-open]="isMobileSidebarOpen">
   <aside id="admin-navigation" class="admin-sidebar" aria-label="Điều hướng quản trị">
     <app-sidebar
@@ -56,6 +57,7 @@
 
         <div class="popup-anchor">
           <button
+            #notificationTrigger
             type="button"
             class="shell-icon-button"
             (click)="toggleNotifications()"
@@ -123,6 +125,7 @@
 
         <div class="popup-anchor profile-anchor">
           <button
+            #profileTrigger
             type="button"
             class="profile-button"
             (click)="toggleUserMenu()"
@@ -161,7 +164,7 @@
       </div>
     </header>
 
-    <main id="main-content" class="admin-content" tabindex="-1">
+    <main id="main-content" class="admin-content" appRouteFocusTarget>
       <router-outlet></router-outlet>
     </main>
 
