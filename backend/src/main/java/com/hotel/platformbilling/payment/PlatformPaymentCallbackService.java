@@ -13,6 +13,7 @@ import com.hotel.platformbilling.order.SubscriptionOrder;
 import com.hotel.platformbilling.subscription.SubscriptionApplicationService;
 import com.hotel.platformbilling.subscription.SubscriptionRenewalService;
 import com.hotel.platformbilling.subscription.SubscriptionUpgradeService;
+import com.hotel.services.PaymentReceiptEmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,9 @@ import java.util.UUID;
 
 @Service
 public class PlatformPaymentCallbackService {
+
+    @Autowired(required = false)
+    private PaymentReceiptEmailService paymentReceiptEmailService;
 
     private final PlatformPaymentAttemptRepository attemptRepository;
     private final PlatformFinancialTransactionRepository transactionRepository;
@@ -261,6 +265,9 @@ public class PlatformPaymentCallbackService {
                 "Verified platform payment", false, null);
         auditOrder(order, command, callback, previousOrderState, order.getStatus().name(), identity);
         String contractPublicId = applySubscriptionIfEligible(order, transaction, command.correlationId());
+        if (paymentReceiptEmailService != null) {
+            paymentReceiptEmailService.sendPlatformReceiptAfterCommit(attempt, transaction);
+        }
         return CallbackResult.accepted(attempt, order, transaction, contractPublicId, false);
     }
 

@@ -115,9 +115,17 @@ app:
       rate-window-minutes: ${PASSWORD_RESET_RATE_WINDOW_MINUTES:15}
       max-ip-requests: ${PASSWORD_RESET_MAX_IP_REQUESTS:5}
       max-email-requests: ${PASSWORD_RESET_MAX_EMAIL_REQUESTS:3}
+    email-verification:
+      ttl-minutes: ${EMAIL_VERIFICATION_TTL_MINUTES:60}
+      rate-window-minutes: ${EMAIL_VERIFICATION_RATE_WINDOW_MINUTES:15}
+      max-ip-requests: ${EMAIL_VERIFICATION_MAX_IP_REQUESTS:8}
+      max-user-requests: ${EMAIL_VERIFICATION_MAX_USER_REQUESTS:3}
   mail:
     password-reset-enabled: ${PASSWORD_RESET_EMAIL_ENABLED:true}
     password-reset-url: ${PASSWORD_RESET_URL:http://localhost:4200/reset-password}
+    email-verification-enabled: ${EMAIL_VERIFICATION_ENABLED:true}
+    email-verification-url: ${EMAIL_VERIFICATION_URL:http://localhost:4200/verify-email}
+    payment-receipt-enabled: ${PAYMENT_RECEIPT_EMAIL_ENABLED:true}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
   reservation-hold:
