@@ -1,4 +1,4 @@
-﻿package com.hotel.controllers;
+package com.hotel.controllers;
 
 import com.hotel.entities.User;
 import com.hotel.dtos.ProfileUpdateRequest;
