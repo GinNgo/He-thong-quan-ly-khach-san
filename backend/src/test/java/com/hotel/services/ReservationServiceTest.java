@@ -189,7 +189,7 @@ public class ReservationServiceTest {
         });
         when(reservationDetailRepository.findByReservationId(99L)).thenReturn(java.util.List.of());
 
-        reservationService.createReservation("testcustomer", request,
+        ReservationDTO response = reservationService.createReservation("testcustomer", request,
                 "testcustomer", "booking-key");
 
         ArgumentCaptor<Reservation> captor = ArgumentCaptor.forClass(Reservation.class);
@@ -204,6 +204,13 @@ public class ReservationServiceTest {
         assertEquals(4L, saved.getDepositConfigurationVersion());
         assertEquals("testcustomer", saved.getBookingIdempotencyScope());
         assertEquals("booking-key", saved.getBookingIdempotencyKey());
+        assertEquals(0, BigDecimal.valueOf(1_200_000).compareTo(response.getTotalAmount()));
+        assertEquals(11L, response.getDepositPolicySnapshot().configurationId());
+        assertEquals(4L, response.getDepositPolicySnapshot().configurationVersion());
+        assertEquals("PERCENTAGE", response.getDepositPolicySnapshot().policyType());
+        assertEquals(0, BigDecimal.valueOf(360_000)
+                .compareTo(response.getDepositPolicySnapshot().requiredDeposit()));
+        assertEquals("VND", response.getDepositPolicySnapshot().currency());
         verify(reservationHoldService).createHold(99L, 5L, 1, "RESERVATION-99");
     }
 
@@ -273,9 +280,7 @@ public class ReservationServiceTest {
         when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
         when(reservationRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(mockReservation));
         when(reservationDetailRepository.findByReservationId(1L)).thenReturn(java.util.Collections.emptyList());
-        when(reservationRoomRepository.findByReservationDetailReservationId(1L)).thenReturn(java.util.Collections.emptyList());
         when(reservationRepository.save(any(Reservation.class))).thenReturn(mockReservation);
-
         ReservationDTO updatedReservation = reservationService.updateReservationStatus(1L, "CHECKED_IN");
 
         assertNotNull(updatedReservation);

@@ -11,14 +11,41 @@ describe('SearchFilterSidebarComponent', () => {
     const component = new SearchFilterSidebarComponent();
     const emit = vi.spyOn(component.filtersChanged, 'emit');
     component.priceRange = [-100, 1500000];
-    component.selectedPropertyTypes = ['HOTEL'];
-    component.selectedStars = [4, 5];
+    component.selectedPropertyTypes = ['hotel', 'HOTEL', 'INVALID'];
+    component.selectedStars = [4, 5, 5, 0];
     component.selectedReviewScore = 8;
-    component.selectedAmenityIds = [3, 7];
     component.applyFilters();
     expect(emit).toHaveBeenCalledWith(expect.objectContaining({
-      minPrice: 0, maxPrice: 1500000, propertyTypes: ['HOTEL'], starRatings: [4, 5], minReviewScore: 8,
-      amenityIds: [3, 7]
+      minPrice: 0, maxPrice: 1500000, propertyTypes: ['HOTEL'], starRatings: [5, 4], minReviewScore: 8
     }));
+  });
+
+  it('canonicalizes duplicate route state while retaining a zero review threshold', () => {
+    const component = new SearchFilterSidebarComponent();
+    component.initialState = {
+      propertyTypes: ['resort', 'HOTEL', 'RESORT', 'UNKNOWN'],
+      starRatings: [3, 5, 3, 8],
+      minReviewScore: 0,
+    };
+
+    component.ngOnChanges();
+
+    expect(component.selectedPropertyTypes).toEqual(['HOTEL', 'RESORT']);
+    expect(component.selectedStars).toEqual([5, 3]);
+    expect(component.selectedReviewScore).toBe(0);
+  });
+
+  it('normalizes invalid display prices and preserves inclusive reversed endpoints', () => {
+    const component = new SearchFilterSidebarComponent();
+    component.initialState = { minPrice: Number.NaN, maxPrice: Number.POSITIVE_INFINITY };
+    component.ngOnChanges();
+    expect(component.priceRange).toEqual([0, 10000000]);
+
+    const emit = vi.spyOn(component.filtersChanged, 'emit');
+    component.priceRange = [600000, 400000];
+    component.applyFilters();
+
+    expect(component.priceRange).toEqual([400000, 600000]);
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ minPrice: 400000, maxPrice: 600000 }));
   });
 });

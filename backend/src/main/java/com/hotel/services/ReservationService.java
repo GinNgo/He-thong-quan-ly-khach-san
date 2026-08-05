@@ -559,6 +559,17 @@ public class ReservationService {
         dto.setSpecialRequests(reservation.getSpecialRequests());
         dto.setOperationalPolicyVersion(reservation.getOperationalPolicyVersion());
         dto.setOperationalPolicySnapshot(reservation.getOperationalPolicySnapshot());
+        DepositPolicySnapshot depositSnapshot = reservation.getDepositPolicySnapshot();
+        if (depositSnapshot != null) {
+            dto.setDepositPolicySnapshot(new DepositPolicySnapshotDTO(
+                    depositSnapshot.configurationId(),
+                    depositSnapshot.configurationVersion(),
+                    depositSnapshot.policyType().name(),
+                    depositSnapshot.policyValue(),
+                    depositSnapshot.bookingTotal().amount(),
+                    depositSnapshot.requiredDeposit().amount(),
+                    depositSnapshot.currency()));
+        }
         dto.setDetails(reservationDetailRepository.findByReservationId(reservation.getId()).stream()
                 .map(this::mapDetailToDTO).toList());
         return dto;

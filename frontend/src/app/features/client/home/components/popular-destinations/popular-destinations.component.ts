@@ -1,19 +1,20 @@
-import { Component, Input, inject } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CarouselModule } from 'primeng/carousel';
 import { HomeSearchStateService } from '../../services/home-search-state.service';
 import { LocationSuggestion } from '../../../../../core/services/client-api.service';
 import { ImageFallbackService } from '../../../../../core/services/image-fallback.service';
+import { FeedbackStateComponent } from '../../../../../shared/components/feedback-state/feedback-state.component';
 
 @Component({
   selector: 'app-popular-destinations',
   standalone: true,
-  imports: [CommonModule, CarouselModule],
+  imports: [CommonModule, CarouselModule, FeedbackStateComponent],
   template: `
-    <div class="mb-12">
+    <section class="mb-12" aria-labelledby="popular-destinations-title">
       <div class="mb-6">
         <span class="text-xs font-extrabold uppercase text-amber-700">Khám phá theo khu vực</span>
-        <h2 class="text-2xl md:text-[28px] font-bold text-gray-900 mt-1 font-serif">Điểm đến phổ biến</h2>
+        <h2 id="popular-destinations-title" class="text-2xl md:text-[28px] font-bold text-gray-900 mt-1 font-serif">Điểm đến phổ biến</h2>
       </div>
       
       <!-- Skeleton Loading -->
@@ -25,15 +26,33 @@ import { ImageFallbackService } from '../../../../../core/services/image-fallbac
         </div>
       </div>
 
+      <app-feedback-state
+        *ngIf="!loading && error"
+        state="error"
+        title="Không thể tải điểm đến"
+        message="Dữ liệu điểm đến tạm thời không khả dụng."
+        actionLabel="Thử lại"
+        (actionTriggered)="retry.emit()">
+      </app-feedback-state>
+
+      <app-feedback-state
+        *ngIf="!loading && !error && destinations.length === 0"
+        state="empty"
+        title="Chưa có điểm đến phổ biến"
+        message="Các khu vực sẽ hiển thị khi có cơ sở lưu trú đang hoạt động.">
+      </app-feedback-state>
+
       <!-- Carousel -->
-      <div *ngIf="!loading && destinations.length > 0" class="destination-carousel">
+      <div *ngIf="!loading && !error && destinations.length > 0" class="destination-carousel">
         <p-carousel [value]="destinations" [numVisible]="5" [numScroll]="1" [circular]="false" [responsiveOptions]="responsiveOptions" [showIndicators]="false">
           <ng-template pTemplate="item" let-dest>
-            <div class="px-2 cursor-pointer group" (click)="selectDestination(dest)">
+            <div class="px-2 cursor-pointer group" [attr.data-destination-id]="dest.id" (click)="selectDestination(dest)">
               <div class="rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-200 bg-white">
                 <div class="aspect-[4/3] w-full overflow-hidden relative bg-gray-100">
-                  <img [src]="displayImage(dest.imageUrl, dest.id)" [alt]="dest.name" loading="lazy"
-                    (error)="handleImageError($event, dest.id)" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                  <img [src]="displayImage(dest.imageUrl)" [alt]="dest.imageAltText || dest.name"
+                    [attr.data-image-provenance]="displayProvenance(dest.imageUrl, dest.imageProvenance)"
+                    loading="lazy" (error)="handleImageError($event)"
+                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
                   <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 </div>
                 <div class="p-4 text-center">
@@ -45,7 +64,7 @@ import { ImageFallbackService } from '../../../../../core/services/image-fallbac
           </ng-template>
         </p-carousel>
       </div>
-    </div>
+    </section>
   `,
   styles: [`
     :host ::ng-deep .destination-carousel .p-carousel-prev,
@@ -75,6 +94,8 @@ import { ImageFallbackService } from '../../../../../core/services/image-fallbac
 export class PopularDestinationsComponent {
   @Input() destinations: LocationSuggestion[] = [];
   @Input() loading = false;
+  @Input() error = false;
+  @Output() readonly retry = new EventEmitter<void>();
   
   private stateService = inject(HomeSearchStateService);
   private imageFallback = inject(ImageFallbackService);
@@ -91,11 +112,19 @@ export class PopularDestinationsComponent {
     this.stateService.submitSearch();
   }
 
-  displayImage(imageUrl: string | undefined, _id: number): string {
+  displayImage(imageUrl?: string): string {
     return imageUrl || this.imageFallback.destination();
   }
 
-  handleImageError(event: Event, id: number): void {
-    this.imageFallback.replace(event, this.imageFallback.destination());
+  displayProvenance(imageUrl?: string, provenance?: string): string {
+    return imageUrl ? provenance || 'API_UNSPECIFIED' : 'FRONTEND_FALLBACK';
+  }
+
+  handleImageError(event: Event): void {
+    const image = event.target as HTMLImageElement;
+    const fallback = this.imageFallback.destination();
+    if (image.src.endsWith(fallback)) return;
+    image.dataset['imageFallback'] = 'true';
+    this.imageFallback.replace(event, fallback);
   }
 }

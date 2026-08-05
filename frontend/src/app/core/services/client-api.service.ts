@@ -24,12 +24,13 @@ export interface Hotel {
   galleryUrls?: string[];
   imageCount?: number;
   imageAltText?: string;
+  imageProvenance?: string;
   propertyType?: string;
   provinceName?: string;
   wardName?: string;
   reviewScore?: number;
   reviewCount?: number;
-  availableRoomCount?: number;
+  availableRoomCount?: number | null;
   amenities?: string[];
   lowestRoomType?: { id: number; name: string; maxGuests: number };
   pricing?: {
@@ -54,6 +55,34 @@ export interface PagedResponse<T> {
   size: number;
 }
 
+export interface PropertySearchParams {
+  keyword?: string;
+  provinceId?: number;
+  wardId?: number;
+  landmarkId?: number;
+  checkInDate?: string;
+  checkOutDate?: string;
+  adultCount?: number;
+  childCount?: number;
+  roomCount?: number;
+  latitude?: number;
+  longitude?: number;
+  radiusKm?: number;
+  sortBy?: string;
+  pageNumber?: number;
+  pageSize?: number;
+  propertyTypes?: string[];
+  stayType?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  starRatings?: number[];
+  minReviewScore?: number;
+  amenityIds?: number[];
+  freeCancellation?: boolean;
+  payAtProperty?: boolean;
+  breakfastIncluded?: boolean;
+}
+
 export interface RoomType {
   id: number;
   hotelId?: number;
@@ -69,7 +98,7 @@ export interface RoomType {
   basePrice: number;
   descriptionVi: string;
   descriptionEn: string;
-  availableRooms?: number;
+  availableRooms?: number | null;
   nights?: number;
   totalPrice?: number;
   imageUrls?: string[];
@@ -127,8 +156,16 @@ export interface LocationSuggestion {
   propertyType?: string;
   thumbnailUrl?: string;
   imageUrl?: string;
+  imageAltText?: string;
+  imageProvenance?: string;
   reviewScore?: number;
   distanceKm?: number;
+  latitude?: number;
+  longitude?: number;
+  defaultRadiusKm?: number;
+  category?: string;
+  descriptionVi?: string;
+  descriptionEn?: string;
 }
 
 export interface SearchSuggestionGroups {
@@ -165,16 +202,23 @@ export interface UserContext {
 export class ClientApiService {
   private http = inject(HttpClient);
   private apiUrl = environment.apiUrl;
-  private readonly popularDestinationsCache = new Map<number, Observable<LocationSuggestion[]>>();
+  private readonly popularDestinationsTtlMs = 60_000;
+  private readonly popularDestinationsCache = new Map<number, {
+    expiresAt: number;
+    response: Observable<LocationSuggestion[]>;
+  }>();
   private hotelApiUrl = `${environment.apiUrl}/v1/hotels`;
 
-  searchHotels(paramsObj: any): Observable<PagedResponse<Hotel>> {
+  searchHotels(paramsObj: PropertySearchParams): Observable<PagedResponse<Hotel>> {
     let params = new HttpParams();
-    Object.keys(paramsObj).forEach(key => {
-      if (paramsObj[key] !== null && paramsObj[key] !== undefined) {
-        params = params.set(key, String(paramsObj[key]));
-      }
-    });
+    for (const key of Object.keys(paramsObj) as Array<keyof PropertySearchParams>) {
+      const value = paramsObj[key];
+      if (value === null || value === undefined) continue;
+      const serialized = Array.isArray(value)
+        ? value.join(',')
+        : typeof value === 'string' ? value.trim() : String(value);
+      if (serialized) params = params.set(key, serialized);
+    }
 
     return this.http.get<PagedResponse<Hotel>>(`${environment.apiUrl}/public/properties/search`, { params });
   }
@@ -221,6 +265,10 @@ export class ClientApiService {
     return this.http.get<ReservationSummary[]>(`${this.apiUrl}/reservations/my-bookings`);
   }
 
+  getReservation(reservationId: number): Observable<ReservationSummary> {
+    return this.http.get<ReservationSummary>(`${this.apiUrl}/reservations/${reservationId}`);
+  }
+
   getProfile(): Observable<UserContext> {
     return this.http.get<UserContext>(`${this.apiUrl}/users/me`);
   }
@@ -236,17 +284,19 @@ export class ClientApiService {
     return this.searchLocations(keyword, 15);
   }
 
-  getSearchSuggestions(keyword: string, limit: number = 10, latitude?: number, longitude?: number): Observable<SearchSuggestionGroups> {
+  getSearchSuggestions(keyword: string, limit: number = 10, latitude?: number, longitude?: number, provinceId?: number): Observable<SearchSuggestionGroups> {
     let params = new HttpParams().set('keyword', keyword).set('limit', limit.toString());
     if (latitude !== undefined) params = params.set('latitude', latitude.toString());
     if (longitude !== undefined) params = params.set('longitude', longitude.toString());
+    if (provinceId !== undefined) params = params.set('provinceId', provinceId.toString());
     return this.http.get<SearchSuggestionGroups>(`${environment.apiUrl}/public/search/suggestions`, { params });
   }
 
-  getPopularDestinations(limit: number = 8): Observable<LocationSuggestion[]> {
-    const safeLimit = Math.min(Math.max(limit, 1), 12);
+  getPopularDestinations(limit: number = 8, forceRefresh = false): Observable<LocationSuggestion[]> {
+    const safeLimit = Math.min(Math.max(limit, 1), 8);
     const cached = this.popularDestinationsCache.get(safeLimit);
-    if (cached) return cached;
+    if (!forceRefresh && cached && cached.expiresAt > Date.now()) return cached.response;
+    this.popularDestinationsCache.delete(safeLimit);
 
     const params = new HttpParams().set('limit', safeLimit.toString());
     const request = this.http.get<LocationSuggestion[]>(
@@ -254,12 +304,25 @@ export class ClientApiService {
       { params }
     ).pipe(
       catchError(error => {
-        this.popularDestinationsCache.delete(safeLimit);
+        if (this.popularDestinationsCache.get(safeLimit)?.response === request) {
+          this.popularDestinationsCache.delete(safeLimit);
+        }
         return throwError(() => error);
       }),
       shareReplay({ bufferSize: 1, refCount: false })
     );
-    this.popularDestinationsCache.set(safeLimit, request);
+    this.popularDestinationsCache.set(safeLimit, {
+      expiresAt: Date.now() + this.popularDestinationsTtlMs,
+      response: request
+    });
     return request;
+  }
+
+  invalidatePopularDestinations(limit?: number): void {
+    if (limit === undefined) {
+      this.popularDestinationsCache.clear();
+      return;
+    }
+    this.popularDestinationsCache.delete(Math.min(Math.max(limit, 1), 8));
   }
 }

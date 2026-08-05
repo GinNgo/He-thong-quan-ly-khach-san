@@ -4,9 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 
 import { ChangeDetectorRef, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@app/core/services/auth';
 import { isPasswordLengthValid, PASSWORD_POLICY } from '@app/core/auth/password-policy';
+import { safeClientReturnUrl } from '@app/core/auth/client-return-url';
 
 @Component({
   selector: 'app-register',
@@ -19,8 +20,10 @@ import { isPasswordLengthValid, PASSWORD_POLICY } from '@app/core/auth/password-
 export class RegisterComponent {
   private authService = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
   readonly passwordPolicy = PASSWORD_POLICY;
+  readonly returnUrl = safeClientReturnUrl(this.route.snapshot.queryParams?.['returnUrl']);
   registerObj = {
     fullName: '',
     email: '',
@@ -75,7 +78,9 @@ export class RegisterComponent {
           : 'Đăng ký thành công! Hãy đăng nhập để gửi lại liên kết xác minh email. / Registration successful! Sign in to resend the verification link.';
         this.cdr.markForCheck();
         setTimeout(() => {
-          this.router.navigate(['/login']);
+          this.router.navigate(['/login'], {
+            queryParams: this.returnUrl === '/' ? undefined : { returnUrl: this.returnUrl },
+          });
         }, 2000);
       },
       error: (err) => {

@@ -54,7 +54,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/v1/hotels/public/**").permitAll()
                 .requestMatchers("/api/room-types/public/**").permitAll()
-                .requestMatchers("/api/reservations/public/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/reservations/public/book").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/partner/register", "/api/v1/partner/register").permitAll()
                 .requestMatchers("/api/payments/vnpay-callback").permitAll()

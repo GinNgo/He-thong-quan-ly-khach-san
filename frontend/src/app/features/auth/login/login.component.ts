@@ -7,6 +7,7 @@ import {
   ACCOUNT_DISABLED_MESSAGE,
   authenticationErrorMessage,
 } from '@app/core/auth/account-status-error';
+import { isBookingReturnUrl, safeClientReturnUrl } from '@app/core/auth/client-return-url';
 
 @Component({
   standalone: true,
@@ -32,7 +33,7 @@ export class LoginComponent implements OnInit {
   returnUrl: string = '/';
 
   ngOnInit() {
-    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
+    this.returnUrl = safeClientReturnUrl(this.route.snapshot.queryParams['returnUrl']);
     if (this.route.snapshot.queryParams['reason'] === ACCOUNT_DISABLED_CODE) {
       this.errorMessage = ACCOUNT_DISABLED_MESSAGE;
     }

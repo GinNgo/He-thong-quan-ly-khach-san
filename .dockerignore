@@ -4,11 +4,14 @@ frontend/dist/
 frontend/.angular/
 backend/target/
 .git/
+.codex/
+.specify/
 .gitignore
 Dockerfile*
 .dockerignore
 *.log*
 .env*
+!.env.example
 coverage/
 frontend/coverage/
 frontend/playwright-report/

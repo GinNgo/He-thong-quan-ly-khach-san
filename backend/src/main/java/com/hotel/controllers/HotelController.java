@@ -1,5 +1,7 @@
 package com.hotel.controllers;
 
+import com.hotel.dto.PropertySearchRequestDTO;
+import com.hotel.dto.PropertySearchResponseDTO;
 import com.hotel.dtos.PropertyClosureRequest;
 import com.hotel.dtos.PropertyApprovalDecisionResponse;
 import com.hotel.dtos.PropertyApprovalRejectionRequest;
@@ -12,11 +14,13 @@ import com.hotel.security.CustomUserDetails;
 import com.hotel.services.HotelManagementService;
 import com.hotel.services.PropertyApprovalWorkflowService;
 import com.hotel.services.PublicInventoryEligibilityPolicy;
-import com.hotel.services.RoomTypeService;
+import com.hotel.services.PropertySearchService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.data.domain.Page;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -44,50 +48,55 @@ import java.util.List;
 public class HotelController {
 
     private final HotelManagementService hotelService;
-    private final RoomTypeService roomTypeService;
+    private final PropertySearchService propertySearchService;
     private final PropertyApprovalWorkflowService propertyApprovalWorkflowService;
     private final PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
 
-    public HotelController(HotelManagementService hotelService, RoomTypeService roomTypeService,
+    public HotelController(HotelManagementService hotelService, PropertySearchService propertySearchService,
                            PropertyApprovalWorkflowService propertyApprovalWorkflowService,
                            PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy) {
         this.hotelService = hotelService;
-        this.roomTypeService = roomTypeService;
+        this.propertySearchService = propertySearchService;
         this.propertyApprovalWorkflowService = propertyApprovalWorkflowService;
         this.publicInventoryEligibilityPolicy = publicInventoryEligibilityPolicy;
     }
 
     @GetMapping("/public/search")
-    public ResponseEntity<List<Hotel>> searchHotels(
+    public ResponseEntity<Page<PropertySearchResponseDTO>> searchHotels(
             @RequestParam(required = false) String city,
             @RequestParam(required = false) Long provinceId,
             @RequestParam(required = false) Long districtId,
             @RequestParam(required = false) Long wardId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkIn,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkOut,
-            @RequestParam(required = false) Integer guests) {
-        List<Hotel> hotels = hotelService.searchHotels(city, "ACTIVE");
-        if (provinceId != null) {
-            hotels = hotels.stream().filter(hotel -> provinceId.equals(hotel.getProvinceId())).toList();
+            @RequestParam(required = false) Integer guests,
+            @RequestParam(defaultValue = "1") int pageNumber,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        if (districtId != null) {
+            throw new IllegalArgumentException("districtId is no longer supported; use provinceId and wardId.");
         }
-        if (wardId != null) {
-            hotels = hotels.stream().filter(hotel -> wardId.equals(hotel.getWardId())).toList();
-        }
-        if (checkIn != null || checkOut != null || guests != null) {
-            hotels = hotels.stream()
-                    .filter(hotel -> !roomTypeService.getRoomTypesByHotelId(
-                            hotel.getId(), checkIn, checkOut, guests).isEmpty())
-                    .toList();
-        }
-        return ResponseEntity.ok(hotels.stream()
-                .filter(publicInventoryEligibilityPolicy::isPublicProperty)
-                .toList());
+        if (guests != null && guests <= 0) throw new IllegalArgumentException("guests must be greater than zero.");
+
+        PropertySearchRequestDTO request = new PropertySearchRequestDTO();
+        request.setLegacyAddressKeyword(city);
+        request.setProvinceId(provinceId);
+        request.setWardId(wardId);
+        request.setCheckInDate(checkIn == null ? null : checkIn.toString());
+        request.setCheckOutDate(checkOut == null ? null : checkOut.toString());
+        request.setAdultCount(guests);
+        request.setPageNumber(pageNumber);
+        request.setPageSize(pageSize);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header("X-LuxeStay-Freshness", "LIVE_SEARCH")
+                .body(propertySearchService.searchProperties(request));
     }
 
     @GetMapping("/public/{id}")
     public ResponseEntity<PublicHotelDetailDTO> getHotelById(@PathVariable Long id) {
-        return ResponseEntity.ok(PublicHotelDetailDTO.from(
-                publicInventoryEligibilityPolicy.requirePublicProperty(id)));
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(PublicHotelDetailDTO.from(publicInventoryEligibilityPolicy.requirePublicProperty(id)));
     }
 
     @GetMapping("/my-hotels")

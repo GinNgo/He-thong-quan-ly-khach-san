@@ -12,14 +12,14 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class RoomAvailabilityService {
 
-    private static final List<String> EXCLUDED_ROOM_STATUSES = List.of(
-            "MAINTENANCE", "OUT_OF_SERVICE", "DIRTY", "CLEANING", "OCCUPIED"
-    );
     public static final List<String> RELEASED_RESERVATION_STATUSES = List.of(
             "CANCELLED", "REJECTED", "EXPIRED", "NO_SHOW", "CHECKED_OUT", "COMPLETED"
     );
@@ -27,25 +27,53 @@ public class RoomAvailabilityService {
 
     private final RoomRepository roomRepository;
     private final ReservationDetailRepository reservationDetailRepository;
+    private final RoomAvailabilityPolicy roomAvailabilityPolicy;
 
     public long countAvailableRooms(Long roomTypeId, LocalDate checkIn, LocalDate checkOut) {
-        long totalActiveRooms = roomRepository.countBookableRoomsByRoomTypeId(roomTypeId, EXCLUDED_ROOM_STATUSES);
-        if (!hasStayDates(checkIn, checkOut)) {
-            return totalActiveRooms;
-        }
+        boolean datedStay = hasStayDates(checkIn, checkOut);
+        if (datedStay) validateStayDates(checkIn, checkOut);
+        long roomsInPool = roomRepository.countRoomsInAvailabilityPool(
+                roomTypeId,
+                roomAvailabilityPolicy.roomStatuses(datedStay),
+                roomAvailabilityPolicy.housekeepingStatuses());
+        if (!datedStay) return roomsInPool;
 
-        validateStayDates(checkIn, checkOut);
         long reservedRooms = reservationDetailRepository.sumReservedQuantity(
                 roomTypeId, RELEASED_RESERVATION_STATUSES, checkIn, checkOut
         );
-        return Math.max(0, totalActiveRooms - reservedRooms);
+        return Math.max(0, roomsInPool - reservedRooms);
+    }
+
+    public Map<Long, Long> countAvailableRooms(Collection<Long> roomTypeIds,
+                                               LocalDate checkIn, LocalDate checkOut) {
+        if (roomTypeIds == null || roomTypeIds.isEmpty()) return Map.of();
+        boolean datedStay = hasStayDates(checkIn, checkOut);
+        if (datedStay) validateStayDates(checkIn, checkOut);
+        Map<Long, Long> available = new HashMap<>();
+        roomTypeIds.forEach(id -> available.put(id, 0L));
+        roomRepository.countRoomsInAvailabilityPoolByRoomTypeIds(
+                        roomTypeIds,
+                        roomAvailabilityPolicy.roomStatuses(datedStay),
+                        roomAvailabilityPolicy.housekeepingStatuses())
+                .forEach(row -> available.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue()));
+        if (!datedStay) return Map.copyOf(available);
+
+        reservationDetailRepository.sumReservedQuantityByRoomTypeIds(
+                        roomTypeIds, RELEASED_RESERVATION_STATUSES, checkIn, checkOut)
+                .forEach(row -> {
+                    Long roomTypeId = ((Number) row[0]).longValue();
+                    long reserved = ((Number) row[1]).longValue();
+                    available.computeIfPresent(roomTypeId, (id, physical) -> Math.max(0, physical - reserved));
+                });
+        return Map.copyOf(available);
     }
 
     public Room findFirstAvailableRoomForBooking(Long roomTypeId, LocalDate checkIn, LocalDate checkOut, Integer guests) {
         validateStayDates(checkIn, checkOut);
-        return roomRepository.findAvailableRoomsByRoomTypeAndDateForUpdate(
+        return roomRepository.findRoomsInDatedAvailabilityPoolForUpdate(
                         roomTypeId,
-                        EXCLUDED_ROOM_STATUSES,
+                        roomAvailabilityPolicy.roomStatuses(true),
+                        roomAvailabilityPolicy.housekeepingStatuses(),
                         RELEASED_RESERVATION_STATUSES,
                         checkIn,
                         checkOut

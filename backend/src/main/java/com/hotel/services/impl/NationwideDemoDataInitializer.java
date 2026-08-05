@@ -229,8 +229,9 @@ public class NationwideDemoDataInitializer {
         hotel.setPhone(String.format("000-%03d-%04d", sequence % 1000, sequence));
         hotel.setEmail(String.format("property.%04d@example.com", sequence));
         hotel.setWebsite("https://example.com/demo/property-" + sequence);
-        hotel.setAverageRating(null);
-        hotel.setReviewCount(0);
+        boolean unrated = sequence % 7 == 0;
+        hotel.setAverageRating(unrated ? null : 7.5 + (sequence % 14) / 10.0);
+        hotel.setReviewCount(unrated ? 0 : 10 + sequence % 200);
         hotel.setExternalProvider(null);
         hotel.setExternalId(null);
         hotel.setIsDemo(true);

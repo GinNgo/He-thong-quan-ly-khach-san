@@ -10,6 +10,7 @@ import {
 } from '../../../core/services/property-payment.service';
 import { PropertyPaymentPanelComponent } from './property-payment-panel.component';
 import { AsyncActionCoordinatorService } from '../../../core/services/async-action-coordinator.service';
+import { BookingCheckoutRecoveryService, CheckoutPhase } from './booking-checkout-recovery.service';
 import { OperationalPolicyService, PublicOperationalPolicy } from '../../../core/services/operational-policy.service';
 
 @Component({
@@ -26,6 +27,7 @@ export class BookingCheckoutComponent implements OnInit {
   private propertyPaymentService = inject(PropertyPaymentService);
   private changeDetector = inject(ChangeDetectorRef);
   private actionCoordinator = inject(AsyncActionCoordinatorService);
+  private checkoutRecovery = inject(BookingCheckoutRecoveryService);
   private policyApi = inject(OperationalPolicyService);
 
   roomTypeId: number = 0;
@@ -51,6 +53,7 @@ export class BookingCheckoutComponent implements OnInit {
 
   isSubmitting = false;
   bookingSuccess = false;
+  checkoutPhase: CheckoutPhase | null = null;
   errorMessage = '';
   contextError = '';
   reservationDetails: any = null;
@@ -69,6 +72,7 @@ export class BookingCheckoutComponent implements OnInit {
         this.roomTypeId = Number(id);
         this.bookingData.roomTypeId = this.roomTypeId;
         this.validateBookingContext();
+        this.resumeCheckout();
       }
     });
 
@@ -123,6 +127,8 @@ export class BookingCheckoutComponent implements OnInit {
       next: (res) => {
         this.reservationDetails = res;
         this.reservedPaymentMethod = this.bookingData.paymentMethod;
+        this.checkoutPhase = 'RESERVATION_CREATED';
+        this.persistRecovery();
         
         if (this.bookingData.paymentMethod !== 'PAY_AT_HOTEL') {
           this.createPaymentAttempt(res.id);
@@ -177,6 +183,8 @@ export class BookingCheckoutComponent implements OnInit {
 
   onPaymentAttemptChange(attempt: PropertyPaymentAttempt): void {
     this.paymentAttempt = attempt;
+    this.checkoutPhase = this.phaseForAttempt(attempt);
+    this.persistRecovery();
   }
 
   retryPaymentAttempt(): void {
@@ -239,6 +247,8 @@ export class BookingCheckoutComponent implements OnInit {
         this.paymentAttempt = attempt;
         this.isSubmitting = false;
         this.bookingSuccess = true;
+        this.checkoutPhase = this.phaseForAttempt(attempt);
+        this.persistRecovery();
         this.changeDetector.markForCheck();
         if (attempt.redirectUrl) {
           window.location.href = attempt.redirectUrl;
@@ -291,6 +301,71 @@ export class BookingCheckoutComponent implements OnInit {
       expiresAt: Date.now() + 30 * 60 * 1000,
     }));
     return this.bookingIdempotencyKey;
+  }
+
+  private resumeCheckout(): void {
+    const state = this.checkoutRecovery.load(this.roomTypeId);
+    if (!state) return;
+    this.clientApi.getReservation(state.reservationId).subscribe({
+      next: (reservation) => {
+        this.reservationDetails = reservation;
+        this.reservedPaymentMethod = state.paymentMethod;
+        this.checkoutPhase = state.phase;
+        this.bookingSuccess = true;
+        if (!state.attemptId) {
+          this.changeDetector.markForCheck();
+          return;
+        }
+        this.propertyPaymentService.getAttempt(state.attemptId).subscribe({
+          next: (attempt) => {
+            if (attempt.reservationId !== reservation.id) {
+              this.checkoutRecovery.clear();
+              this.resetRecoveredCheckout();
+              return;
+            }
+            this.paymentAttempt = attempt;
+            this.checkoutPhase = this.phaseForAttempt(attempt);
+            this.persistRecovery();
+            this.changeDetector.markForCheck();
+          },
+          error: () => {
+            this.checkoutRecovery.clear();
+            this.resetRecoveredCheckout();
+          },
+        });
+      },
+      error: () => {
+        this.checkoutRecovery.clear();
+        this.resetRecoveredCheckout();
+      },
+    });
+  }
+
+  private persistRecovery(): void {
+    const reservationId = Number(this.reservationDetails?.id);
+    if (!Number.isInteger(reservationId) || reservationId <= 0 || !this.checkoutPhase) return;
+    this.checkoutRecovery.save({
+      roomTypeId: this.roomTypeId,
+      reservationId,
+      attemptId: this.paymentAttempt?.attemptId || null,
+      paymentMethod: this.reservedPaymentMethod || this.bookingData.paymentMethod,
+      phase: this.checkoutPhase,
+    });
+  }
+
+  private phaseForAttempt(attempt: PropertyPaymentAttempt): CheckoutPhase {
+    if (attempt.status === 'SUCCESS') return 'PAYMENT_SUCCESS';
+    if (attempt.status === 'EXPIRED') return 'PAYMENT_EXPIRED';
+    if (attempt.status === 'FAILED' || attempt.status === 'CANCELLED') return 'PAYMENT_FAILED';
+    return 'PAYMENT_PENDING';
+  }
+
+  private resetRecoveredCheckout(): void {
+    this.reservationDetails = null;
+    this.paymentAttempt = null;
+    this.checkoutPhase = null;
+    this.bookingSuccess = false;
+    this.changeDetector.markForCheck();
   }
 
   private loadOperationalPolicy(): void {

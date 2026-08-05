@@ -80,7 +80,8 @@ export class LocationAutocompleteComponent implements OnDestroy {
           keyword,
           10,
           state.latitude ?? undefined,
-          state.longitude ?? undefined
+          state.longitude ?? undefined,
+          state.provinceId ?? undefined
         ).pipe(
           map(response => ({ response, failed: false })),
           catchError(() => of({ response: this.emptyResults(), failed: true }))
@@ -186,7 +187,11 @@ export class LocationAutocompleteComponent implements OnDestroy {
       name: result.name,
       displayName: result.displayName || result.name,
       provinceId: result.provinceId,
-      wardId: result.wardId
+      wardId: result.wardId,
+      latitude: result.latitude,
+      longitude: result.longitude,
+      defaultRadiusKm: result.defaultRadiusKm,
+      category: result.category
     });
     this.closePopup();
   }

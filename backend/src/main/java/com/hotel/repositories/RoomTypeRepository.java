@@ -15,7 +15,8 @@ import java.util.Optional;
 public interface RoomTypeRepository extends JpaRepository<RoomType, Long> {
     Optional<RoomType> findByCode(String code);
     java.util.List<RoomType> findByHotelId(Long hotelId);
-    java.util.List<RoomType> findByHotelIdIn(java.util.Collection<Long> hotelIds);
+    @Query("select roomType from RoomType roomType join fetch roomType.hotel hotel where hotel.id in :hotelIds order by hotel.id, roomType.basePrice, roomType.id")
+    java.util.List<RoomType> findByHotelIdIn(@Param("hotelIds") java.util.Collection<Long> hotelIds);
     Optional<RoomType> findByCodeAndHotelId(String code, Long hotelId);
     long countByHotelId(Long hotelId);
     long countByHotelIdIn(java.util.Collection<Long> hotelIds);

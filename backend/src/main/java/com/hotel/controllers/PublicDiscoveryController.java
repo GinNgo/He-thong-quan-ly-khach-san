@@ -8,6 +8,7 @@ import com.hotel.services.RoomTypeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.CacheControl;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.time.Duration;
 import java.util.List;
 
 @RestController
@@ -30,15 +32,19 @@ public class PublicDiscoveryController {
     public ResponseEntity<SearchSuggestionGroupsDTO> suggestions(
             @RequestParam String keyword,
             @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) Long provinceId,
             @RequestParam(required = false) Double latitude,
             @RequestParam(required = false) Double longitude) {
-        return ResponseEntity.ok(suggestionService.search(keyword, limit, null, latitude, longitude));
+        return ResponseEntity.ok(suggestionService.search(keyword, limit, provinceId, latitude, longitude));
     }
 
     @GetMapping("/popular-destinations")
     public ResponseEntity<List<LocationSuggestionDTO>> popularDestinations(
             @RequestParam(defaultValue = "8") int limit) {
-        return ResponseEntity.ok(suggestionService.popular(limit));
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(Duration.ofSeconds(60)).cachePublic().mustRevalidate())
+                .header("X-LuxeStay-Freshness-Seconds", "60")
+                .body(suggestionService.popular(limit));
     }
 
     @GetMapping("/properties/{hotelId}/room-types")

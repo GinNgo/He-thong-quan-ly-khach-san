@@ -8,7 +8,8 @@ import { HomeSearchStateService } from '../../services/home-search-state.service
   standalone: true,
   imports: [CommonModule, PopoverModule],
   template: `
-    <div class="flex-1 min-w-0 h-full bg-transparent relative cursor-pointer hover:bg-gray-50 transition-colors" (click)="guestOp.toggle($event)">
+    <div class="relative h-full w-full">
+    <button type="button" class="guest-trigger flex-1 min-w-0 h-full w-full bg-transparent relative cursor-pointer hover:bg-gray-50 transition-colors" aria-haspopup="dialog" (click)="guestOp.toggle($event)">
       <div class="flex justify-between items-center h-full px-3">
         <div class="flex items-center min-w-0 flex-1 pr-2">
           <i class="pi pi-users text-primary mr-2 text-xl flex-shrink-0"></i>
@@ -26,22 +27,21 @@ import { HomeSearchStateService } from '../../services/home-search-state.service
         </div>
         <i class="pi pi-chevron-down text-gray-400 text-sm flex-shrink-0"></i>
       </div>
-      
-      <!-- Guests Overlay Panel -->
+    </button>
       <p-popover #guestOp [style]="{width: '320px'}" styleClass="shadow-2xl rounded-xl border border-gray-200 mt-2 p-3">
         <ng-template pTemplate="content">
           <!-- Rooms -->
           <div class="flex justify-between items-center py-3 border-b border-gray-100">
             <div class="font-bold text-gray-900 text-[14px]">Phòng</div>
             <div class="flex items-center gap-4">
-              <button class="w-8 h-8 rounded-full border border-primary flex items-center justify-center text-primary hover:bg-primary-50 transition-colors"
+              <button type="button" aria-label="Giảm số phòng" class="w-8 h-8 rounded-full border border-primary flex items-center justify-center text-primary hover:bg-primary-50 transition-colors"
                       [disabled]="rooms <= 1"
                       [class.opacity-50]="rooms <= 1"
                       (click)="updateCount('rooms', -1, $event)">
                 <i class="pi pi-minus text-xs"></i>
               </button>
               <span class="font-bold w-4 text-center">{{ rooms }}</span>
-              <button class="w-8 h-8 rounded-full border border-primary flex items-center justify-center text-primary hover:bg-primary-50 transition-colors"
+              <button type="button" aria-label="Tăng số phòng" class="w-8 h-8 rounded-full border border-primary flex items-center justify-center text-primary hover:bg-primary-50 transition-colors"
                       (click)="updateCount('rooms', 1, $event)">
                 <i class="pi pi-plus text-xs"></i>
               </button>
@@ -51,14 +51,14 @@ import { HomeSearchStateService } from '../../services/home-search-state.service
           <div class="flex justify-between items-center py-3 border-b border-gray-100">
             <div class="font-bold text-gray-900 text-[14px]">Người lớn</div>
             <div class="flex items-center gap-4">
-              <button class="w-8 h-8 rounded-full border border-primary flex items-center justify-center text-primary hover:bg-primary-50 transition-colors"
+              <button type="button" aria-label="Giảm số người lớn" class="w-8 h-8 rounded-full border border-primary flex items-center justify-center text-primary hover:bg-primary-50 transition-colors"
                       [disabled]="adults <= 1"
                       [class.opacity-50]="adults <= 1"
                       (click)="updateCount('adults', -1, $event)">
                 <i class="pi pi-minus text-xs"></i>
               </button>
               <span class="font-bold w-4 text-center">{{ adults }}</span>
-              <button class="w-8 h-8 rounded-full border border-primary flex items-center justify-center text-primary hover:bg-primary-50 transition-colors"
+              <button type="button" aria-label="Tăng số người lớn" class="w-8 h-8 rounded-full border border-primary flex items-center justify-center text-primary hover:bg-primary-50 transition-colors"
                       (click)="updateCount('adults', 1, $event)">
                 <i class="pi pi-plus text-xs"></i>
               </button>
@@ -71,14 +71,14 @@ import { HomeSearchStateService } from '../../services/home-search-state.service
               <span class="text-[11px] text-gray-500">0 - 17 tuổi</span>
             </div>
             <div class="flex items-center gap-4">
-              <button class="w-8 h-8 rounded-full border border-primary flex items-center justify-center text-primary hover:bg-primary-50 transition-colors"
+              <button type="button" aria-label="Giảm số trẻ em" class="w-8 h-8 rounded-full border border-primary flex items-center justify-center text-primary hover:bg-primary-50 transition-colors"
                       [disabled]="children <= 0"
                       [class.opacity-50]="children <= 0"
                       (click)="updateCount('children', -1, $event)">
                 <i class="pi pi-minus text-xs"></i>
               </button>
               <span class="font-bold w-4 text-center">{{ children }}</span>
-              <button class="w-8 h-8 rounded-full border border-primary flex items-center justify-center text-primary hover:bg-primary-50 transition-colors"
+              <button type="button" aria-label="Tăng số trẻ em" class="w-8 h-8 rounded-full border border-primary flex items-center justify-center text-primary hover:bg-primary-50 transition-colors"
                       (click)="updateCount('children', 1, $event)">
                 <i class="pi pi-plus text-xs"></i>
               </button>
@@ -87,7 +87,10 @@ import { HomeSearchStateService } from '../../services/home-search-state.service
         </ng-template>
       </p-popover>
     </div>
-  `
+  `,
+  styles: [`
+    :host{display:block;height:100%}.guest-trigger{appearance:none;border:0;font:inherit;text-align:left;color:inherit}.guest-trigger:focus-visible{outline:2px solid #1769e0;outline-offset:-2px}
+  `]
 })
 export class GuestRoomSelectorComponent {
   private stateService = inject(HomeSearchStateService);
@@ -96,7 +99,7 @@ export class GuestRoomSelectorComponent {
   get children() { return this.stateService.state().childCount; }
   get rooms() { return this.stateService.state().roomCount; }
 
-  updateCount(type: 'adults' | 'children' | 'rooms', delta: number, event: Event) {
+  updateCount(type: 'adults' | 'children' | 'rooms', delta: number, event: Event): void {
     event.stopPropagation();
     let a = this.adults;
     let c = this.children;

@@ -13,6 +13,7 @@ import org.springframework.mock.env.MockEnvironment;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
@@ -48,6 +49,50 @@ class PublicInventoryEligibilityPolicyTest {
     }
 
     @Test
+    void publicPropertyRejectsEveryNonApprovedOrNonActiveCatalogState() {
+        PublicInventoryEligibilityPolicy policy = policy(false, "test");
+        Hotel hotel = hotel(false);
+        when(hotelRepository.findById(10L)).thenReturn(Optional.of(hotel));
+
+        for (String approval : java.util.List.of(
+                "DRAFT", "PENDING", "PENDING_APPROVAL", "REJECTED", "IMPORTED_PENDING_REVIEW")) {
+            hotel.setApprovalStatus(approval);
+            hotel.setOperationStatus("ACTIVE");
+            assertThrows(ResourceNotFoundException.class, () -> policy.requirePublicProperty(10L), approval);
+        }
+
+        hotel.setApprovalStatus(null);
+        assertThrows(ResourceNotFoundException.class, () -> policy.requirePublicProperty(10L), "null approval");
+
+        hotel.setApprovalStatus("APPROVED");
+        for (String operation : java.util.List.of(
+                "INACTIVE", "SUSPENDED", "CLOSED", "MAINTENANCE", "OUT_OF_SERVICE")) {
+            hotel.setOperationStatus(operation);
+            assertThrows(ResourceNotFoundException.class, () -> policy.requirePublicProperty(10L), operation);
+        }
+
+        hotel.setOperationStatus(null);
+        assertThrows(ResourceNotFoundException.class, () -> policy.requirePublicProperty(10L), "null operation");
+    }
+
+    @Test
+    void missingAndIneligiblePropertiesShareTheSameNotFoundBoundary() {
+        PublicInventoryEligibilityPolicy policy = policy(false, "test");
+        when(hotelRepository.findById(10L)).thenReturn(Optional.empty());
+
+        ResourceNotFoundException missing = assertThrows(
+                ResourceNotFoundException.class, () -> policy.requirePublicProperty(10L));
+
+        Hotel rejected = hotel(false);
+        rejected.setApprovalStatus("REJECTED");
+        when(hotelRepository.findById(10L)).thenReturn(Optional.of(rejected));
+        ResourceNotFoundException hidden = assertThrows(
+                ResourceNotFoundException.class, () -> policy.requirePublicProperty(10L));
+
+        assertEquals(missing.getMessage(), hidden.getMessage());
+    }
+
+    @Test
     void productionHidesDemoInventoryUnlessExplicitlyAllowed() {
         Hotel hotel = hotel(true);
         when(hotelRepository.findById(10L)).thenReturn(Optional.of(hotel));
@@ -55,6 +100,21 @@ class PublicInventoryEligibilityPolicyTest {
         assertThrows(ResourceNotFoundException.class,
                 () -> policy(false, "production").requirePublicProperty(10L));
         assertDoesNotThrow(() -> policy(true, "production").requirePublicProperty(10L));
+    }
+
+    @Test
+    void searchAndDetailUseTheSameProfileAwareEligibilityContract() {
+        assertEquals(
+                "h.approval_status='APPROVED' AND h.operation_status='ACTIVE'",
+                policy(false, "test").publicSearchPredicate("h"));
+        assertEquals(
+                "h.approval_status='APPROVED' AND h.operation_status='ACTIVE' AND COALESCE(h.is_demo,0)=0",
+                policy(false, "production").publicSearchPredicate("h"));
+        assertEquals(
+                "hotel.approval_status='APPROVED' AND hotel.operation_status='ACTIVE'",
+                policy(true, "production").publicSearchPredicate("hotel"));
+        assertThrows(IllegalArgumentException.class,
+                () -> policy(false, "production").publicSearchPredicate("h; DELETE"));
     }
 
     @Test

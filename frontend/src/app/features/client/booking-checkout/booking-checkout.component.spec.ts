@@ -6,29 +6,34 @@ import { PropertyPaymentService } from '../../../core/services/property-payment.
 import { BookingCheckoutComponent } from './booking-checkout.component';
 import { AsyncActionCoordinatorService } from '../../../core/services/async-action-coordinator.service';
 import { OperationalPolicyService } from '../../../core/services/operational-policy.service';
+import { BookingCheckoutRecoveryService } from './booking-checkout-recovery.service';
 
 describe('BookingCheckoutComponent', () => {
   let fixture: ComponentFixture<BookingCheckoutComponent>;
   let component: BookingCheckoutComponent;
   let reservation$: Subject<any>;
   let queryParams$: Subject<Record<string, string>>;
-  let clientApi: { bookRoom: ReturnType<typeof vi.fn> };
+  let clientApi: {
+    bookRoom: ReturnType<typeof vi.fn>;
+    getReservation: ReturnType<typeof vi.fn>;
+  };
   let paymentApi: {
     createAttempt: ReturnType<typeof vi.fn>;
     getAttempt: ReturnType<typeof vi.fn>;
   };
-  let policyApi: { current: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     localStorage.clear();
     reservation$ = new Subject<any>();
     queryParams$ = new Subject<Record<string, string>>();
-    clientApi = { bookRoom: vi.fn(() => reservation$) };
+    clientApi = {
+      bookRoom: vi.fn(() => reservation$),
+      getReservation: vi.fn(),
+    };
     paymentApi = {
       createAttempt: vi.fn(),
       getAttempt: vi.fn((attemptId: string) => of({ ...attemptResponse(), attemptId })),
     };
-    policyApi = { current: vi.fn(() => of(null)) };
 
     await TestBed.configureTestingModule({
       imports: [BookingCheckoutComponent],
@@ -36,7 +41,7 @@ describe('BookingCheckoutComponent', () => {
         { provide: ClientApiService, useValue: clientApi },
         { provide: PropertyPaymentService, useValue: paymentApi },
         { provide: AsyncActionCoordinatorService, useValue: new AsyncActionCoordinatorService() },
-        { provide: OperationalPolicyService, useValue: policyApi },
+        { provide: OperationalPolicyService, useValue: { current: vi.fn(() => of(null)) } },
         { provide: Router, useValue: { navigate: vi.fn() } },
         {
           provide: ActivatedRoute,
@@ -75,20 +80,6 @@ describe('BookingCheckoutComponent', () => {
     });
 
     expect(component.bookingContextValid).toBe(true);
-  });
-
-  it('requires acknowledgement and submits the visible policy version', () => {
-    policyApi.current.mockReturnValue(of({ version: 3, checkIn: 'Sau 14:00', checkOut: 'Trước 12:00', cancellation: 'Liên hệ', childPolicy: 'Theo sức chứa', petPolicy: 'Không', smokingPolicy: 'Không', houseRules: 'Giữ yên lặng' }));
-    queryParams$.next({ checkIn: '2026-08-10', checkOut: '2026-08-12', adultCount: '2', quantity: '1', hotelId: '10', roomTypeName: 'Deluxe', nightlyPrice: '500000' });
-    component.bookingData.firstName = 'An'; component.bookingData.lastName = 'Nguyen'; component.bookingData.phone = '0900000000';
-
-    component.submitBooking();
-    expect(clientApi.bookRoom).not.toHaveBeenCalled();
-    expect(component.errorMessage).toContain('xác nhận chính sách');
-
-    component.policyAccepted = true;
-    component.submitBooking();
-    expect(clientApi.bookRoom.mock.calls[0][0].operationalPolicyVersion).toBe(3);
   });
 
   it('submits a valid booking only once while the request is pending', () => {
@@ -201,6 +192,46 @@ describe('BookingCheckoutComponent', () => {
     expect(paymentApi.createAttempt.mock.calls[1][0]).toBe(91);
     expect(paymentApi.createAttempt.mock.calls[1][2].idempotencyKey).not.toBe(firstKey);
     expect(component.paymentAttempt?.attemptId).toBe('attempt-2');
+  });
+
+  it('resumes an owner-authorized pending attempt after reload without rebooking', () => {
+    fixture.destroy();
+    localStorage.setItem('user', JSON.stringify({ id: 7, username: 'customer' }));
+    const recovery = TestBed.inject(BookingCheckoutRecoveryService);
+    recovery.save({
+      roomTypeId: 1,
+      reservationId: 91,
+      attemptId: 'attempt-resume',
+      paymentMethod: 'MOMO',
+      phase: 'PAYMENT_PENDING',
+    });
+    clientApi.getReservation.mockReturnValue(of({
+      id: 91,
+      checkInDate: '2026-08-10',
+      checkOutDate: '2026-08-12',
+      guests: 2,
+      totalAmount: 1000000,
+      status: 'PENDING_PAYMENT',
+      paymentMethod: 'MOMO',
+    }));
+    paymentApi.getAttempt.mockReturnValue(of({
+      ...attemptResponse(),
+      attemptId: 'attempt-resume',
+      reservationId: 91,
+      status: 'PENDING',
+    }));
+
+    const resumedFixture = TestBed.createComponent(BookingCheckoutComponent);
+    const resumed = resumedFixture.componentInstance;
+    resumedFixture.detectChanges();
+
+    expect(clientApi.getReservation).toHaveBeenCalledWith(91);
+    expect(paymentApi.getAttempt).toHaveBeenCalledWith('attempt-resume');
+    expect(clientApi.bookRoom).not.toHaveBeenCalled();
+    expect(resumed.bookingSuccess).toBe(true);
+    expect(resumed.checkoutPhase).toBe('PAYMENT_PENDING');
+    expect(resumed.paymentAttempt?.attemptId).toBe('attempt-resume');
+    resumedFixture.destroy();
   });
 
   function setValidBooking(

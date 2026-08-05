@@ -31,3 +31,15 @@ app:
     password-reset-url: http://localhost:4200/reset-password
   accommodation-import:
     enabled: false
+  location-import:
+    enabled: true
+    file-path: ${LOCATION_IMPORT_FILE_PATH:}
+    resource: ${LOCATION_IMPORT_RESOURCE:classpath:data/locations.json}
+    current-province-resource: ${CURRENT_PROVINCE_IMPORT_RESOURCE:classpath:data/provinces-current-34.json}
+    landmark-resource: ${LANDMARK_IMPORT_RESOURCE:classpath:data/landmarks.json}
+    cleanup-obsolete: false
+  demo-data:
+    enabled: true
+    legacy-seed: true
+    nationwide-property-seed: false
+    allow-public-demo: true
