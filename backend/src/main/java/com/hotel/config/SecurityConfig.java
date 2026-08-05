@@ -87,7 +87,7 @@ public class SecurityConfig {
         configuration.setAllowedMethods(java.util.Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.Arrays.asList(
                 "Authorization", "Content-Type", "X-Refresh-Request", "X-Logout-Request"));
-        configuration.setExposedHeaders(java.util.List.of("X-Correlation-ID"));
+        configuration.setExposedHeaders(java.util.List.of("X-Correlation-ID", "Retry-After"));
         org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

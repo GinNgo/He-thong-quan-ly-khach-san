@@ -42,4 +42,19 @@ class OperationalMetricsTest {
                 assertThat(meter.getId().getTags()).allSatisfy(tag ->
                         assertThat(tag.getValue()).doesNotContain("provider secret")));
     }
+
+    @Test
+    void recordsLoginMetricsWithoutAccountOrNetworkTags() {
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        OperationalMetrics metrics = new OperationalMetrics(registry);
+
+        metrics.recordAuthLogin("blocked", "ACCOUNT_LIMIT");
+
+        assertThat(registry.get("hotel.auth.login.attempts")
+                .tags("outcome", "blocked", "reason", "account_limit")
+                .counter().count()).isEqualTo(1);
+        assertThat(registry.get("hotel.auth.login.attempts").meter().getId().getTags())
+                .extracting(tag -> tag.getKey())
+                .containsExactlyInAnyOrder("outcome", "reason");
+    }
 }

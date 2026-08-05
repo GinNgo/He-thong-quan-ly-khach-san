@@ -8,6 +8,7 @@ import {
   PlatformSubscriptionEntitlement,
   PlatformOrder,
   PlatformPolicyAvailability,
+  PlatformSubscriptionHistoryItem,
 } from '../../../core/services/platform-billing.service';
 import { PlatformPaymentPanelComponent } from './platform-payment-panel.component';
 
@@ -27,12 +28,15 @@ export class SubscriptionBillingComponent implements OnInit {
   currentEntitlement: PlatformSubscriptionEntitlement | null = null;
   policyAvailability: PlatformPolicyAvailability | null = null;
   latestOrder: PlatformOrder | null = null;
+  history: PlatformSubscriptionHistoryItem[] = [];
   activePropertyId?: number;
   isLoading = true;
   plansError = '';
   subscriptionError = '';
   policyError = '';
   orderError = '';
+  historyError = '';
+  exportingHistory = false;
   creatingOrderFor?: number;
   private loadingPlans = true;
   private loadingSubscription = true;
@@ -44,6 +48,7 @@ export class SubscriptionBillingComponent implements OnInit {
     this.loadPlans();
     this.loadEntitlement();
     this.loadPolicyAvailability();
+    this.loadHistory();
   }
 
   loadPlans(): void {
@@ -113,6 +118,44 @@ export class SubscriptionBillingComponent implements OnInit {
     });
   }
 
+  loadHistory(): void {
+    this.historyError = '';
+    if (!this.activePropertyId) {
+      this.history = [];
+      return;
+    }
+    this.platformBilling.getHistory(this.activePropertyId).subscribe({
+      next: history => { this.history = history; this.cdr.markForCheck(); },
+      error: () => { this.history = []; this.historyError = 'Unable to load historical subscription events for this property.'; this.cdr.markForCheck(); }
+    });
+  }
+
+  exportHistory(): void {
+    if (!this.activePropertyId || this.exportingHistory) return;
+    this.exportingHistory = true;
+    this.historyError = '';
+    this.platformBilling.exportHistory(this.activePropertyId).subscribe({
+      next: response => {
+        const blob = response.body;
+        if (!blob) {
+          this.historyError = 'The subscription history export was empty.';
+          this.exportingHistory = false;
+          return;
+        }
+        const disposition = response.headers.get('Content-Disposition') ?? '';
+        const filename = /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? `subscription-history-${this.activePropertyId}.csv`;
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        anchor.click();
+        URL.revokeObjectURL(url);
+        this.exportingHistory = false;
+      },
+      error: () => { this.historyError = 'Unable to export subscription history for this property.'; this.exportingHistory = false; }
+    });
+  }
+
   createOrder(plan: PlatformCatalogPlan): void {
     if (!this.activePropertyId || this.creatingOrderFor) {
       this.orderError = 'Select a managed property before creating a platform order.';
@@ -167,4 +210,5 @@ export class SubscriptionBillingComponent implements OnInit {
     const randomUuid = globalThis.crypto?.randomUUID?.();
     return randomUuid ? `${prefix}-${randomUuid}` : `${prefix}-${Date.now()}`;
   }
+
 }

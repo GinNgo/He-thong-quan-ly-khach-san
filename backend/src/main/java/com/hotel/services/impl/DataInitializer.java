@@ -465,32 +465,46 @@ public class DataInitializer implements CommandLineRunner {
         if (subscriptionPlanRepository.count() == 0) {
             com.hotel.entities.SubscriptionPlan freePlan = new com.hotel.entities.SubscriptionPlan();
             freePlan.setCode("FREE");
+            freePlan.setFamilyCode("FREE");
+            freePlan.setVersionNumber(1);
             freePlan.setNameVi("Gói Miễn phí");
             freePlan.setNameEn("Free Plan");
             freePlan.setBillingType("MONTHLY");
             freePlan.setPrice(BigDecimal.ZERO);
-            freePlan.setIsLifetime(true);
-            freePlan.setStatus("ACTIVE");
+            freePlan.setIsLifetime(false);
+            freePlan.setDurationValue(1);
+            freePlan.setDurationUnit("MONTH");
+            freePlan.setStatus("INACTIVE");
             subscriptionPlanRepository.save(freePlan);
 
             com.hotel.entities.SubscriptionPlan standardPlan = new com.hotel.entities.SubscriptionPlan();
             standardPlan.setCode("STANDARD");
+            standardPlan.setFamilyCode("STANDARD");
+            standardPlan.setVersionNumber(1);
             standardPlan.setNameVi("Gói Tiêu chuẩn");
             standardPlan.setNameEn("Standard Plan");
             standardPlan.setBillingType("MONTHLY");
             standardPlan.setPrice(new BigDecimal("500000"));
             standardPlan.setIsLifetime(false);
+            standardPlan.setDurationValue(1);
+            standardPlan.setDurationUnit("MONTH");
             standardPlan.setStatus("ACTIVE");
+            standardPlan.setActivatedAt(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC));
             subscriptionPlanRepository.save(standardPlan);
             
             com.hotel.entities.SubscriptionPlan premiumPlan = new com.hotel.entities.SubscriptionPlan();
             premiumPlan.setCode("PREMIUM");
+            premiumPlan.setFamilyCode("PREMIUM");
+            premiumPlan.setVersionNumber(1);
             premiumPlan.setNameVi("Gói Cao cấp");
             premiumPlan.setNameEn("Premium Plan");
             premiumPlan.setBillingType("YEARLY");
             premiumPlan.setPrice(new BigDecimal("5000000"));
             premiumPlan.setIsLifetime(false);
+            premiumPlan.setDurationValue(1);
+            premiumPlan.setDurationUnit("YEAR");
             premiumPlan.setStatus("ACTIVE");
+            premiumPlan.setActivatedAt(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC));
             subscriptionPlanRepository.save(premiumPlan);
         }
     }

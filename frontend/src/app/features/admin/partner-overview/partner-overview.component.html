@@ -1,5 +1,3 @@
-<p-confirmDialog [style]="{ width: 'min(440px, 94vw)' }"></p-confirmDialog>
-
 <section class="partner-page" [attr.aria-busy]="loading">
   <header class="page-header">
     <div>
@@ -84,24 +82,90 @@
                 }
                 @if (hasActions) {
                   <td class="row-actions">
-                    @for (action of config.actions; track action.key) {
-                      @if (actionVisible(action, row)) {
-                        <button
-                          type="button"
-                          class="row-action"
-                          [class.row-action--success]="action.tone === 'success'"
-                          [class.row-action--danger]="action.tone === 'danger'"
-                          [attr.aria-label]="action.label"
-                          [disabled]="actionDisabled(action, row)"
-                          (click)="runAction(action, row)"
-                        >
-                          <i [class]="actionBusy(action, row) ? 'pi pi-spinner pi-spin' : action.icon" aria-hidden="true"></i>
-                          <span>{{ action.label }}</span>
-                        </button>
+                    <div class="row-action-buttons">
+                      @for (action of config.actions; track action.key) {
+                        @if (actionVisible(action, row)) {
+                          <button
+                            type="button"
+                            class="row-action"
+                            [class.row-action--success]="action.tone === 'success'"
+                            [class.row-action--danger]="action.tone === 'danger'"
+                            [attr.aria-label]="action.label"
+                            [disabled]="actionDisabled(action, row)"
+                            (click)="runAction(action, row)"
+                          >
+                            <i [class]="actionBusy(action, row) ? 'pi pi-spinner pi-spin' : action.icon" aria-hidden="true"></i>
+                            <span>{{ action.label }}</span>
+                          </button>
+                        }
+                      }
+                      @if (!hasVisibleRowAction(row)) {
+                        <span class="permission-note">{{ rowActionHint() }}</span>
+                      }
+                    </div>
+
+                    @if (isApproving(row)) {
+                      @if (propertyId(row); as reviewPropertyId) {
+                        <div class="review-note-editor">
+                          <label [for]="'approval-note-' + reviewPropertyId">Ghi chú phê duyệt (không bắt buộc)</label>
+                          <textarea
+                            [id]="'approval-note-' + reviewPropertyId"
+                            rows="3"
+                            maxlength="500"
+                            [value]="approvalNotes[reviewPropertyId] || ''"
+                            [disabled]="actionInFlight[reviewPropertyId] !== undefined"
+                            [attr.aria-describedby]="'approval-note-help-' + reviewPropertyId + (rowActionErrors[reviewPropertyId] ? ' approval-note-error-' + reviewPropertyId : '')"
+                            [attr.aria-invalid]="rowActionErrors[reviewPropertyId] ? 'true' : null"
+                            (input)="updateApprovalNote(reviewPropertyId, $any($event.target).value)"
+                          ></textarea>
+                          <div class="review-note-editor-meta" [id]="'approval-note-help-' + reviewPropertyId">
+                            <span>Có thể để trống, tối đa 500 ký tự</span>
+                            <span>{{ (approvalNotes[reviewPropertyId] || '').length }}/500</span>
+                          </div>
+                          <div class="review-note-editor-actions">
+                            <button type="button" class="row-action" [disabled]="actionInFlight[reviewPropertyId] !== undefined" (click)="cancelApproval(row)">Hủy</button>
+                            <button type="button" class="row-action row-action--success" [disabled]="actionInFlight[reviewPropertyId] !== undefined" (click)="confirmApproval(row)">
+                              @if (actionInFlight[reviewPropertyId] === 'approve') { <i class="pi pi-spinner pi-spin" aria-hidden="true"></i> }
+                              Xác nhận phê duyệt
+                            </button>
+                          </div>
+                        </div>
                       }
                     }
-                    @if (!hasVisibleRowAction(row)) {
-                      <span class="permission-note">{{ rowActionHint() }}</span>
+
+                    @if (isRejecting(row)) {
+                      @if (propertyId(row); as reviewPropertyId) {
+                        <div class="reject-editor">
+                          <label [for]="'rejection-reason-' + reviewPropertyId">Lý do từ chối</label>
+                          <textarea
+                            [id]="'rejection-reason-' + reviewPropertyId"
+                            rows="3"
+                            maxlength="500"
+                            [value]="rejectionReasons[reviewPropertyId] || ''"
+                            [disabled]="actionInFlight[reviewPropertyId] !== undefined"
+                            [attr.aria-describedby]="'rejection-help-' + reviewPropertyId + (rowActionErrors[reviewPropertyId] ? ' rejection-error-' + reviewPropertyId : '')"
+                            [attr.aria-invalid]="rowActionErrors[reviewPropertyId] ? 'true' : null"
+                            (input)="updateRejectionReason(reviewPropertyId, $any($event.target).value)"
+                          ></textarea>
+                          <div class="reject-editor-meta" [id]="'rejection-help-' + reviewPropertyId">
+                            <span>10–500 ký tự</span>
+                            <span>{{ (rejectionReasons[reviewPropertyId] || '').length }}/500</span>
+                          </div>
+                          <div class="reject-editor-actions">
+                            <button type="button" class="row-action" [disabled]="actionInFlight[reviewPropertyId] !== undefined" (click)="cancelRejection(row)">Hủy</button>
+                            <button type="button" class="row-action row-action--danger" [disabled]="actionInFlight[reviewPropertyId] !== undefined" (click)="confirmRejection(row)">
+                              @if (actionInFlight[reviewPropertyId] === 'reject') { <i class="pi pi-spinner pi-spin" aria-hidden="true"></i> }
+                              Xác nhận từ chối
+                            </button>
+                          </div>
+                        </div>
+                      }
+                    }
+
+                    @if (propertyId(row); as rowPropertyId) {
+                      @if (rowActionErrors[rowPropertyId]) {
+                        <div class="row-action-error" [id]="'rejection-error-' + rowPropertyId" role="alert">{{ rowActionErrors[rowPropertyId] }}</div>
+                      }
                     }
                   </td>
                 }
@@ -119,3 +183,20 @@
     }
   </div>
 </section>
+
+<p-dialog
+  [(visible)]="historyDialogVisible"
+  [modal]="true"
+  [draggable]="false"
+  [dismissableMask]="false"
+  [closable]="!historyLoading"
+  [style]="{width:'min(760px, 96vw)'}"
+  [header]="'Lịch sử xét duyệt · ' + historyPropertyName"
+  (onHide)="closeHistoryDialog()">
+  <app-property-review-history
+    [events]="historyEvents"
+    [loading]="historyLoading"
+    [error]="historyError"
+    (retry)="retryHistory()"
+  />
+</p-dialog>

@@ -1,0 +1,33 @@
+# Auth / Property Subscription Handoff
+
+Branch: `codex/auth-property-subscription`
+
+Base: `origin/codex/ui-functional-audit-polish`
+
+## Task status
+
+| Task | Status | Commit | Verification | Coordinator updates |
+|---|---|---|---|---|
+| T228 | COMPLETE_VERIFIED | `aeeba46` | Backend 5/5; frontend 6/6; `git diff --check` | Mark T228 complete in Feature 007 `tasks.md`; merge AUTH-020 status/evidence into the two shared aggregate inventories. |
+| T229 | SKIPPED_CLAIMED | Owned by `/root/t229_auth_legal` | Active Parallel Claims checked before T228/T230 | No duplicate changes from this branch. |
+| T230 | COMPLETE_VERIFIED | `a16a1bf` | Backend 7/7; frontend 4/4; `git diff --check` | Mark T230 complete in Feature 007 `tasks.md`; merge PROP-SUB-001 status/evidence into the two shared aggregate inventories. |
+| T231 | COMPLETE_VERIFIED | `ac92af4` | Backend 14/14; frontend 7/7; `git diff --check` | Mark T231 complete in Feature 007 `tasks.md`; merge PROP-SUB-002 status/evidence into the two shared aggregate inventories. |
+| T232 | COMPLETE_VERIFIED | `9c774a1` | Backend 33/33; frontend 6/6; `git diff --check` | Mark T232 complete in Feature 007 `tasks.md`; merge PROP-SUB-004 status/evidence into the two shared aggregate inventories. |
+| T233 | COMPLETE_VERIFIED | `c188a92` | Backend compile 432 sources and 46/46 focused tests; frontend 9/9; `git diff --check` | Mark T233 complete in Feature 007 `tasks.md`; merge PROP-SUB-005 status/evidence into the two shared aggregate inventories. |
+| T234 | COMPLETE_VERIFIED | `be7346b`; migration namespace fix `b93491d` | Backend compile 435 sources and 78/78 focused tests; frontend 10/10 plus development build; `git diff --check` | Mark T234 complete in Feature 007 `tasks.md`; merge PROP-SUB-006 status/evidence into the two shared aggregate inventories; preserve the branch-reserved V70 migration range. |
+| T235 | COMPLETE_VERIFIED | `5945588` | Backend compile 440 sources and 98/98 regressions; frontend 15/15 plus development build; `git diff --check` | Mark T235 complete in Feature 007 `tasks.md`; merge PROP-SUB-007 status/evidence into the two shared aggregate inventories; preserve the branch-reserved V71 migration range. |
+| T236 | COMPLETE_VERIFIED | `a05c10b` | Backend compile and 64/64 focused tests; frontend 38/38 plus development build; `git diff --check` | Mark T236 complete in Feature 007 `tasks.md`; merge PROP-SUB-009 status/evidence into the two shared aggregate inventories; preserve V72 and coordinate any later consolidation with the generic T324 email outbox. |
+| T237 | COMPLETE_VERIFIED | `758b425`; teardown fix `c0eb1a4` | Backend compile, 27/27 focused and 11/11 clock/persistence tests; frontend 14/14 plus development build after teardown fix; `git diff --check` | Mark T237 complete in Feature 007 `tasks.md`; merge PROP-SUB-010 status/evidence into the two shared aggregate inventories; preserve V73 and record evidence upload as not approved/N/A. |
+| T238 | COMPLETE_VERIFIED | `4198fb5` | Backend compile and 44/44 focused tests; frontend 8/8 plus development build; independent review findings fixed; `git diff --check` | Mark T238 complete in Feature 007 `tasks.md`; merge PROP-SUB-011 status/evidence into the two shared aggregate inventories; retain fail-closed ownership conflicts for T239/T241 and lock-order concurrency for T240. |
+| T239 | COMPLETE_VERIFIED | `4dc51df` | Backend production compile and 74/74 focused tests; frontend 24/24 focused tests; independent final review; `git diff --check` | Mark T239 complete in Feature 007 `tasks.md`; merge PROP-SUB-012 status/evidence into the two shared aggregate inventories; keep T240 responsible for uniqueness and cross-transition concurrency. |
+| T240 | COMPLETE_VERIFIED | `4b4f034` | Backend production compile and 41/41 focused tests including Spring/JPA concurrency 3/3; SQL Server V74 clean/repeat/duplicate fail-closed/checksum passed before final metadata-only hardening, whose rerun was blocked by an unresponsive Docker daemon; frontend 21/21; independent review; `git diff --check` | Mark T240 complete in Feature 007 `tasks.md`; merge PROP-SUB-014 status/evidence into the two shared aggregate inventories; preserve V74 and stop rollout if its duplicate preflight throws; optionally rerun the disposable SQL verifier after Docker recovers. |
+| T241 | COMPLETE_VERIFIED | `92ef7f2` | Approved policy encoded in spec; backend compile and 16/16 focused tests; frontend 13/13; independent no-blocker review; `git diff --check` | Mark T241 complete in Feature 007 `tasks.md`; merge PROP-SUB-015 completion into shared aggregates; retain documented necessary-only deferrals and wire authoritative invoice/dispute readiness during T242/T243. |
+| T242 | COMPLETE_VERIFIED | `d403540` | Backend production compile and 18/18 focused tests; frontend 15/15; shared authoritative usage refactor; independent no-blocker review; `git diff --check` | Mark T242 complete in Feature 007 `tasks.md`; merge PROP-SUB-019 into shared aggregates; preserve property-scoped compatibility and legacy-ID redaction. |
+| T243 | COMPLETE_VERIFIED | `e505a7f`; controller contract `00c7409` | Backend production compile and 16/16 focused tests; frontend 24/24 combined and 16/16 final focused; independent no-blocker review; `git diff --check` | Mark T243 complete in Feature 007 `tasks.md`; merge PROP-SUB-022 into shared aggregates; preserve expiry-over-revoke boundary and historical read/export. |
+| T244 | COMPLETE_VERIFIED | `4dd6f8b` | Backend clean compile and 10/10 focused tests; frontend 22/22; V89 collision scan; independent no-blocker review; `git diff --check` | Mark T244 complete in Feature 007 `tasks.md`; merge PROP-SUB-024 into shared aggregates; preserve V89, immutable snapshots and create-only initializer behavior. |
+
+## Shared files intentionally not edited
+
+- `specs/007-payment-billing-completion/tasks.md`
+- `docs/audit/system/MASTER_FUNCTION_INVENTORY.md`
+- `docs/audit/system/FULL_SYSTEM_TRACEABILITY_MATRIX.md`

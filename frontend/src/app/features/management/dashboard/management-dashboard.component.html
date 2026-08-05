@@ -16,14 +16,14 @@
     <div class="summary"><div><span>Gói hiện tại</span><strong>{{ context.planCode }}</strong></div><div><span>Trạng thái</span><strong>{{ context.subscriptionStatus }}</strong></div><div><span>Cơ sở</span><strong>{{ context.usage.properties || 0 }} / {{ limit('MAX_PROPERTIES') }}</strong></div><div><span>Phòng</span><strong>{{ context.usage.rooms || 0 }} / {{ limit('MAX_ROOMS') }}</strong></div><div><span>Nhân viên</span><strong>{{ context.usage.staff || 0 }} / {{ limit('MAX_STAFF') }}</strong></div></div>
     <p class="entitlement-source">Entitlement source: <strong>{{ context.subscriptionSource || 'NONE' }}</strong>. Room usage is scoped to the selected property.</p>
     @if (!activePropertyOperational && activeProperty) {
-      <div class="operation-gate" role="status">
+      <div class="operation-gate" [class.operation-gate--suspended]="activePropertySuspended" [class.operation-gate--closed]="activePropertyClosed" role="status">
         <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>
         <div>
-          <strong>Chưa thể vận hành cơ sở này</strong>
+          <strong>{{ operationGateTitle() }}</strong>
           <p>Trạng thái duyệt: {{ activeProperty.approvalStatus }} · Trạng thái vận hành: {{ activeProperty.operationStatus }}.</p>
-          <p>Hãy hoàn thiện hồ sơ hoặc chờ quản trị viên phê duyệt. Bạn vẫn có thể xem và mua gói dịch vụ.</p>
+          <p>{{ operationGateMessage() }}</p>
         </div>
-        <a routerLink="/management/properties">Hoàn thiện hồ sơ</a>
+        @if (showPropertySetupLink()) { <a routerLink="/management/properties">Hoàn thiện hồ sơ</a> }
         <a routerLink="/management/billing">Quản lý gói</a>
       </div>
     } @else {

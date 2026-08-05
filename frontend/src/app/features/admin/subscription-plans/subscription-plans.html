@@ -1,70 +1,95 @@
-<p-toast></p-toast>
 <div class="surface-ground px-4 py-8 md:px-6 lg:px-8 text-center">
-    <div class="mb-5 font-bold text-900 text-4xl">Gói dịch vụ cho Chủ cơ sở</div>
-    <div class="text-700 text-xl mb-8 line-height-3">Nâng cấp để quản lý nhiều cơ sở lưu trú và mở khóa tính năng cao cấp.</div>
+  <h1 class="mb-3 text-900 text-4xl">Catalog gói dịch vụ</h1>
+  <p class="text-700 text-xl mb-6">Catalog do nền tảng quản lý. Trạng thái hiện tại luôn thuộc riêng cơ sở được chọn.</p>
 
-    <div class="grid">
-        <div class="col-12 lg:col-4 p-3" *ngFor="let plan of plans">
-            <p-card styleClass="plan-card shadow-2">
-                <ng-template pTemplate="title">
-                    <div class="text-center text-900 text-3xl font-bold mb-2">{{ plan.nameVi }}</div>
-                    <div class="text-center plan-price">
-                        {{ plan.price | currency:'VND' }}
-                        <span class="text-sm font-normal text-600">
-                            / {{ plan.billingType === 'MONTHLY' ? 'Tháng' : plan.billingType === 'YEARLY' ? 'Năm' : 'Vĩnh viễn' }}
-                        </span>
-                    </div>
-                </ng-template>
-                
-                <div class="plan-features text-left mt-4 mb-4">
-                    <div class="feature-item">
-                        <i class="pi pi-check-circle"></i>
-                        <span>Quản lý cơ sở lưu trú</span>
-                    </div>
-                    <div class="feature-item" *ngIf="plan.code !== 'FREE'">
-                        <i class="pi pi-check-circle"></i>
-                        <span>Hỗ trợ 24/7 ưu tiên</span>
-                    </div>
-                    <div class="feature-item" *ngIf="plan.code === 'PREMIUM'">
-                        <i class="pi pi-check-circle"></i>
-                        <span>Không giới hạn phòng</span>
-                    </div>
-                </div>
+  <p *ngIf="loadingCatalog" class="state" role="status">Đang tải catalog...</p>
+  <div *ngIf="catalogError" class="state error" role="alert">{{ catalogError }} <button pButton type="button" label="Thử lại" (click)="loadPlans()"></button></div>
 
-                <ng-template pTemplate="footer">
-                    <button pButton pRipple 
-                            [label]="isCurrentPlan(plan) ? 'Đang sử dụng' : 'Mua ngay'" 
-                            [disabled]="isCurrentPlan(plan)"
-                            (click)="purchase(plan)"
-                            class="w-full"
-                            [ngClass]="{'p-button-outlined': plan.code === 'FREE', 'p-button-success': plan.code === 'PREMIUM'}">
-                    </button>
-                </ng-template>
-            </p-card>
+  <div class="grid" *ngIf="!loadingCatalog && !catalogError">
+    <div class="col-12 lg:col-4 p-3" *ngFor="let plan of plans">
+      <p-card styleClass="plan-card shadow-2">
+        <ng-template pTemplate="title">
+          <div class="text-center text-900 text-3xl font-bold mb-2">{{ plan.nameVi || plan.nameEn || plan.code }}</div>
+          <div class="text-center plan-price">{{ plan.price | currency:plan.currency }} <span class="text-sm font-normal text-600">/ {{ plan.billingType }}</span></div>
+        </ng-template>
+        <div class="plan-features text-left mt-4 mb-4">
+          <div class="feature-item" *ngFor="let feature of plan.features"><i class="pi pi-check-circle"></i><span>{{ feature.nameVi || feature.nameEn || feature.code }}: {{ featureLimit(feature.limit) }}</span></div>
         </div>
+        <ng-template pTemplate="footer">
+          <p-tag *ngIf="isCurrentPlan(plan)" severity="success" value="Gói hiện tại của cơ sở đã chọn"></p-tag>
+          <a *ngIf="propertyId && !isCurrentPlan(plan)" pButton [routerLink]="['/management/billing']" [queryParams]="{propertyId: propertyId}" label="Mở quản lý subscription"></a>
+          <span *ngIf="!propertyId" class="source">Chọn một cơ sở để xem entitlement và thao tác subscription.</span>
+        </ng-template>
+      </p-card>
     </div>
+  </div>
 
-    <div class="mt-8 text-left" *ngIf="mySubscriptions.length > 0">
-        <h3 class="text-900 text-2xl font-bold mb-4">Gói đang sử dụng</h3>
-        <p-table [value]="mySubscriptions" [tableStyle]="{'min-width': '50rem'}">
-            <ng-template pTemplate="header">
-                <tr>
-                    <th>Gói dịch vụ</th>
-                    <th>Ngày đăng ký</th>
-                    <th>Ngày hết hạn</th>
-                    <th>Trạng thái</th>
-                </tr>
-            </ng-template>
-            <ng-template pTemplate="body" let-sub>
-                <tr>
-                    <td>{{ sub.plan.nameVi }}</td>
-                    <td>{{ sub.startAt | date:'dd/MM/yyyy' }}</td>
-                    <td>{{ sub.isLifetime ? 'Vĩnh viễn' : (sub.endAt | date:'dd/MM/yyyy') }}</td>
-                    <td>
-                        <p-tag [severity]="sub.status === 'ACTIVE' ? 'success' : 'danger'" [value]="sub.status"></p-tag>
-                    </td>
-                </tr>
-            </ng-template>
-        </p-table>
+  <section class="state" *ngIf="propertyId" aria-labelledby="property-subscription-title">
+    <h2 id="property-subscription-title">Subscription cơ sở #{{ propertyId }}</h2>
+    <p *ngIf="loadingProperty" role="status">Đang tải entitlement và usage...</p>
+    <p *ngIf="propertyError" class="error" role="alert">{{ propertyError }}</p>
+    <ng-container *ngIf="current && usage && !loadingProperty">
+      <p><strong>{{ current.planName || current.planCode }}</strong> · {{ current.status }}</p>
+      <p class="source">Nguồn: {{ current.source }} · Platform authoritative: {{ current.platformAuthoritative ? 'Có' : 'Không' }}</p>
+      <p *ngIf="current.migrationBlocker" class="error">{{ current.migrationBlocker }}</p>
+      <div *ngFor="let feature of usage.features">{{ feature.nameVi || feature.code }}: {{ feature.usage }} / {{ featureLimit(feature.limit) }}</div>
+      <p *ngIf="['EXPIRED', 'REVOKED'].includes(current.status)" class="error">Subscription đã kết thúc. Active limits bằng 0; lịch sử vẫn được giữ trong trang quản lý billing của cơ sở.</p>
+    </ng-container>
+  </section>
+
+  <section class="state error" *ngIf="canRevokeSelectedProperty" aria-labelledby="revoke-subscription-title">
+    <h2 id="revoke-subscription-title">Thu hồi subscription</h2>
+    <p>Thao tác này kết thúc entitlement đang hoạt động nhưng không xóa lịch sử contract, thanh toán hoặc audit.</p>
+    <button *ngIf="!revokeEditorOpen" pButton type="button" severity="danger" label="Mở xác nhận thu hồi" [disabled]="revoking" (click)="revokeEditorOpen = true"></button>
+    <div *ngIf="revokeEditorOpen">
+      <label for="revoke-reason">Lý do (10–1000 ký tự)</label>
+      <textarea id="revoke-reason" rows="4" maxlength="1000" [(ngModel)]="revokeReason" [disabled]="revoking"></textarea>
+      <label><input type="checkbox" [(ngModel)]="revokeConfirmed" [disabled]="revoking"> Tôi xác nhận thu hồi entitlement của đúng cơ sở đã chọn.</label>
+      <button pButton type="button" severity="danger" [disabled]="revoking || !revokeConfirmed || !revokeReasonValid" [label]="revoking ? 'Đang thu hồi...' : 'Xác nhận thu hồi'" (click)="revokeSubscription()"></button>
+      <button pButton type="button" severity="secondary" [disabled]="revoking" label="Hủy" (click)="revokeEditorOpen = false; revokeConfirmed = false; revokeReason = ''"></button>
     </div>
+    <p *ngIf="revokeError" role="alert">{{ revokeError }}</p>
+  </section>
+  <p *ngIf="revokeMessage" class="state" role="status">{{ revokeMessage }}</p>
+
+  <section class="state" *ngIf="canAdministerVersions" aria-labelledby="plan-version-admin-title">
+    <h2 id="plan-version-admin-title">Governed plan versions</h2>
+    <p>Mọi correction tạo version INACTIVE mới. Version đã dùng, order snapshot và contract hiện tại không bị sửa trực tiếp.</p>
+    <div class="admin-form">
+      <label>Family code<input [(ngModel)]="versionForm.familyCode" maxlength="50" [disabled]="!!versionBusy" placeholder="PRO"></label>
+      <label>Tên tiếng Việt<input [(ngModel)]="versionForm.nameVi" maxlength="255" [disabled]="!!versionBusy"></label>
+      <label>English name<input [(ngModel)]="versionForm.nameEn" maxlength="255" [disabled]="!!versionBusy"></label>
+      <label>Billing type<select [(ngModel)]="versionForm.billingType" [disabled]="!!versionBusy" (change)="versionForm.lifetime = versionForm.billingType === 'ONCE'; versionForm.durationUnit = versionForm.billingType === 'ONCE' ? 'LIFETIME' : (versionForm.billingType === 'YEARLY' ? 'YEAR' : 'MONTH'); versionForm.durationValue = 1"><option value="MONTHLY">MONTHLY</option><option value="YEARLY">YEARLY</option><option value="ONCE">ONCE / LIFETIME</option></select></label>
+      <label>Giá VND<input type="number" min="0" step="1" [(ngModel)]="versionForm.price" [disabled]="!!versionBusy"></label>
+      <label>Duration unit<input [value]="versionForm.durationUnit" disabled></label>
+      <label>Duration value<input type="number" min="1" max="120" step="1" [(ngModel)]="versionForm.durationValue" [disabled]="!!versionBusy || versionForm.lifetime"></label>
+      <label class="wide">Features, mỗi dòng `CODE=limit`<textarea rows="6" [(ngModel)]="versionForm.featuresText" [disabled]="!!versionBusy" placeholder="MAX_ROOMS=50&#10;AI_CHAT=-1"></textarea></label>
+    </div>
+    <button pButton type="button" [disabled]="!!versionBusy" [label]="versionBusy === 'create' ? 'Đang tạo...' : 'Tạo version INACTIVE mới'" (click)="createPlanVersion()"></button>
+    <p *ngIf="versionsError" class="error" role="alert">{{ versionsError }}</p>
+    <p *ngIf="versionMessage" role="status">{{ versionMessage }}</p>
+
+    <p *ngIf="versionsLoading" role="status">Đang tải lịch sử version...</p>
+    <div class="version-list" *ngIf="!versionsLoading">
+      <article class="version-row" *ngFor="let version of planVersions">
+        <strong>{{ version.versionCode }} · {{ version.status }}</strong>
+        <span>{{ version.nameVi }} · {{ version.price | currency:version.currency }} · {{ version.durationValue }} {{ version.durationUnit }}</span>
+        <small>Created {{ version.createdAt | date:'dd/MM/yyyy HH:mm' }} · activated {{ version.activatedAt ? (version.activatedAt | date:'dd/MM/yyyy HH:mm') : 'never' }} · deactivated {{ version.deactivatedAt ? (version.deactivatedAt | date:'dd/MM/yyyy HH:mm') : 'never' }}</small>
+        <small>Immutable version record #{{ version.recordVersion }}. Existing snapshots/contracts are not edited.</small>
+        <div class="actions">
+          <button pButton type="button" severity="secondary" [disabled]="!!versionBusy" label="Dùng làm mẫu version mới" (click)="useVersionAsBasis(version)"></button>
+          <button *ngIf="version.status === 'INACTIVE' && !version.deactivatedAt" pButton type="button" [disabled]="!!versionBusy" label="Yêu cầu activate" (click)="requestVersionAction(version, 'activate')"></button>
+          <button *ngIf="version.status === 'ACTIVE'" pButton type="button" severity="danger" [disabled]="!!versionBusy" label="Yêu cầu deactivate" (click)="requestVersionAction(version, 'deactivate')"></button>
+          <span *ngIf="version.deactivatedAt" class="source">Version đã deactivated là terminal; hãy tạo version mới để thay thế.</span>
+        </div>
+      </article>
+    </div>
+    <div class="error" *ngIf="pendingVersionAction">
+      <strong>Xác nhận {{ pendingVersionAction.action }} {{ pendingVersionAction.version.versionCode }}</strong>
+      <p>Thao tác chỉ đổi khả năng bán version; không sửa order snapshot hoặc contract đã phát hành.</p>
+      <label *ngIf="pendingVersionAction.action === 'deactivate'">Lý do deactivate (10–1000 ký tự)<textarea rows="3" maxlength="1000" [(ngModel)]="versionActionReason" [disabled]="!!versionBusy"></textarea></label>
+      <button pButton type="button" severity="danger" [disabled]="!!versionBusy || (pendingVersionAction.action === 'deactivate' && (versionActionReason.trim().length < 10 || versionActionReason.trim().length > 1000))" label="Xác nhận" (click)="confirmVersionAction()"></button>
+      <button pButton type="button" severity="secondary" [disabled]="!!versionBusy" label="Hủy" (click)="pendingVersionAction = null; versionActionReason = ''"></button>
+    </div>
+  </section>
 </div>

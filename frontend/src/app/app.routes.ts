@@ -30,6 +30,7 @@ export const routes: Routes = [
   { path: 'register', loadComponent: () => import('./features/auth/register/register.component').then(m => m.RegisterComponent) },
   { path: 'partner/register', loadComponent: () => import('./features/client/partner-register/partner-register.component').then(m => m.PartnerRegisterComponent) },
   { path: 'partner/registration-status', loadComponent: () => import('./features/client/partner-registration-status/partner-registration-status.component').then(m => m.PartnerRegistrationStatusComponent), canActivate: [clientAuthGuard] },
+  { path: 'partner/owner-invitation', loadComponent: () => import('./features/client/owner-invitation-accept/owner-invitation-accept.component').then(m => m.OwnerInvitationAcceptComponent), canActivate: [clientAuthGuard] },
   { path: 'admin/login', loadComponent: () => import('./features/auth/admin-login/admin-login.component').then(m => m.AdminLoginComponent) },
   {
     path: 'admin',
@@ -53,7 +54,7 @@ export const routes: Routes = [
       { path: 'invoices', loadComponent: () => import('./features/admin/invoice-management/invoice-management').then(m => m.InvoiceManagement), canActivate: [permissionGuard], data: { functionCode: FunctionCode.INVOICE, actionCode: ActionCode.VIEW } },
       { path: 'modules', loadComponent: () => import('./features/system/module-management/module-management').then(m => m.ModuleManagementComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.SYSTEM, actionCode: ActionCode.VIEW } },
       { path: 'chat', loadComponent: () => import('./features/admin/chat-dashboard/chat-dashboard').then(m => m.ChatDashboardComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.AI_CHAT, actionCode: ActionCode.VIEW } },
-      { path: 'properties', loadComponent: () => import('./features/admin/property-management/property-management').then(m => m.PropertyManagementComponent) },
+      { path: 'properties', loadComponent: () => import('./features/admin/property-management/property-management').then(m => m.PropertyManagementComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PROPERTY_LIFECYCLE, actionCode: ActionCode.VIEW } },
       { path: 'plans', loadComponent: () => import('./features/admin/subscription-plans/subscription-plans').then(m => m.SubscriptionPlansComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.SYSTEM, actionCode: ActionCode.VIEW } },
       { path: 'platform-payment-configuration', loadComponent: () => import('./features/admin/platform-payment-configuration/platform-payment-configuration.component').then(m => m.PlatformPaymentConfigurationComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PAYMENT_READINESS, actionCode: ActionCode.VIEW } },
       { path: 'roles', loadComponent: () => import('./features/admin/role-management/role-management.component').then(m => m.RoleManagementComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROLE, actionCode: ActionCode.VIEW } },
@@ -95,6 +96,7 @@ export const routes: Routes = [
       { path: 'property-revenue', loadComponent: () => import('./features/management/property-revenue/property-revenue.component').then(m => m.PropertyRevenueComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.REPORT, actionCode: ActionCode.VIEW } },
       { path: 'audit-log', loadComponent: () => import('./features/admin/audit-log/audit-log.component').then(m => m.AuditLogComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.AUDIT_LOG, actionCode: ActionCode.VIEW } },
       { path: 'billing', loadComponent: () => import('./features/management/subscription-billing/subscription-billing.component').then(m => m.SubscriptionBillingComponent) },
+      { path: 'ownership', loadComponent: () => import('./features/management/property-ownership/property-ownership.component').then(m => m.PropertyOwnershipComponent) },
       { path: 'subscription', redirectTo: 'billing', pathMatch: 'full' },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]

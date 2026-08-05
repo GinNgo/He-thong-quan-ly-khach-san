@@ -237,3 +237,19 @@ The project owner receives a master function inventory, traceability matrix, err
 - Tax/fee rules are snapshot-driven and configurable; no new tax policy is invented by implementation.
 - Existing reservation locking, payment provider adapters, refund lifecycle and subscription entitlement reads are reused where they satisfy the new contracts.
 - Existing dirty worktree changes and Feature 006 artifacts are preserved; this feature is a separate planning stream.
+
+## Approved Hotel Ownership And Subscription Policy
+
+The policy supplied on 2026-08-04 is authoritative for T241-T244:
+
+- Each hotel has exactly one active `PRIMARY_OWNER`, zero or more active `CO_OWNER` memberships, and at most 10 active owners by default through configuration. A user cannot hold multiple active owner memberships for the same hotel.
+- Only the primary owner may invite/remove co-owners, grant/revoke `BILLING_ADMIN`, initiate primary transfer, manage legal/billing identity, manage the subscription, or request hotel closure. A co-owner may operate the hotel and may leave voluntarily, but cannot exercise primary-owner authority by default.
+- Co-owner invitations use a one-time token whose hash only is persisted, expire after 7 days, grant no authority while pending, and require the authenticated verified account to match the invited email and accept owner terms.
+- A newly accepted owner has a 7-day cooling period before billing administration, owner administration, primary transfer eligibility, or hotel closure authority becomes effective.
+- Primary ownership transfer is a two-party, 7-day request. The current primary owner re-authenticates to initiate it; an eligible active co-owner accepts after reviewing subscription responsibility. Acceptance atomically promotes the recipient and demotes the former primary owner to co-owner, invalidates affected authorization state, audits the transition, and notifies owners.
+- Transfer is blocked by overdue subscription invoices, open subscription disputes/chargebacks, pending subscription refunds, or a pending software-contract change. Active or future property bookings do not block transfer.
+- A primary owner cannot leave or be removed. A co-owner may leave or be removed unless they are the recipient of a pending transfer. Membership history is retained with `LEFT`, `REMOVED`, or `SUSPENDED` status and actor/time/reason evidence.
+- The subscription belongs to the hotel, never to the primary-owner account. Ownership changes do not create a subscription, change the paid term/features/expiry, refund, or prorate. Issued invoice snapshots and original transaction/refund/chargeback responsibility remain immutable.
+- A personal payment method belonging to the former owner is never transferred automatically. The new primary owner must confirm a valid billing profile/payment method before renewal; already-paid access remains through the current term.
+
+T241 implements the ownership lifecycle and subscription-preservation boundary required above. Hotel close/delete workflow and exceptional Super Admin debt-assumption override are deferred because they are not required to complete PROP-SUB-015 and require separate operational workflows; they must not be approximated by partial behavior.

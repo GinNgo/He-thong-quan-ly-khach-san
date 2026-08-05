@@ -22,6 +22,9 @@
       </div>
     </div>
   </div>
+  <div class="inline-error" *ngIf="currentEntitlement && ['EXPIRED', 'REVOKED'].includes(currentEntitlement.status)" role="status">
+    This subscription is {{ currentEntitlement.status.toLowerCase() }}. Active limits are unavailable, but historical records remain readable and exportable.
+  </div>
   <app-feedback-state *ngIf="subscriptionError && !currentEntitlement" state="error" title="Property entitlement unavailable" [message]="subscriptionError" actionLabel="Retry" (actionTriggered)="loadEntitlement()" />
   <div class="inline-error" *ngIf="currentEntitlement?.migrationBlocker" role="status">
     This property has no active entitlement: {{ currentEntitlement.migrationBlocker }}
@@ -99,6 +102,22 @@
       <div *ngFor="let feature of currentEntitlement.limits | keyvalue">
         <span>{{ feature.key }}</span>
         <strong>{{ featureLimit(feature.value) }}</strong>
+      </div>
+    </div>
+  </section>
+
+  <section class="usage-summary" *ngIf="activePropertyId" aria-labelledby="subscription-history-title">
+    <div class="snapshot-heading">
+      <div><p class="eyebrow">Retained evidence</p><h2 id="subscription-history-title">Subscription history</h2></div>
+      <button class="btn btn-primary" type="button" [disabled]="exportingHistory" (click)="exportHistory()">{{ exportingHistory ? 'Exporting...' : 'Export CSV' }}</button>
+    </div>
+    <p class="inline-error" *ngIf="historyError" role="alert">{{ historyError }}</p>
+    <p *ngIf="!historyError && !history.length">No subscription history is available for this property.</p>
+    <div class="usage-grid" *ngIf="history.length">
+      <div *ngFor="let item of history">
+        <span>{{ item.occurredAt | date:'dd/MM/yyyy HH:mm' }}</span>
+        <strong>{{ item.actionType }}</strong>
+        <small>{{ item.reason || 'No reason recorded' }}</small>
       </div>
     </div>
   </section>

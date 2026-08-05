@@ -1,4 +1,4 @@
-﻿package com.hotel.services;
+package com.hotel.services;
 
 import com.hotel.entities.User;
 import com.hotel.dtos.StaffLifecycleRequest;
@@ -574,7 +574,10 @@ public class UserService {
 
         // Fetch assigned properties
         List<com.hotel.entities.UserProperty> userProperties = userPropertyRepository.findByUserId(id);
-        List<UserDto.HotelSummary> properties = userProperties.stream().map(up -> {
+        List<com.hotel.entities.UserProperty> activeAssignments = userProperties.stream()
+                .filter(up -> "ACTIVE".equalsIgnoreCase(up.getStatus()))
+                .toList();
+        List<UserDto.HotelSummary> properties = activeAssignments.stream().map(up -> {
             UserDto.HotelSummary hs = new UserDto.HotelSummary();
             hs.setId(up.getHotel().getId());
             hs.setName(up.getHotel().getName());
@@ -584,9 +587,13 @@ public class UserService {
         dto.setUnreadMessageCount(chatMessageRepository.countByReceiverIdAndIsReadFalse(id));
         dto.setPendingBookingCount(reservationRepository.countByUserIdAndStatusIn(
                 id, java.util.List.of("DRAFT", "PENDING", "PENDING_PAYMENT", "CONFIRMED")));
-        if (!userProperties.isEmpty()) {
-            boolean pending = userProperties.stream().anyMatch(up -> "PENDING_APPROVAL".equals(up.getHotel().getApprovalStatus()));
-            dto.setPartnerRegistrationStatus(pending ? "PENDING" : "APPROVED");
+        List<com.hotel.entities.UserProperty> ownerMappings = userProperties.stream()
+                .filter(up -> "OWNER".equalsIgnoreCase(up.getRelationshipType()))
+                .toList();
+        if (ownerMappings.stream().anyMatch(up -> "ACTIVE".equalsIgnoreCase(up.getStatus()))) {
+            dto.setPartnerRegistrationStatus("APPROVED");
+        } else if (ownerMappings.stream().anyMatch(up -> "PENDING".equalsIgnoreCase(up.getStatus()))) {
+            dto.setPartnerRegistrationStatus("PENDING");
         } else {
             dto.setPartnerRegistrationStatus(propertyClaimRequestRepository
                     .findFirstByRequesterUserIdOrderByCreatedAtDesc(id)
@@ -609,7 +616,9 @@ public class UserService {
 
             // Current usage mock (this would normally calculate from DB based on User limit)
             java.util.Map<String, Integer> currentUsage = new java.util.HashMap<>();
-            currentUsage.put("MAX_PROPERTIES", userProperties.size());
+            currentUsage.put("MAX_PROPERTIES", (int) ownerMappings.stream()
+                    .filter(up -> "ACTIVE".equalsIgnoreCase(up.getStatus()))
+                    .count());
             dto.setCurrentUsage(currentUsage);
         } else {
             dto.setSubscriptionStatus("FREE");

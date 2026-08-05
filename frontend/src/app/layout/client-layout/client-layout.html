@@ -38,9 +38,9 @@
             <div class="menu-divider"></div>
             <button type="button" (click)="navigatePartner()" role="menuitem" [disabled]="partnerLabel === 'Tài khoản bị khóa'"><i class="pi pi-building"></i><span>{{ partnerLabel }}</span></button>
             <ng-container *ngIf="isPropertyOwner">
-              <a routerLink="/management/dashboard" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-chart-bar"></i><span>Tổng quan quản lý</span></a>
-              <a routerLink="/management/room-types" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-th-large"></i><span>Loại phòng và phòng</span></a>
-              <a routerLink="/management/subscription" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-credit-card"></i><span>Gói dịch vụ</span><small>{{ userContext?.plan || 'Chưa có gói' }}</small></a>
+              <a routerLink="/management/dashboard" [queryParams]="managementQueryParams" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-chart-bar"></i><span>Tổng quan quản lý</span></a>
+              <a routerLink="/management/room-types" [queryParams]="managementQueryParams" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-th-large"></i><span>Loại phòng và phòng</span></a>
+              <a routerLink="/management/subscription" [queryParams]="managementQueryParams" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-credit-card"></i><span>Gói dịch vụ</span><small>{{ userContext?.plan || 'Chưa có gói' }}</small></a>
             </ng-container>
             <a *ngIf="isAdmin" routerLink="/admin/dashboard" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-shield"></i><span>Quản trị hệ thống</span></a>
             <div class="menu-divider"></div>

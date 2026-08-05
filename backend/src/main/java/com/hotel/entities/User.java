@@ -56,6 +56,18 @@ public class User extends AuditableEntity {
     @Column(name = "auth_revoked_at")
     private Instant authRevokedAt;
 
+    @Column(name = "failed_login_count", nullable = false)
+    private Integer failedLoginCount = 0;
+
+    @Column(name = "failed_login_window_started_at")
+    private Instant failedLoginWindowStartedAt;
+
+    @Column(name = "login_locked_until")
+    private Instant loginLockedUntil;
+
+    @Column(name = "last_login_at")
+    private Instant lastLoginAt;
+
     @Column(name = "email_verified_at")
     private Instant emailVerifiedAt = Instant.now();
 
@@ -164,6 +176,15 @@ public class User extends AuditableEntity {
     public void setAuthRevokedAt(Instant authRevokedAt) {
         this.authRevokedAt = authRevokedAt;
     }
+
+    public Integer getFailedLoginCount() { return failedLoginCount; }
+    public void setFailedLoginCount(Integer failedLoginCount) { this.failedLoginCount = failedLoginCount; }
+    public Instant getFailedLoginWindowStartedAt() { return failedLoginWindowStartedAt; }
+    public void setFailedLoginWindowStartedAt(Instant failedLoginWindowStartedAt) { this.failedLoginWindowStartedAt = failedLoginWindowStartedAt; }
+    public Instant getLoginLockedUntil() { return loginLockedUntil; }
+    public void setLoginLockedUntil(Instant loginLockedUntil) { this.loginLockedUntil = loginLockedUntil; }
+    public Instant getLastLoginAt() { return lastLoginAt; }
+    public void setLastLoginAt(Instant lastLoginAt) { this.lastLoginAt = lastLoginAt; }
 
     public Instant getEmailVerifiedAt() {
         return emailVerifiedAt;

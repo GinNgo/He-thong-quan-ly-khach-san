@@ -76,7 +76,8 @@ label {
   margin-bottom: 0.5rem;
 }
 
-input {
+input,
+select {
   padding: 0.75rem 1rem;
   border: 1px solid var(--hotel-border);
   border-radius: var(--hotel-radius);
@@ -85,14 +86,27 @@ input {
   font-family: inherit;
 }
 
-input:focus {
+input:focus,
+select:focus {
   outline: none;
   border-color: var(--hotel-primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-input.invalid {
+input.invalid,
+select.invalid {
   border-color: var(--hotel-error);
+}
+
+select:disabled {
+  background: #f1f5f9;
+  cursor: not-allowed;
+}
+
+.field-help {
+  color: var(--hotel-text-secondary);
+  font-size: 0.78rem;
+  margin-top: 0.35rem;
 }
 
 .error-msg {

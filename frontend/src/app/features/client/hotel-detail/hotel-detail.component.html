@@ -13,7 +13,7 @@
   <ng-container *ngIf="!isLoading && hotel">
     <header class="property-hero">
       <img [src]="hotel.mainImageUrl || hotel.mainImage || fallback.property(hotel.propertyType)" [alt]="hotel.name" (error)="handleHotelImageError($event)">
-      <div class="hero-overlay"><span>{{ hotel.propertyType || 'Cơ sở lưu trú' }}</span><h1>{{ hotel.name }}</h1><p><i class="pi pi-map-marker"></i> {{ hotel.addressLine }}<ng-container *ngIf="hotel.wardName">, {{ hotel.wardName }}</ng-container><ng-container *ngIf="hotel.provinceName">, {{ hotel.provinceName }}</ng-container></p><button *ngIf="hotel.approvalStatus==='IMPORTED_PENDING_REVIEW'" class="claim-button" (click)="showClaimModal=true">Xác nhận là chủ sở hữu</button></div>
+      <div class="hero-overlay"><span>{{ hotel.propertyType || 'Cơ sở lưu trú' }}</span><h1>{{ hotel.name }}</h1><p><i class="pi pi-map-marker"></i> {{ hotel.addressLine }}<ng-container *ngIf="hotel.wardName">, {{ hotel.wardName }}</ng-container><ng-container *ngIf="hotel.provinceName">, {{ hotel.provinceName }}</ng-container></p><button #claimCta *ngIf="hotel.approvalStatus==='IMPORTED_PENDING_REVIEW'" type="button" class="claim-button" [attr.aria-disabled]="claimSubmittedPropertyId===hotel.id ? 'true' : null" (click)="openClaimModal($event)">{{ claimSubmittedPropertyId===hotel.id ? 'Yêu cầu đã gửi' : 'Xác nhận là chủ sở hữu' }}</button></div>
     </header>
     <div class="detail-container">
       <section class="description"><h2>Thông tin chỗ nghỉ</h2><p>{{ hotel.description || 'Cơ sở chưa cập nhật mô tả chi tiết.' }}</p></section>
@@ -39,5 +39,26 @@
       </section>
     </div>
   </ng-container>
-  <div *ngIf="showClaimModal" class="claim-backdrop"><form class="claim-dialog" (ngSubmit)="submitClaim()"><header><h2>Xác nhận quyền sở hữu</h2><button type="button" (click)="showClaimModal=false" aria-label="Đóng"><i class="pi pi-times"></i></button></header><p>Cung cấp thông tin để đội ngũ LuxeStay xét duyệt quyền quản lý cơ sở.</p><label>Phương thức<select [(ngModel)]="claimForm.verificationMethod" name="method"><option value="BUSINESS_LICENSE">Giấy phép kinh doanh</option><option value="EMAIL">Email doanh nghiệp</option><option value="PHONE">Điện thoại</option></select></label><label>Thông tin xác minh<input [(ngModel)]="claimForm.verificationData" name="verification" required></label><label>Ghi chú<textarea [(ngModel)]="claimForm.note" name="note" rows="3"></textarea></label><button class="submit-claim" type="submit">Gửi yêu cầu</button></form></div>
+  <div *ngIf="showClaimModal" class="claim-backdrop">
+    <form #claimDialog #claimRequestForm="ngForm" class="claim-dialog" role="dialog" aria-modal="true" aria-labelledby="claim-title" aria-describedby="claim-help" (keydown)="handleClaimDialogKeydown($event)" (ngSubmit)="submitClaim(claimRequestForm)">
+      <header><h2 id="claim-title">Xác nhận quyền sở hữu</h2><button type="button" [disabled]="claimSubmitting" (click)="closeClaimModal()" aria-label="Đóng"><i class="pi pi-times"></i></button></header>
+      <p id="claim-help">Cung cấp thông tin để đội ngũ LuxeStay xét duyệt quyền quản lý cơ sở. Không gửi mật khẩu hoặc thông tin nhạy cảm.</p>
+      <label for="claim-method">Phương thức</label>
+      <select id="claim-method" data-claim-initial-focus [(ngModel)]="claimForm.verificationMethod" name="method" [disabled]="claimSubmitting||claimSubmitted" required>
+        <option value="BUSINESS_LICENSE">Giấy phép kinh doanh</option><option value="EMAIL">Email doanh nghiệp</option><option value="PHONE">Điện thoại</option>
+      </select>
+      <label for="claim-verification">Thông tin xác minh</label>
+      <input #verificationControl="ngModel" id="claim-verification" [(ngModel)]="claimForm.verificationData" name="verification" [disabled]="claimSubmitting||claimSubmitted" required maxlength="1000" aria-describedby="claim-verification-help claim-verification-error">
+      <small id="claim-verification-help" class="field-help">Email, số điện thoại hoặc thông tin giấy phép có thể đối chiếu; tối đa 1000 ký tự.</small>
+      <small *ngIf="verificationControl.touched&&verificationControl.invalid" id="claim-verification-error" class="field-error">Vui lòng nhập thông tin xác minh hợp lệ.</small>
+      <label for="claim-note">Ghi chú <span>(không bắt buộc)</span></label>
+      <textarea #noteControl="ngModel" id="claim-note" [(ngModel)]="claimForm.note" name="note" [disabled]="claimSubmitting||claimSubmitted" rows="3" maxlength="500" aria-describedby="claim-note-help claim-note-error"></textarea>
+      <small id="claim-note-help" class="field-help">Tối đa 500 ký tự.</small>
+      <small *ngIf="noteControl.touched&&noteControl.invalid" id="claim-note-error" class="field-error">Ghi chú không được vượt quá 500 ký tự.</small>
+      <div *ngIf="claimRequestError" class="claim-message error" role="alert" aria-live="assertive">{{ claimRequestError }}</div>
+      <div *ngIf="claimRequestSuccess" class="claim-message success" role="status" aria-live="polite">{{ claimRequestSuccess }}</div>
+      <button *ngIf="!claimSubmitted" class="submit-claim" type="submit" [disabled]="claimSubmitting||claimRequestForm.invalid">{{ claimSubmitting ? 'Đang gửi...' : 'Gửi yêu cầu' }}</button>
+      <button *ngIf="claimSubmitted" class="submit-claim" type="button" (click)="closeClaimModal()">Đóng</button>
+    </form>
+  </div>
 </main>

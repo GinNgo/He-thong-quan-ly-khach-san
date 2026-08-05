@@ -23,7 +23,7 @@
           <p class="font-body-sm text-[13px] text-on-surface-variant mt-1 text-center m-0">Đăng nhập để truy cập hệ thống</p>
         </div>
 
-        <div *ngIf="errorMessage" class="mb-4 p-2.5 bg-red-100/80 border border-red-200 text-red-700 rounded text-center text-sm font-medium backdrop-blur-sm">
+        <div *ngIf="errorMessage" id="login-error" role="alert" aria-live="assertive" aria-atomic="true" class="mb-4 p-2.5 bg-red-100/80 border border-red-200 text-red-700 rounded text-center text-sm font-medium backdrop-blur-sm">
           {{ errorMessage }}
         </div>
 
@@ -33,7 +33,7 @@
             <label class="font-label-md text-[11px] font-bold text-on-surface-variant uppercase tracking-wider" for="username">Email đăng nhập</label>
             <div class="relative">
               <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 text-[18px]">mail</span>
-              <input class="w-full pl-9 pr-4 py-2.5 bg-white border border-outline-variant rounded-lg font-body-md text-[14px] text-on-surface input-focus-ring transition-all placeholder:text-outline/50" id="username" name="username" placeholder="manager@luxuryhotel.com" type="text" [(ngModel)]="loginObj.username">
+              <input class="w-full pl-9 pr-4 py-2.5 bg-white border border-outline-variant rounded-lg font-body-md text-[14px] text-on-surface input-focus-ring transition-all placeholder:text-outline/50" id="username" name="username" placeholder="manager@luxuryhotel.com" type="text" [(ngModel)]="loginObj.username" [attr.aria-describedby]="errorMessage ? 'login-error' : null">
             </div>
           </div>
 
@@ -42,7 +42,7 @@
             <label class="font-label-md text-[11px] font-bold text-on-surface-variant uppercase tracking-wider" for="password">Mật khẩu</label>
             <div class="relative">
               <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 text-[18px]">lock</span>
-              <input class="w-full pl-9 pr-10 py-2.5 bg-white border border-outline-variant rounded-lg font-body-md text-[14px] text-on-surface input-focus-ring transition-all placeholder:text-outline/50" id="password" name="password" placeholder="••••••••" type="password" [(ngModel)]="loginObj.password">
+              <input class="w-full pl-9 pr-10 py-2.5 bg-white border border-outline-variant rounded-lg font-body-md text-[14px] text-on-surface input-focus-ring transition-all placeholder:text-outline/50" id="password" name="password" placeholder="••••••••" type="password" [(ngModel)]="loginObj.password" [attr.aria-describedby]="errorMessage ? 'login-error' : null">
               <button class="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors bg-transparent border-none p-0 flex items-center justify-center outline-none" type="button">
                 <span class="material-symbols-outlined text-[18px]">visibility</span>
               </button>

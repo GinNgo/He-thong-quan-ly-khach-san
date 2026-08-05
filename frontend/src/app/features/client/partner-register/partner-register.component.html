@@ -1,49 +1,46 @@
 <div class="partner-register-container">
   <div class="register-card">
     <div class="header">
-      <h2>Đăng ký trở thành Đối tác</h2>
-      <p>Cùng hợp tác để tiếp cận hàng triệu khách hàng và tăng doanh thu.</p>
+      <h2>Đăng ký trở thành đối tác</h2>
+      <p>Gửi hồ sơ cơ sở lưu trú để LuxeStay xem xét và kích hoạt quyền quản lý.</p>
     </div>
 
-    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form">
-      <div class="form-section">
-        <h3>Thông tin cá nhân</h3>
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form" novalidate>
+      <div class="form-section signed-in-note" *ngIf="isSignedIn">
+        <h3>Dùng tài khoản hiện tại</h3>
+        <p>Hồ sơ cơ sở sẽ được liên kết với tài khoản đang đăng nhập. LuxeStay không yêu cầu lại email hoặc mật khẩu.</p>
+      </div>
+
+      <div class="form-section" *ngIf="!isSignedIn">
+        <h3>Thông tin tài khoản mới</h3>
         <div class="form-group">
           <label for="fullName">Họ và tên *</label>
-          <input type="text" id="fullName" formControlName="fullName" placeholder="Nhập họ và tên"
-            [class.invalid]="registerForm.get('fullName')?.invalid && registerForm.get('fullName')?.touched">
-          <div class="error-msg" *ngIf="registerForm.get('fullName')?.invalid && registerForm.get('fullName')?.touched">
-            Họ và tên là bắt buộc.
-          </div>
+          <input id="fullName" type="text" formControlName="fullName" autocomplete="name"
+            [class.invalid]="isInvalid('fullName')">
+          <div class="error-msg" *ngIf="isInvalid('fullName')">Họ và tên là bắt buộc.</div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
             <label for="email">Email đăng nhập *</label>
-            <input type="email" id="email" formControlName="email" placeholder="example@email.com"
-              [class.invalid]="registerForm.get('email')?.invalid && registerForm.get('email')?.touched">
-            <div class="error-msg" *ngIf="registerForm.get('email')?.invalid && registerForm.get('email')?.touched">
-              Email không hợp lệ.
-            </div>
+            <input id="email" type="email" formControlName="email" autocomplete="email"
+              [class.invalid]="isInvalid('email')">
+            <div class="error-msg" *ngIf="isInvalid('email')">Nhập một địa chỉ email hợp lệ.</div>
           </div>
 
           <div class="form-group">
             <label for="phone">Số điện thoại *</label>
-            <input type="text" id="phone" formControlName="phone" placeholder="Nhập SĐT"
-              [class.invalid]="registerForm.get('phone')?.invalid && registerForm.get('phone')?.touched">
-            <div class="error-msg" *ngIf="registerForm.get('phone')?.invalid && registerForm.get('phone')?.touched">
-              Số điện thoại là bắt buộc.
-            </div>
+            <input id="phone" type="tel" formControlName="phone" autocomplete="tel"
+              [class.invalid]="isInvalid('phone')">
+            <div class="error-msg" *ngIf="isInvalid('phone')">Nhập số điện thoại từ 8 đến 30 ký tự.</div>
           </div>
         </div>
 
         <div class="form-group">
           <label for="password">Mật khẩu *</label>
-          <input type="password" id="password" formControlName="password" placeholder="Tối thiểu 6 ký tự"
-            [class.invalid]="registerForm.get('password')?.invalid && registerForm.get('password')?.touched">
-          <div class="error-msg" *ngIf="registerForm.get('password')?.invalid && registerForm.get('password')?.touched">
-            Mật khẩu bắt buộc và tối thiểu 6 ký tự.
-          </div>
+          <input id="password" type="password" formControlName="password" autocomplete="new-password"
+            [class.invalid]="isInvalid('password')">
+          <div class="error-msg" *ngIf="isInvalid('password')">Mật khẩu phải có từ 8 đến 256 ký tự.</div>
         </div>
       </div>
 
@@ -51,33 +48,53 @@
         <h3>Thông tin cơ sở lưu trú</h3>
         <div class="form-group">
           <label for="propertyName">Tên cơ sở lưu trú *</label>
-          <input type="text" id="propertyName" formControlName="propertyName" placeholder="Ví dụ: Khách sạn Mường Thanh"
-            [class.invalid]="registerForm.get('propertyName')?.invalid && registerForm.get('propertyName')?.touched">
-          <div class="error-msg" *ngIf="registerForm.get('propertyName')?.invalid && registerForm.get('propertyName')?.touched">
-            Tên cơ sở lưu trú là bắt buộc.
+          <input id="propertyName" type="text" formControlName="propertyName"
+            [class.invalid]="isInvalid('propertyName')">
+          <div class="error-msg" *ngIf="isInvalid('propertyName')">Tên cơ sở lưu trú là bắt buộc.</div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="provinceId">Tỉnh/thành phố *</label>
+            <select id="provinceId" formControlName="provinceId" (change)="onProvinceChange()"
+              [class.invalid]="isInvalid('provinceId')"
+              [attr.disabled]="locationsLoading && provinces.length === 0 ? true : null">
+              <option [ngValue]="null">Chọn tỉnh/thành phố</option>
+              <option *ngFor="let province of provinces" [ngValue]="province.id">{{ province.nameVi }}</option>
+            </select>
+            <div class="error-msg" *ngIf="isInvalid('provinceId')">Chọn tỉnh/thành phố.</div>
+          </div>
+
+          <div class="form-group">
+            <label for="wardId">Phường/xã *</label>
+            <select id="wardId" formControlName="wardId" [class.invalid]="isInvalid('wardId')"
+              [attr.disabled]="registerForm.controls.provinceId.value === null || locationsLoading ? true : null">
+              <option [ngValue]="null">Chọn phường/xã</option>
+              <option *ngFor="let ward of wards" [ngValue]="ward.id">{{ ward.nameVi }}</option>
+            </select>
+            <div class="error-msg" *ngIf="isInvalid('wardId')">Chọn phường/xã.</div>
           </div>
         </div>
 
         <div class="form-group">
-          <label for="propertyAddress">Địa chỉ đầy đủ *</label>
-          <input type="text" id="propertyAddress" formControlName="propertyAddress" placeholder="Số nhà, Tên đường, Quận/Huyện, Tỉnh/TP"
-            [class.invalid]="registerForm.get('propertyAddress')?.invalid && registerForm.get('propertyAddress')?.touched">
-          <div class="error-msg" *ngIf="registerForm.get('propertyAddress')?.invalid && registerForm.get('propertyAddress')?.touched">
-            Địa chỉ là bắt buộc.
-          </div>
+          <label for="address">Số nhà, tên đường và địa chỉ chi tiết *</label>
+          <input id="address" type="text" formControlName="address" autocomplete="street-address"
+            [class.invalid]="isInvalid('address')">
+          <div class="field-help">Tỉnh/thành phố và quốc gia được xác định từ danh mục địa giới chính thức.</div>
+          <div class="error-msg" *ngIf="isInvalid('address')">Địa chỉ chi tiết là bắt buộc.</div>
         </div>
       </div>
 
-      <div class="error-banner" *ngIf="errorMessage">
-        {{ errorMessage }}
+      <div class="error-banner" role="alert" *ngIf="locationError || errorMessage">
+        {{ locationError || errorMessage }}
       </div>
 
       <button type="submit" class="submit-btn" [disabled]="isLoading">
-        <span *ngIf="!isLoading">Đăng ký ngay</span>
-        <span *ngIf="isLoading" class="spinner"></span>
+        <span *ngIf="!isLoading">Gửi hồ sơ đăng ký</span>
+        <span *ngIf="isLoading" class="spinner" aria-label="Đang gửi hồ sơ"></span>
       </button>
 
-      <p class="login-link">
+      <p class="login-link" *ngIf="!isSignedIn">
         Đã có tài khoản? <a routerLink="/login">Đăng nhập</a>
       </p>
     </form>

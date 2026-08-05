@@ -200,10 +200,6 @@ export class ClientApiService {
     return this.http.get<any[]>(`${this.apiUrl}/hotels/${hotelId}/available-rooms`, { params });
   }
 
-  submitPropertyClaim(propertyId: number, data: any): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/properties/${propertyId}/claim`, data);
-  }
-
   getRoomTypesByHotel(hotelId: number, checkIn?: string, checkOut?: string, guests?: number): Observable<RoomType[]> {
     let params = new HttpParams();
     if (checkIn) params = params.set('checkIn', checkIn);

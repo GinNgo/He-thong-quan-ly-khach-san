@@ -1,4 +1,4 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -91,12 +91,8 @@ export interface PlatformSubscriptionHistoryItem {
   id: number;
   orderPublicId: string;
   contractPublicId?: string | null;
-  transactionPublicId?: string | null;
   actionType: string;
-  previousStateJson?: string | null;
-  newStateJson?: string | null;
   actorType: string;
-  actorId?: number | null;
   reason?: string | null;
   occurredAt: string;
 }
@@ -115,6 +111,52 @@ export interface PlatformSubscriptionEntitlement {
   limits: Record<string, number>;
   sourceReference?: string | null;
   migrationBlocker?: string | null;
+}
+
+export interface PlatformSubscriptionRevokeResult {
+  targetHotelId: number;
+  contractPublicId: string;
+  contractStatus: 'EXPIRED' | 'REVOKED' | string;
+  entitlementStatus: 'EXPIRED' | 'REVOKED' | string;
+  transitioned: boolean;
+  occurredAt: string;
+}
+
+export interface PlatformPlanVersionFeature {
+  code: string;
+  limit: number;
+}
+
+export interface PlatformPlanVersion {
+  id: number;
+  familyCode: string;
+  versionNumber: number;
+  versionCode: string;
+  nameVi: string;
+  nameEn: string;
+  billingType: 'MONTHLY' | 'YEARLY' | 'ONCE';
+  price: number;
+  currency: string;
+  lifetime: boolean;
+  durationValue: number | null;
+  durationUnit: 'DAY' | 'MONTH' | 'YEAR' | 'LIFETIME';
+  status: 'INACTIVE' | 'ACTIVE' | string;
+  recordVersion: number;
+  features: PlatformPlanVersionFeature[];
+  createdAt: string;
+  activatedAt: string | null;
+  deactivatedAt: string | null;
+}
+
+export interface CreatePlatformPlanVersionRequest {
+  familyCode: string;
+  nameVi: string;
+  nameEn: string;
+  billingType: 'MONTHLY' | 'YEARLY' | 'ONCE';
+  price: number;
+  durationValue: number | null;
+  durationUnit: 'DAY' | 'MONTH' | 'YEAR' | 'LIFETIME';
+  features: PlatformPlanVersionFeature[];
 }
 
 export interface PlatformPolicyAvailability {
@@ -263,9 +305,47 @@ export class PlatformBillingService {
     );
   }
 
+  getPlanVersions(): Observable<PlatformPlanVersion[]> {
+    return this.http.get<PlatformPlanVersion[]>(`${this.baseUrl}/subscription-plan-admin`);
+  }
+
+  createPlanVersion(request: CreatePlatformPlanVersionRequest, idempotencyKey: string): Observable<PlatformPlanVersion> {
+    return this.http.post<PlatformPlanVersion>(`${this.baseUrl}/subscription-plan-admin`, request, {
+      headers: this.mutationHeaders({ idempotencyKey })
+    });
+  }
+
+  activatePlanVersion(planId: number, idempotencyKey: string): Observable<PlatformPlanVersion> {
+    return this.http.post<PlatformPlanVersion>(`${this.baseUrl}/subscription-plan-admin/${planId}/activate`, null, {
+      headers: this.mutationHeaders({ idempotencyKey })
+    });
+  }
+
+  deactivatePlanVersion(planId: number, reason: string, idempotencyKey: string): Observable<PlatformPlanVersion> {
+    return this.http.post<PlatformPlanVersion>(`${this.baseUrl}/subscription-plan-admin/${planId}/deactivate`, {
+      reason: this.requiredReason(reason)
+    }, {
+      headers: this.mutationHeaders({ idempotencyKey })
+    });
+  }
+
+  exportHistory(targetHotelId: number): Observable<HttpResponse<Blob>> {
+    return this.http.get(`${this.baseUrl}/subscriptions/${targetHotelId}/history/export`, {
+      observe: 'response',
+      responseType: 'blob',
+    });
+  }
+
   getEntitlement(targetHotelId: number): Observable<PlatformSubscriptionEntitlement> {
     return this.http.get<PlatformSubscriptionEntitlement>(
       `${this.baseUrl}/subscriptions/${targetHotelId}/entitlement`,
+    );
+  }
+
+  revokeSubscription(targetHotelId: number, reason: string): Observable<PlatformSubscriptionRevokeResult> {
+    return this.http.post<PlatformSubscriptionRevokeResult>(
+      `${this.baseUrl}/subscriptions/${targetHotelId}/revoke`,
+      { reason: this.requiredReason(reason) },
     );
   }
 
@@ -312,5 +392,13 @@ export class PlatformBillingService {
 
   private encode(value: string): string {
     return encodeURIComponent(value);
+  }
+
+  private requiredReason(reason: string): string {
+    const normalized = reason.trim();
+    if (normalized.length < 10 || normalized.length > 1000) {
+      throw new Error('Subscription revoke reason must contain between 10 and 1000 characters.');
+    }
+    return normalized;
   }
 }

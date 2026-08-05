@@ -31,6 +31,20 @@ class PublicInventoryEligibilityPolicyTest {
 
         hotel.setOperationStatus("SUSPENDED");
         assertThrows(ResourceNotFoundException.class, () -> policy.requirePublicProperty(10L));
+
+        hotel.setStatus("CLOSED");
+        hotel.setOperationStatus("CLOSED");
+        assertThrows(ResourceNotFoundException.class, () -> policy.requirePublicProperty(10L));
+    }
+
+    @Test
+    void inconsistentLegacyStatusFailsClosedEvenWhenApprovalAndOperationLookActive() {
+        PublicInventoryEligibilityPolicy policy = policy(false, "test");
+        Hotel hotel = hotel(false);
+        hotel.setStatus("PENDING_APPROVAL");
+        when(hotelRepository.findById(10L)).thenReturn(Optional.of(hotel));
+
+        assertThrows(ResourceNotFoundException.class, () -> policy.requirePublicProperty(10L));
     }
 
     @Test
@@ -66,6 +80,7 @@ class PublicInventoryEligibilityPolicyTest {
     private Hotel hotel(boolean demo) {
         Hotel hotel = new Hotel();
         hotel.setId(10L);
+        hotel.setStatus("ACTIVE");
         hotel.setApprovalStatus("APPROVED");
         hotel.setOperationStatus("ACTIVE");
         hotel.setIsDemo(demo);

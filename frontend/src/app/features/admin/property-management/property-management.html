@@ -29,35 +29,155 @@
           <th>Địa điểm</th>
           <th>Loại hình</th>
           <th>Trạng thái</th>
+          <th>Phê duyệt</th>
+          <th>Vận hành</th>
           <th class="actions">Hành động</th>
         </tr>
       </ng-template>
       <ng-template pTemplate="body" let-property>
         <tr>
           <td>
-            <strong>{{ property.nameVi || property.name }}</strong>
-            <small>{{ property.addressLine || 'Chưa có địa chỉ' }}</small>
+            <strong>{{ property.name }}</strong>
+            <small>{{ property.code }}</small>
+            <small *ngIf="property.lifecycleReason">Lý do hiện tại: {{ property.lifecycleReason }}</small>
           </td>
-          <td>{{ property.city || 'Chưa cập nhật' }}</td>
+          <td>{{ property.address || 'Chưa cập nhật' }}</td>
           <td>{{ property.propertyType || 'HOTEL' }}</td>
-          <td><p-tag [severity]="statusSeverity(property)" [value]="statusLabel(property)"></p-tag></td>
+          <td><p-tag [severity]="statusSeverity(property.status)" [value]="statusLabel(property.status)"></p-tag></td>
+          <td><p-tag [severity]="statusSeverity(property.approvalStatus)" [value]="statusLabel(property.approvalStatus)"></p-tag></td>
+          <td><p-tag [severity]="statusSeverity(property.operationStatus)" [value]="statusLabel(property.operationStatus)"></p-tag></td>
           <td class="actions">
-            <ng-container *ngIf="!isAdmin">
-              <button *ngIf="statusCode(property) === 'INACTIVE'" pButton type="button" icon="pi pi-send" class="p-button-rounded p-button-text" pTooltip="Gửi yêu cầu duyệt" (click)="submit(property)" aria-label="Gửi yêu cầu duyệt"></button>
+            <button
+              *ngIf="canViewHistory"
+              pButton
+              type="button"
+              [icon]="historyLoading && historyPropertyId === property.propertyId ? 'pi pi-spinner pi-spin' : 'pi pi-history'"
+              class="p-button-rounded p-button-text"
+              pTooltip="Lịch sử xét duyệt"
+              (click)="openHistory(property)"
+              [disabled]="isLifecycleBusy(property) || historyLoading"
+              [attr.aria-label]="'Xem lịch sử cơ sở ' + property.name"
+            ></button>
+            <ng-container *ngIf="canManageLifecycle">
+              <button
+                *ngIf="canRunLifecycle(property, 'SUSPEND')"
+                pButton
+                type="button"
+                [icon]="lifecycleInFlight[property.propertyId] === 'SUSPEND' ? 'pi pi-spinner pi-spin' : 'pi pi-pause'"
+                class="p-button-rounded p-button-text p-button-warning"
+                pTooltip="Tạm ngừng"
+                (click)="openLifecycle(property, 'SUSPEND')"
+                [disabled]="isLifecycleBusy(property)"
+                [attr.aria-label]="'Tạm ngừng cơ sở ' + property.name"
+              ></button>
+              <button
+                *ngIf="canRunLifecycle(property, 'REACTIVATE')"
+                pButton
+                type="button"
+                [icon]="lifecycleInFlight[property.propertyId] === 'REACTIVATE' ? 'pi pi-spinner pi-spin' : 'pi pi-play'"
+                class="p-button-rounded p-button-text p-button-success"
+                pTooltip="Kích hoạt lại"
+                (click)="openLifecycle(property, 'REACTIVATE')"
+                [disabled]="isLifecycleBusy(property)"
+                [attr.aria-label]="'Kích hoạt lại cơ sở ' + property.name"
+              ></button>
+              <button
+                *ngIf="canRunLifecycle(property, 'CLOSE')"
+                pButton
+                type="button"
+                [icon]="lifecycleInFlight[property.propertyId] === 'CLOSE' ? 'pi pi-spinner pi-spin' : 'pi pi-lock'"
+                class="p-button-rounded p-button-text p-button-danger"
+                pTooltip="Đóng cơ sở"
+                (click)="openLifecycle(property, 'CLOSE')"
+                [disabled]="isLifecycleBusy(property)"
+                [attr.aria-label]="'Đóng cơ sở ' + property.name"
+              ></button>
             </ng-container>
-            <ng-container *ngIf="isAdmin">
-              <button *ngIf="statusCode(property) === 'PENDING'" pButton type="button" icon="pi pi-check" class="p-button-rounded p-button-text p-button-success" pTooltip="Duyệt" (click)="approve(property)" aria-label="Duyệt cơ sở"></button>
-              <button *ngIf="statusCode(property) === 'PENDING'" pButton type="button" icon="pi pi-times" class="p-button-rounded p-button-text p-button-danger" pTooltip="Từ chối" (click)="reject(property)" aria-label="Từ chối cơ sở"></button>
-            </ng-container>
+            <span *ngIf="!canManageLifecycle" class="permission-note">Chỉ xem trạng thái</span>
+            <span *ngIf="canManageLifecycle && !property.allowedTransitions.length" class="permission-note">Không có chuyển đổi</span>
           </td>
         </tr>
       </ng-template>
       <ng-template pTemplate="emptymessage">
-        <tr><td colspan="5"><div class="empty-state"><i class="pi pi-building"></i><strong>Chưa có cơ sở nào</strong><span>Tạo cơ sở đầu tiên để bắt đầu cấu hình loại phòng và phòng vật lý.</span><button *ngIf="isAdmin" pButton type="button" label="Thêm cơ sở" icon="pi pi-plus" (click)="openCreate()"></button></div></td></tr>
+        <tr><td colspan="7"><div class="empty-state"><i class="pi pi-building"></i><strong>Chưa có cơ sở nào</strong><span>Tạo cơ sở đầu tiên để bắt đầu cấu hình loại phòng và phòng vật lý.</span><button *ngIf="isAdmin" pButton type="button" label="Thêm cơ sở" icon="pi pi-plus" (click)="openCreate()"></button></div></td></tr>
       </ng-template>
     </p-table>
   </div>
 </section>
+
+<p-dialog
+  [(visible)]="lifecycleDialogVisible"
+  [modal]="true"
+  [draggable]="false"
+  [dismissableMask]="false"
+  [style]="{width:'min(560px, 96vw)'}"
+  [header]="lifecycleDialogTitle()"
+  [closable]="!lifecycleTarget || !isLifecycleBusy(lifecycleTarget)"
+  (onHide)="closeLifecycleDialog()"
+>
+  <ng-container *ngIf="lifecycleTarget as target">
+    <div class="lifecycle-dialog" [class.lifecycle-dialog--terminal]="lifecycleAction === 'CLOSE'">
+      <div class="lifecycle-warning" role="note">
+        <i [class]="lifecycleAction === 'CLOSE' ? 'pi pi-exclamation-triangle' : 'pi pi-info-circle'" aria-hidden="true"></i>
+        <div>
+          <strong>{{ target.name }}</strong>
+          <p>{{ lifecycleWarning() }}</p>
+        </div>
+      </div>
+
+      <div *ngIf="lifecycleError" id="property-lifecycle-error" class="form-error" role="alert">
+        <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+        <span>{{ lifecycleError }}</span>
+      </div>
+
+      <label for="property-lifecycle-reason">Lý do *</label>
+      <textarea
+        id="property-lifecycle-reason"
+        pInputTextarea
+        rows="5"
+        maxlength="500"
+        [value]="lifecycleReason"
+        [disabled]="isLifecycleBusy(target)"
+        [attr.aria-describedby]="lifecycleError ? 'property-lifecycle-help property-lifecycle-error' : 'property-lifecycle-help'"
+        [attr.aria-invalid]="lifecycleError ? 'true' : null"
+        (input)="updateLifecycleReason($any($event.target).value)"
+      ></textarea>
+      <div id="property-lifecycle-help" class="lifecycle-reason-meta">
+        <span>Nhập từ 10 đến 500 ký tự.</span>
+        <span>{{ lifecycleReason.length }}/500</span>
+      </div>
+    </div>
+  </ng-container>
+  <ng-template pTemplate="footer">
+    <button pButton type="button" label="Hủy" class="p-button-text" (click)="closeLifecycleDialog()" [disabled]="!!lifecycleTarget && isLifecycleBusy(lifecycleTarget)"></button>
+    <button
+      pButton
+      type="button"
+      [label]="lifecycleTarget && isLifecycleBusy(lifecycleTarget) ? 'Đang xử lý...' : lifecycleDialogTitle()"
+      [icon]="lifecycleTarget && isLifecycleBusy(lifecycleTarget) ? 'pi pi-spinner pi-spin' : (lifecycleAction === 'CLOSE' ? 'pi pi-lock' : 'pi pi-check')"
+      [class.p-button-danger]="lifecycleAction === 'CLOSE'"
+      (click)="submitLifecycle()"
+      [disabled]="!lifecycleTarget || isLifecycleBusy(lifecycleTarget)"
+    ></button>
+  </ng-template>
+</p-dialog>
+
+<p-dialog
+  [(visible)]="historyDialogVisible"
+  [modal]="true"
+  [draggable]="false"
+  [dismissableMask]="false"
+  [closable]="!historyLoading"
+  [style]="{width:'min(760px, 96vw)'}"
+  [header]="'Lịch sử xét duyệt · ' + historyPropertyName"
+  (onHide)="closeHistoryDialog()">
+  <app-property-review-history
+    [events]="historyEvents"
+    [loading]="historyLoading"
+    [error]="historyError"
+    (retry)="retryHistory()"
+  />
+</p-dialog>
 
 <p-dialog [(visible)]="dialogVisible" [modal]="true" [draggable]="false" [style]="{width:'min(820px, 96vw)'}" header="Thêm cơ sở lưu trú" [closable]="!saving" (onHide)="closeCreate()">
   <form id="property-create-form" [formGroup]="form" class="property-form" (ngSubmit)="save()" novalidate>

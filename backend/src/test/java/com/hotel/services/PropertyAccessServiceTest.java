@@ -93,16 +93,21 @@ class PropertyAccessServiceTest {
     }
 
     @Test
-    void rejectedAndSuspendedPropertiesCannotReachOperationalApis() {
+    void rejectedSuspendedAndClosedPropertiesCannotReachOperationalApis() {
         Hotel rejected = hotel(21L, "REJECTED", "INACTIVE");
         Hotel suspended = hotel(22L, "APPROVED", "SUSPENDED");
+        Hotel closed = hotel(25L, "APPROVED", "CLOSED");
+        closed.setStatus("CLOSED");
         when(userPropertyRepository.findByUserId(10L)).thenReturn(List.of(
-                assignment(rejected, "ACTIVE"), assignment(suspended, "ACTIVE")));
+                assignment(rejected, "ACTIVE"), assignment(suspended, "ACTIVE"),
+                assignment(closed, "ACTIVE")));
         when(hotelRepository.findById(21L)).thenReturn(Optional.of(rejected));
         when(hotelRepository.findById(22L)).thenReturn(Optional.of(suspended));
+        when(hotelRepository.findById(25L)).thenReturn(Optional.of(closed));
 
         assertThrows(PropertyNotOperationalException.class, () -> service.requireManagedHotel(21L));
         assertThrows(PropertyNotOperationalException.class, () -> service.requireManagedHotel(22L));
+        assertThrows(PropertyNotOperationalException.class, () -> service.requireManagedHotel(25L));
     }
 
     @Test
@@ -113,6 +118,18 @@ class PropertyAccessServiceTest {
 
         assertEquals(operational, service.requireManagedHotel(23L));
         assertTrue(service.isOperational(operational));
+    }
+
+    @Test
+    void inconsistentLegacyStatusCannotReachOperationalApis() {
+        Hotel inconsistent = hotel(24L, "APPROVED", "ACTIVE");
+        inconsistent.setStatus("PENDING_APPROVAL");
+        when(hotelRepository.findById(24L)).thenReturn(Optional.of(inconsistent));
+        when(userPropertyRepository.findByUserId(10L))
+                .thenReturn(List.of(assignment(inconsistent, "ACTIVE")));
+
+        assertThrows(PropertyNotOperationalException.class,
+                () -> service.requireManagedHotel(24L));
     }
 
     @Test
@@ -143,6 +160,8 @@ class PropertyAccessServiceTest {
     private Hotel hotel(Long id, String approvalStatus, String operationStatus) {
         Hotel hotel = new Hotel();
         hotel.setId(id);
+        hotel.setStatus("APPROVED".equalsIgnoreCase(approvalStatus.trim())
+                && "ACTIVE".equalsIgnoreCase(operationStatus.trim()) ? "ACTIVE" : approvalStatus.trim());
         hotel.setApprovalStatus(approvalStatus);
         hotel.setOperationStatus(operationStatus);
         return hotel;

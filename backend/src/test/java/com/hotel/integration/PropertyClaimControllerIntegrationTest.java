@@ -3,7 +3,10 @@ package com.hotel.integration;
 import com.hotel.BackendApplication;
 import com.hotel.config.SecurityConfig;
 import com.hotel.controllers.PropertyClaimController;
+import com.hotel.dtos.PropertyClaimRequestDTO;
 import com.hotel.dtos.PropertyClaimResponseDTO;
+import com.hotel.exceptions.PropertyClaimRateLimitException;
+import com.hotel.exceptions.PropertyClaimConflictException;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.JwtAccessDeniedHandler;
@@ -15,12 +18,15 @@ import com.hotel.services.PropertyClaimService;
 import com.hotel.observability.OperationalMetrics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.context.ContextConfiguration;
@@ -28,6 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -84,9 +91,7 @@ class PropertyClaimControllerIntegrationTest {
         when(claimService.requestClaim(
                 17L,
                 42L,
-                "EMAIL",
-                "owner@example.com",
-                "Please verify"))
+                new PropertyClaimRequestDTO("EMAIL", "owner@example.com", "Please verify")))
                 .thenReturn(claim);
 
         mockMvc.perform(post("/api/properties/{propertyId}/claim", 17L)
@@ -95,9 +100,9 @@ class PropertyClaimControllerIntegrationTest {
                         .content("""
                                 {
                                   "userId": "999",
-                                  "verificationMethod": "EMAIL",
-                                  "verificationData": "owner@example.com",
-                                  "note": "Please verify"
+                                  "verificationMethod": " email ",
+                                  "verificationData": " owner@example.com ",
+                                  "note": " Please verify "
                                 }
                                 """))
                 .andExpect(status().isOk())
@@ -111,9 +116,92 @@ class PropertyClaimControllerIntegrationTest {
         verify(claimService).requestClaim(
                 17L,
                 42L,
-                "EMAIL",
-                "owner@example.com",
-                "Please verify");
+                new PropertyClaimRequestDTO("EMAIL", "owner@example.com", "Please verify"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidClaimPayloads")
+    void invalidClaimFieldsAreRejectedBeforeLifecycleServiceRuns(String payload) throws Exception {
+        mockMvc.perform(post("/api/properties/{propertyId}/claim", 17L)
+                        .with(user(principal(42L, "USER")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        verifyNoInteractions(claimService);
+    }
+
+    @Test
+    void rateLimitedClaimReturnsStableCodeAndRetryAfter() throws Exception {
+        PropertyClaimRequestDTO request = new PropertyClaimRequestDTO(
+                "PHONE", "+84 901 234 567", null);
+        when(claimService.requestClaim(17L, 42L, request))
+                .thenThrow(new PropertyClaimRateLimitException(120));
+
+        mockMvc.perform(post("/api/properties/{propertyId}/claim", 17L)
+                        .with(user(principal(42L, "USER")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "verificationMethod": "PHONE",
+                                  "verificationData": "+84 901 234 567"
+                                }
+                                """))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("PROPERTY_CLAIM_RATE_LIMITED"))
+                .andExpect(jsonPath("$.retryable").value(true))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .header().string("Retry-After", "120"));
+    }
+
+    @Test
+    void concurrentClaimConflictReturnsSafeStableEnvelope() throws Exception {
+        PropertyClaimRequestDTO request = new PropertyClaimRequestDTO("EMAIL", "owner@example.com", null);
+        when(claimService.requestClaim(17L, 42L, request))
+                .thenThrow(PropertyClaimConflictException.concurrentConflict());
+
+        mockMvc.perform(post("/api/properties/{propertyId}/claim", 17L)
+                        .with(user(principal(42L, "USER")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"verificationMethod":"EMAIL","verificationData":"owner@example.com"}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PROPERTY_CLAIM_CONFLICT"))
+                .andExpect(jsonPath("$.currentState").doesNotExist())
+                .andExpect(jsonPath("$.message").value(
+                        "The property claim changed concurrently. Refresh and try again."));
+    }
+
+    @Test
+    void staleTerminalActionReturnsCurrentClaimState() throws Exception {
+        when(claimService.approveClaim(8L, 71L))
+                .thenThrow(PropertyClaimConflictException.notPending("CANCELLED"));
+
+        mockMvc.perform(post("/api/admin/property-claims/{id}/approve", 8L)
+                        .with(user(principal(71L, "PROPERTY_CLAIM_APPROVE"))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PROPERTY_CLAIM_NOT_PENDING"))
+                .andExpect(jsonPath("$.currentState").value("CANCELLED"));
+    }
+
+    @Test
+    void untranslatedDatabaseConflictNeverLeaksConstraintDetails() throws Exception {
+        PropertyClaimRequestDTO request = new PropertyClaimRequestDTO("EMAIL", "owner@example.com", null);
+        when(claimService.requestClaim(17L, 42L, request))
+                .thenThrow(new DataIntegrityViolationException("UX_secret raw database detail"));
+
+        mockMvc.perform(post("/api/properties/{propertyId}/claim", 17L)
+                        .with(user(principal(42L, "USER")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"verificationMethod":"EMAIL","verificationData":"owner@example.com"}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PROPERTY_CLAIM_CONFLICT"))
+                .andExpect(jsonPath("$.message").value(
+                        "The property claim changed concurrently. Refresh and try again."));
     }
 
     @Test
@@ -135,7 +223,10 @@ class PropertyClaimControllerIntegrationTest {
                         .with(user(principal(71L, "PROPERTY_CLAIM_APPROVE"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(8L))
-                .andExpect(jsonPath("$.status").value("APPROVED"));
+                .andExpect(jsonPath("$.status").value("APPROVED"))
+                .andExpect(jsonPath("$.property.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.property.approvalStatus").value("APPROVED"))
+                .andExpect(jsonPath("$.property.operationStatus").value("ACTIVE"));
 
         verify(claimService).approveClaim(8L, 71L);
     }
@@ -151,7 +242,7 @@ class PropertyClaimControllerIntegrationTest {
                         .with(user(principal(72L, "PROPERTY_CLAIM_APPROVE")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"reason": "Ownership evidence is incomplete"}
+                                {"reason": "  Ownership evidence is incomplete  "}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(9L))
@@ -159,6 +250,19 @@ class PropertyClaimControllerIntegrationTest {
                 .andExpect(jsonPath("$.rejectionReason").value("Ownership evidence is incomplete"));
 
         verify(claimService).rejectClaim(9L, 72L, "Ownership evidence is incomplete");
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidRejectionPayloads")
+    void invalidRejectReasonIsRejectedBeforeClaimServiceRuns(String payload) throws Exception {
+        mockMvc.perform(post("/api/admin/property-claims/{id}/reject", 9L)
+                        .with(user(principal(72L, "PROPERTY_CLAIM_APPROVE")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        verifyNoInteractions(claimService);
     }
 
     @Test
@@ -184,7 +288,7 @@ class PropertyClaimControllerIntegrationTest {
         mockMvc.perform(post("/api/admin/property-claims/{id}/reject", 10L)
                         .with(user(actor))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"Denied\"}"))
+                        .content("{\"reason\":\"Ownership evidence is invalid\"}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -199,9 +303,16 @@ class PropertyClaimControllerIntegrationTest {
     }
 
     private PropertyClaimResponseDTO claim(Long id, String status, String verificationMethod, String rejectionReason) {
+        boolean approved = "APPROVED".equals(status);
         return new PropertyClaimResponseDTO(
                 id,
-                new PropertyClaimResponseDTO.PropertySummary(17L, "HOTEL-17", "Safe Hotel", "PENDING_APPROVAL", "INACTIVE"),
+                new PropertyClaimResponseDTO.PropertySummary(
+                        17L,
+                        "HOTEL-17",
+                        "Safe Hotel",
+                        approved ? "ACTIVE" : "DRAFT",
+                        approved ? "APPROVED" : "PENDING_APPROVAL",
+                        approved ? "ACTIVE" : "INACTIVE"),
                 new PropertyClaimResponseDTO.UserSummary(42L, "claim-user-42", "owner@example.com", "Claim User"),
                 verificationMethod,
                 verificationMethod == null ? null : "owner@example.com",
@@ -225,5 +336,27 @@ class PropertyClaimControllerIntegrationTest {
                 userId,
                 null,
                 Map.of());
+    }
+
+    private static Stream<String> invalidClaimPayloads() {
+        return Stream.of(
+                """
+                        {"verificationMethod":"FAX","verificationData":"proof"}
+                        """,
+                """
+                        {"verificationMethod":"EMAIL","verificationData":"   "}
+                        """,
+                "{\"verificationMethod\":\"EMAIL\",\"verificationData\":\""
+                        + "x".repeat(1001) + "\"}",
+                "{\"verificationMethod\":\"EMAIL\",\"verificationData\":\"proof\",\"note\":\""
+                        + "x".repeat(501) + "\"}");
+    }
+
+    private static Stream<String> invalidRejectionPayloads() {
+        return Stream.of(
+                "{}",
+                "{\"reason\":\"   \"}",
+                "{\"reason\":\"too short\"}",
+                "{\"reason\":\"" + "x".repeat(501) + "\"}");
     }
 }

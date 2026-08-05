@@ -5,6 +5,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 public interface PlatformSubscriptionUsageRepository extends Repository<UserProperty, Long> {
 
     @Query("select count(mapping) from UserProperty mapping "
@@ -31,4 +34,23 @@ public interface PlatformSubscriptionUsageRepository extends Repository<UserProp
             + "where mapping.hotel.id = :hotelId and mapping.status = 'ACTIVE' "
             + "and mapping.relationshipType <> 'OWNER'")
     long countActiveStaff(@Param("hotelId") Long hotelId);
+
+    default Long currentUsage(String code, Long ownerId, Long hotelId) {
+        return switch (code) {
+            case "MAX_PROPERTIES" -> countActiveOwnedProperties(ownerId);
+            case "MAX_ROOM_TYPES" -> countRoomTypes(hotelId);
+            case "MAX_ROOMS" -> countRooms(hotelId);
+            case "MAX_IMAGES" -> countPropertyImages(hotelId) + countRoomTypeImages(hotelId) + countRoomImages(hotelId);
+            case "MAX_STAFF" -> countActiveStaff(hotelId);
+            default -> null;
+        };
+    }
+
+    default Map<String, Long> snapshot(Long ownerId, Long hotelId) {
+        Map<String, Long> usage = new LinkedHashMap<>();
+        for (String code : java.util.List.of("MAX_PROPERTIES", "MAX_ROOM_TYPES", "MAX_ROOMS", "MAX_IMAGES", "MAX_STAFF")) {
+            usage.put(code, currentUsage(code, ownerId, hotelId));
+        }
+        return usage;
+    }
 }

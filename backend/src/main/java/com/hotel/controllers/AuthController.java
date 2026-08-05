@@ -17,11 +17,13 @@ import com.hotel.exceptions.CorrelationIdSupport;
 import com.hotel.security.AccountDisabledAuthenticationException;
 import com.hotel.security.RefreshTokenException;
 import com.hotel.security.PasswordResetException;
+import com.hotel.security.LoginTemporarilyBlockedException;
 import com.hotel.exceptions.SocialAccountLinkException;
 import com.hotel.services.AuthService;
 import com.hotel.services.PasswordResetService;
 import com.hotel.services.RefreshTokenCookieService;
 import com.hotel.services.RefreshTokenService;
+import com.hotel.services.LoginSecurityService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
@@ -44,6 +46,7 @@ public class AuthController {
     private final RefreshTokenCookieService refreshTokenCookieService;
     private final com.hotel.services.AuthSessionRevocationService authSessionRevocationService;
     private final PasswordResetService passwordResetService;
+    private final LoginSecurityService loginSecurityService;
 
     public AuthController(
             AuthService authService,
@@ -51,19 +54,36 @@ public class AuthController {
             RefreshTokenService refreshTokenService,
             RefreshTokenCookieService refreshTokenCookieService,
             com.hotel.services.AuthSessionRevocationService authSessionRevocationService,
-            PasswordResetService passwordResetService) {
+            PasswordResetService passwordResetService,
+            LoginSecurityService loginSecurityService) {
         this.authService = authService;
         this.credentialRegistrationService = credentialRegistrationService;
         this.refreshTokenService = refreshTokenService;
         this.refreshTokenCookieService = refreshTokenCookieService;
         this.authSessionRevocationService = authSessionRevocationService;
         this.passwordResetService = passwordResetService;
+        this.loginSecurityService = loginSecurityService;
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
-        AuthResponse response = authService.login(loginRequest);
-        return withRefreshCookie(response, refreshTokenService.issueForUser(response.getUserId()));
+    public ResponseEntity<AuthResponse> login(
+            @Valid @RequestBody LoginRequest loginRequest,
+            HttpServletRequest request) {
+        LoginSecurityService.LoginGuard guard = loginSecurityService.preAuthenticate(
+                loginRequest.getUsername(), request.getRemoteAddr(), CorrelationIdSupport.resolve(request));
+        try {
+            AuthResponse response = authService.login(loginRequest);
+            loginSecurityService.recordSuccess(guard, response.getUserId());
+            return withRefreshCookie(response, refreshTokenService.issueForUser(response.getUserId()));
+        } catch (org.springframework.security.core.AuthenticationException exception) {
+            if (!AccountDisabledAuthenticationException.causedByAccountDisabled(exception)) {
+                LoginSecurityService.BlockDecision decision = loginSecurityService.recordFailure(guard);
+                if (decision.blocked()) {
+                    throw new LoginTemporarilyBlockedException(decision.retryAfterSeconds());
+                }
+            }
+            throw exception;
+        }
     }
 
     @PostMapping("/google")
@@ -189,6 +209,22 @@ public class AuthController {
                 AccountDisabledAuthenticationException.ERROR_CODE,
                 AccountDisabledAuthenticationException.DEFAULT_MESSAGE,
                 request);
+    }
+
+    @ExceptionHandler(LoginTemporarilyBlockedException.class)
+    public ResponseEntity<ApiErrorResponse> handleLoginTemporarilyBlocked(
+            LoginTemporarilyBlockedException exception,
+            HttpServletRequest request) {
+        ResponseEntity<ApiErrorResponse> response = error(
+                HttpStatus.TOO_MANY_REQUESTS,
+                LoginTemporarilyBlockedException.ERROR_CODE,
+                LoginTemporarilyBlockedException.DEFAULT_MESSAGE,
+                true,
+                request);
+        return ResponseEntity.status(response.getStatusCode())
+                .headers(response.getHeaders())
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(exception.getRetryAfterSeconds()))
+                .body(response.getBody());
     }
 
     @ExceptionHandler(RefreshTokenException.class)

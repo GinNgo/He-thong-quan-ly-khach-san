@@ -42,6 +42,13 @@ public class HotelManagementServiceImpl implements HotelManagementService {
     @Override
     @Transactional
     public Hotel createHotel(Hotel hotel) {
+        hotel.setStatus("DRAFT");
+        hotel.setApprovalStatus("DRAFT");
+        hotel.setOperationStatus("INACTIVE");
+        hotel.setLifecycleAction(null);
+        hotel.setLifecycleReason(null);
+        hotel.setLifecycleChangedByUserId(null);
+        hotel.setLifecycleChangedAt(null);
         return hotelRepository.save(hotel);
     }
 
@@ -58,7 +65,6 @@ public class HotelManagementServiceImpl implements HotelManagementService {
         existingHotel.setWardId(hotel.getWardId());
         existingHotel.setStarRating(hotel.getStarRating());
         existingHotel.setMainImage(hotel.getMainImage());
-        existingHotel.setStatus(hotel.getStatus());
         return hotelRepository.save(existingHotel);
     }
 
@@ -69,7 +75,8 @@ public class HotelManagementServiceImpl implements HotelManagementService {
             throw new ResourceNotFoundException("Không tìm thấy cơ sở.");
         }
         propertyAccessService.requireAccessibleOrNotFound(id, "cơ sở");
-        hotelRepository.deleteById(id);
+        throw new IllegalStateException(
+                "Hard deletion is disabled. Use the governed property close transition.");
     }
 
     @Override
