@@ -1,0 +1,16 @@
+<section class="check-in" aria-labelledby="check-in-title">
+  <header><div><span>STAY CONTROL</span><h2 id="check-in-title">{{ copy('title') }}</h2></div><button type="button" (click)="closed.emit()" [attr.aria-label]="copy('close')">×</button></header>
+  <div *ngIf="loading" class="state" role="status"><i class="pi pi-spin pi-spinner"></i>{{ copy('loading') }}</div>
+  <div *ngIf="error" class="state error" role="alert">{{ error }}<button type="button" (click)="refresh()">{{ copy('retry') }}</button></div>
+  <ng-container *ngIf="!loading && readiness as state">
+    <div *ngIf="state.alreadyCheckedIn" class="done" role="status">✓ {{ copy('done') }}</div>
+    <div class="metrics">
+      <article><small>{{ copy('assigned') }}</small><strong>{{ state.assignedRooms.length }} / {{ state.requiredRoomCount }}</strong><span>{{ assignedRoomLabels(state) }}</span></article>
+      <article><small>{{ copy('window') }} · {{ state.zoneId }}</small><strong>{{ state.earliestCheckInAt | date:'dd/MM HH:mm':'UTC+7' }}</strong><span>→ {{ state.latestCheckInAt | date:'dd/MM HH:mm':'UTC+7' }}</span></article>
+    </div>
+    <ul *ngIf="state.blockers.length" class="blockers" aria-live="polite"><li *ngFor="let blocker of state.blockers"><i class="pi pi-exclamation-circle"></i><span>{{ blockerText(blocker.code, blocker.message) }}</span></li></ul>
+    <button *ngIf="hasBlocker('MISSING_ROOM_ASSIGNMENT') && canAssignRooms" class="assign" type="button" (click)="assignmentRequested.emit()">{{ copy('assign') }}</button>
+    <label *ngIf="state.ready" class="confirmation"><input type="checkbox" [(ngModel)]="confirmed"> <span>{{ copy('confirmLabel') }}</span></label>
+    <button *ngIf="!state.alreadyCheckedIn" class="primary" type="button" [disabled]="!state.ready || !confirmed || submitting" (click)="confirmCheckIn()"><i *ngIf="submitting" class="pi pi-spin pi-spinner"></i>{{ copy('confirm') }}</button>
+  </ng-container>
+</section>

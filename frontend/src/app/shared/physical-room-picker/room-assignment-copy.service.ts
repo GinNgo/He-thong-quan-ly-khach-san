@@ -1,0 +1,148 @@
+import { Injectable, inject } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
+
+const copy = {
+  vi: {
+    eyebrow: 'Kho phòng vật lý',
+    title: 'Phân phòng cho đặt phòng',
+    refresh: 'Làm mới',
+    loadingTitle: 'Đang kiểm tra kho phòng',
+    loadingBody: 'Hệ thống đang đối chiếu trạng thái phòng, buồng phòng, bảo trì và lịch lưu trú.',
+    loadErrorTitle: 'Chưa tải được phòng sẵn sàng',
+    loadErrorBody: 'Không thể tải danh sách phòng vật lý sẵn sàng.',
+    retry: 'Thử lại',
+    roomType: 'Loại phòng',
+    stay: 'Thời gian lưu trú',
+    required: 'Cần chọn',
+    roomCount: '{count} phòng',
+    selected: 'Đã chọn',
+    assignedNote: 'Các phòng có nhãn “Đang gán” là phân phòng hiện tại. Giữ nguyên phòng cần bảo toàn và chọn ứng viên mới để gán lại trong một giao dịch.',
+    shortage: 'Chỉ có {available} phòng có thể giữ hoặc chọn cho {required} phòng cần gán. Hãy làm mới sau khi buồng phòng hoặc bảo trì cập nhật trạng thái.',
+    emptyTitle: 'Không có phòng vật lý phù hợp',
+    emptyBody: 'Cần {required} phòng trong khoảng lưu trú này. Hãy làm mới sau khi trạng thái vận hành thay đổi.',
+    floor: 'Tầng {floor}',
+    room: 'Phòng {room}',
+    currentlyAssigned: 'Đang gán',
+    inspected: 'Đã kiểm tra',
+    clean: 'Sạch',
+    noMaintenance: 'Không bảo trì',
+    reason: 'Lý do phân phòng',
+    reasonPlaceholder: 'Ví dụ: khách yêu cầu tầng cao, đổi phòng do bảo trì...',
+    reasonHelp: 'Nhập từ 3 đến 500 ký tự. Lý do được lưu vào lịch sử đặt phòng.',
+    assign: 'Gán phòng',
+    reassign: 'Gán lại phòng',
+    release: 'Giải phóng toàn bộ phòng',
+    assignedSuccess: 'Đã gán phòng.',
+    reassignedSuccess: 'Đã gán lại phòng.',
+    releasedSuccess: 'Đã giải phóng phòng.',
+    releaseConfirmTitle: 'Xác nhận giải phóng {count} phòng đang gán?',
+    releaseConfirmBody: 'Đặt phòng sẽ quay về trạng thái chưa phân phòng và phải gán lại trước khi nhận phòng.',
+    back: 'Quay lại',
+    confirmRelease: 'Xác nhận giải phóng',
+    unchanged: 'Phân phòng hiện tại đang được giữ nguyên.',
+    changed: 'Đã chọn đủ số lượng; nhập lý do để xác nhận thay đổi.',
+    selectExact: 'Chọn đúng {required} phòng để tiếp tục.',
+    viewOnly: 'Chế độ chỉ xem. Cần quyền cập nhật phân phòng để thay đổi.',
+    selectedCount: 'Đã chọn {count} phòng.',
+    sectionTitle: 'Phòng vật lý sẵn sàng',
+    sectionBody: 'Kiểm tra đúng loại phòng, trạng thái sạch, bảo trì và xung đột lưu trú.',
+    openPicker: 'Mở bộ chọn phòng',
+    close: 'Đóng',
+    updatedTitle: 'Đã cập nhật phân phòng',
+    updatedDetail: 'Đặt phòng RES-{id} đã được đồng bộ.',
+    historyAssigned: 'Đã xếp phòng cụ thể',
+    historyReassigned: 'Đã gán lại phòng',
+    historyReleased: 'Đã giải phóng phòng',
+    historyBeforeAfter: 'Trước: {before} · Sau: {after}',
+    noneAssigned: 'Chưa gán',
+    customerAssignedTitle: 'Phòng đã được cơ sở sắp xếp',
+    customerPendingTitle: 'Phân phòng',
+    customerPendingBody: 'Chưa có phòng vật lý được gán.',
+    conflict: 'Kho phòng vừa thay đổi. Danh sách đã được làm mới; vui lòng xác nhận lại.',
+    genericError: 'Không thể cập nhật phân phòng.',
+    releaseDialogLabel: 'Xác nhận giải phóng phòng',
+  },
+  en: {
+    eyebrow: 'Physical room inventory',
+    title: 'Assign rooms to this reservation',
+    refresh: 'Refresh',
+    loadingTitle: 'Checking room inventory',
+    loadingBody: 'The system is reconciling room, housekeeping, maintenance, and stay schedules.',
+    loadErrorTitle: 'Available rooms could not be loaded',
+    loadErrorBody: 'The available physical-room inventory could not be loaded.',
+    retry: 'Try again',
+    roomType: 'Room type',
+    stay: 'Stay',
+    required: 'Required',
+    roomCount: '{count} rooms',
+    selected: 'Selected',
+    assignedNote: 'Rooms marked “Currently assigned” are the current allocation. Keep rooms that should remain and select replacements for one atomic reassignment.',
+    shortage: 'Only {available} rooms can be kept or selected for the {required} rooms required. Refresh after housekeeping or maintenance updates inventory.',
+    emptyTitle: 'No eligible physical rooms',
+    emptyBody: '{required} rooms are required for this stay. Refresh after operational status changes.',
+    floor: 'Floor {floor}',
+    room: 'Room {room}',
+    currentlyAssigned: 'Currently assigned',
+    inspected: 'Inspected',
+    clean: 'Clean',
+    noMaintenance: 'No maintenance',
+    reason: 'Assignment reason',
+    reasonPlaceholder: 'For example: high-floor request or maintenance-related room change...',
+    reasonHelp: 'Enter 3 to 500 characters. The reason is stored in reservation history.',
+    assign: 'Assign rooms',
+    reassign: 'Reassign rooms',
+    release: 'Release all rooms',
+    assignedSuccess: 'Rooms assigned.',
+    reassignedSuccess: 'Rooms reassigned.',
+    releasedSuccess: 'Rooms released.',
+    releaseConfirmTitle: 'Release {count} currently assigned rooms?',
+    releaseConfirmBody: 'The reservation will become unassigned and must receive rooms again before check-in.',
+    back: 'Go back',
+    confirmRelease: 'Confirm release',
+    unchanged: 'The current room assignment is unchanged.',
+    changed: 'The required quantity is selected; enter a reason to confirm the change.',
+    selectExact: 'Select exactly {required} rooms to continue.',
+    viewOnly: 'Read-only mode. Update assignment permission is required to make changes.',
+    selectedCount: '{count} rooms selected.',
+    sectionTitle: 'Available physical rooms',
+    sectionBody: 'Verify room type, housekeeping, maintenance, and stay conflicts.',
+    openPicker: 'Open room picker',
+    close: 'Close',
+    updatedTitle: 'Room assignment updated',
+    updatedDetail: 'Reservation RES-{id} is synchronized.',
+    historyAssigned: 'Rooms assigned',
+    historyReassigned: 'Rooms reassigned',
+    historyReleased: 'Rooms released',
+    historyBeforeAfter: 'Before: {before} · After: {after}',
+    noneAssigned: 'Unassigned',
+    customerAssignedTitle: 'Rooms assigned by the property',
+    customerPendingTitle: 'Room assignment',
+    customerPendingBody: 'No physical room has been assigned yet.',
+    conflict: 'Room inventory changed. The list was refreshed; please confirm again.',
+    genericError: 'Room assignment could not be updated.',
+    releaseDialogLabel: 'Confirm room release',
+  },
+} as const;
+
+export type RoomAssignmentCopyKey = keyof typeof copy.vi;
+
+@Injectable({ providedIn: 'root' })
+export class RoomAssignmentCopyService {
+  private readonly translate = inject(TranslateService, { optional: true });
+
+  text(key: RoomAssignmentCopyKey, params: Record<string, string | number> = {}): string {
+    const language = this.language();
+    return Object.entries(params).reduce(
+      (value, [name, replacement]) => value.replaceAll(`{${name}}`, String(replacement)),
+      copy[language][key] as string,
+    );
+  }
+
+  private language(): 'vi' | 'en' {
+    const configured = this.translate?.getCurrentLang()
+      || this.translate?.getFallbackLang()
+      || (typeof document !== 'undefined' ? document.documentElement.lang : '')
+      || 'vi';
+    return configured.toLowerCase().startsWith('en') ? 'en' : 'vi';
+  }
+}

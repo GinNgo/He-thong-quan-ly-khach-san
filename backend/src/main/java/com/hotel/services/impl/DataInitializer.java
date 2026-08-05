@@ -72,6 +72,7 @@ public class DataInitializer implements CommandLineRunner {
         initFunction(hotelModule, FunctionCode.RESERVATION.name(), "Đặt phòng", "/admin/reservations", "pi pi-calendar", 4);
         initFunction(hotelModule, FunctionCode.HOTEL_SERVICE.name(), "Dịch vụ khách sạn", "/admin/services", "pi pi-box", 5);
         initFunction(hotelModule, FunctionCode.RESERVATION_ASSIGNMENT.name(), "Gán phòng lưu trú", null, "pi pi-link", 40);
+        initFunction(hotelModule, FunctionCode.RESERVATION_AMEND.name(), "Thay đổi đặt phòng", null, "pi pi-calendar-plus", 44);
         initFunction(hotelModule, FunctionCode.CHECKIN.name(), "Nhận phòng", null, "pi pi-sign-in", 41);
         initFunction(hotelModule, FunctionCode.RESERVATION_CANCEL.name(), "Hủy đặt phòng vận hành", null, "pi pi-times-circle", 42);
         initFunction(hotelModule, FunctionCode.RESERVATION_NO_SHOW.name(), "Đánh dấu khách không đến", null, "pi pi-user-minus", 43);
@@ -317,7 +318,8 @@ public class DataInitializer implements CommandLineRunner {
 
     private void seedReservationLifecyclePermissions(Role role) {
         ensurePermission(role, FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.VIEW | ActionCode.UPDATE);
-        ensurePermission(role, FunctionCode.CHECKIN, ActionCode.UPDATE);
+        ensurePermission(role, FunctionCode.RESERVATION_AMEND, ActionCode.VIEW | ActionCode.UPDATE);
+        ensurePermission(role, FunctionCode.CHECKIN, ActionCode.VIEW | ActionCode.UPDATE);
         ensurePermission(role, FunctionCode.RESERVATION_CANCEL, ActionCode.UPDATE);
         ensurePermission(role, FunctionCode.RESERVATION_NO_SHOW, ActionCode.UPDATE);
     }

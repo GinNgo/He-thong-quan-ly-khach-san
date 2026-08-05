@@ -36,6 +36,7 @@ class TenantFilterArchitectureTest {
                 "roomTenantFilter",
                 "roomTypeTenantFilter",
                 "reservationTenantFilter",
+                "reservationAmendmentTenantFilter",
                 "propertyPaymentConfigurationTenantFilter",
                 "propertyPaymentMethodTenantFilter",
                 "propertyPaymentAttemptTenantFilter",
@@ -86,6 +87,12 @@ class TenantFilterArchitectureTest {
                 StandardCharsets.UTF_8);
         assertTrue(checkoutOverride.contains("checkoutOverrideTenantFilter"));
         assertTrue(checkoutOverride.contains("hotel_id"));
+
+        String reservationAmendment = Files.readString(
+                Path.of("src/main/java/com/hotel/propertycommerce/booking/ReservationAmendment.java"),
+                StandardCharsets.UTF_8);
+        assertTrue(reservationAmendment.contains("reservationAmendmentTenantFilter"));
+        assertTrue(reservationAmendment.contains("hotel_id"));
 
         Map<String, String> invoiceFilters = Map.of(
                 "PropertyInvoice.java", "propertyInvoiceTenantFilter",

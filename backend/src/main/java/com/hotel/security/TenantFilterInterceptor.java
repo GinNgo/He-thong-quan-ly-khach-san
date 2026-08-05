@@ -36,6 +36,7 @@ public class TenantFilterInterceptor implements HandlerInterceptor {
             "roomTenantFilter",
             "roomTypeTenantFilter",
             "reservationTenantFilter",
+            "reservationAmendmentTenantFilter",
             "propertyPaymentConfigurationTenantFilter",
             "propertyPaymentMethodTenantFilter",
             "propertyPaymentAttemptTenantFilter",

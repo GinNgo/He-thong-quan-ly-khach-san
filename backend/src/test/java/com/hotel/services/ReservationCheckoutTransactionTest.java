@@ -73,6 +73,7 @@ class ReservationCheckoutTransactionTest {
     @Mock private PropertyPaymentConfigurationRepository propertyPaymentConfigurationRepository;
     @Mock private InvoiceFinalizationService invoiceFinalizationService;
     @Mock private CheckoutOperationsService checkoutOperationsService;
+    @Mock private OperationalAuditService operationalAuditService;
 
     @InjectMocks private ReservationService reservationService;
 

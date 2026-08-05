@@ -20,6 +20,7 @@ public class ReservationDTO {
     private List<ReservationDetailDTO> details;
     private Long operationalPolicyVersion;
     private String operationalPolicySnapshot;
+    private List<ReservationEventDTO> events;
 
     public Long getId() {
         return id;
@@ -129,4 +130,12 @@ public class ReservationDTO {
     public void setOperationalPolicyVersion(Long operationalPolicyVersion) { this.operationalPolicyVersion = operationalPolicyVersion; }
     public String getOperationalPolicySnapshot() { return operationalPolicySnapshot; }
     public void setOperationalPolicySnapshot(String operationalPolicySnapshot) { this.operationalPolicySnapshot = operationalPolicySnapshot; }
+
+    public List<ReservationEventDTO> getEvents() {
+        return events;
+    }
+
+    public void setEvents(List<ReservationEventDTO> events) {
+        this.events = events;
+    }
 }

@@ -104,6 +104,33 @@ class DepositPolicySnapshotTest {
     }
 
     @Test
+    void repricesUsingTheOriginalSnapshottedPolicyIdentity() {
+        DepositPolicySnapshot original = DepositPolicySnapshot.capture(
+                configuration("PERCENTAGE", BigDecimal.valueOf(30)),
+                BigDecimal.valueOf(1_000_000));
+
+        DepositPolicySnapshot amended = DepositPolicySnapshot.reprice(original, BigDecimal.valueOf(1_500_000));
+
+        assertEquals(original.propertyId(), amended.propertyId());
+        assertEquals(original.configurationId(), amended.configurationId());
+        assertEquals(original.configurationVersion(), amended.configurationVersion());
+        assertEquals(original.policyType(), amended.policyType());
+        assertEquals(0, BigDecimal.valueOf(1_500_000).compareTo(amended.bookingTotal().amount()));
+        assertEquals(0, BigDecimal.valueOf(450_000).compareTo(amended.requiredDeposit().amount()));
+    }
+
+    @Test
+    void repricingRejectsAMissingAuthoritativeTotal() {
+        DepositPolicySnapshot original = DepositPolicySnapshot.capture(
+                configuration("NONE", BigDecimal.ZERO), BigDecimal.valueOf(1_000_000));
+
+        FinancialException exception = assertThrows(FinancialException.class,
+                () -> DepositPolicySnapshot.reprice(original, null));
+
+        assertEquals(FinancialErrorCode.INVALID_AMOUNT, exception.code());
+    }
+
+    @Test
     void reservationRejectsReplacingAnAlreadyCapturedSnapshot() {
         Reservation reservation = new Reservation();
         Hotel hotel = new Hotel();
@@ -116,6 +143,43 @@ class DepositPolicySnapshotTest {
         reservation.captureDepositPolicy(snapshot);
 
         assertThrows(IllegalStateException.class, () -> reservation.captureDepositPolicy(snapshot));
+    }
+
+    @Test
+    void reservationCanAdvanceItsCurrentDepositProjectionWithTheSamePolicyVersion() {
+        Reservation reservation = new Reservation();
+        Hotel hotel = new Hotel();
+        hotel.setId(7L);
+        reservation.setHotel(hotel);
+        DepositPolicySnapshot original = new DepositPolicySnapshot(
+                7L, 11L, 4L, DepositPolicySnapshot.PolicyType.PERCENTAGE, BigDecimal.valueOf(30),
+                VndMoney.of(800_000), VndMoney.of(240_000));
+        reservation.captureDepositPolicy(original);
+
+        DepositPolicySnapshot amended = DepositPolicySnapshot.reprice(original, BigDecimal.valueOf(1_000_000));
+        reservation.applyAmendedDepositPolicy(amended);
+
+        assertEquals(0, BigDecimal.valueOf(1_000_000).compareTo(reservation.getDepositBookingTotal()));
+        assertEquals(0, BigDecimal.valueOf(300_000).compareTo(reservation.getDepositRequired()));
+    }
+
+    @Test
+    void reservationRejectsAmendmentThatChangesTheSnapshottedPolicyIdentity() {
+        Reservation reservation = new Reservation();
+        Hotel hotel = new Hotel();
+        hotel.setId(7L);
+        reservation.setHotel(hotel);
+        DepositPolicySnapshot original = new DepositPolicySnapshot(
+                7L, 11L, 4L, DepositPolicySnapshot.PolicyType.NONE, BigDecimal.ZERO,
+                VndMoney.of(800_000), VndMoney.zero());
+        reservation.captureDepositPolicy(original);
+
+        DepositPolicySnapshot changedPolicy = new DepositPolicySnapshot(
+                7L, 12L, 5L, DepositPolicySnapshot.PolicyType.NONE, BigDecimal.ZERO,
+                VndMoney.of(900_000), VndMoney.zero());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> reservation.applyAmendedDepositPolicy(changedPolicy));
     }
 
     @Test

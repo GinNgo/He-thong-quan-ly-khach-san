@@ -1,73 +1,84 @@
-import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePickerModule } from 'primeng/datepicker';
-import { SelectModule } from 'primeng/select';
-import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
-import { TextareaModule } from 'primeng/textarea';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { ReservationService, Reservation } from '../../../core/services/reservation.service';
-import { RoomService, Room } from '../../../core/services/room.service';
-import { UserService, User } from '../../../core/services/user.service';
+import { finalize } from 'rxjs';
 import { Router } from '@angular/router';
 import { MessageService } from 'primeng/api';
+import { ManagementApiService, ManagedProperty } from '../../../core/services/management-api.service';
+import { ReservationService, StaffBookingContext, StaffBookingQuote, StaffBookingQuoteRequest } from '../../../core/services/reservation.service';
 
-@Component({
-  selector: 'app-reservation-create',
-  standalone: true,
-  imports: [CommonModule, FormsModule, DatePickerModule, SelectModule, ButtonModule, InputTextModule, TextareaModule, InputNumberModule],
-  templateUrl: './reservation-create.html'
-})
+@Component({ selector: 'app-reservation-create', standalone: true, imports: [CommonModule, FormsModule], templateUrl: './reservation-create.html', styleUrls: ['./reservation-create.css'] })
 export class ReservationCreate implements OnInit {
-  reservation: Partial<Reservation> = {
-    paymentMethod: 'CASH',
-    guests: 1,
-    details: []
-  };
+  private readonly reservations = inject(ReservationService);
+  private readonly management = inject(ManagementApiService);
+  private readonly router = inject(Router);
+  private readonly messages = inject(MessageService);
 
-  users: User[] = [];
-  rooms: Room[] = [];
-  selectedRoomId?: number;
+  properties: ManagedProperty[] = [];
+  context: StaffBookingContext | null = null;
+  customerQuery = '';
+  loading = true;
+  contextLoading = false;
+  quoting = false;
+  creating = false;
+  error = '';
+  quote: StaffBookingQuote | null = null;
+  form: Partial<StaffBookingQuoteRequest> = { quantity: 1, adults: 1, children: 0, paymentMethod: 'CASH' };
+  private quoteKey = '';
+  private createKey = '';
 
-  paymentMethods = [
-    { label: 'Tien mat', value: 'CASH' },
-    { label: 'The tin dung', value: 'CREDIT_CARD' },
-    { label: 'Chuyen khoan', value: 'BANK_TRANSFER' }
-  ];
-
-  private reservationService = inject(ReservationService);
-  private roomService = inject(RoomService);
-  private userService = inject(UserService);
-  private router = inject(Router);
-  private messageService = inject(MessageService);
-
-  ngOnInit() {
-    this.userService.getAllUsers().subscribe((data: User[]) => this.users = data);
-    this.roomService.getAllRooms().subscribe((data: Room[]) => {
-      this.rooms = data.filter((room: Room) => room.status === 'AVAILABLE');
+  ngOnInit(): void {
+    this.management.context().pipe(finalize(() => this.loading = false)).subscribe({
+      next: value => {
+        this.properties = value.properties.filter(property => property.operational !== false);
+        const hotelId = value.activePropertyId ?? this.properties[0]?.id;
+        if (hotelId) { this.form.hotelId = hotelId; this.loadContext(); }
+      },
+      error: () => this.error = 'Không thể tải cơ sở được phân quyền.',
     });
   }
 
-  save() {
-    if (this.reservation.userId && this.reservation.checkInDate && this.reservation.checkOutDate && this.selectedRoomId) {
-      this.reservation.details = [{ roomId: this.selectedRoomId }];
-
-      const checkIn = new Date(this.reservation.checkInDate);
-      const checkOut = new Date(this.reservation.checkOutDate);
-      this.reservation.checkInDate = checkIn.toISOString().split('T')[0];
-      this.reservation.checkOutDate = checkOut.toISOString().split('T')[0];
-
-      this.reservationService.createReservation(this.reservation as Reservation).subscribe(() => {
-        this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Tạo đặt phòng thành công' });
-        this.router.navigate(['/admin/reservations']);
+  loadContext(): void {
+    if (!this.form.hotelId) return;
+    this.contextLoading = true; this.error = ''; this.invalidateQuote();
+    this.reservations.getStaffBookingContext(this.form.hotelId, this.customerQuery)
+      .pipe(finalize(() => this.contextLoading = false)).subscribe({
+        next: context => this.context = context,
+        error: () => { this.context = null; this.error = 'Không thể tải khách hàng hoặc loại phòng cho cơ sở này.'; },
       });
-    } else {
-      this.messageService.add({ severity: 'warn', summary: 'Canh bao', detail: 'Vui long dien day du thong tin bat buoc.' });
-    }
   }
 
-  cancel() {
-    this.router.navigate(['/admin/reservations']);
+  searchCustomers(): void { if (this.customerQuery.trim().length >= 2) this.loadContext(); }
+  invalidateQuote(): void { this.quote = null; this.quoteKey = ''; this.createKey = ''; }
+
+  requestQuote(): void {
+    if (!this.validRequest || this.quoting) return;
+    this.quoting = true; this.error = '';
+    this.quoteKey ||= this.key('quote');
+    this.reservations.createStaffBookingQuote(this.form as StaffBookingQuoteRequest, this.quoteKey)
+      .pipe(finalize(() => this.quoting = false)).subscribe({
+        next: quote => { this.quote = quote; this.createKey = this.key('create'); },
+        error: error => { this.quote = null; this.quoteKey = ''; this.error = error?.error?.message || 'Không thể tạo báo giá xác thực.'; },
+      });
   }
+
+  createBooking(): void {
+    if (!this.quote || this.creating) return;
+    this.creating = true; this.error = '';
+    this.reservations.createStaffBooking(this.quote.quoteId, this.createKey)
+      .pipe(finalize(() => this.creating = false)).subscribe({
+        next: reservation => {
+          this.messages.add({ severity: 'success', summary: 'Đã tạo đặt phòng', detail: `RES-${reservation.id} đang chờ thanh toán và chưa gán phòng vật lý.` });
+          this.router.navigate(['/admin/reservations']);
+        },
+        error: error => {
+          this.error = error?.status === 409 ? 'Giá, chính sách hoặc tồn phòng đã thay đổi. Hãy lấy báo giá mới.' : (error?.error?.message || 'Không thể tạo đặt phòng.');
+          if (error?.status === 409) this.invalidateQuote();
+        },
+      });
+  }
+
+  cancel(): void { this.router.navigate(['/admin/reservations']); }
+  get validRequest(): boolean { const f = this.form; return Boolean(f.hotelId && f.customerId && f.roomTypeId && f.checkInDate && f.checkOutDate && (f.quantity || 0) > 0 && (f.adults || 0) > 0 && (f.children || 0) >= 0 && f.paymentMethod); }
+  private key(operation: string): string { return `staff-booking-${operation}-${crypto.randomUUID()}`; }
 }

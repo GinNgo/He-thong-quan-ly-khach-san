@@ -10,6 +10,8 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
 import java.util.Optional;
+import java.util.Collection;
+import java.util.List;
 
 @Repository
 public interface RoomTypeRepository extends JpaRepository<RoomType, Long> {
@@ -24,4 +26,8 @@ public interface RoomTypeRepository extends JpaRepository<RoomType, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select roomType from RoomType roomType where roomType.id = :id")
     Optional<RoomType> findByIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select roomType from RoomType roomType where roomType.id in :ids order by roomType.id")
+    List<RoomType> findAllByIdForUpdate(@Param("ids") Collection<Long> ids);
 }

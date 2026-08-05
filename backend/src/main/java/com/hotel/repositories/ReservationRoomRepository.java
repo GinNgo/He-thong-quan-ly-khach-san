@@ -72,8 +72,8 @@ public interface ReservationRoomRepository extends JpaRepository<ReservationRoom
               and assignment.status = 'ASSIGNED'
               and reservation.id <> :reservationId
               and reservation.status not in :excludedStatuses
-              and reservation.checkInDate < :checkOut
-              and reservation.checkOutDate > :checkIn
+              and coalesce(assignment.stayStartDate, reservation.checkInDate) < :checkOut
+              and coalesce(assignment.stayEndDate, reservation.checkOutDate) > :checkIn
             """)
     boolean hasConflictingAssignment(
             @Param("roomId") Long roomId,

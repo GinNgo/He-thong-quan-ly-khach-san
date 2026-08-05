@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Collection;
 
 public interface PropertyFinancialTransactionRepository
         extends JpaRepository<PropertyFinancialTransaction, Long> {
@@ -23,6 +24,21 @@ public interface PropertyFinancialTransactionRepository
     List<PropertyFinancialTransaction> findByReservationIdOrderByOccurredAtAsc(Long reservationId);
 
     List<PropertyFinancialTransaction> findByAttemptIdOrderByOccurredAtAsc(Long attemptId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select transaction
+            from PropertyFinancialTransaction transaction
+            where transaction.reservation.id = :reservationId
+              and transaction.direction = :direction
+              and transaction.transactionType in :types
+              and transaction.legacyReconciliationRequired = false
+            order by transaction.occurredAt, transaction.id
+            """)
+    List<PropertyFinancialTransaction> findBookingDebitsByReservationIdForUpdate(
+            @Param("reservationId") Long reservationId,
+            @Param("direction") PropertyFinancialTransaction.Direction direction,
+            @Param("types") Collection<PropertyFinancialTransaction.TransactionType> types);
 
     List<PropertyFinancialTransaction> findByOriginalTransactionIdOrderByOccurredAtAsc(Long originalTransactionId);
 }

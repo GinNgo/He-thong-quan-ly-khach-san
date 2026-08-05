@@ -101,6 +101,8 @@ jwt:
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
 
 app:
+  staff-booking:
+    quote-ttl-minutes: ${STAFF_BOOKING_QUOTE_TTL_MINUTES:2}
   auth:
     # Must be true behind HTTPS in production; false supports local HTTP development only.
     refresh-cookie-secure: ${AUTH_REFRESH_COOKIE_SECURE:false}
@@ -131,6 +133,17 @@ app:
   reservation-hold:
     ttl-minutes: ${RESERVATION_HOLD_TTL_MINUTES:15}
     expiry-scan-ms: ${RESERVATION_HOLD_EXPIRY_SCAN_MS:60000}
+  reservation-amendment:
+    cutoff-minutes: ${RESERVATION_AMENDMENT_CUTOFF_MINUTES:1440}
+    quote-ttl-minutes: ${RESERVATION_AMENDMENT_QUOTE_TTL_MINUTES:15}
+    default-arrival-time: ${RESERVATION_AMENDMENT_DEFAULT_ARRIVAL_TIME:14:00}
+    property-zone-id: ${RESERVATION_AMENDMENT_PROPERTY_ZONE_ID:Asia/Ho_Chi_Minh}
+  stay-check-in:
+    property-zone-id: ${STAY_CHECK_IN_PROPERTY_ZONE_ID:Asia/Ho_Chi_Minh}
+    default-arrival-time: ${STAY_CHECK_IN_DEFAULT_ARRIVAL_TIME:14:00}
+    default-departure-time: ${STAY_CHECK_IN_DEFAULT_DEPARTURE_TIME:12:00}
+    early-window-minutes: ${STAY_CHECK_IN_EARLY_WINDOW_MINUTES:0}
+    demo-early-window-minutes: ${STAY_CHECK_IN_DEMO_EARLY_WINDOW_MINUTES:5}
   websocket:
     allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:4200}
   observability:

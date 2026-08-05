@@ -50,6 +50,16 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.getAllReservations());
     }
 
+    @GetMapping("/page")
+    @Permission(function = FunctionCode.RESERVATION, action = ActionCode.VIEW)
+    public ResponseEntity<ReservationPageDTO> searchReservations(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(reservationService.searchReservations(status, query, page, size));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('CUSTOMER','PROPERTY_OWNER','HOTEL_MANAGER','RECEPTIONIST','HOTEL_ADMIN','SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ReservationDTO> getReservationById(@PathVariable Long id) {
@@ -60,6 +70,17 @@ public class ReservationController {
     @PreAuthorize("hasAuthority('CUSTOMER')")
     public ResponseEntity<List<ReservationDTO>> getMyReservations(Authentication authentication) {
         return ResponseEntity.ok(reservationService.getMyReservations(authentication.getName()));
+    }
+
+    @GetMapping("/my-bookings/page")
+    @PreAuthorize("hasAuthority('CUSTOMER')")
+    public ResponseEntity<ReservationPageDTO> searchMyReservations(
+            Authentication authentication,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(reservationService.searchMyReservations(
+                authentication.getName(), status, page, size));
     }
 
     @PostMapping("/{id}/cancel")
@@ -89,7 +110,10 @@ public class ReservationController {
     @PutMapping("/{id}/rooms")
     @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.UPDATE)
     public ResponseEntity<ReservationDTO> assignRooms(@PathVariable Long id, @RequestBody AssignRoomsRequest request) {
-        return ResponseEntity.ok(reservationService.assignRooms(id, request));
+        return ResponseEntity.status(HttpStatus.GONE)
+                .header("Deprecation", "true")
+                .header("Link", "</api/reservations/" + id + "/room-assignment>; rel=successor-version")
+                .build();
     }
 
     @GetMapping("/{id}/available-rooms")
@@ -98,16 +122,78 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.getAvailableRooms(id));
     }
 
+    @GetMapping("/{id}/available-rooms/context")
+    @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.VIEW)
+    public ResponseEntity<AvailableRoomContextDTO> availableRoomContext(@PathVariable Long id) {
+        return ResponseEntity.ok(reservationService.getAvailableRoomContext(id));
+    }
+
     @PostMapping("/{id}/assign-rooms")
     @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.UPDATE)
     public ResponseEntity<ReservationDTO> assignRoomsPost(@PathVariable Long id, @RequestBody AssignRoomsRequest request) {
-        return ResponseEntity.ok(reservationService.assignRooms(id, request));
+        return ResponseEntity.status(HttpStatus.GONE)
+                .header("Deprecation", "true")
+                .header("Link", "</api/reservations/" + id + "/room-assignment>; rel=successor-version")
+                .build();
+    }
+
+    @PostMapping("/{id}/room-assignment")
+    @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.UPDATE)
+    public ResponseEntity<ReservationDTO> updateRoomAssignment(
+            Authentication authentication,
+            @PathVariable Long id,
+            @RequestBody RoomAssignmentMutationRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            HttpServletRequest httpRequest) {
+        ReservationDTO response = mutationIdempotencyService.execute(
+                mutationCommand("RESERVATION_ROOM_ASSIGNMENT", authentication.getName() + ":" + id,
+                idempotencyKey, request, httpRequest),
+                HttpStatus.OK.value(),
+                ReservationDTO.class,
+                () -> reservationService.updateRoomAssignment(id, request),
+                () -> reservationService.findRoomAssignmentReplay(id, request.roomIds()).orElse(null));
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/room-assignment/release")
+    @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.UPDATE)
+    public ResponseEntity<ReservationDTO> releaseRoomAssignment(
+            Authentication authentication,
+            @PathVariable Long id,
+            @RequestBody RoomAssignmentReleaseRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            HttpServletRequest httpRequest) {
+        ReservationDTO response = mutationIdempotencyService.execute(
+                mutationCommand("RESERVATION_ROOM_RELEASE", authentication.getName() + ":" + id,
+                idempotencyKey, request, httpRequest),
+                HttpStatus.OK.value(),
+                ReservationDTO.class,
+                () -> reservationService.releaseRoomAssignment(id, request),
+                () -> reservationService.findRoomReleaseReplay(id).orElse(null));
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/check-in-readiness")
+    @Permission(function = FunctionCode.CHECKIN, action = ActionCode.VIEW)
+    public ResponseEntity<CheckInReadinessDTO> checkInReadiness(@PathVariable Long id) {
+        return ResponseEntity.ok(reservationService.getCheckInReadiness(id));
     }
 
     @PostMapping("/{id}/check-in")
     @Permission(function = FunctionCode.CHECKIN, action = ActionCode.UPDATE)
-    public ResponseEntity<ReservationDTO> checkIn(@PathVariable Long id) {
-        return ResponseEntity.ok(reservationService.checkIn(id));
+    public ResponseEntity<ReservationDTO> checkIn(
+            Authentication authentication,
+            @PathVariable Long id,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            HttpServletRequest httpRequest) {
+        ReservationDTO response = mutationIdempotencyService.execute(
+                mutationCommand("RESERVATION_CHECK_IN", authentication.getName() + ":" + id,
+                        idempotencyKey, new CheckInPayload(id), httpRequest),
+                HttpStatus.OK.value(),
+                ReservationDTO.class,
+                () -> reservationService.checkIn(id),
+                () -> reservationService.findCheckInReplay(id).orElse(null));
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{id}/cancel-operational")
@@ -213,6 +299,9 @@ public class ReservationController {
     }
 
     private record CancellationPayload(Long reservationId) {
+    }
+
+    private record CheckInPayload(Long reservationId) {
     }
 
     private void requireGenericStatusEndpoint(String status) {

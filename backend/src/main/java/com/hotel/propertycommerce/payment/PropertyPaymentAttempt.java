@@ -8,6 +8,7 @@ import com.hotel.paymentprovider.domain.FinancialStates.PaymentState;
 import com.hotel.paymentprovider.domain.FinancialTransitionPolicy;
 import com.hotel.paymentprovider.domain.VndMoney;
 import com.hotel.propertycommerce.config.PropertyPaymentConfiguration;
+import com.hotel.propertycommerce.booking.ReservationAmendment;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -54,6 +55,7 @@ public class PropertyPaymentAttempt {
         BALANCE,
         SERVICE,
         SURCHARGE,
+        AMENDMENT_DELTA,
         OTHER
     }
 
@@ -79,6 +81,10 @@ public class PropertyPaymentAttempt {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_user_id", updatable = false)
     private User owner;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reservation_amendment_id", updatable = false)
+    private ReservationAmendment reservationAmendment;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30, updatable = false)
@@ -167,12 +173,36 @@ public class PropertyPaymentAttempt {
             String idempotencyKey,
             String requestHash,
             LocalDateTime expiresAt) {
+        return create(
+                publicId, hotel, reservation, configuration, owner, null, purpose, method, provider,
+                environment, expectedAmount, uniqueTransferContent, receiverSnapshotJson,
+                idempotencyKey, requestHash, expiresAt);
+    }
+
+    public static PropertyPaymentAttempt create(
+            String publicId,
+            Hotel hotel,
+            Reservation reservation,
+            PropertyPaymentConfiguration configuration,
+            User owner,
+            ReservationAmendment reservationAmendment,
+            Purpose purpose,
+            String method,
+            String provider,
+            PaymentEnvironment environment,
+            VndMoney expectedAmount,
+            String uniqueTransferContent,
+            String receiverSnapshotJson,
+            String idempotencyKey,
+            String requestHash,
+            LocalDateTime expiresAt) {
         PropertyPaymentAttempt attempt = new PropertyPaymentAttempt();
         attempt.publicId = requireText(publicId, "publicId");
         attempt.hotel = Objects.requireNonNull(hotel, "hotel must not be null");
         attempt.reservation = Objects.requireNonNull(reservation, "reservation must not be null");
         attempt.configuration = configuration;
         attempt.owner = owner;
+        attempt.reservationAmendment = reservationAmendment;
         attempt.purpose = Objects.requireNonNull(purpose, "purpose must not be null");
         attempt.method = normalizeCode(method, "method");
         attempt.provider = normalizeCode(provider, "provider");
@@ -250,9 +280,28 @@ public class PropertyPaymentAttempt {
         if (configuration != null && !sameEntity(hotel, configuration.getHotel())) {
             throw new IllegalArgumentException("Payment configuration must belong to the payment-attempt property.");
         }
+        if (reservationAmendment != null) {
+            if (purpose != Purpose.AMENDMENT_DELTA
+                    || !sameEntity(hotel, reservationAmendment.getHotel())
+                    || !sameReservation(reservation, reservationAmendment.getReservation())) {
+                throw new IllegalArgumentException("Amendment payment attempt ownership is invalid.");
+            }
+        } else if (purpose == Purpose.AMENDMENT_DELTA) {
+            throw new IllegalArgumentException("Amendment delta attempts require an amendment quote.");
+        }
     }
 
     private static boolean sameEntity(Hotel left, Hotel right) {
+        if (left == null || right == null) {
+            return false;
+        }
+        if (left.getId() != null && right.getId() != null) {
+            return left.getId().equals(right.getId());
+        }
+        return left == right;
+    }
+
+    private static boolean sameReservation(Reservation left, Reservation right) {
         if (left == null || right == null) {
             return false;
         }

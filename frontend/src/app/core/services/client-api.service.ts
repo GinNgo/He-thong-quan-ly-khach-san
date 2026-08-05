@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Observable, catchError, shareReplay, throwError } from 'rxjs';
+import { Observable, catchError, map, shareReplay, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 export interface Hotel {
@@ -139,6 +139,14 @@ export interface ReservationSummary {
   }>;
 }
 
+interface ReservationSummaryPage {
+  content: ReservationSummary[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
 export interface LocationSuggestion {
   type: 'PROVINCE' | 'WARD' | 'PROPERTY' | 'LANDMARK';
   id: number;
@@ -262,7 +270,9 @@ export class ClientApiService {
   }
 
   getMyBookings(): Observable<ReservationSummary[]> {
-    return this.http.get<ReservationSummary[]>(`${this.apiUrl}/reservations/my-bookings`);
+    const params = new HttpParams().set('page', '0').set('size', '100');
+    return this.http.get<ReservationSummaryPage>(`${this.apiUrl}/reservations/my-bookings/page`, { params })
+      .pipe(map(result => result.content));
   }
 
   getReservation(reservationId: number): Observable<ReservationSummary> {

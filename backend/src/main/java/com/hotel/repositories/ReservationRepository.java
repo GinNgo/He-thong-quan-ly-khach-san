@@ -3,12 +3,13 @@ package com.hotel.repositories;
 import com.hotel.entities.Reservation;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 import java.util.Optional;
 
-public interface ReservationRepository extends JpaRepository<Reservation, Long> {
+public interface ReservationRepository extends JpaRepository<Reservation, Long>, JpaSpecificationExecutor<Reservation> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from Reservation r where r.id = :id")
     Optional<Reservation> findByIdForUpdate(Long id);
@@ -16,6 +17,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findByUserId(Long userId);
     List<Reservation> findByUserIdOrderByIdDesc(Long userId);
     List<Reservation> findByUserUsername(String username);
+    List<Reservation> findByUserUsernameOrderByIdDesc(String username);
     List<Reservation> findByHotelIdIn(java.util.Collection<Long> hotelIds);
     List<Reservation> findByStatus(String status);
     long countByUserIdAndStatusIn(Long userId, java.util.Collection<String> statuses);

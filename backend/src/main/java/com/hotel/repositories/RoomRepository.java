@@ -53,7 +53,8 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     @Query("""
             select room
             from Room room
-            where room.roomType.id = :roomTypeId
+            where room.hotel.id = :hotelId
+              and room.roomType.id = :roomTypeId
               and room.status not in :excludedRoomStatuses
               and (room.maintenanceStatus is null or room.maintenanceStatus = 'NONE')
               and room.id not in (
@@ -64,12 +65,13 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
                   where detail.roomType.id = :roomTypeId
                     and assignment.status = 'ASSIGNED'
                     and reservation.status not in :excludedReservationStatuses
-                    and reservation.checkInDate < :checkOut
-                    and reservation.checkOutDate > :checkIn
+                    and coalesce(assignment.stayStartDate, reservation.checkInDate) < :checkOut
+                    and coalesce(assignment.stayEndDate, reservation.checkOutDate) > :checkIn
               )
-            order by room.id
+            order by room.floor, room.roomNumber, room.id
             """)
     List<Room> findAvailableRoomsByRoomTypeAndDate(
+            @Param("hotelId") Long hotelId,
             @Param("roomTypeId") Long roomTypeId,
             @Param("excludedRoomStatuses") List<String> excludedRoomStatuses,
             @Param("excludedReservationStatuses") List<String> excludedReservationStatuses,
@@ -93,10 +95,10 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
                   where detail.roomType.id = :roomTypeId
                     and assignment.status = 'ASSIGNED'
                     and reservation.status not in :excludedReservationStatuses
-                    and reservation.checkInDate < :checkOut
-                    and reservation.checkOutDate > :checkIn
+                    and coalesce(assignment.stayStartDate, reservation.checkInDate) < :checkOut
+                    and coalesce(assignment.stayEndDate, reservation.checkOutDate) > :checkIn
               )
-            order by room.id
+            order by room.floor, room.roomNumber, room.id
             """)
     List<Room> findRoomsInDatedAvailabilityPoolForUpdate(
             @Param("roomTypeId") Long roomTypeId,
@@ -110,6 +112,18 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select room from Room room where room.id in :roomIds order by room.id")
     List<Room> findAllByIdForUpdate(@Param("roomIds") List<Long> roomIds);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select room
+            from Room room
+            where room.hotel.id = :hotelId
+              and room.id in :roomIds
+            order by room.id
+            """)
+    List<Room> findAllByHotelIdAndIdInForUpdate(
+            @Param("hotelId") Long hotelId,
+            @Param("roomIds") List<Long> roomIds);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select room from Room room where room.id = :roomId")
