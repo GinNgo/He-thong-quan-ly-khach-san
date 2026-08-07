@@ -198,7 +198,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.featuredError = false;
     this.clientApi.searchHotels({
       ...this.searchState.bookingQueryParams(),
-      pageNumber: 0,
+      // The public API uses one-based pages.
+      pageNumber: 1,
       pageSize: 8,
       sortBy: 'RATING'
     }).pipe(takeUntil(this.destroy$)).subscribe({
