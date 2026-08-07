@@ -20,6 +20,25 @@ $env:LUXESTAY_E2E_OWNER_PASSWORD = '<local-only>'
 
 Không ghi các giá trị này vào `.env`, screenshot, trace hoặc artifact Git.
 
+### Reproducible local E2E fixtures
+
+Profile `e2e` dùng H2 in-memory và bật `app.e2e-fixtures.enabled`. Khi ba cặp credential ở trên được cung cấp, backend idempotently tạo:
+
+- Customer có approved property inventory, owned reservation và successful payment context.
+- Admin có full permission, dùng được `SYSTEM.AI_CHAT`, system notification và personal notification.
+- Property Owner được gán hai cơ sở cùng active subscription.
+- Actor `<owner-username>-expired` dùng cùng owner password nhưng chỉ có expired subscription.
+- Customer là denied actor cho admin/management permission scenarios.
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE = 'e2e'
+$env:JWT_SECRET = '<local-only-secret-with-sufficient-length>'
+Set-Location backend
+.\mvnw.cmd spring-boot:run
+```
+
+Chạy frontend và Playwright trong terminal cũng có các biến `LUXESTAY_E2E_*`. Profile này không ghi vào SQL Server chính; dữ liệu fixture tự động được dọn khi process backend dừng. Với profile `development`, fixture chỉ chạy khi chủ động đặt `APP_E2E_FIXTURES_ENABLED=true`; nên dùng database local riêng và reset database đó sau phiên test.
+
 ## 1. Check workspace
 
 ```powershell
@@ -81,6 +100,7 @@ Smoke suite không dùng mock và không mutation dữ liệu:
 
 ```powershell
 npx playwright test e2e/real-environment-smoke.spec.ts
+npx playwright test e2e/support-chat-lifecycle.spec.ts --project=chromium --workers=1 --retries=0
 ```
 
 Nhánh actor thiếu biến môi trường sẽ được đánh dấu `skipped` với prerequisite cụ thể thay vì dùng tài khoản giả.

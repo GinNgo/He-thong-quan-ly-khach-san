@@ -45,11 +45,26 @@ export class ManagementLayout implements OnInit, OnDestroy {
     {
       label: 'Vận hành',
       links: [
+<<<<<<< HEAD
         { label: 'Tổng quan', url: '/management/dashboard', icon: 'dashboard', functionCode: FunctionCode.HOTEL, actionCode: ActionCode.VIEW },
         { label: 'Cơ sở lưu trú', url: '/management/properties', icon: 'domain', functionCode: FunctionCode.HOTEL, actionCode: ActionCode.VIEW },
         { label: 'Loại phòng', url: '/management/room-types', icon: 'bed', functionCode: FunctionCode.ROOM_TYPE, actionCode: ActionCode.VIEW, operationalOnly: true },
         { label: 'Phòng vật lý', url: '/management/rooms', icon: 'meeting_room', functionCode: FunctionCode.ROOM, actionCode: ActionCode.VIEW, operationalOnly: true },
         { label: 'Dịch vụ cơ sở', url: '/management/services', icon: 'room_service', functionCode: FunctionCode.HOTEL_SERVICE, actionCode: ActionCode.VIEW, operationalOnly: true },
+=======
+        { label: 'Tổng quan', url: '/management/dashboard', icon: 'dashboard' },
+        { label: 'Cơ sở lưu trú', url: '/management/properties', icon: 'domain' },
+        { label: 'Loại phòng', url: '/management/room-types', icon: 'bed', operationalOnly: true },
+        { label: 'Danh sách phòng', url: '/management/rooms', icon: 'meeting_room', operationalOnly: true },
+        {
+          label: 'Dịch vụ lưu trú',
+          url: '/management/services',
+          icon: 'room_service',
+          functionCode: FunctionCode.HOTEL_SERVICE,
+          actionCode: ActionCode.VIEW,
+          operationalOnly: true,
+        },
+>>>>>>> codex/ui-functional-audit-polish
       ],
     },
     {
@@ -64,9 +79,19 @@ export class ManagementLayout implements OnInit, OnDestroy {
           operationalOnly: true,
         },
         {
-          label: 'Gói dịch vụ',
+          label: 'Hoàn tiền đặt phòng',
+          url: '/management/refunds',
+          icon: 'currency_exchange',
+          functionCode: FunctionCode.PROPERTY_REFUND,
+          actionCode: ActionCode.APPROVE,
+          operationalOnly: true,
+        },
+        {
+          label: 'Gói phần mềm',
           url: '/management/billing',
           icon: 'workspace_premium',
+          functionCode: FunctionCode.PLATFORM_BILLING,
+          actionCode: ActionCode.VIEW,
         },
         {
           label: 'Chủ sở hữu',
@@ -94,6 +119,19 @@ export class ManagementLayout implements OnInit, OnDestroy {
           actionCode: ActionCode.VIEW,
         },
         { label: 'Nhat ky tai chinh', url: '/management/financial-audit', icon: 'policy', functionCode: FunctionCode.AUDIT_LOG, actionCode: ActionCode.VIEW },
+      ],
+    },
+    {
+      label: 'Housekeeping',
+      links: [
+        {
+          label: 'Hàng đợi dọn phòng',
+          url: '/management/housekeeping',
+          icon: 'cleaning_services',
+          functionCode: FunctionCode.HOUSEKEEPING,
+          actionCode: ActionCode.VIEW,
+          operationalOnly: true,
+        },
       ],
     },
   ];
@@ -155,7 +193,8 @@ export class ManagementLayout implements OnInit, OnDestroy {
           this.activePropertyId = context.activePropertyId;
           this.activePropertyOperational = context.activePropertyOperational
             ?? this.activeProperty?.operational
-            ?? false;
+            ?? (this.activeProperty?.approvalStatus === 'APPROVED'
+              && this.activeProperty?.operationStatus === 'ACTIVE');
           this.contextLoading = false;
 
           if (updateUrl && context.activePropertyId === propertyId) {
@@ -237,6 +276,18 @@ export class ManagementLayout implements OnInit, OnDestroy {
 
   get activeProperty(): ManagedProperty | undefined {
     return this.properties.find((property) => property.id === this.activePropertyId);
+  }
+
+  statusLabel(status?: string): string {
+    return ({
+      ACTIVE: 'Đang hoạt động',
+      INACTIVE: 'Không hoạt động',
+      SUSPENDED: 'Tạm ngưng',
+      DRAFT: 'Bản nháp',
+      PENDING_APPROVAL: 'Chờ duyệt',
+      APPROVED: 'Đã duyệt',
+      REJECTED: 'Bị từ chối',
+    } as Record<string, string>)[status || ''] || status || 'Chưa xác định';
   }
 
   canViewLink(link: ManagementLink): boolean {

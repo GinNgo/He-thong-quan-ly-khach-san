@@ -7,27 +7,27 @@
     [formControl]="searchControl"
     (focus)="openPopup()"
     (keydown)="onKeydown($event)"
-    placeholder="Bạn muốn đến đâu?"
-    aria-label="Tìm tỉnh, phường xã, cơ sở hoặc địa chỉ"
+    [placeholder]="i18n.text('PUBLIC.SEARCH.LOCATION_PLACEHOLDER')"
+    [attr.aria-label]="i18n.text('PUBLIC.SEARCH.LOCATION_ARIA')"
     aria-autocomplete="list"
     [attr.aria-expanded]="popupOpen"
     [attr.aria-activedescendant]="activeIndex >= 0 ? 'location-option-' + activeIndex : null">
-  <button *ngIf="searchControl.value" type="button" class="clear-input" (click)="clearInput($event)" title="Xóa nội dung">
+  <button *ngIf="searchControl.value" type="button" class="clear-input" (click)="clearInput($event)" [title]="i18n.text('PUBLIC.SEARCH.CLEAR_INPUT')">
     <i class="pi pi-times" aria-hidden="true"></i>
   </button>
 
   <section *ngIf="popupOpen" class="location-popup" [class.search-mode]="keyword.length >= 2"
-    role="dialog" aria-label="Gợi ý địa điểm">
+    role="dialog" [attr.aria-label]="i18n.text('PUBLIC.SEARCH.SUGGESTIONS_ARIA')">
     <header class="mobile-popup-header">
-      <strong>Chọn điểm đến</strong>
-      <button type="button" (click)="closePopup()" title="Đóng"><i class="pi pi-times"></i></button>
+      <strong>{{ i18n.text('PUBLIC.SEARCH.CHOOSE_DESTINATION') }}</strong>
+      <button type="button" (click)="closePopup()" [title]="i18n.text('PUBLIC.SEARCH.CLOSE')"><i class="pi pi-times"></i></button>
     </header>
 
     <div *ngIf="keyword.length < 2" class="discovery-grid">
       <div class="recent-column">
         <div class="section-heading">
-          <span>Tìm kiếm gần đây</span>
-          <button *ngIf="recentSearches.length" type="button" (click)="clearRecent()">Xóa tất cả</button>
+          <span>{{ i18n.text('PUBLIC.SEARCH.RECENT') }}</span>
+          <button *ngIf="recentSearches.length" type="button" (click)="clearRecent()">{{ i18n.text('PUBLIC.SEARCH.CLEAR_ALL') }}</button>
         </div>
 
         <div *ngIf="recentSearches.length; else noRecent" class="recent-list">
@@ -36,9 +36,9 @@
             <span class="result-symbol"><i class="pi pi-history"></i></span>
             <span class="result-copy">
               <strong>{{ recent.displayLocation }}</strong>
-              <small>{{ recent.adultCount }} người lớn · {{ recent.roomCount }} phòng</small>
+              <small>{{ i18n.count('PUBLIC.GUESTS.ADULT_COUNT', recent.adultCount) }} · {{ i18n.count('PUBLIC.GUESTS.ROOM_COUNT', recent.roomCount) }}</small>
             </span>
-            <button type="button" class="remove-recent" (click)="removeRecent($event, recent)" title="Xóa lịch sử">
+            <button type="button" class="remove-recent" (click)="removeRecent($event, recent)" [title]="i18n.text('PUBLIC.SEARCH.REMOVE_RECENT')">
               <i class="pi pi-times"></i>
             </button>
           </div>
@@ -46,13 +46,13 @@
         <ng-template #noRecent>
           <div class="compact-empty">
             <i class="pi pi-clock"></i>
-            <span>Lịch sử tìm kiếm sẽ xuất hiện tại đây.</span>
+            <span>{{ i18n.text('PUBLIC.SEARCH.RECENT_EMPTY') }}</span>
           </div>
         </ng-template>
       </div>
 
       <div class="popular-column">
-        <div class="section-heading"><span>Tỉnh/Thành phố phổ biến</span></div>
+        <div class="section-heading"><span>{{ i18n.text('PUBLIC.SEARCH.POPULAR_CITIES') }}</span></div>
         <div *ngIf="popularLoading" class="popular-skeleton">
           <span *ngFor="let row of skeletonRows"></span>
         </div>
@@ -63,7 +63,7 @@
               (error)="handleImageError($event)">
             <span class="result-copy">
               <strong>{{ destination.name }}</strong>
-              <small>{{ destination.propertyCount || 0 }} chỗ nghỉ · Tỉnh/Thành phố</small>
+              <small>{{ i18n.text('PUBLIC.HOME_CARDS.PROPERTY_COUNT', { count: destination.propertyCount || 0 }) }} · {{ i18n.text('PUBLIC.SEARCH.PROVINCE_SUFFIX') }}</small>
             </span>
             <i class="pi pi-angle-right"></i>
           </button>
@@ -72,15 +72,15 @@
     </div>
 
     <div *ngIf="keyword.length >= 2" class="search-results" role="listbox">
-      <div *ngIf="loading" class="loading-results" aria-label="Đang tìm kiếm">
+      <div *ngIf="loading" class="loading-results" [attr.aria-label]="i18n.text('PUBLIC.SEARCH.LOADING')">
         <div *ngFor="let row of skeletonRows" class="result-skeleton"><span></span><div><b></b><i></i></div></div>
       </div>
 
       <div *ngIf="!loading && loadError" class="message-state error-state">
         <i class="pi pi-exclamation-circle"></i>
-        <strong>Không thể tải gợi ý.</strong>
-        <span>Vui lòng kiểm tra kết nối và thử lại.</span>
-        <button type="button" (click)="retrySearch()">Thử lại</button>
+        <strong>{{ i18n.text('PUBLIC.SEARCH.LOAD_ERROR_TITLE') }}</strong>
+        <span>{{ i18n.text('PUBLIC.SEARCH.LOAD_ERROR_BODY') }}</span>
+        <button type="button" (click)="retrySearch()">{{ i18n.text('PUBLIC.SEARCH.TRY_AGAIN') }}</button>
       </div>
 
       <ng-container *ngIf="!loading && !loadError && hasResults">
@@ -97,13 +97,21 @@
             <span *ngIf="result.type !== 'PROPERTY'" class="result-symbol"><i [class]="group.icon"></i></span>
             <span class="result-copy">
               <strong><app-safe-highlight [text]="result.name" [keyword]="keyword"></app-safe-highlight></strong>
-              <small *ngIf="result.type === 'PROVINCE'">{{ result.propertyCount || 0 }} chỗ nghỉ · Tỉnh/Thành phố</small>
-              <small *ngIf="result.type === 'WARD'">{{ result.provinceName }}<ng-container *ngIf="result.propertyCount !== undefined"> · {{ result.propertyCount }} chỗ nghỉ</ng-container></small>
+              <small *ngIf="result.type === 'PROVINCE'">{{ i18n.text('PUBLIC.HOME_CARDS.PROPERTY_COUNT', { count: result.propertyCount || 0 }) }} · {{ i18n.text('PUBLIC.SEARCH.PROVINCE_SUFFIX') }}</small>
+              <small *ngIf="result.type === 'WARD'">{{ result.provinceName }}<ng-container *ngIf="result.propertyCount !== undefined"> · {{ i18n.text('PUBLIC.HOME_CARDS.PROPERTY_COUNT', { count: result.propertyCount }) }}</ng-container></small>
               <small *ngIf="result.type === 'PROPERTY'">
                 {{ propertyTypeLabel(result.propertyType) }} · {{ result.wardName || result.provinceName }}<ng-container *ngIf="result.address"> · {{ result.address }}</ng-container>
               </small>
+<<<<<<< HEAD
               <small *ngIf="result.type === 'LANDMARK'">
                 {{ result.secondaryText || result.provinceName }}<ng-container *ngIf="result.defaultRadiusKm"> · {{ result.defaultRadiusKm }} km</ng-container>
+=======
+              <small *ngIf="result.type === 'LANDMARK'" class="landmark-meta">
+                {{ result.secondaryText || i18n.text('PUBLIC.SEARCH.LANDMARK_FALLBACK') }}<ng-container *ngIf="result.defaultRadiusKm"> · {{ i18n.text('PUBLIC.SEARCH.WITHIN_RADIUS', { radius: result.defaultRadiusKm }) }}</ng-container>
+              </small>
+              <small *ngIf="result.type === 'LANDMARK' && result.descriptionVi" class="landmark-description">
+                {{ result.descriptionVi }}
+>>>>>>> codex/ui-functional-audit-polish
               </small>
             </span>
             <span *ngIf="result.reviewScore" class="review-score">{{ result.reviewScore | number:'1.1-1' }}</span>
@@ -115,9 +123,9 @@
 
       <div *ngIf="!loading && !loadError && !hasResults" class="message-state empty-state">
         <i class="pi pi-search-minus"></i>
-        <strong>Không tìm thấy địa điểm hoặc cơ sở phù hợp.</strong>
-        <span>Kiểm tra chính tả hoặc thử tên tỉnh, phường/xã, tên cơ sở ngắn hơn.</span>
-        <button type="button" (click)="clearInput($event)">Tìm toàn bộ chỗ nghỉ</button>
+        <strong>{{ i18n.text('PUBLIC.SEARCH.NO_RESULTS_TITLE') }}</strong>
+        <span>{{ i18n.text('PUBLIC.SEARCH.NO_RESULTS_BODY') }}</span>
+        <button type="button" (click)="clearInput($event)">{{ i18n.text('PUBLIC.SEARCH.SEARCH_ALL') }}</button>
       </div>
     </div>
   </section>

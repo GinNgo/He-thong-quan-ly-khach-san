@@ -9,10 +9,224 @@
     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
+.auth-field {
+    position: relative;
+}
+
+.auth-input {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.625rem 2.75rem 0.625rem 2.5rem;
+    border: 1px solid #c4c6ce;
+    border-radius: 0.5rem;
+    background: #fff;
+    color: #191c20;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.auth-input--password {
+    padding-right: 3rem;
+}
+
+.field-icon {
+    position: absolute;
+    top: 50%;
+    z-index: 1;
+    display: grid;
+    width: 1.5rem;
+    height: 1.5rem;
+    place-items: center;
+    margin: 0;
+    color: rgb(68 71 78 / 68%);
+    font-size: 1.125rem;
+    line-height: 1;
+    transform: translateY(-50%);
+}
+
+.field-icon--start {
+    left: 0.75rem;
+    pointer-events: none;
+}
+
+.field-icon--end {
+    right: 0.7rem;
+}
+
+.password-toggle {
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+}
+
+.password-toggle:hover {
+    color: #000f22;
+    background: rgb(0 15 34 / 7%);
+}
+
+.password-toggle:focus-visible {
+    outline: 3px solid rgb(0 15 34 / 18%);
+    outline-offset: 2px;
+}
+
 .input-focus-ring:focus {
     outline: none;
     border-color: #000f22;
     box-shadow: 0 0 0 2px rgba(0, 15, 34, 0.1);
+}
+
+.social-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.25rem 0 0.9rem;
+    color: #74777f;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.social-divider::before,
+.social-divider::after {
+    height: 1px;
+    flex: 1;
+    background: #dfe2e8;
+    content: '';
+}
+
+.social-login-stack {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.google-button-shell {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    overflow: hidden;
+    border-radius: 0.5rem;
+}
+
+.google-button-shell asl-google-signin-button {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+}
+
+.social-button {
+    position: relative;
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    width: 100%;
+    padding: 0.65rem 2.5rem;
+    border: 1px solid #c4c6ce;
+    border-radius: 0.5rem;
+    background: #fff;
+    color: #25282e;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.social-button--google-mobile {
+    display: none;
+}
+
+.social-button__label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.social-button:not(:disabled):hover {
+    border-color: #0f766e;
+    background: #f0fdfa;
+    transform: translateY(-1px);
+}
+
+.social-button:focus-visible {
+    outline: 3px solid rgb(15 118 110 / 20%);
+    outline-offset: 2px;
+}
+
+.social-button--facebook:not(:disabled) {
+    border-color: #cbd8f1;
+    color: #174ea6;
+}
+
+.social-button--disabled,
+.social-button:disabled {
+    background: #f7f8fa;
+    color: #777b83;
+    cursor: not-allowed;
+}
+
+.social-mark {
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.social-mark--google {
+    color: #4285f4;
+}
+
+.social-lock {
+    position: absolute;
+    right: 0.85rem;
+    font-size: 1rem;
+}
+
+.social-config-note {
+    margin: 0.15rem 0 0;
+    color: #686c73;
+    font-size: 0.7rem;
+    line-height: 1.35;
+    text-align: center;
+}
+
+@media (max-width: 420px) {
+    .social-login-stack {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .google-button-shell {
+        display: none;
+    }
+
+    .social-button--google-mobile {
+        display: flex;
+    }
+
+    .social-button {
+        width: 44px;
+        min-width: 44px;
+        height: 44px;
+        min-height: 44px;
+        justify-self: center;
+        padding: 0;
+        gap: 0;
+    }
+
+    .social-button__label,
+    .social-lock {
+        display: none;
+    }
+
+    .social-config-note {
+        grid-column: 1 / -1;
+    }
 }
 
 .custom-scrollbar::-webkit-scrollbar {

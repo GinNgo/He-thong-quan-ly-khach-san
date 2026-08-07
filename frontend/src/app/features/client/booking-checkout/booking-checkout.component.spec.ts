@@ -15,7 +15,12 @@ describe('BookingCheckoutComponent', () => {
   let queryParams$: Subject<Record<string, string>>;
   let clientApi: {
     bookRoom: ReturnType<typeof vi.fn>;
+<<<<<<< HEAD
     getReservation: ReturnType<typeof vi.fn>;
+=======
+    getHotelById: ReturnType<typeof vi.fn>;
+    getPromotionQuote: ReturnType<typeof vi.fn>;
+>>>>>>> codex/ui-functional-audit-polish
   };
   let paymentApi: {
     createAttempt: ReturnType<typeof vi.fn>;
@@ -28,7 +33,12 @@ describe('BookingCheckoutComponent', () => {
     queryParams$ = new Subject<Record<string, string>>();
     clientApi = {
       bookRoom: vi.fn(() => reservation$),
+<<<<<<< HEAD
       getReservation: vi.fn(),
+=======
+      getHotelById: vi.fn(() => of({ id: 10, name: 'LuxeStay' })),
+      getPromotionQuote: vi.fn(() => of(quoteResponse())),
+>>>>>>> codex/ui-functional-audit-polish
     };
     paymentApi = {
       createAttempt: vi.fn(),
@@ -80,6 +90,38 @@ describe('BookingCheckoutComponent', () => {
     });
 
     expect(component.bookingContextValid).toBe(true);
+    expect(component.quote?.quoteId).toBe('quote-1');
+  });
+
+  it('renders canonical original/final price, member tier, and typed sponsored disclosure', () => {
+    clientApi.getHotelById.mockReturnValue(of({
+      id: 10,
+      name: 'LuxeStay',
+      sponsoredPlacement: {
+        placementId: 77,
+        placementKind: 'SPONSORED',
+        disclosureVi: '\u0110\u01b0\u1ee3c t\u00e0i tr\u1ee3',
+        disclosureEn: 'Sponsored',
+        endsAt: '2026-08-04T00:00:00Z',
+      },
+    }));
+    queryParams$.next({
+      checkIn: '2026-08-10',
+      checkOut: '2026-08-12',
+      adultCount: '2',
+      childCount: '0',
+      quantity: '1',
+      hotelId: '10',
+      roomTypeName: 'Deluxe',
+      nightlyPrice: '500000',
+      estimatedTotal: '1000000',
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-sponsored="true"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.original-price')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.promotion-proof').textContent).toContain('V\u00e0ng');
+    expect(fixture.nativeElement.querySelector('.estimate strong').textContent).toContain('1.035.000');
   });
 
   it('submits a valid booking only once while the request is pending', () => {
@@ -243,6 +285,7 @@ describe('BookingCheckoutComponent', () => {
     target.roomTypeName = 'Deluxe';
     target.nightlyPrice = 500000;
     target.contextError = '';
+    target.quote = quoteResponse();
     target.bookingData = {
       roomTypeId: 1,
       checkInDate: '2026-08-10',
@@ -285,6 +328,39 @@ describe('BookingCheckoutComponent', () => {
       qrData: null,
       redirectUrl: null,
       replayed: false,
+    };
+  }
+
+  function quoteResponse() {
+    return {
+      quoteId: 'quote-1',
+      expiresAt: '2026-08-10T12:15:00Z',
+      propertyId: 10,
+      roomTypeId: 1,
+      nightlyPrice: 500000,
+      numberOfNights: 2,
+      roomQuantity: 1,
+      baseSubtotal: 1000000,
+      taxAmount: 120000,
+      feeAmount: 15000,
+      taxesAndFees: 135000,
+      appliedPromotions: [{
+        campaignId: 71,
+        code: 'MEMBER10',
+        applicationType: 'AUTOMATIC' as const,
+        nameVi: 'Gi\u00e1 th\u00e0nh vi\u00ean',
+        nameEn: 'Member price',
+        discountAmount: 100000,
+      }],
+      memberBenefit: {
+        eligible: true,
+        tierCode: 'GOLD',
+        tierNameVi: 'V\u00e0ng',
+        tierNameEn: 'Gold',
+      },
+      totalDiscount: 100000,
+      finalTotal: 1035000,
+      currency: 'VND' as const,
     };
   }
 });

@@ -15,6 +15,7 @@ export const routes: Routes = [
       { path: 'hotel/:id', loadComponent: () => import('./features/client/hotel-detail/hotel-detail.component').then(m => m.HotelDetailComponent) },
       { path: 'booking/:roomTypeId', loadComponent: () => import('./features/client/booking-checkout/booking-checkout.component').then(m => m.BookingCheckoutComponent), canActivate: [clientAuthGuard] },
       { path: 'profile', loadComponent: () => import('./features/client/profile/profile.component').then(m => m.ProfileComponent), canActivate: [clientAuthGuard] },
+      { path: 'favorites', loadComponent: () => import('./features/client/favorites/favorites-page.component').then(m => m.FavoritesPageComponent), canActivate: [clientAuthGuard] },
       { path: 'refunds', loadComponent: () => import('./features/client/profile/refund-history.component').then(m => m.RefundHistoryComponent), canActivate: [clientAuthGuard] },
       { path: 'booking-history', loadComponent: () => import('./features/client/profile/profile.component').then(m => m.ProfileComponent), canActivate: [clientAuthGuard], data: { tab: 'bookings' } },
       { path: 'my-invoices', loadComponent: () => import('./features/client/my-invoices/my-invoices.component').then(m => m.MyInvoicesComponent), canActivate: [clientAuthGuard] },
@@ -23,6 +24,11 @@ export const routes: Routes = [
   },
   { path: 'payment-simulator', loadComponent: () => import('./features/client/payment-simulator/payment-simulator').then(m => m.PaymentSimulatorComponent) },
   { path: 'payment-result', loadComponent: () => import('./features/client/payment-result/payment-result').then(m => m.PaymentResultComponent) },
+  { path: 'terms', loadComponent: () => import('./features/auth/legal-support/public-information-page.component').then(m => m.PublicInformationPageComponent), data: { page: 'TERMS' } },
+  { path: 'privacy', loadComponent: () => import('./features/auth/legal-support/public-information-page.component').then(m => m.PublicInformationPageComponent), data: { page: 'PRIVACY' } },
+  { path: 'cookies', loadComponent: () => import('./features/auth/legal-support/public-information-page.component').then(m => m.PublicInformationPageComponent), data: { page: 'COOKIES' } },
+  { path: 'contact', loadComponent: () => import('./features/auth/legal-support/public-information-page.component').then(m => m.PublicInformationPageComponent), data: { page: 'CONTACT' } },
+  { path: 'support', loadComponent: () => import('./features/auth/legal-support/public-information-page.component').then(m => m.PublicInformationPageComponent), data: { page: 'SUPPORT' } },
   { path: 'forgot-password', loadComponent: () => import('./features/auth/forgot-password/forgot-password.component').then(m => m.ForgotPasswordComponent) },
   { path: 'reset-password', loadComponent: () => import('./features/auth/reset-password/reset-password.component').then(m => m.ResetPasswordComponent) },
   { path: 'verify-email', loadComponent: () => import('./features/auth/verify-email/verify-email.component').then(m => m.VerifyEmailComponent) },
@@ -61,7 +67,11 @@ export const routes: Routes = [
       { path: 'roles', loadComponent: () => import('./features/admin/role-management/role-management.component').then(m => m.RoleManagementComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROLE, actionCode: ActionCode.VIEW } },
       { path: 'role-permissions', loadComponent: () => import('./features/admin/role-permission/role-permission.component').then(m => m.RolePermissionComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROLE_PERMISSION, actionCode: ActionCode.VIEW } },
       { path: 'audit-log', loadComponent: () => import('./features/admin/audit-log/audit-log.component').then(m => m.AuditLogComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.AUDIT_LOG, actionCode: ActionCode.VIEW } },
+<<<<<<< HEAD
       { path: 'financial-audit', loadComponent: () => import('./features/admin/financial-audit/financial-audit.component').then(m => m.FinancialAuditComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.AUDIT_LOG, actionCode: ActionCode.VIEW } },
+=======
+      { path: 'email-outbox', loadComponent: () => import('./features/admin/email-outbox/email-outbox.component').then(m => m.EmailOutboxComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.AUDIT_LOG, actionCode: ActionCode.VIEW } },
+>>>>>>> codex/ui-functional-audit-polish
       { path: 'property-imports', loadComponent: () => import('./features/admin/property-imports/property-imports.component').then(m => m.PropertyImportsComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PROPERTY_IMPORT, actionCode: ActionCode.VIEW } },
       { path: 'property-claims', loadComponent: () => import('./features/admin/property-claims/property-claims.component').then(m => m.PropertyClaimsComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PROPERTY_CLAIM, actionCode: ActionCode.VIEW } },
       { path: 'property-owners', loadComponent: () => import('./features/admin/partner-overview/partner-overview.component').then(m => m.PartnerOverviewComponent), data: { title: 'Chủ cơ sở', endpoint: 'property-owners' } },
@@ -88,19 +98,32 @@ export const routes: Routes = [
     path: 'management',
     loadComponent: () => import('./layout/management-layout/management-layout').then(m => m.ManagementLayout),
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['PROPERTY_OWNER', 'HOTEL_ADMIN', 'HOTEL_MANAGER', 'SUPER_ADMIN', 'ADMIN'] },
+    data: { roles: ['PROPERTY_OWNER', 'HOTEL_ADMIN', 'HOTEL_MANAGER', 'HOUSEKEEPING', 'SUPER_ADMIN', 'ADMIN'] },
     children: [
+<<<<<<< HEAD
       { path: 'dashboard', loadComponent: () => import('./features/management/dashboard/management-dashboard.component').then(m => m.ManagementDashboardComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.HOTEL, actionCode: ActionCode.VIEW } },
       { path: 'properties', loadComponent: () => import('./features/management/dashboard/management-dashboard.component').then(m => m.ManagementDashboardComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.HOTEL, actionCode: ActionCode.VIEW } },
       { path: 'room-types', loadComponent: () => import('./features/management/inventory/management-inventory.component').then(m => m.ManagementInventoryComponent), canActivate: [permissionGuard], data: { mode: 'room-types', functionCode: FunctionCode.ROOM_TYPE, actionCode: ActionCode.VIEW } },
       { path: 'rooms', loadComponent: () => import('./features/management/inventory/management-inventory.component').then(m => m.ManagementInventoryComponent), canActivate: [permissionGuard], data: { mode: 'rooms', functionCode: FunctionCode.ROOM, actionCode: ActionCode.VIEW } },
+=======
+      { path: 'dashboard', loadComponent: () => import('./features/management/dashboard/management-dashboard.component').then(m => m.ManagementDashboardComponent) },
+      { path: 'properties', loadComponent: () => import('./features/management/dashboard/management-dashboard.component').then(m => m.ManagementDashboardComponent) },
+      { path: 'room-types', loadComponent: () => import('./features/management/inventory/management-inventory.component').then(m => m.ManagementInventoryComponent), data: { mode: 'room-types' } },
+      { path: 'rooms', loadComponent: () => import('./features/management/inventory/management-inventory.component').then(m => m.ManagementInventoryComponent), data: { mode: 'rooms' } },
+      { path: 'housekeeping', loadComponent: () => import('./features/management/housekeeping/housekeeping.component').then(m => m.HousekeepingComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.HOUSEKEEPING, actionCode: ActionCode.VIEW } },
+>>>>>>> codex/ui-functional-audit-polish
       { path: 'services', loadComponent: () => import('./features/admin/service-management/service-management').then(m => m.ServiceManagement), canActivate: [permissionGuard], data: { functionCode: FunctionCode.HOTEL_SERVICE, actionCode: ActionCode.VIEW } },
       { path: 'payment-configuration', loadComponent: () => import('./features/management/property-payment-configuration/property-payment-configuration.component').then(m => m.PropertyPaymentConfigurationComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PROPERTY_PAYMENT_CONFIG, actionCode: ActionCode.VIEW } },
+      { path: 'refunds', loadComponent: () => import('./features/admin/reservation-management/refund-management.component').then(m => m.RefundManagementComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PROPERTY_REFUND, actionCode: ActionCode.APPROVE } },
       { path: 'property-revenue', loadComponent: () => import('./features/management/property-revenue/property-revenue.component').then(m => m.PropertyRevenueComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.REPORT, actionCode: ActionCode.VIEW } },
       { path: 'reviews', loadComponent: () => import('./features/management/reviews/review-management.component').then(m => m.ReviewManagementComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.REVIEW, actionCode: ActionCode.VIEW } },
       { path: 'audit-log', loadComponent: () => import('./features/admin/audit-log/audit-log.component').then(m => m.AuditLogComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.AUDIT_LOG, actionCode: ActionCode.VIEW } },
+<<<<<<< HEAD
       { path: 'billing', loadComponent: () => import('./features/management/subscription-billing/subscription-billing.component').then(m => m.SubscriptionBillingComponent) },
       { path: 'ownership', loadComponent: () => import('./features/management/property-ownership/property-ownership.component').then(m => m.PropertyOwnershipComponent) },
+=======
+      { path: 'billing', loadComponent: () => import('./features/management/subscription-billing/subscription-billing.component').then(m => m.SubscriptionBillingComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PLATFORM_BILLING, actionCode: ActionCode.VIEW } },
+>>>>>>> codex/ui-functional-audit-polish
       { path: 'subscription', redirectTo: 'billing', pathMatch: 'full' },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]

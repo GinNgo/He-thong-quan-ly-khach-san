@@ -12,13 +12,44 @@ This document reconciles the older SpecKit/task backlogs with Feature 007. It do
 | Feature 02 parent | 2 | 14 | Tracking-only backlog; converge with child features and Feature 007 full-system verification |
 | Feature 02A - Design System | 15 | 0 | Complete markers retained; still needs final regression evidence if reused by changed screens |
 | Feature 02B - App Shell/Role Navigation | 4 | 14 | Still open; UI shell and final regression track |
-| Feature 03 - UI Functional Audit | 43 | 26 | Merge payment/security/audit portions; retain unresolved UI evidence tasks |
+| Feature 03 - UI Functional Audit | 44 | 32 | Merge payment/security/audit portions; retain unresolved UI evidence tasks |
 | Feature 04 - Thesis Report | 69 | 6 | Separate documentation/render track; selected Admin E2E items merge into full-system verification |
 | Feature 05 - Home/Footer | 16 | 0 | Complete markers retained |
-| Feature 06 - Booking Marketplace | 84 | 17 | Split: payment/subscription/sandbox into Feature 007; promotions/VIP/ads/social remain separate |
-| Feature 07 - Payment/Billing | 0 | 176 | New execution backlog; no implementation task has been falsely marked complete |
+| Feature 06 - Booking Marketplace | 111 | 6 | Split: payment/subscription/sandbox into Feature 007; promotions/VIP/ads/social remain separate |
+| Feature 07 - Payment/Billing | 193 | 152 | Current Feature 007 markers include bounded evidence tasks, but final-worktree gates and unresolved remediation remain open |
 
-The raw legacy total is 79 open markers. The Feature 02 parent contributes 14 tracking markers that overlap its child backlog, so the unique implementation backlog is lower and must be verified against source/evidence before closure.
+The current legacy source files contain 74 open markers (Feature 01-06, including Feature 02A/02B). The Feature 02 parent contributes 14 tracking markers that overlap its Feature 02B child backlog, so the unique legacy implementation backlog is 60 markers. These counts were read directly from each `tasks.md` on 2026-08-03 and do not include Feature 007's 152 open markers.
+
+## Reconciliation Run - 2026-08-03
+
+This run read the current legacy task files, Feature 007 `tasks.md`, the inventory/traceability/audit artifacts and available evidence under `docs/testing/evidence/007/`. It did not mutate source code, run production migrations, call external providers or change any task checkbox. The working tree is dirty, so the repository `HEAD` (`b2196f503b3bb306fb8446a9154a03b8be51d70c`) is only a base reference, not a final-worktree fingerprint. At the time of the read, Feature 007 contained 193 checked markers and 152 open markers (345 total).
+
+### Current disposition of every `MERGED_PENDING` mapping
+
+`PARTIAL` below means that the destination has bounded implementation or focused-test evidence, but the legacy scope cannot be closed because a required final-worktree, browser, database, policy or external-provider boundary is still absent. A checked Feature 007 marker is not treated as final proof when its evidence explicitly records a skip, blocker or non-final environment.
+
+| Legacy item | Current status | Current evidence | Remaining blocker / closure condition |
+|---|---|---|---|
+| Feature 01 `TASK-C1` valid role/permission acceptance | `PARTIAL / MERGED_PENDING` | Feature 007 T027-T029 are checked; requirement traceability still classifies FR-026/FR-039/FR-040/SC-011 as `PARTIAL`. | T159 final backend evidence and T174 release-gate/status reconciliation are absent; no final all-role/property HTTP run is recorded. |
+| Feature 01 `TASK-C1` `PROPERTY_OWNER` permission migration | `PARTIAL / MERGED_PENDING` | `V28__financial_permissions.sql` exists and the foundation SQL Server run proves additive V21-V29 execution and 11 financial functions. The legacy task still has an unchecked follow-up migration specifically for `PROPERTY_OWNER`. | A dedicated `PROPERTY_OWNER` mapping migration/rollback and final SQL Server evidence are missing; T174 remains open and T158 clean V1-to-latest migration is a gap. |
+| Feature 02 parent `F02-003`, `F02-A`-`F02-H` convergence markers | `PARTIAL / MERGED_PENDING` | T141-T150, T164 and T166 are checked; inventory/traceability artifacts exist. | T151 remediation execution, T155 manual journey evidence, T159-T163 final suites/reconciliation and T165 responsive coverage remain open or partial. |
+| Feature 02 parent `F02-004`-`F02-007` test/build/route/convergence markers | `PARTIAL / MERGED_PENDING` | Focused artifacts and route/audit inventories exist; T173 maps 61/61 FR/SC rows. | T159 backend, T160 Angular build/unit, T161 all-role Playwright, T162 financial reconciliation and T163 final report artifacts are absent. |
+| Feature 02B `T02B-011`-`T02B-016` tests/build/browser/security/convergence | `PARTIAL / MERGED_PENDING` | T143, T146, T164 and T166 are checked; `financial-accessibility.spec.ts` is discoverable and `responsive.md` records eight five-width passes. | The responsive artifact records blocked checkout/invoice/platform-admin surfaces; T161 final traces and T160 final build are absent, so no shell-wide regression closure is justified. |
+| Feature 03 `T021`-`T025` public/customer/admin/property UI fixes and evidence | `PARTIAL / MERGED_PENDING` | T141-T146 inventory rows and bounded frontend/payment evidence exist; `FULL_SYSTEM_AUDIT_REPORT.md` remains `PARTIAL / NOT READY`. | Final API-backed browser journeys, screenshots and role coverage (T155/T161) are missing; Angular/runtime fixture blockers remain in the final evidence set. |
+| Feature 03 `T026`, `T028`, `T030`-`T036` audit taxonomy, tokens, shells, controls and responsive review | `PARTIAL / MERGED_PENDING` | T147-T150, T164 and T166 are checked; `responsive.md` is explicitly `PARTIAL`. | T151/T155 and T165 remain open; several required widths/routes are blocked or only source/component-covered. |
+| Feature 03 `T040`, `T049`, `T052`, `T053`, `T063`-`T069` regression/traceability/payment evidence | `PARTIAL / MERGED_PENDING` | Property callback contract (22/22), callback replay/concurrency (7/7), manual confirmation (14/14) and payment-panel evidence report passing focused runs; T173 is checked. | No final backend/frontend/Playwright/reconciliation artifacts (T159-T163); T169 abuse-control rerun failed (3/5 failures, no `429`, oversized callback `500`). |
+| Feature 03 `T058` non-production payment callback approval/contract | `PARTIAL / MERGED_PENDING` | T061 provider contracts report 22/22 pass; T062 reports 7/7 pass; T156 documents simulator/sandbox-only boundary. | T169 rate-limit/polling/oversize abuse controls failed, live provider delivery is `BLOCKED_EXTERNAL`, and final T159/T161 evidence is absent. |
+| Feature 04 `T066`, `T067` Admin data-backed and mutation E2E | `PARTIAL / MERGED_PENDING` | Admin inventory and focused lifecycle artifacts exist; platform billing unit/controller suites pass in bounded evidence. | T161 all-role Playwright traces are absent; `responsive.md` records checkout/invoice fixtures blocked and platform purchase skipped without sandbox variables. |
+| Feature 06 `T064` admin plan/feature lifecycle | `PARTIAL / MERGED_PENDING` | T092-T111 are checked and platform billing evidence records focused backend/UI suites passing; provider contracts are simulator-only. | Playwright purchase/negative journeys are explicitly skipped without simulator variables; downgrade/proration and production merchant remain `BLOCKED_EXTERNAL`, so final lifecycle closure is not proven. |
+
+### Release blockers observed during this run
+
+- Final artifacts `docs/testing/evidence/007/final/clean-migration.md`, `backend.md`, `frontend.md`, `reconciliation.md` and `docs/testing/FINAL_WORKTREE_TEST_REPORT.md` are absent.
+- The final audit reports `PARTIAL / NOT READY`; T151 and 129 of the 130 generated remediation tasks (T217-T345; T216 is checked) remain open. The audit report's embedded "130 open" wording is stale against the current task markers. T174/T175 are still release gates.
+- T168 privacy review is a `GAP`: fixture logs, CSV exports and screenshots contain unmasked account/PII identifiers, and generic exception-message paths are not fail-closed.
+- T169 callback-abuse verification is failed: 3 failures in 5 tests, polling emitted only `200` (no `429`), callback burst was not rate-limited by source IP, and an oversized callback returned `500` instead of `413`.
+- T176 performance budgets are blocked because the measured report p95 is 3698.4 ms against the 3000 ms budget.
+- Production provider credentials/merchant registration/public callbacks and Facebook/Zalo decisions/credentials remain intentionally `BLOCKED_EXTERNAL`; production stays disabled.
 
 ## Status Definitions
 

@@ -2,6 +2,7 @@
   <h1 class="mb-3 text-900 text-4xl">Catalog gói dịch vụ</h1>
   <p class="text-700 text-xl mb-6">Catalog do nền tảng quản lý. Trạng thái hiện tại luôn thuộc riêng cơ sở được chọn.</p>
 
+<<<<<<< HEAD
   <p *ngIf="loadingCatalog" class="state" role="status">Đang tải catalog...</p>
   <div *ngIf="catalogError" class="state error" role="alert">{{ catalogError }} <button pButton type="button" label="Thử lại" (click)="loadPlans()"></button></div>
 
@@ -14,6 +15,35 @@
         </ng-template>
         <div class="plan-features text-left mt-4 mb-4">
           <div class="feature-item" *ngFor="let feature of plan.features"><i class="pi pi-check-circle"></i><span>{{ feature.nameVi || feature.nameEn || feature.code }}: {{ featureLimit(feature.limit) }}</span></div>
+=======
+    <div class="grid">
+        <div class="col-12 lg:col-4 p-3" *ngFor="let plan of plans">
+            <p-card styleClass="plan-card shadow-2">
+                <ng-template pTemplate="title">
+                    <div class="text-center text-900 text-3xl font-bold mb-2">{{ plan.nameVi }}</div>
+                    <div class="text-center plan-price">
+                        {{ plan.price | currency:'VND' }}
+                        <span class="text-sm font-normal text-600">
+                            / {{ plan.billingType === 'MONTHLY' ? 'Tháng' : plan.billingType === 'YEARLY' ? 'Năm' : 'Vĩnh viễn' }}
+                        </span>
+                    </div>
+                </ng-template>
+                
+                <div class="plan-features text-left mt-4 mb-4">
+                    <div class="feature-item" *ngFor="let feature of plan.features">
+                        <i class="pi pi-check-circle"></i>
+                        <span>{{ feature.nameVi || feature.nameEn || feature.code }}: {{ feature.limit === -1 ? 'Không giới hạn' : feature.limit }}</span>
+                    </div>
+                    <div class="feature-item" *ngIf="!plan.features.length">Chưa công bố quyền lợi.</div>
+                </div>
+
+                <ng-template pTemplate="footer">
+                    <span class="p-button p-component w-full" *ngIf="isCurrentPlan(plan)">Đang sử dụng</span>
+                    <a class="p-button p-component p-button-outlined w-full" *ngIf="!isCurrentPlan(plan)"
+                       href="mailto:support@luxestay.vn?subject=Yeu%20cau%20nang%20cap%20goi">Liên hệ để nâng cấp</a>
+                </ng-template>
+            </p-card>
+>>>>>>> codex/ui-functional-audit-polish
         </div>
         <ng-template pTemplate="footer">
           <p-tag *ngIf="isCurrentPlan(plan)" severity="success" value="Gói hiện tại của cơ sở đã chọn"></p-tag>

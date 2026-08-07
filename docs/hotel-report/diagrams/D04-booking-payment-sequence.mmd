@@ -1,0 +1,32 @@
+sequenceDiagram
+    actor Customer as Khách hàng
+    participant UI as Angular Checkout
+    participant Booking as Booking API/Service
+    participant DB as SQL Server
+    participant Pay as Payment Orchestrator
+    participant Provider as VNPay/MoMo/ZaloPay/Simulator
+
+    Customer->>UI: Chọn phòng và xác nhận checkout
+    UI->>Booking: Tạo booking/hold với dữ liệu khách
+    Booking->>DB: Lock/kiểm tra inventory + lưu hold
+    DB-->>Booking: Hold + price snapshot
+    Booking-->>UI: Booking pending payment
+    Customer->>UI: Chọn phương thức thanh toán
+    UI->>Pay: Tạo payment attempt
+    Pay->>DB: Lưu transaction/idempotency context
+    Pay->>Provider: Create payment đã ký
+    Provider-->>UI: Redirect/payment page
+    Customer->>Provider: Xác nhận hoặc hủy
+    Provider-->>UI: Redirect payment result
+    Provider->>Pay: Callback/IPN server-to-server
+    Pay->>Pay: Xác minh chữ ký, merchant, amount, replay
+    alt Callback hợp lệ và thành công
+      Pay->>DB: Cập nhật payment + booking atomically
+      Pay-->>Provider: Acknowledge
+      UI->>Booking: Query trạng thái authoritative
+      Booking-->>UI: Booking confirmed
+    else Callback lỗi/không chắc chắn
+      Pay->>DB: Ghi failed/pending + audit
+      Pay-->>Provider: Reject/ack theo contract
+      Pay->>Provider: Recovery query theo lịch
+    end

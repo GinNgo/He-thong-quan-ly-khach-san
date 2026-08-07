@@ -3,16 +3,19 @@ package com.hotel.propertycommerce.invoice;
 import com.hotel.entities.User;
 import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.propertycommerce.payment.PropertyFinancialTransaction;
-import com.hotel.services.EmailService;
-import com.hotel.services.PropertyAccessService;
 import com.hotel.security.ActionCode;
+import com.hotel.security.CustomUserDetails;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.Permission;
+import com.hotel.services.EmailService;
+import com.hotel.services.PropertyAccessService;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,8 +24,12 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.Set;
 
 @RestController
 public class PropertyInvoiceController {
@@ -61,13 +68,33 @@ public class PropertyInvoiceController {
     @GetMapping("/api/invoices/{invoiceId}")
     public InvoiceResponse get(@PathVariable Long invoiceId) {
         PropertyInvoice invoice = findAuthorized(invoiceId);
-        return InvoiceResponse.from(
-                invoice,
-                lineRepository.findByInvoiceIdOrderByIdAsc(invoiceId),
-                allocationRepository.findByInvoiceIdOrderByIdAsc(invoiceId),
-                creditNoteRepository.findByInvoiceIdOrderByIssuedAtAscIdAsc(invoiceId),
-                creditNoteLineRepository.findByHotelIdAndInvoiceIdOrderByIdAsc(
-                        invoice.getHotel().getId(), invoiceId));
+        return response(invoice);
+    }
+
+    @GetMapping("/api/management/invoices/finalized")
+    @Permission(function = FunctionCode.INVOICE, action = ActionCode.VIEW)
+    public List<InvoiceSummaryResponse> finalizedInvoices() {
+        List<PropertyInvoice> invoices;
+        if (propertyAccessService.isSystemAdministrator()) {
+            invoices = invoiceRepository.findByStatusOrderByFinalizedAtDesc(PropertyInvoice.Status.FINALIZED);
+        } else {
+            Set<Long> hotelIds = propertyAccessService.accessibleHotelIds();
+            invoices = hotelIds == null || hotelIds.isEmpty()
+                    ? List.of()
+                    : invoiceRepository.findByHotelIdInAndStatusOrderByFinalizedAtDesc(
+                            hotelIds.stream().sorted().toList(), PropertyInvoice.Status.FINALIZED);
+        }
+        return invoices.stream().map(InvoiceSummaryResponse::from).toList();
+    }
+
+    @GetMapping("/api/management/reservations/{reservationId}/invoice")
+    @Permission(function = FunctionCode.INVOICE, action = ActionCode.VIEW)
+    public InvoiceResponse getByReservation(@PathVariable Long reservationId) {
+        PropertyInvoice invoice = invoiceRepository.findByReservationIdAndStatus(
+                        reservationId, PropertyInvoice.Status.FINALIZED)
+                .orElseThrow(() -> new ResourceNotFoundException("Finalized invoice was not found."));
+        authorizeInvoice(invoice);
+        return response(invoice);
     }
 
     @GetMapping("/api/invoices/finalized/my")
@@ -84,15 +111,21 @@ public class PropertyInvoiceController {
     @GetMapping(value = "/api/invoices/{invoiceId}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<ByteArrayResource> pdf(@PathVariable Long invoiceId) {
         PropertyInvoice invoice = findAuthorized(invoiceId);
+        InvoiceDocumentData data = documentData(invoice);
         byte[] content = documentService.renderPdf(
                 invoice,
-                lineRepository.findByInvoiceIdOrderByIdAsc(invoiceId),
-                creditNoteRepository.findByInvoiceIdOrderByIssuedAtAscIdAsc(invoiceId));
+                data.lines(),
+                data.allocations(),
+                data.creditNotes(),
+                data.creditNoteLines());
+        String checksum = sha256(content);
         String filename = invoice.getInvoiceNumber().replaceAll("[^A-Za-z0-9._-]", "_") + ".pdf";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
         headers.setContentDisposition(ContentDisposition.attachment().filename(filename).build());
         headers.setContentLength(content.length);
+        headers.setETag('"' + checksum + '"');
+        headers.set("X-Content-SHA256", checksum);
         return ResponseEntity.ok().headers(headers).body(new ByteArrayResource(content));
     }
 
@@ -110,12 +143,16 @@ public class PropertyInvoiceController {
                 : request.recipient().trim();
         authorizeRecipient(ownerEmail, recipient);
 
+        InvoiceDocumentData data = documentData(invoice);
         byte[] content = documentService.renderPdf(
                 invoice,
-                lineRepository.findByInvoiceIdOrderByIdAsc(invoiceId),
-                creditNoteRepository.findByInvoiceIdOrderByIssuedAtAscIdAsc(invoiceId));
+                data.lines(),
+                data.allocations(),
+                data.creditNotes(),
+                data.creditNoteLines());
         boolean sent = emailService.sendInvoiceEmail(recipient, invoice.getInvoiceNumber(), content);
-        return new InvoiceEmailResponse(invoice.getId(), invoice.getInvoiceNumber(), recipient, sent, correlationId);
+        return new InvoiceEmailResponse(
+                invoice.getId(), invoice.getInvoiceNumber(), recipient, sent, sha256(content), correlationId);
     }
 
     @PostMapping("/api/management/invoices/{invoiceId}/credit-notes")
@@ -154,16 +191,29 @@ public class PropertyInvoiceController {
         if (propertyAccessService.isSystemAdministrator()) {
             return;
         }
-        Long hotelId = invoice.getHotel() == null ? null : invoice.getHotel().getId();
-        if (hotelId != null && propertyAccessService.accessibleHotelIds().contains(hotelId)) {
-            return;
-        }
         User current = propertyAccessService.currentUser();
         User owner = invoice.getReservation() == null ? null : invoice.getReservation().getUser();
         if (current.getId() != null && owner != null && current.getId().equals(owner.getId())) {
             return;
         }
+        Long hotelId = invoice.getHotel() == null ? null : invoice.getHotel().getId();
+        Set<Long> accessibleHotelIds = propertyAccessService.accessibleHotelIds();
+        if (hotelId != null && accessibleHotelIds != null && accessibleHotelIds.contains(hotelId)
+                && hasPermission(FunctionCode.INVOICE, ActionCode.VIEW)) {
+            return;
+        }
         throw new ResourceNotFoundException("Không tìm thấy hóa đơn.");
+    }
+
+    private boolean hasPermission(FunctionCode function, int action) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!(authentication != null && authentication.getPrincipal() instanceof CustomUserDetails details)) {
+            return false;
+        }
+        Integer mask = details.getPermissionMasks() == null
+                ? null
+                : details.getPermissionMasks().get(function);
+        return mask != null && (mask & action) == action;
     }
 
     private void authorizeRecipient(String ownerEmail, String recipient) {
@@ -184,6 +234,41 @@ public class PropertyInvoiceController {
         throw new SecurityException("Invoice email recipient is not verified for this account.");
     }
 
+    private InvoiceResponse response(PropertyInvoice invoice) {
+        InvoiceDocumentData data = documentData(invoice);
+        return InvoiceResponse.from(
+                invoice,
+                data.lines(),
+                data.allocations(),
+                data.creditNotes(),
+                data.creditNoteLines());
+    }
+
+    private InvoiceDocumentData documentData(PropertyInvoice invoice) {
+        Long invoiceId = invoice.getId();
+        Long hotelId = invoice.getHotel().getId();
+        return new InvoiceDocumentData(
+                lineRepository.findByHotelIdAndInvoiceIdOrderByIdAsc(hotelId, invoiceId),
+                allocationRepository.findByHotelIdAndInvoiceIdOrderByIdAsc(hotelId, invoiceId),
+                creditNoteRepository.findByHotelIdAndInvoiceIdOrderByIssuedAtAscIdAsc(hotelId, invoiceId),
+                creditNoteLineRepository.findByHotelIdAndInvoiceIdOrderByIdAsc(hotelId, invoiceId));
+    }
+
+    private String sha256(byte[] content) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is not available.", exception);
+        }
+    }
+
+    private record InvoiceDocumentData(
+            List<PropertyInvoiceLine> lines,
+            List<PropertyInvoicePaymentAllocation> allocations,
+            List<PropertyCreditNote> creditNotes,
+            List<PropertyCreditNoteLine> creditNoteLines) {
+    }
+
     public record InvoiceEmailRequest(String recipient) {
     }
 
@@ -194,7 +279,9 @@ public class PropertyInvoiceController {
             String status,
             String currency,
             BigDecimal totalAmount,
-            LocalDateTime finalizedAt) {
+            LocalDateTime finalizedAt,
+            String customerSnapshotJson,
+            String propertySnapshotJson) {
 
         static InvoiceSummaryResponse from(PropertyInvoice invoice) {
             return new InvoiceSummaryResponse(
@@ -204,7 +291,9 @@ public class PropertyInvoiceController {
                     invoice.getStatus().name(),
                     invoice.getCurrency(),
                     invoice.getTotalAmount(),
-                    invoice.getFinalizedAt());
+                    invoice.getFinalizedAt(),
+                    invoice.getCustomerSnapshotJson(),
+                    invoice.getPropertySnapshotJson());
         }
     }
 
@@ -213,6 +302,7 @@ public class PropertyInvoiceController {
             String invoiceNumber,
             String recipient,
             boolean sent,
+            String contentSha256,
             String correlationId) {
     }
 

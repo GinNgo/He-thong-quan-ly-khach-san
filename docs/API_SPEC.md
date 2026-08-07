@@ -1,5 +1,144 @@
 # ĐẶC TẢ API (API SPECIFICATIONS)
 
+## Home Discovery và Merchandising (PLANNED - Feature 006 T102)
+
+Các endpoint dưới đây là contract mục tiêu cho hai section Home mới. Chúng chưa được coi là runtime API cho đến khi T103-T115 hoàn thành. Organic recommendation và partner spotlight dùng endpoint riêng để có loading/error/cache độc lập.
+
+### `GET /api/public/home/recommendation-destinations`
+
+Trả tối đa các địa điểm hiện hành có cơ sở lưu trú `APPROVED/ACTIVE`.
+
+**Query parameters**
+
+| Tên | Bắt buộc | Quy tắc |
+|---|---|---|
+| `limit` | Không | Mặc định `5`, khoảng `1..8` |
+| `preferredProvinceId` | Không | ID tỉnh hiện hành từ Home search state |
+| `locale` | Không | `vi` hoặc `en`; có thể lấy từ locale hiện tại |
+
+**Response `200`**
+
+```json
+[
+  {
+    "id": 10146,
+    "name": "An Giang",
+    "displayName": "Tỉnh An Giang",
+    "propertyCount": 18,
+    "selectedByDefault": true
+  }
+]
+```
+
+**Business rules**
+
+- Không trả địa điểm có `propertyCount=0`.
+- Tối đa một item có `selectedByDefault=true`.
+- Tỉnh hiện hành phải tổng hợp property đang lưu dưới các tỉnh legacy đã ánh xạ.
+
+### `GET /api/public/home/recommendations`
+
+Trả danh sách organic recommendation theo một địa điểm và search context.
+
+**Query parameters**
+
+| Tên | Bắt buộc | Quy tắc |
+|---|---|---|
+| `provinceId` | Có | ID tỉnh hiện hành hợp lệ |
+| `checkInDate`, `checkOutDate` | Không | ISO local date; nếu có phải tạo khoảng hợp lệ |
+| `stayType` | Không | Dùng enum search hiện hành |
+| `adultCount`, `childCount`, `roomCount` | Không | Dùng giới hạn của Home search contract |
+| `limit` | Không | Mặc định `8`, khoảng `1..12` |
+
+**Response `200`**
+
+```json
+{
+  "destination": {
+    "id": 10146,
+    "displayName": "Tỉnh An Giang"
+  },
+  "items": [
+    {
+      "propertyId": 501,
+      "name": "LuxeStay Riverside",
+      "propertyType": "HOTEL",
+      "provinceId": 10146,
+      "provinceName": "An Giang",
+      "wardName": "Phú Quốc",
+      "imageUrl": "/media/properties/501/home.webp",
+      "imageAlt": "LuxeStay Riverside",
+      "starRating": 4,
+      "reviewScore": 8.7,
+      "reviewCount": 126,
+      "availableRoomCount": 3,
+      "pricing": {
+        "nightlyPrice": 500000,
+        "currency": "VND"
+      },
+      "recommendationReason": "TOP_RATED",
+      "sponsored": false
+    }
+  ],
+  "totalAvailable": 18
+}
+```
+
+**Business rules**
+
+- Chỉ trả property `APPROVED/ACTIVE`; khi có ngày thì MVP loại property hết phòng.
+- Thứ tự ban đầu: `reviewScore DESC`, `reviewCount DESC`, `propertyId DESC` để ổn định.
+- `sponsored` luôn là `false`; paid placement không được chen ẩn vào organic endpoint.
+- Price/availability do backend cung cấp. Không trả giá gạch ngang/member discount trước canonical quote T028-T031.
+- Điều hướng canonical là `/hotel/:id` hoặc `/search` với location/date/guest context được giữ nguyên.
+
+### `GET /api/public/home/spotlights`
+
+Trả partner/editorial placements đủ điều kiện cho section Home.
+
+**Query parameters**
+
+| Tên | Bắt buộc | Quy tắc |
+|---|---|---|
+| `limit` | Không | Mặc định `6`, khoảng `1..10` |
+| `locale` | Không | `vi` hoặc `en` |
+
+**Response `200`**
+
+```json
+[
+  {
+    "id": 7001,
+    "kind": "SPONSORED",
+    "title": "Khám phá kỳ nghỉ bên biển",
+    "description": "Ưu đãi do đối tác cung cấp",
+    "imageUrl": "/media/placements/7001.webp",
+    "imageAlt": "Khu nghỉ dưỡng nhìn ra biển",
+    "disclosure": "Được tài trợ",
+    "target": {
+      "type": "PROPERTY",
+      "propertyId": 501,
+      "route": "/hotel/501"
+    },
+    "startsAt": "2026-08-01T00:00:00Z",
+    "endsAt": "2026-08-31T23:59:59Z"
+  }
+]
+```
+
+**Business rules**
+
+- Chỉ trả placement `ACTIVE`, đúng lịch, còn quota, asset hợp lệ và property mục tiêu được duyệt/đang hoạt động.
+- `SPONSORED` bắt buộc có disclosure VI/EN; `EDITORIAL` dùng nhãn biên tập riêng.
+- Target chỉ dùng route nội bộ và allowlist query parameters; không trả arbitrary external URL ở release đầu.
+- Không có placement hợp lệ thì trả `[]`; frontend không thay bằng campaign giả.
+
+### Error, authorization và cache
+
+- Ba endpoint public chỉ đọc; validation error dùng error envelope hiện hành.
+- Destination/recommendation dùng giới hạn request chặt và stable ordering; spotlight cache không vượt qua mốc schedule/quota gần nhất.
+- API quản trị placement chưa được chốt trong T102. Role, permission, tenant management và mutation contract chỉ được công bố sau T110/OQ-005; mọi property placement phải lấy `hotel_id` hợp lệ từ principal/property access thay vì tin client.
+
 ## Chuẩn hóa lỗi xác thực và phân quyền
 
 Các lỗi auth/authz thuộc P0-B trả JSON thống nhất, không trả trang HTML:
@@ -47,28 +186,20 @@ POST `/api/properties/{id}/reject` - Admin từ chối cơ sở.
 POST `/api/properties/{id}/activate` - Kích hoạt cơ sở.
 POST `/api/properties/{id}/suspend` - Tạm ngưng cơ sở.
 
-### 5. Property Accounts (Phân quyền Nhân viên)
-GET `/api/properties/{id}/users` - Lấy danh sách nhân viên của cơ sở.
-POST `/api/properties/{id}/users` - Gán/Tạo nhân viên cho cơ sở.
-DELETE `/api/properties/{id}/users/{userId}` - Xóa nhân viên khỏi cơ sở.
-PUT `/api/properties/{id}/users/{userId}/role` - Cập nhật vai trò nhân viên.
+### 5. Property Accounts (phạm vi source hiện hành)
+Các màn hình partner/owner và `AdminPartnerController` cung cấp các endpoint quản trị dạng `/api/admin/property-staff`, `/api/admin/property-owners` và `/api/admin/property-registrations`. Các endpoint CRUD trực tiếp `/api/properties/{id}/users...` dưới đây chưa có mapping trong controller inventory hiện hành; không coi chúng là contract đã triển khai.
 
-### 6. Subscriptions & Plans
-GET `/api/subscription-plans` - Danh sách gói dịch vụ có sẵn.
-GET `/api/subscriptions/me` - Lấy thông tin gói đang sử dụng.
-POST `/api/subscriptions/register` - Đăng ký mua gói.
-POST `/api/subscriptions/{id}/activate` - Kích hoạt gói.
-POST `/api/subscriptions/{id}/renew` - Gia hạn gói.
-POST `/api/subscriptions/{id}/upgrade` - Nâng cấp gói.
-POST `/api/subscriptions/{id}/cancel` - Hủy gói.
-POST `/api/subscriptions/{id}/revoke` - Admin thu hồi gói.
-GET `/api/subscriptions/{id}/history` - Xem lịch sử thay đổi gói.
-GET `/api/subscriptions/me/features` - Lấy danh sách tính năng đang mở.
-GET `/api/subscriptions/me/usage` - Lấy thông tin mức độ sử dụng (Usage Limit).
+### 6. Subscriptions & Plans (source-verified 2026-07-28)
+GET `/api/subscriptions/plans` - Danh sách gói đang có trong `SubscriptionPlanRepository`.
+GET `/api/subscriptions/me` - Các `AccountSubscription` ACTIVE của người dùng hiện tại (yêu cầu đăng nhập).
+GET `/api/subscriptions/me/features` - Mã tính năng và giới hạn được tính từ gói ACTIVE (yêu cầu đăng nhập).
+
+`POST /register`, `activate`, `renew`, `upgrade`, `cancel`, `revoke`, `/history` và `/me/usage` chưa có mapping trong `SubscriptionController`; không được mô tả là endpoint đã triển khai. Các entity `SubscriptionOrder`, `SubscriptionPayment` và `SubscriptionHistory` là nguồn dữ liệu/roadmap cho vòng đời billing nhưng chưa tạo thành contract REST hoàn chỉnh.
 
 ### 7. File Upload (Property Images / Room Images)
 POST `/api/uploads/image` - Upload ảnh (yêu cầu MultipartFile), trả về URL file.
-DELETE `/api/uploads/image` - Xóa ảnh.
+GET `/api/public/uploads/{filename}` - Phục vụ ảnh public đã upload.
+`DELETE /api/uploads/image` chưa có mapping trong controller hiện tại.
 
 ---
 
@@ -93,8 +224,13 @@ GET `/api/reservations/{id}`
 POST `/api/reservations`
 PUT `/api/reservations/{id}`
 POST `/api/reservations/{id}/cancel`
-POST `/api/reservations/{id}/checkin`
-POST `/api/reservations/{id}/checkout`
+PUT `/api/reservations/{id}/status?status=CHECKED_IN|CHECKED_OUT|CANCELLED`
+PUT `/api/reservations/{id}/rooms`
+GET `/api/reservations/{id}/available-rooms`
+POST `/api/reservations/{id}/assign-rooms`
+POST `/api/reservations/{id}/check-in`
+POST `/api/reservations/{id}/check-out`
+POST `/api/reservations/{id}/services`
 
 ### SERVICES
 GET `/api/services`
@@ -105,7 +241,177 @@ DELETE `/api/services/{id}`
 ### INVOICES
 GET `/api/invoices`
 GET `/api/invoices/{id}`
-POST `/api/invoices/generate`
+POST `/api/invoices/reservation/{reservationId}`
+GET `/api/invoices/reservation/{reservationId}`
+
+## Payment and Billing Financial API (FR-001, FR-046)
+
+This section is the source-verified REST contract for the two independent financial bounded contexts. It supersedes older planned billing notes elsewhere in this file. The implementation and traceability sources are [the financial contract](../specs/007-payment-billing-completion/contracts/financial-api-contract.md), [Property Commerce controllers](../backend/src/main/java/com/hotel/propertycommerce), [Platform Billing controllers](../backend/src/main/java/com/hotel/platformbilling), [stable error handling](../backend/src/main/java/com/hotel/controllers/GlobalExceptionHandler.java), and [FinancialErrorCode](../backend/src/main/java/com/hotel/paymentprovider/error/FinancialErrorCode.java).
+
+### Context boundaries and shared rules
+
+| Context | Money direction | Ledger ownership | Scope boundary |
+|---|---|---|---|
+| Property Commerce | Guest or staff pays an accommodation property | `PropertyFinancialTransaction` and finalized property invoices | Authenticated property access; every ledger read is tenant-filtered by `hotel_id` |
+| Platform Billing | Property owner pays LuxeStay for a subscription | `PlatformFinancialTransaction`, subscription orders/contracts and platform entitlement | System billing scope; property ID identifies the target property but never changes ledger ownership |
+
+The contexts must not share transaction IDs, merchant configuration, revenue totals, refund balances or entitlement effects. Both contexts use the following rules:
+
+- Money is an integer-valued JSON number in `VND`; clients cannot supply authoritative settled totals, prices, durations or feature snapshots.
+- Mutations require `Idempotency-Key`; equivalent replays return the original result, while a different payload with the same key returns `409 IDEMPOTENCY_KEY_REUSED`.
+- `X-Correlation-ID` is optional on mutations and is returned in the error envelope when a request is rejected.
+- Provider callbacks do not use customer JWT. They require provider signature, merchant, reference, currency and amount verification and are replay-safe.
+- Production payment remains fail-closed. Missing or disabled configuration returns a truthful availability error and never falls back to a simulator.
+- Finalized financial evidence is append-only. Report and export totals exclude non-settled attempts (`CREATED`, `PENDING`, `PENDING_VERIFICATION`, `PROCESSING`, `FAILED`, `CANCELLED`, `EXPIRED`).
+
+### Shared financial states
+
+Payment attempts use `CREATED`, `PENDING`, `PENDING_VERIFICATION`, `PROCESSING`, `SUCCESS`, `FAILED`, `CANCELLED`, `PARTIALLY_REFUNDED`, `REFUNDED` and `EXPIRED`. Property booking summaries additionally use `UNPAID`, `PARTIALLY_PAID`, `DEPOSIT_PAID`, `PAID`, `OVERPAID`, `PARTIALLY_REFUNDED` and `REFUNDED`. Refund requests use `REQUESTED`, `POLICY_BLOCKED`, `PENDING_APPROVAL`, `PENDING_PROVIDER`, `SUCCEEDED`, `FAILED` and `CANCELLED`. Platform subscription orders use `CREATED`, `PENDING_PAYMENT`, `PAID`, `APPLIED`, `FAILED`, `CANCELLED`, `EXPIRED` and `REFUNDED`.
+
+### Stable error envelope
+
+All financial failures return JSON with this shape; `fieldErrors` is an empty object when no field is implicated and `currentState` is omitted when not applicable:
+
+```json
+{
+  "status": 409,
+  "code": "INVALID_STATE_TRANSITION",
+  "message": "The financial state transition is not allowed.",
+  "correlationId": "corr-123",
+  "fieldErrors": {},
+  "retryable": false,
+  "currentState": "SUCCESS",
+  "path": "/api/payment-attempts/attempt-123/cancel"
+}
+```
+
+The `code` values below are stable client identifiers. The HTTP status and retryability are part of the contract:
+
+| HTTP | Code | Retryable |
+|---:|---|:---:|
+| 400 | `INVALID_AMOUNT`, `INVALID_CURRENCY`, `CALLBACK_MERCHANT_MISMATCH`, `CALLBACK_AMOUNT_MISMATCH`, `CALLBACK_REFERENCE_MISMATCH` | No |
+| 401 | `CALLBACK_SIGNATURE_INVALID` | No |
+| 403 | `TENANT_ACCESS_DENIED` | No |
+| 404 | `RESOURCE_NOT_FOUND` | No |
+| 409 | `INVALID_STATE_TRANSITION`, `OUTSTANDING_BALANCE`, `OVERPAYMENT_REQUIRES_RESOLUTION`, `IDEMPOTENCY_KEY_REUSED`, `ATTEMPT_EXPIRED`, `REFUND_EXCEEDS_BALANCE`, `POLICY_NOT_CONFIGURED`, `CONCURRENT_MODIFICATION` | Only `CONCURRENT_MODIFICATION` |
+| 422 | `EXPORT_RECONCILIATION_MISMATCH` | No |
+| 503 | `PAYMENT_ENVIRONMENT_DISABLED`, `PROVIDER_UNAVAILABLE` | Yes |
+| 503 | `PRODUCTION_NOT_APPROVED` | No |
+
+Authentication, authorization and request-shape failures use the same envelope with the stable generic codes `UNAUTHORIZED`, `ACCESS_DENIED`, `VALIDATION_FAILED`, `MALFORMED_REQUEST`, `MISSING_PARAMETER`, `MISSING_HEADER`, `INVALID_PARAMETER`, `INVALID_REQUEST`, `CONFLICT`, `DATA_CONFLICT`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `UNSUPPORTED_MEDIA_TYPE` and `INTERNAL_ERROR`.
+
+### Property Commerce API
+
+Property Commerce is the guest-to-property money boundary. Property IDs in routes are navigation hints only; server-side property access resolves the authorized `hotel_id`.
+
+#### Payment configuration and attempts
+
+| Method | Path | Required permission or authentication | Contract |
+|---|---|---|---|
+| GET | `/api/management/properties/{propertyId}/payment-configuration` | `PROPERTY_PAYMENT_CONFIG:VIEW` | Return enabled methods, environment, deposit policy, expiry and masked readiness data; never return secrets |
+| PUT | `/api/management/properties/{propertyId}/payment-configuration` | `PROPERTY_PAYMENT_CONFIG:UPDATE` | Validate property access, provider readiness, bank fields and environment gate; secrets are write-only references |
+| POST | `/api/management/properties/{propertyId}/payment-configuration/validate` | `PROPERTY_PAYMENT_CONFIG:UPDATE` | Validate readiness without sending money; return blockers per method |
+| GET | `/api/reservations/{reservationId}/financial-summary` | Reservation owner or authorized property role | Return server-derived gross charges, deposit, successful payments/refunds, remaining balance, `VND` and booking financial state |
+| POST | `/api/reservations/{reservationId}/payment-attempts` | Reservation owner or authorized property role; `Idempotency-Key` | Request body selects `purpose` (`DEPOSIT`, `BALANCE`, `SERVICE`, `SURCHARGE`, `OTHER`) and method; amount is server-owned |
+| GET | `/api/payment-attempts/{attemptId}` | Authorized resource owner | Return safe status, expiry, environment, expected amount, method, provider and masked receiver/transfer data |
+| POST | `/api/payment-attempts/{attemptId}/cancel` | Authorized resource owner; `Idempotency-Key` | Cancel only an allowed non-terminal attempt; equivalent replay is safe |
+| POST | `/api/management/payment-attempts/{attemptId}/confirm-manual` | `PROPERTY_PAYMENT_CONFIRM_MANUAL`; `Idempotency-Key` | Confirm authentic transfer with reason and evidence reference; body cannot select property scope or settled amount |
+
+The create-attempt response includes `attemptId`, `reservationId`, `purpose`, `status`, `environment`, `expectedAmount`, `currency`, `expiresAt`, `method`, `provider`, masked receiver data, unique transfer content and `replayed`. QR and redirect fields are nullable for providers that do not use them.
+
+#### Provider callback
+
+| Method | Path | Authentication | Contract |
+|---|---|---|---|
+| POST | `/api/payment-providers/property/{provider}/callback` | Provider signature/merchant verification; no customer JWT | Verify provider identity, expected amount/currency/reference and replay identity; apply at most one property ledger effect |
+
+The callback response contains `accepted`, `replayed`, `errorCode`, `attemptId`, `status` and `transactionId`. An equivalent replay acknowledges the prior effect without creating another transaction or audit mutation.
+
+#### Charges, checkout, invoices and refunds
+
+| Method | Path | Required permission or authentication | Contract |
+|---|---|---|---|
+| POST | `/api/management/reservations/{reservationId}/charges/services` | `RESERVATION_SERVICE:CREATE` | Add a positive-quantity, server-priced service snapshot |
+| POST | `/api/management/reservations/{reservationId}/charges/surcharges` | `RESERVATION_SURCHARGE:CREATE` | Add a typed/reasoned surcharge; negative adjustments follow their dedicated policy |
+| POST | `/api/management/reservations/{reservationId}/checkout-preview` | `CHECKOUT:VIEW` | Recompute the authoritative folio without mutation |
+| POST | `/api/management/reservations/{reservationId}/checkout-override` | `RESERVATION_DEBT_OVERRIDE:APPROVE` | Authorize a debt/overpayment exception with an audit reason |
+| POST | `/api/management/reservations/{reservationId}/checkout` | `CHECKOUT:CREATE` | Atomically finalize invoice, financial state, room and housekeeping state; client totals/payment references are rejected |
+| GET | `/api/invoices/{invoiceId}` | Invoice owner or authorized property role | Return immutable invoice snapshot and allocations |
+| GET | `/api/invoices/{invoiceId}/pdf` | Same as invoice view | Render the finalized snapshot only |
+| POST | `/api/invoices/{invoiceId}/email` | Invoice view plus recipient policy | Queue/send finalized invoice and record notification evidence |
+| POST | `/api/management/invoices/{invoiceId}/credit-notes` | `INVOICE_ADJUST` | Append an authorized post-finalization correction |
+| GET | `/api/invoices/finalized/my` | Authenticated customer | Return only finalized invoices owned by the current customer |
+| POST | `/api/property-payments/{transactionId}/refunds` | Authorized transaction owner; `Idempotency-Key` | Request full/partial refund against remaining refundable balance |
+| POST | `/api/property-refunds/{refundId}/approve` | `PROPERTY_REFUND:APPROVE` | Approve according to refund policy |
+| POST | `/api/property-refunds/{refundId}/attempts` | `PROPERTY_REFUND:APPROVE` | Create a provider refund attempt from server-side provider configuration |
+| GET | `/api/property-refunds/{refundId}` | Authorized refund owner | Return refund state, amount, remaining balance and provider attempt status |
+| POST | `/api/payment-providers/property/{provider}/refund-callback` | Provider signature/merchant verification; no customer JWT | Verify and apply one refund provider result; equivalent replay is idempotent |
+
+Underpayment returns `409 OUTSTANDING_BALANCE`. Overpayment returns `409 OVERPAYMENT_REQUIRES_RESOLUTION` unless an approved override applies. Checkout returns the finalized invoice identity, financial summary and resulting operational states.
+
+#### Property revenue reporting
+
+| Method | Path | Required permission | Contract |
+|---|---|---|---|
+| GET | `/api/management/reports/property-revenue` | `REPORT:VIEW` | Filter by `from`, `to`, `basis`, property, provider, method, transaction type, room type and `zoneId`; return gross, refunds, credits, net, cash, invoiced, unpaid, held deposits, rows and reconciliation issues |
+| GET | `/api/management/reports/property-revenue/export` | `REPORT:EXPORT` | Export the same normalized report as `CSV`, `XLSX` or `PDF`; include checksum and row-count headers |
+
+#### Property response ownership
+
+Property Commerce response data may contain reservation/invoice identifiers for the authorized property only. It must not contain platform plan prices, subscription entitlement state or another property's ledger rows.
+
+### Platform Billing API
+
+Platform Billing is the owner-to-LuxeStay subscription boundary. Its transaction and refund APIs never write Property Commerce ledger rows; entitlement activation occurs only from verified platform payment evidence.
+
+#### Catalog, orders and entitlement
+
+| Method | Path | Required permission or authentication | Contract |
+|---|---|---|---|
+| GET | `/api/platform/subscription-plans` | Authenticated owner/authorized representative | Return active plans and feature limits; no merchant secrets |
+| POST | `/api/platform/subscription-orders` | `PLATFORM_BILLING:CREATE`; `Idempotency-Key` | Request identifies `targetHotelId` and `planId`; server snapshots price, duration and features |
+| GET | `/api/platform/subscription-orders/{orderId}` | `PLATFORM_BILLING:VIEW` and order ownership | Return safe order, payment-attempt and application status |
+| POST | `/api/platform/subscription-orders/{orderId}/payment-attempts` | `PLATFORM_BILLING:CREATE`; `Idempotency-Key` | Request selects provider/method; merchant configuration and amount are server-owned |
+| POST | `/api/platform/subscription-orders/{orderId}/cancel` | `PLATFORM_BILLING:UPDATE` and order ownership | Cancel only an unpaid order |
+| POST | `/api/platform/subscriptions/{targetHotelId}/renewal-orders` | `PLATFORM_BILLING:CREATE`; `Idempotency-Key` | Create a server-snapshotted renewal order |
+| POST | `/api/platform/subscriptions/{targetHotelId}/upgrade-orders` | `PLATFORM_BILLING:CREATE`; `Idempotency-Key` | Validate target plan and approved upgrade policy before creating the order |
+| POST | `/api/platform/subscriptions/{targetHotelId}/downgrade-orders` | `PLATFORM_BILLING:CREATE`; `Idempotency-Key` | Apply approved policy or return `409 POLICY_NOT_CONFIGURED` without mutation |
+| GET | `/api/platform/subscriptions/{targetHotelId}/history` | `PLATFORM_BILLING:VIEW` | Return contract and entitlement transition evidence |
+| GET | `/api/platform/subscriptions/{targetHotelId}/entitlement` | `PLATFORM_BILLING:VIEW` | Return the authoritative platform entitlement read model and limits |
+| GET | `/api/platform/subscription-policies` | `PLATFORM_BILLING:VIEW` | Return configured downgrade/proration availability; this is a read-only policy check |
+
+#### Platform callback and refunds
+
+| Method | Path | Authentication or permission | Contract |
+|---|---|---|---|
+| POST | `/api/payment-providers/platform/{provider}/callback` | Provider signature/system merchant verification; no customer JWT | Apply one platform transaction and one eligible subscription effect; replay is acknowledged without duplicate activation |
+| POST | `/api/platform-payments/{transactionId}/refunds` | `PLATFORM_REFUND:CREATE`; `Idempotency-Key` | Request a full/partial platform refund against refundable balance |
+| POST | `/api/platform-refunds/{refundId}/approve` | `PLATFORM_REFUND:APPROVE` | Approve according to platform refund policy |
+| POST | `/api/platform-refunds/{refundId}/attempts` | `PLATFORM_REFUND:APPROVE` | Create a provider refund attempt from server configuration |
+| GET | `/api/platform-refunds/{refundId}` | `PLATFORM_REFUND:VIEW` | Return refund state, amount and provider-attempt status |
+| POST | `/api/payment-providers/platform/{provider}/refund-callback` | Provider signature/system merchant verification; no customer JWT | Verify and apply one platform refund result |
+
+The platform callback response contains `accepted`, `replayed`, `errorCode`, `attemptId`, `attemptStatus`, `orderStatus`, `transactionPublicId` and `contractPublicId`. A successful callback is the only provider evidence that can move an order toward `PAID`/`APPLIED` and activate entitlement.
+
+#### Platform configuration and reporting
+
+| Method | Path | Required permission | Contract |
+|---|---|---|---|
+| GET | `/api/platform/payment-configuration` | `PAYMENT_READINESS:VIEW` | Return masked provider/environment configuration and readiness blockers |
+| PUT | `/api/platform/payment-configuration` | `PAYMENT_READINESS:UPDATE` | Update non-secret configuration references; production approval remains separate |
+| POST | `/api/platform/payment-configuration/validate?provider={provider}` | `PAYMENT_READINESS:UPDATE` | Run no-money readiness checks |
+| GET | `/api/platform/payment-configuration/{provider}/{environment}` | `PAYMENT_READINESS:VIEW` | Return one masked configuration/readiness record |
+| GET | `/api/admin/reports/platform-revenue` | `PLATFORM_REVENUE:VIEW` | Filter by `from`, `to`, `basis`, provider, method, transaction type, plan code and `zoneId`; return purchase/renewal/upgrade/refund/credit/net and reconciliation data |
+| GET | `/api/admin/reports/platform-revenue/export` | `PLATFORM_REVENUE:EXPORT` | Export the same normalized platform report and include checksum and row-count headers |
+
+### Financial API coverage
+
+| Requirement | Documentation evidence |
+|---|---|
+| FR-001: independent bounded contexts | Context table, Property Commerce API and Platform Billing API sections; separate callback, refund and reporting paths |
+| FR-046: stable financial errors and safe client contract | Stable error envelope, HTTP/retry matrix and callback/idempotency rules |
+
+The source-verified endpoint inventory is maintained against controller mappings; an endpoint not listed in these tables is not a financial contract merely because an entity or service exists.
 
 ## 7. PROPERTY IMPORT & CLAIM API
 
@@ -115,7 +421,7 @@ POST `/api/invoices/generate`
 - **Endpoint**: /api/admin/property-imports/search
 - **Method**: POST
 - **Role**: SUPER_ADMIN
-- **Permission**: PROPERTY_IMPORT:CREATE
+- **Permission**: `PROPERTY_IMPORT_CREATE` hoặc role `SUPER_ADMIN`
 - **Request Body**:
 `json
 {
@@ -141,12 +447,12 @@ POST `/api/invoices/generate`
 #### 7.1.2. Get Batch Items
 - **Endpoint**: /api/admin/property-imports/{batchId}/items
 - **Method**: GET
-- **Role**: SUPER_ADMIN
+- **Permission**: `PROPERTY_IMPORT_VIEW` hoặc role `SUPER_ADMIN`
 
 #### 7.1.3. Import Valid Items
 - **Endpoint**: /api/admin/property-imports/{batchId}/import
 - **Method**: POST
-- **Role**: SUPER_ADMIN
+- **Permission**: `PROPERTY_IMPORT_EXECUTE` hoặc role `SUPER_ADMIN`
 - **Response** (200 OK):
 `json
 {
@@ -159,7 +465,7 @@ POST `/api/invoices/generate`
 #### 7.2.1. Request Claim (User)
 - **Endpoint**: /api/properties/{propertyId}/claim
 - **Method**: POST
-- **Role**: USER
+- **Authentication**: `isAuthenticated()`; controller hiện chưa lấy user id từ principal và đang dùng fallback id trong source, vì vậy claim chỉ được ghi `PARTIAL` cho đến khi được sửa và kiểm thử.
 - **Request Body**:
 `json
 {
@@ -171,13 +477,15 @@ POST `/api/invoices/generate`
 #### 7.2.2. Get Claim Requests (Admin)
 - **Endpoint**: /api/admin/property-claims
 - **Method**: GET
-- **Role**: SUPER_ADMIN
+- **Permission**: `PROPERTY_CLAIM_VIEW` hoặc role `SUPER_ADMIN`
 
 #### 7.2.3. Approve Claim
 - **Endpoint**: /api/admin/property-claims/{id}/approve
 - **Method**: POST
-- **Role**: SUPER_ADMIN
+- **Permission**: `PROPERTY_CLAIM_APPROVE` hoặc role `SUPER_ADMIN`
 - **Response** (200 OK): Grants the user OWNER role for the property.
+
+`reject` dùng cùng permission `PROPERTY_CLAIM_APPROVE`. Quyền reviewer và requester phải được lấy từ principal; không dùng id cố định trong tài liệu nộp.
 # Bổ sung API: Unicode, autocomplete và inventory (2026-07-15)
 
 ## `GET /api/public/locations/search`
@@ -420,16 +728,34 @@ Response 401/403/404/409/422/500 phải tạo state có thể phục hồi. UI g
 
 - Notification panel và AI Concierge là control của `AdminLayout`, không phải route `/admin/notifications` hoặc `/admin/ai-assistant`.
 - `POST /api/ai/chat` yêu cầu quyền `AI_CHAT:CREATE`, nhưng hiện lưu system notification trước khi trả lời; lỗi hoặc treo ở notification persistence vì vậy có thể chặn toàn bộ phản hồi AI. Frontend áp dụng timeout và retry để không giữ trạng thái typing vô hạn.
-- Hiện tại `/api/notifications/**` được `permitAll`, `NotificationController` không có authorization annotation, WebSocket `/ws` cho phép mọi origin và client subscribe topic chung `/topic/notifications`. Trạng thái này không đủ để coi notification là admin-only hoặc tenant-safe.
-- Không siết quyền ngầm trong đợt UI audit. Feature bảo mật riêng phải chốt admin-only hay per-user scope, WebSocket authentication/subscription rules, quyền mark-read và test chống đọc/sửa notification của actor khác trước khi thay contract.
+- `GET /api/notifications` và `POST /api/notifications/{id}/read` yêu cầu JWT cùng `REPORT:VIEW`. Danh sách chỉ gồm notification hệ thống (`user_id IS NULL`) và notification nhắm tới principal hiện tại; actor không được mark-read notification của user khác.
+- Notification JSON dùng boolean `isRead`; field legacy `read` không thuộc contract. Client phải giữ trạng thái đã đọc sau khi tải lại danh sách.
+- SockJS handshake `/ws/**` chỉ được mở để thiết lập transport. STOMP `CONNECT` bắt buộc `Authorization: Bearer <JWT>` và origin phải nằm trong `app.websocket.allowed-origins`.
+- Subscription hợp lệ chỉ gồm `/topic/admin/notifications` cho principal có `REPORT:VIEW` và `/user/queue/notifications` cho principal đã xác thực. Client không được publish notification qua STOMP.
+- System notification được push tới protected admin topic; user-targeted notification được push bằng Spring user destination. Topic cũ `/topic/notifications` không còn là contract hợp lệ.
 
 ## Customer support chat contract decision (2026-07-28)
 
 - Mô hình được chọn là **hàng đợi CSKH trung tâm LuxeStay**, thuộc module `SYSTEM` và dùng function `AI_CHAT`. Đây không phải chat nhân viên theo property; function `HOTEL.CHAT` và menu `/admin/chat` trùng lặp phải được loại khỏi seed/quyền vận hành khách sạn.
-- Chat dùng endpoint SockJS/STOMP riêng `GET /ws-chat/**`. HTTP handshake được mở để trình duyệt thiết lập SockJS, nhưng STOMP `CONNECT` bắt buộc header `Authorization: Bearer <JWT>` và chỉ chấp nhận origin cấu hình trong `app.websocket.allowed-origins`. Endpoint `/ws` hiện tại của notification là contract riêng và không được suy diễn là đã an toàn bởi thay đổi này.
+- Chat dùng endpoint SockJS/STOMP riêng `GET /ws-chat/**`. HTTP handshake được mở để trình duyệt thiết lập SockJS, nhưng STOMP `CONNECT` bắt buộc header `Authorization: Bearer <JWT>` và chỉ chấp nhận origin cấu hình trong `app.websocket.allowed-origins`. Chat và notification có session marker/interceptor riêng để không dùng nhầm destination policy.
 - Customer gửi `SEND /app/chat.support.send` với payload `{ "content": "..." }`. Sender luôn lấy từ JWT principal; client không gửi `senderId`, `receiverId` hoặc account hỗ trợ. Backend lưu customer message với `receiver_id = 0` để biểu diễn hàng đợi trung tâm và phát tới `/topic/support/messages`.
 - Support subscribe `/topic/support/messages` và gửi `SEND /app/chat.support.reply` với payload `{ "customerId": 123, "content": "..." }`. Subscribe cần `AI_CHAT:VIEW`; reply cần `AI_CHAT:CREATE`. Backend chỉ cho reply tới customer đã có conversation trong hàng đợi trung tâm.
 - Customer và support đều nhận reply cá nhân qua authenticated user destination `/user/queue/messages`; không subscribe `/user/{id}/queue/messages`. `convertAndSendToUser` dùng username của principal/customer, không dùng ID do client cung cấp.
 - `GET /api/chat/me/history` chỉ trả lịch sử của principal hiện tại. `GET /api/chat/support/conversations` và `GET /api/chat/support/conversations/{customerId}` yêu cầu `AI_CHAT:VIEW`; endpoint support chỉ đọc customer đã xuất hiện trong hàng đợi.
 - Nội dung rỗng hoặc dài hơn 2.000 ký tự bị từ chối. REST trả 401/403/404 theo authentication, permission hoặc conversation scope; STOMP trả error frame và không persist message khi CONNECT/SEND/SUBSCRIBE không hợp lệ.
 - Regression bắt buộc gồm unauthenticated connect, sender spoofing, arbitrary history IDs, actor thiếu `AI_CHAT`, cross-account subscribe, sai customer recipient, user-destination delivery, reconnect/offline/send failure và accessible open/close/dialog controls.
+## Receptionist admin access contract (2026-08-03)
+
+- `GET /api/users/customers` returns customers visible to the caller and
+  requires `CUSTOMER:VIEW`.
+- `POST /api/users/customers` and `PUT /api/users/customers/{id}` require
+  `CUSTOMER:CREATE` and `CUSTOMER:UPDATE`; the server always applies the
+  `CUSTOMER` role and preserves tenant scope.
+- `GET /api/v1/hotels/accessible` returns the caller's assigned properties for
+  inventory selectors. System administrators retain the global property list.
+- Receptionist inventory reads remain protected by `ROOM_TYPE:VIEW` and
+  `ROOM:VIEW`; reservation and invoice reads use `RESERVATION:VIEW` and
+  `INVOICE:VIEW` respectively.
+- Frontend screens must not call optional service endpoints when the account
+  lacks `HOTEL_SERVICE:VIEW`; a denied optional request must not trigger portal
+  navigation.

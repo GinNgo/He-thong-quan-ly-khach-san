@@ -1,0 +1,30 @@
+P0-02D focused reproduction - cleaned stack trace
+Date: 2026-08-06 Asia/Saigon
+
+Suite: com.hotel.integration.HotelControllerIntegrationTest
+Before: Tests run: 2, Failures: 0, Errors: 2, Skipped: 0
+
+Root exception:
+org.springframework.beans.factory.UnsatisfiedDependencyException:
+Error creating bean with name 'hotelController':
+Unsatisfied dependency expressed through field 'publicPlacementDisclosureService'.
+
+Caused by:
+org.springframework.beans.factory.NoSuchBeanDefinitionException:
+No qualifying bean of type 'com.hotel.services.PublicPlacementDisclosureService' available.
+
+Spring diagnostic:
+Field publicPlacementDisclosureService in com.hotel.controllers.HotelController
+required a bean of type com.hotel.services.PublicPlacementDisclosureService
+that could not be found.
+
+Repeated test:
+java.lang.IllegalStateException:
+ApplicationContext failure threshold (1) exceeded; skipping repeated attempt.
+
+Dependency chain:
+@WebMvcTest(HotelController.class)
+  -> HotelController field injection
+  -> PublicPlacementDisclosureService missing from MVC slice
+
+Full raw output: P0-02D-focused-before.log

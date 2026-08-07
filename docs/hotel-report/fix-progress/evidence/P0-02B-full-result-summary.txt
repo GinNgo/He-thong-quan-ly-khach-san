@@ -1,0 +1,9 @@
+﻿P0-02B full backend regression result
+Date: 2026-08-06 Asia/Saigon
+Before: total 833, PASS 806, FAIL 9, ERROR 18, SKIPPED 0
+After: total 833, PASS 812, FAIL 9, ERROR 12, SKIPPED 0
+Delta: PASS +6, FAIL 0, ERROR -6, SKIPPED 0
+SubscriptionControllerIntegrationTest after: 6 PASS, 0 FAIL, 0 ERROR
+New failures/errors attributable to P0-02B: none
+Package: PASS
+Production code changed: no

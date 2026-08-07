@@ -3,6 +3,74 @@
     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
+.auth-field {
+    position: relative;
+}
+
+.auth-input {
+    width: 100%;
+    min-height: 38px;
+    padding: 0.5rem 2.35rem 0.5rem 2rem;
+    border: 1px solid #c4c6ce;
+    border-radius: 0.375rem;
+    background: #fff;
+    color: #191c20;
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.auth-input--password {
+    padding-right: 2.55rem;
+}
+
+.field-icon {
+    position: absolute;
+    top: 50%;
+    z-index: 1;
+    display: grid;
+    width: 1.25rem;
+    height: 1.25rem;
+    place-items: center;
+    margin: 0;
+    color: #74777f;
+    font-size: 1rem;
+    line-height: 1;
+    transform: translateY(-50%);
+}
+
+.field-icon--start {
+    left: 0.55rem;
+    pointer-events: none;
+}
+
+.field-icon--end {
+    right: 0.45rem;
+}
+
+.password-toggle {
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+}
+
+.password-toggle:hover {
+    color: #000f22;
+    background: rgb(0 15 34 / 7%);
+}
+
+.password-toggle:focus-visible {
+    outline: 3px solid rgb(0 15 34 / 16%);
+    outline-offset: 1px;
+}
+
+.country-code-arrow {
+    right: 0.2rem;
+    pointer-events: none;
+}
+
 .form-input-focus:focus {
     outline: none;
     border-color: #000f22;

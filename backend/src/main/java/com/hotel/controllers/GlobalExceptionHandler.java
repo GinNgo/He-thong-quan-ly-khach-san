@@ -45,7 +45,7 @@ public class GlobalExceptionHandler {
         String correlationId = CorrelationIdSupport.resolve(request);
         log.warn("Financial request rejected code={} path={} correlationId={}",
                 ex.code().name(), request.getRequestURI(), correlationId);
-        return response(ex.code().status(), ex.code().name(), ex.getMessage(), request,
+        return response(ex.code().status(), ex.code().name(), ex.code().defaultMessage(), request,
                 ex.fieldErrors(), ex.code().retryable(), ex.currentState(), correlationId);
     }
 
@@ -108,7 +108,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleBadRequest(
             IllegalArgumentException ex,
             HttpServletRequest request) {
-        return response(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", safeMessage(ex, "The request is invalid."),
+        return response(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "The request is invalid.",
                 request, Map.of(), false, null);
     }
 
@@ -116,7 +116,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleConflict(
             IllegalStateException ex,
             HttpServletRequest request) {
-        return response(HttpStatus.CONFLICT, "CONFLICT", safeMessage(ex, "The request conflicts with current state."),
+        return response(HttpStatus.CONFLICT, "CONFLICT", "The request conflicts with current state.",
                 request, Map.of(), false, null);
     }
 
@@ -125,7 +125,7 @@ public class GlobalExceptionHandler {
             PropertyNotOperationalException ex,
             HttpServletRequest request) {
         return response(HttpStatus.CONFLICT, PropertyNotOperationalException.ERROR_CODE,
-                ex.getMessage(), request, Map.of(), false, ex.currentState());
+                PropertyNotOperationalException.DEFAULT_MESSAGE, request, Map.of(), false, ex.currentState());
     }
 
     @ExceptionHandler(OptimisticLockingFailureException.class)
@@ -149,7 +149,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleRegistrationConflict(
             RegistrationConflictException ex,
             HttpServletRequest request) {
-        return response(HttpStatus.CONFLICT, ex.code(), ex.getMessage(), request,
+        return response(HttpStatus.CONFLICT, ex.code(), registrationConflictMessage(ex.code()), request,
                 ex.fieldErrors(), false, null);
     }
 
@@ -173,7 +173,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handlePasswordChange(
             PasswordChangeException ex,
             HttpServletRequest request) {
-        return response(ex.getStatus(), ex.getCode(), ex.getMessage(), request,
+        return response(ex.getStatus(), ex.getCode(), "The current password is incorrect.", request,
                 Map.of(), false, null);
     }
 
@@ -208,7 +208,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleNotFound(
             ResourceNotFoundException ex,
             HttpServletRequest request) {
-        return response(HttpStatus.NOT_FOUND, "NOT_FOUND", safeMessage(ex, "The requested resource was not found."),
+        return response(HttpStatus.NOT_FOUND, "NOT_FOUND", "The requested resource was not found.",
                 request, Map.of(), false, null);
     }
 
@@ -268,7 +268,11 @@ public class GlobalExceptionHandler {
                 .body(body);
     }
 
-    private String safeMessage(RuntimeException ex, String fallback) {
-        return ex.getMessage() == null || ex.getMessage().isBlank() ? fallback : ex.getMessage();
+    private String registrationConflictMessage(String code) {
+        return switch (code) {
+            case RegistrationConflictException.USERNAME_CODE -> "An account with this username already exists.";
+            case RegistrationConflictException.EMAIL_CODE -> "An account with this email already exists.";
+            default -> "The registration request conflicts with an existing account.";
+        };
     }
 }

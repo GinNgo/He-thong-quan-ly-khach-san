@@ -9,7 +9,18 @@ import com.hotel.dtos.SubscriptionPlanDTO;
 import com.hotel.dtos.SubscriptionUsageDTO;
 import com.hotel.entities.User;
 import com.hotel.observability.OperationalMetrics;
+<<<<<<< HEAD
 import com.hotel.security.*;
+=======
+import com.hotel.security.CustomUserDetails;
+import com.hotel.repositories.AccountSubscriptionRepository;
+import com.hotel.repositories.SubscriptionPlanRepository;
+import com.hotel.security.JwtAccessDeniedHandler;
+import com.hotel.security.JwtAuthFilter;
+import com.hotel.security.JwtAuthenticationEntryPoint;
+import com.hotel.security.JwtTokenProvider;
+import com.hotel.security.TenantFilterInterceptor;
+>>>>>>> codex/ui-functional-audit-polish
 import com.hotel.services.SubscriptionCatalogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,7 +55,36 @@ class SubscriptionControllerIntegrationTest {
     @MockBean TenantFilterInterceptor tenantFilterInterceptor;
     @MockBean OperationalMetrics operationalMetrics;
 
+<<<<<<< HEAD
     @BeforeEach void allowTenantFilter() {
+=======
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private SubscriptionPlanRepository planRepository;
+
+    @MockBean
+    private AccountSubscriptionRepository accountSubscriptionRepository;
+
+    @MockBean
+    private SubscriptionFeatureService featureService;
+
+    @MockBean
+    private SubscriptionCatalogService catalogService;
+
+    @MockBean
+    private UserDetailsService userDetailsService;
+
+    @MockBean
+    private TenantFilterInterceptor tenantFilterInterceptor;
+
+    @MockBean
+    private OperationalMetrics operationalMetrics;
+
+    @BeforeEach
+    void allowMvcRequestsThroughTenantFilter() {
+>>>>>>> codex/ui-functional-audit-polish
         when(tenantFilterInterceptor.preHandle(any(), any(), any())).thenReturn(true);
     }
 

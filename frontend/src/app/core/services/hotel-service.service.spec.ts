@@ -20,7 +20,7 @@ describe('HotelServiceService', () => {
   afterEach(() => http.verify());
 
   it('sends the selected property outside the mutable service payload', () => {
-    service.getServices(10).subscribe();
+    service.getServicesForHotel(10).subscribe();
     const list = http.expectOne(`${environment.apiUrl}/services?hotelId=10`);
     expect(list.request.method).toBe('GET');
     list.flush([]);
@@ -36,5 +36,10 @@ describe('HotelServiceService', () => {
     expect(create.request.method).toBe('POST');
     expect(create.request.body.hotelId).toBeUndefined();
     create.flush({});
+  });
+
+  it('fails locally instead of issuing an ambiguous catalog request', () => {
+    expect(() => service.getServicesForHotel(0)).toThrowError(/hotelId/);
+    http.expectNone(`${environment.apiUrl}/services`);
   });
 });

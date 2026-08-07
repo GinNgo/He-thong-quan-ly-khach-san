@@ -348,6 +348,13 @@ Angular 22 của dự án chạy không khai báo `zone.js`. Component cập nh�
 
 Mọi async page phải thoát khỏi loading ở cả success và error. Retry button phải gọi lại cùng request contract và có `aria-live`/`role="alert"` phù hợp.
 
+## Authenticated Realtime Channels
+
+- SockJS transport URL có thể mở ở HTTP layer, nhưng STOMP `CONNECT` phải gửi JWT trong `connectHeaders`; không được truyền token qua query string.
+- Notification admin chỉ subscribe `/topic/admin/notifications`; notification cá nhân chỉ subscribe `/user/queue/notifications`. Không dùng topic global `/topic/notifications`.
+- Chat và notification dùng endpoint/session policy riêng. Client chỉ subscribe/publish destination được backend contract công bố.
+- Realtime payload phải được parse với typed interface và chuyển vào Angular state qua signal hoặc `NgZone`/`ChangeDetectorRef` theo zoneless rule.
+
 ## Canonical Navigation
 
 - Menu động, quick search, breadcrumb và page title chỉ dùng route có trong `app.routes.ts`.

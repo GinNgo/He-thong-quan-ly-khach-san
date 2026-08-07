@@ -42,8 +42,8 @@ describe('PlatformPaymentPanelComponent', () => {
     fixture.detectChanges();
 
     const element: HTMLElement = fixture.nativeElement;
-    expect(element.textContent).toContain('Waiting for provider');
-    expect(element.textContent).toContain('No entitlement change yet');
-    expect(element.textContent).not.toContain('Activate subscription');
+    expect(element.textContent).toContain('Chờ nhà cung cấp');
+    expect(element.textContent).toContain('Gói chưa thay đổi');
+    expect(element.textContent).not.toContain('Kích hoạt gói');
   });
 });

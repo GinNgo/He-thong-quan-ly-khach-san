@@ -7,6 +7,9 @@ import com.hotel.entities.Role;
 import com.hotel.entities.RolePermission;
 import com.hotel.entities.Room;
 import com.hotel.entities.RoomType;
+import com.hotel.entities.PlanFeature;
+import com.hotel.entities.SubscriptionFeature;
+import com.hotel.entities.SubscriptionPlan;
 import com.hotel.entities.User;
 import com.hotel.repositories.AppFunctionRepository;
 import com.hotel.repositories.AppModuleRepository;
@@ -16,6 +19,8 @@ import com.hotel.repositories.RoleRepository;
 import com.hotel.repositories.RoomRepository;
 import com.hotel.repositories.RoomTypeRepository;
 import com.hotel.repositories.UserRepository;
+import com.hotel.repositories.PlanFeatureRepository;
+import com.hotel.repositories.SubscriptionFeatureRepository;
 import com.hotel.security.ActionCode;
 import com.hotel.security.FunctionCode;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +50,8 @@ public class DataInitializer implements CommandLineRunner {
     private final com.hotel.repositories.ReservationRepository reservationRepository;
     private final com.hotel.repositories.InvoiceRepository invoiceRepository;
     private final com.hotel.repositories.SubscriptionPlanRepository subscriptionPlanRepository;
+    private final PlanFeatureRepository planFeatureRepository;
+    private final SubscriptionFeatureRepository subscriptionFeatureRepository;
     private final PasswordEncoder passwordEncoder;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
@@ -76,6 +83,7 @@ public class DataInitializer implements CommandLineRunner {
         initFunction(hotelModule, FunctionCode.CHECKIN.name(), "Nhận phòng", null, "pi pi-sign-in", 41);
         initFunction(hotelModule, FunctionCode.RESERVATION_CANCEL.name(), "Hủy đặt phòng vận hành", null, "pi pi-times-circle", 42);
         initFunction(hotelModule, FunctionCode.RESERVATION_NO_SHOW.name(), "Đánh dấu khách không đến", null, "pi pi-user-minus", 43);
+        initFunction(hotelModule, FunctionCode.HOUSEKEEPING.name(), "Housekeeping", "/management/housekeeping", "pi pi-sparkles", 44);
         deprecateFunction("CHAT");
 
         initFunction(financeModule, FunctionCode.INVOICE.name(), "Hóa đơn", "/admin/invoices", "pi pi-file-o", 1);
@@ -103,6 +111,7 @@ public class DataInitializer implements CommandLineRunner {
         Role accountantRole = initRole("ACCOUNTANT", "Kế toán", "Theo dõi hóa đơn và thanh toán.");
         initRole("CUSTOMER", "Khách hàng", "Tài khoản khách đặt phòng.");
 
+        Role housekeepingRole = initRole("HOUSEKEEPING", "Housekeeping", "Housekeeping staff for property operations.");
         Hotel defaultHotel = ensureDefaultHotel();
         mapExistingRoomTypesToDefaultHotel(defaultHotel);
         ensureDefaultInventory(defaultHotel);
@@ -112,11 +121,12 @@ public class DataInitializer implements CommandLineRunner {
         syncAllPermissions(adminRole, allActions);
         ensurePermission(propertyOwnerRole, FunctionCode.USER,
                 ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.DELETE);
-        seedReservationLifecyclePermissions(propertyOwnerRole);
+        seedDefaultRolePermissions(propertyOwnerRole);
         seedDefaultRolePermissions(hotelAdminRole);
         seedDefaultRolePermissions(hotelManagerRole);
         seedReceptionistPermissions(receptionistRole);
         seedAccountantPermissions(accountantRole);
+        seedHousekeepingPermissions(housekeepingRole);
 
         ensureAdminUser(superAdminRole);
         
@@ -198,9 +208,15 @@ public class DataInitializer implements CommandLineRunner {
         role.setCode(code);
         role.setName(name);
         role.setDescription(description);
+<<<<<<< HEAD
         role.setStatus(Role.ACTIVE_STATUS);
         role.setSystemRole(Role.isSystemCode(code));
         role.enforceSystemIntegrity();
+=======
+        role.setStatus("ACTIVE");
+        role.setSystemRole(Set.of("SUPER_ADMIN", "ADMIN", "CUSTOMER", "PROPERTY_OWNER", "HOTEL_ADMIN",
+                "HOTEL_MANAGER", "RECEPTIONIST", "ACCOUNTANT", "HOUSEKEEPING").contains(code));
+>>>>>>> codex/ui-functional-audit-polish
         return roleRepository.save(role);
     }
 
@@ -297,6 +313,10 @@ public class DataInitializer implements CommandLineRunner {
         ensurePermission(role, FunctionCode.HOTEL_SERVICE, manage);
         ensurePermission(role, FunctionCode.INVOICE, manageAndExport);
         ensurePermission(role, FunctionCode.RESERVATION_PAYMENT, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE);
+        ensurePermission(role, FunctionCode.PROPERTY_PAYMENT_CONFIG, ActionCode.VIEW | ActionCode.UPDATE);
+        ensurePermission(role, FunctionCode.PROPERTY_REFUND, ActionCode.VIEW | ActionCode.APPROVE);
+        ensurePermission(role, FunctionCode.PLATFORM_BILLING, ActionCode.VIEW | ActionCode.CREATE);
+        ensurePermission(role, FunctionCode.HOUSEKEEPING, ActionCode.VIEW | ActionCode.UPDATE);
     }
 
     private void seedReceptionistPermissions(Role role) {
@@ -314,6 +334,12 @@ public class DataInitializer implements CommandLineRunner {
         ensurePermission(role, FunctionCode.REPORT, ActionCode.VIEW);
         ensurePermission(role, FunctionCode.INVOICE, invoiceMask);
         ensurePermission(role, FunctionCode.RESERVATION_PAYMENT, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.EXPORT);
+        ensurePermission(role, FunctionCode.PROPERTY_REFUND, ActionCode.VIEW | ActionCode.APPROVE);
+    }
+
+    private void seedHousekeepingPermissions(Role role) {
+        mergePermission(role, FunctionCode.HOUSEKEEPING,
+                ActionCode.VIEW | ActionCode.UPDATE | ActionCode.APPROVE);
     }
 
     private void seedReservationLifecyclePermissions(Role role) {
@@ -344,6 +370,15 @@ public class DataInitializer implements CommandLineRunner {
         }
         existing.setActionMask(actionMask);
         rolePermissionRepository.save(existing);
+    }
+
+    private void mergePermission(Role role, FunctionCode functionCode, int actionMask) {
+        AppFunction function = appFunctionRepository.findByCode(functionCode.name());
+        if (function == null) {
+            return;
+        }
+        RolePermission existing = rolePermissionRepository.findByRoleIdAndFunctionId(role.getId(), function.getId());
+        setPermission(role, function, existing == null ? actionMask : existing.getActionMask() | actionMask);
     }
 
     private void ensureAdminUser(Role superAdminRole) {
@@ -464,6 +499,7 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void seedSubscriptionPlans() {
+<<<<<<< HEAD
         if (subscriptionPlanRepository.count() == 0) {
             com.hotel.entities.SubscriptionPlan freePlan = new com.hotel.entities.SubscriptionPlan();
             freePlan.setCode("FREE");
@@ -508,6 +544,57 @@ public class DataInitializer implements CommandLineRunner {
             premiumPlan.setStatus("ACTIVE");
             premiumPlan.setActivatedAt(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC));
             subscriptionPlanRepository.save(premiumPlan);
+=======
+        seedFeatureCatalog();
+        ensurePlan("FREE", "Gói Miễn phí", "Free Plan", "MONTHLY", BigDecimal.ZERO, true,
+                java.util.Map.of("MAX_PROPERTIES", 1, "MAX_ROOM_TYPES", 3, "MAX_ROOMS", 10, "MAX_IMAGES", 15, "MAX_STAFF", 0, "PROMOTION_CAMPAIGNS", 0, "SPONSORED_PLACEMENTS", 0));
+        ensurePlan("STANDARD", "Gói Tiêu chuẩn", "Standard Plan", "MONTHLY", new BigDecimal("500000"), false,
+                java.util.Map.of("MAX_PROPERTIES", 3, "MAX_ROOM_TYPES", 20, "MAX_ROOMS", 100, "MAX_IMAGES", 300, "MAX_STAFF", 10, "PROMOTION_CAMPAIGNS", 5, "SPONSORED_PLACEMENTS", 2));
+        ensurePlan("PREMIUM", "Gói Cao cấp", "Premium Plan", "YEARLY", new BigDecimal("5000000"), false,
+                java.util.Map.of("MAX_PROPERTIES", 10, "MAX_ROOM_TYPES", 100, "MAX_ROOMS", 1000, "MAX_IMAGES", 3000, "MAX_STAFF", 100, "PROMOTION_CAMPAIGNS", 20, "SPONSORED_PLACEMENTS", 10));
+        ensurePlan("LIFETIME", "Gói Vĩnh viễn", "Lifetime Plan", "ONCE", new BigDecimal("50000000"), true,
+                java.util.Map.of("MAX_PROPERTIES", -1, "MAX_ROOM_TYPES", -1, "MAX_ROOMS", -1, "MAX_IMAGES", -1, "MAX_STAFF", -1, "PROMOTION_CAMPAIGNS", -1, "SPONSORED_PLACEMENTS", -1));
+    }
+
+    private void seedFeatureCatalog() {
+        ensureFeature("MAX_PROPERTIES", "Số cơ sở", "Properties");
+        ensureFeature("MAX_ROOM_TYPES", "Loại phòng", "Room types");
+        ensureFeature("MAX_ROOMS", "Phòng", "Rooms");
+        ensureFeature("MAX_IMAGES", "Hình ảnh", "Images");
+        ensureFeature("MAX_STAFF", "Nhân viên", "Staff");
+        ensureFeature("PROMOTION_CAMPAIGNS", "Chiến dịch khuyến mãi", "Promotion campaigns");
+        ensureFeature("SPONSORED_PLACEMENTS", "Vị trí tài trợ", "Sponsored placements");
+    }
+
+    private void ensureFeature(String code, String nameVi, String nameEn) {
+        SubscriptionFeature feature = subscriptionFeatureRepository.findByCode(code).orElseGet(SubscriptionFeature::new);
+        feature.setCode(code);
+        if (feature.getNameVi() == null || feature.getNameVi().isBlank()) feature.setNameVi(nameVi);
+        if (feature.getNameEn() == null || feature.getNameEn().isBlank()) feature.setNameEn(nameEn);
+        if (feature.getValueType() == null || feature.getValueType().isBlank()) feature.setValueType("NUMERIC");
+        subscriptionFeatureRepository.save(feature);
+    }
+
+    private void ensurePlan(String code, String nameVi, String nameEn, String billingType,
+                            BigDecimal price, boolean lifetime, java.util.Map<String, Integer> limits) {
+        SubscriptionPlan plan = subscriptionPlanRepository.findByCode(code).orElseGet(SubscriptionPlan::new);
+        boolean newPlan = plan.getId() == null;
+        plan.setCode(code);
+        if (plan.getNameVi() == null || plan.getNameVi().isBlank()) plan.setNameVi(nameVi);
+        if (plan.getNameEn() == null || plan.getNameEn().isBlank()) plan.setNameEn(nameEn);
+        if (plan.getBillingType() == null || plan.getBillingType().isBlank()) plan.setBillingType(billingType);
+        if (plan.getPrice() == null) plan.setPrice(price);
+        if (newPlan || plan.getIsLifetime() == null) plan.setIsLifetime(lifetime);
+        if (plan.getStatus() == null || plan.getStatus().isBlank()) plan.setStatus("ACTIVE");
+        plan = subscriptionPlanRepository.save(plan);
+        for (var entry : limits.entrySet()) {
+            PlanFeature feature = planFeatureRepository.findByPlanIdAndFeatureCode(plan.getId(), entry.getKey())
+                    .orElseGet(PlanFeature::new);
+            feature.setPlan(plan);
+            feature.setFeatureCode(entry.getKey());
+            feature.setLimitValue(entry.getValue());
+            planFeatureRepository.save(feature);
+>>>>>>> codex/ui-functional-audit-polish
         }
     }
 }

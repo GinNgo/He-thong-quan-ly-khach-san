@@ -9,6 +9,10 @@ public interface RoomTypeImageRepository extends JpaRepository<RoomTypeImage, Lo
     List<RoomTypeImage> findByRoomTypeIdOrderBySortOrderAsc(Long roomTypeId);
     boolean existsByRoomTypeIdAndImageUrl(Long roomTypeId, String imageUrl);
     long countByRoomTypeHotelId(Long hotelId);
+<<<<<<< HEAD
     long countByMediaId(Long mediaId);
+=======
+    long countByIsDemoTrue();
+>>>>>>> codex/ui-functional-audit-polish
     void deleteByRoomTypeId(Long roomTypeId);
 }

@@ -3,6 +3,9 @@ package com.hotel.controllers;
 import com.hotel.dtos.LocationSuggestionDTO;
 import com.hotel.dtos.RoomTypeDTO;
 import com.hotel.dtos.SearchSuggestionGroupsDTO;
+import com.hotel.dtos.home.HomeRecommendationDestinationDTO;
+import com.hotel.dtos.home.HomeRecommendationResponseDTO;
+import com.hotel.services.HomeRecommendationService;
 import com.hotel.services.PublicSearchSuggestionService;
 import com.hotel.services.RoomTypeService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +30,7 @@ public class PublicDiscoveryController {
 
     private final PublicSearchSuggestionService suggestionService;
     private final RoomTypeService roomTypeService;
+    private final HomeRecommendationService homeRecommendationService;
 
     @GetMapping("/search/suggestions")
     public ResponseEntity<SearchSuggestionGroupsDTO> suggestions(
@@ -45,6 +49,32 @@ public class PublicDiscoveryController {
                 .cacheControl(CacheControl.maxAge(Duration.ofSeconds(60)).cachePublic().mustRevalidate())
                 .header("X-LuxeStay-Freshness-Seconds", "60")
                 .body(suggestionService.popular(limit));
+    }
+
+    @GetMapping("/home/recommendation-destinations")
+    public ResponseEntity<List<HomeRecommendationDestinationDTO>> recommendationDestinations(
+            @RequestParam(defaultValue = "5") int limit,
+            @RequestParam(required = false) Long preferredProvinceId,
+            @RequestParam(required = false, defaultValue = "vi") String locale) {
+        return ResponseEntity.ok(homeRecommendationService.recommendationDestinations(
+                preferredProvinceId, limit, locale));
+    }
+
+    @GetMapping("/home/recommendations")
+    public ResponseEntity<HomeRecommendationResponseDTO> recommendations(
+            @RequestParam Long provinceId,
+            @RequestParam(required = false) String checkInDate,
+            @RequestParam(required = false) String checkOutDate,
+            @RequestParam(required = false) String stayType,
+            @RequestParam(required = false) Integer adultCount,
+            @RequestParam(required = false) Integer childCount,
+            @RequestParam(required = false) Integer roomCount,
+            @RequestParam(defaultValue = "8") int limit,
+            @RequestParam(required = false, defaultValue = "vi") String locale) {
+        return ResponseEntity.ok(homeRecommendationService.recommendations(
+                new HomeRecommendationService.RecommendationQuery(
+                        provinceId, checkInDate, checkOutDate, stayType,
+                        adultCount, childCount, roomCount, limit, locale)));
     }
 
     @GetMapping("/properties/{hotelId}/room-types")

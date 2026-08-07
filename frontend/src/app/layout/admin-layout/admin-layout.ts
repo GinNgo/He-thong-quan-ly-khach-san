@@ -6,7 +6,12 @@ import { filter } from 'rxjs/operators';
 import { Sidebar } from '../sidebar/sidebar';
 import { AuthService } from '../../core/services/auth';
 import { AiAssistant } from '../../features/ai-assistant/ai-assistant';
-import { NotificationService, AppNotification } from '../../core/services/notification.service';
+import {
+  NotificationService,
+  AppNotification,
+  NotificationHistoryPage,
+  NotificationConnectionState,
+} from '../../core/services/notification.service';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { Subscription } from 'rxjs';
@@ -36,7 +41,17 @@ export class AdminLayout implements OnInit, OnDestroy {
   currentAvatarUrl = '';
   currentRoleLabel = 'Quản trị hệ thống';
   notificationsLoading = true;
+  notificationsLoadingMore = false;
   notificationsError = '';
+  notificationActionError = '';
+  notificationPage = 0;
+  readonly notificationPageSize = 20;
+  notificationTotalElements = 0;
+  notificationHasMore = false;
+  notificationRetentionDays = 90;
+  readonly notificationMarkingIds = new Set<number>();
+  notificationConnectionState: NotificationConnectionState = 'idle';
+  notificationConnectionMessage = '';
 
   readonly quickLinks = [
     { label: 'Bảng điều khiển', url: '/admin/dashboard' },
@@ -60,6 +75,8 @@ export class AdminLayout implements OnInit, OnDestroy {
   notifications: AppNotification[] = [];
   unreadCount = 0;
   private notifSub?: Subscription;
+  private notificationConnectionSub?: Subscription;
+  private notificationConnectionErrorSub?: Subscription;
   private authSub?: Subscription;
   private routerSub?: Subscription;
   private apiOrigin = environment.apiUrl.replace(/\/api\/?$/, '');
@@ -100,6 +117,14 @@ export class AdminLayout implements OnInit, OnDestroy {
       error: () => this.cdr.markForCheck()
     });
 
+    this.notificationConnectionSub = this.notificationService.connectionState$.subscribe((state) => {
+      this.notificationConnectionState = state;
+      this.cdr.markForCheck();
+    });
+    this.notificationConnectionErrorSub = this.notificationService.connectionError$.subscribe((message) => {
+      this.notificationConnectionMessage = message;
+      this.cdr.markForCheck();
+    });
     this.notificationService.connect();
     
     // Tải thông báo cũ
@@ -107,8 +132,14 @@ export class AdminLayout implements OnInit, OnDestroy {
 
     // Lắng nghe thông báo mới realtime
     this.notifSub = this.notificationService.notifications$.subscribe((notif) => {
-      this.notifications.unshift(notif);
-      this.updateUnreadCount();
+      const existingIndex = this.notifications.findIndex(item => item.id === notif.id);
+      if (existingIndex >= 0) {
+        this.notifications[existingIndex] = notif;
+      } else {
+        this.notifications.unshift(notif);
+        this.notificationTotalElements += 1;
+        if (!notif.isRead) this.unreadCount += 1;
+      }
       
       // Hiển thị Toast
       this.messageService.add({
@@ -123,6 +154,8 @@ export class AdminLayout implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.notifSub?.unsubscribe();
+    this.notificationConnectionSub?.unsubscribe();
+    this.notificationConnectionErrorSub?.unsubscribe();
     this.authSub?.unsubscribe();
     this.routerSub?.unsubscribe();
     this.notificationService.disconnect();
@@ -146,12 +179,15 @@ export class AdminLayout implements OnInit, OnDestroy {
   }
 
   loadNotifications(): void {
+    this.notificationPage = 0;
     this.notificationsLoading = true;
+    this.notificationsLoadingMore = false;
     this.notificationsError = '';
-    this.notificationService.getAdminNotifications().subscribe({
-      next: (data) => {
-        this.notifications = data;
-        this.updateUnreadCount();
+    this.notificationActionError = '';
+    this.notificationService.getAdminNotifications(0, this.notificationPageSize).subscribe({
+      next: (page) => {
+        this.notifications = page.content;
+        this.applyNotificationPage(page);
         this.notificationsLoading = false;
         this.cdr.markForCheck();
       },
@@ -163,18 +199,60 @@ export class AdminLayout implements OnInit, OnDestroy {
     });
   }
 
-  updateUnreadCount(): void {
-    this.unreadCount = this.notifications.filter(n => !n.isRead).length;
+  loadMoreNotifications(): void {
+    if (!this.notificationHasMore || this.notificationsLoading || this.notificationsLoadingMore) return;
+
+    this.notificationsLoadingMore = true;
+    this.notificationsError = '';
+    this.notificationActionError = '';
+    const nextPage = this.notificationPage + 1;
+    this.notificationService.getAdminNotifications(nextPage, this.notificationPageSize).subscribe({
+      next: (page) => {
+        const knownIds = new Set(this.notifications.map(item => item.id));
+        this.notifications = [
+          ...this.notifications,
+          ...page.content.filter(item => !knownIds.has(item.id)),
+        ];
+        this.applyNotificationPage(page);
+        this.notificationsLoadingMore = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.notificationsLoadingMore = false;
+        this.notificationActionError = 'Không thể tải thêm thông báo. Vui lòng thử lại.';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   markAsRead(notif: AppNotification): void {
-    if (!notif.isRead) {
-      this.notificationService.markAsRead(notif.id).subscribe(() => {
-        notif.isRead = true;
-        this.updateUnreadCount();
-        this.cdr.markForCheck();
+    if (!notif.isRead && !this.notificationMarkingIds.has(notif.id)) {
+      this.notificationActionError = '';
+      this.notificationMarkingIds.add(notif.id);
+      this.notificationService.markAsRead(notif.id).subscribe({
+        next: () => {
+          notif.isRead = true;
+          this.unreadCount = Math.max(0, this.unreadCount - 1);
+          this.notificationMarkingIds.delete(notif.id);
+          this.cdr.markForCheck();
+        },
+        error: (error: { error?: { code?: string } }) => {
+          this.notificationMarkingIds.delete(notif.id);
+          this.notificationActionError = error.error?.code === 'NOT_FOUND'
+            ? 'Thông báo này không còn khả dụng trong lịch sử.'
+            : 'Không thể đánh dấu thông báo đã đọc. Vui lòng thử lại.';
+          this.cdr.markForCheck();
+        },
       });
     }
+  }
+
+  private applyNotificationPage(page: NotificationHistoryPage): void {
+    this.notificationPage = page.number;
+    this.notificationTotalElements = page.totalElements;
+    this.notificationHasMore = !page.last;
+    this.notificationRetentionDays = page.retentionDays;
+    this.unreadCount = page.unreadCount;
   }
 
   toggleSidebar(): void {
@@ -216,7 +294,22 @@ export class AdminLayout implements OnInit, OnDestroy {
 
   logout(): void {
     this.authService.logout();
-    this.router.navigate(['/login']);
+    this.router.navigate(['/admin/login']);
+  }
+
+  retryNotificationConnection(): void {
+    this.notificationService.reconnect();
+  }
+
+  get notificationConnectionLabel(): string {
+    switch (this.notificationConnectionState) {
+      case 'connected': return 'Thông báo thời gian thực đã kết nối';
+      case 'connecting': return 'Đang kết nối thông báo thời gian thực';
+      case 'reconnecting': return 'Đang kết nối lại thông báo thời gian thực';
+      case 'offline': return 'Thông báo thời gian thực đang ngoại tuyến';
+      case 'error': return 'Kết nối thông báo thời gian thực gặp lỗi';
+      default: return 'Thông báo thời gian thực chưa kết nối';
+    }
   }
 
   viewProfile(): void {

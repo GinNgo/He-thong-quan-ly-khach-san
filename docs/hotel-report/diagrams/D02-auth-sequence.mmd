@@ -1,0 +1,41 @@
+sequenceDiagram
+    actor User as Người dùng
+    participant UI as Angular Auth UI
+    participant API as AuthController
+    participant Auth as Auth/Token Services
+    participant DB as SQL Server
+    participant Mail as Mail Outbox/SMTP
+
+    alt Đăng ký
+      User->>UI: Nhập thông tin đăng ký
+      UI->>API: POST /api/auth/register
+      API->>Auth: Chuẩn hóa + validate + kiểm tra trùng
+      Auth->>DB: Tạo user/role/token xác minh
+      Auth->>Mail: Ghi yêu cầu gửi mail
+      API-->>UI: Kết quả không lộ thông tin nhạy cảm
+    else Đăng nhập
+      User->>UI: Username/email + password
+      UI->>API: POST /api/auth/login
+      API->>Auth: Xác thực + account status gate
+      Auth->>DB: Đọc user/role/permission
+      Auth-->>API: Access token + refresh family
+      API-->>UI: Access token + HttpOnly refresh cookie
+    end
+
+    UI->>API: Request bảo vệ + bearer token
+    API->>Auth: Validate signature/expiry/revocation
+    alt Access token hết hạn, refresh hợp lệ
+      UI->>API: POST /api/auth/refresh
+      API->>Auth: Rotate refresh token, chống replay
+      Auth->>DB: Lock/update token family
+      API-->>UI: Access token mới + cookie mới
+    else Refresh replay/invalid
+      API-->>UI: 401, thu hồi family
+    end
+
+    User->>UI: Logout
+    UI->>API: POST /api/auth/logout
+    API->>Auth: Revoke refresh family/access cutoff
+    Auth->>DB: Cập nhật trạng thái thu hồi
+    API-->>UI: Thành công
+    UI->>UI: Xóa session và ngắt realtime

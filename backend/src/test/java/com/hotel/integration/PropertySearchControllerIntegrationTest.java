@@ -308,8 +308,10 @@ public class PropertySearchControllerIntegrationTest {
                 .andExpect(jsonPath("$.content[0].pricing.numberOfNights", is(2)))
                 .andExpect(jsonPath("$.content[0].pricing.roomQuantity", is(2)))
                 .andExpect(jsonPath("$.content[0].pricing.subtotal", is(2000000)))
-                .andExpect(jsonPath("$.content[0].pricing.taxAmount", is(300000.00)))
-                .andExpect(jsonPath("$.content[0].pricing.totalAmount", is(2300000.00)));
+                .andExpect(jsonPath("$.content[0].pricing.taxAmount")
+                        .value(comparesEqualTo(new BigDecimal("300000")), BigDecimal.class))
+                .andExpect(jsonPath("$.content[0].pricing.totalAmount")
+                        .value(comparesEqualTo(new BigDecimal("2300000")), BigDecimal.class));
     }
 
     @Test

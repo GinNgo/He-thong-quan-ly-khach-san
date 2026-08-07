@@ -1,0 +1,28 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:hotel_local;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  # Local H2 uses Hibernate's disposable schema; SQL Server keeps Flyway from application.yml.
+  flyway:
+    enabled: false
+
+payment:
+  provider-recovery:
+    enabled: false
+
+app:
+  e2e-fixtures:
+    enabled: false
+  demo-data:
+    enabled: false
+    legacy-seed: false
+    nationwide-property-seed: false
+  accommodation-import:
+    enabled: false

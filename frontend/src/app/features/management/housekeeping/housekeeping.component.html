@@ -1,0 +1,63 @@
+<section class="housekeeping-page" aria-labelledby="housekeeping-title">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">VẬN HÀNH CƠ SỞ</p>
+      <h2 id="housekeeping-title">Hàng đợi housekeeping</h2>
+      <p class="subtitle">Nhận, dọn, hoàn tất và chỉ mở bán lại phòng khi không còn chặn bảo trì.</p>
+    </div>
+    <div class="toolbar">
+      <label for="housekeeping-property">Cơ sở
+        <select id="housekeeping-property" [(ngModel)]="propertyId" (change)="load()">
+          @for (property of properties; track property.id) { <option [ngValue]="property.id">{{ property.nameVi }}</option> }
+        </select>
+      </label>
+      <label for="housekeeping-status">Trạng thái
+        <select id="housekeeping-status" [(ngModel)]="status" (change)="load()">
+          <option [ngValue]="undefined">Đang mở</option>
+          <option value="PENDING">Chờ xử lý</option>
+          <option value="CLAIMED">Đã nhận</option>
+          <option value="IN_PROGRESS">Đang dọn</option>
+          <option value="COMPLETED">Hoàn tất</option>
+        </select>
+      </label>
+      <button type="button" class="secondary" (click)="load()" [disabled]="loading">Làm mới</button>
+    </div>
+  </header>
+
+  @if (completionNotice) {
+    <p class="completion-notice" [class.blocked]="completionBlocked" role="status" aria-live="polite">{{ completionNotice }}</p>
+  }
+
+  @if (error) { <app-feedback-state state="error" title="Không thể tải hàng đợi" [message]="error" actionLabel="Thử lại" (actionTriggered)="load()" /> }
+  @if (loading) { <app-feedback-state state="loading" title="Đang tải hàng đợi" message="Đang đồng bộ trạng thái dọn phòng của cơ sở." /> }
+  @else if (!tasks.length) { <app-feedback-state state="empty" title="Không có tác vụ" message="Các phòng chờ dọn sẽ xuất hiện ở đây sau khi khách trả phòng." /> }
+  @else {
+    <div class="task-grid">
+      @for (task of tasks; track task.id) {
+        <article class="task-card" [class.stale]="task.staleAssignment">
+          <div class="task-heading"><div><span class="room-label">Phòng {{ task.roomNumber }}</span><small>#{{ task.id }}</small></div><span class="status" [attr.data-status]="task.status">{{ statusLabel(task.status) }}</span></div>
+          <dl>
+            <div><dt>Người nhận</dt><dd>{{ task.assignedToName || 'Chưa gán' }}</dd></div>
+            <div><dt>Nhận lúc</dt><dd>{{ task.assignedAt || 'Chưa nhận' }}</dd></div>
+            <div><dt>Phòng</dt><dd>{{ task.roomStatus }} / {{ task.roomHousekeepingStatus }}</dd></div>
+          </dl>
+          @if (task.staleAssignment) { <p class="warning" role="alert">Phân công đã quá hạn, cần nhận lại.</p> }
+          @if (task.status === 'COMPLETED') {
+            <p class="release-state" [class.blocked]="!task.roomReleased">
+              {{ task.roomReleased ? 'Phòng đã sạch và sẵn sàng mở bán.' : 'Phòng đã sạch nhưng vẫn bị chặn bởi ' + task.roomMaintenanceStatus + '.' }}
+            </p>
+          }
+          <div class="task-actions">
+            @if (task.status === 'PENDING' || task.staleAssignment) { <button type="button" (click)="claim(task)" [disabled]="actionTaskId === task.id">{{ actionTaskId === task.id ? 'Đang nhận...' : 'Nhận tác vụ' }}</button> }
+            @if (assignees.length && task.status !== 'IN_PROGRESS' && task.status !== 'COMPLETED') {
+              <label class="assign-control">Gán cho<select [(ngModel)]="selectedAssignee[task.id]" [name]="'assignee-' + task.id"><option [ngValue]="undefined">Chọn nhân viên</option>@for (assignee of assignees; track assignee.userId) { <option [ngValue]="assignee.userId">{{ assignee.fullName || assignee.username }}</option> }</select></label>
+              <button type="button" class="secondary" (click)="assign(task)" [disabled]="assigningTaskId === task.id || !selectedAssignee[task.id]">{{ assigningTaskId === task.id ? 'Đang gán...' : 'Gán' }}</button>
+            }
+            @if (canStart(task)) { <button type="button" (click)="start(task)" [disabled]="actionTaskId === task.id">{{ actionTaskId === task.id ? 'Đang bắt đầu...' : 'Bắt đầu dọn' }}</button> }
+            @if (canComplete(task)) { <button type="button" class="complete" (click)="complete(task)" [disabled]="actionTaskId === task.id">{{ actionTaskId === task.id ? 'Đang hoàn tất...' : 'Hoàn tất và kiểm tra mở bán' }}</button> }
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>

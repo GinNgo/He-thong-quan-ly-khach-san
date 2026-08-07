@@ -1,0 +1,24 @@
+flowchart TD
+    A([Yêu cầu hủy]) --> B[Load booking, payment và policy]
+    B --> C{Actor có quyền?}
+    C -- Không --> D[403 + audit]
+    C -- Có --> E{Booking cho phép hủy?}
+    E -- Không --> F[Trả lý do policy/status]
+    E -- Có --> G[Tính phí hủy và số tiền có thể hoàn]
+    G --> H{Có khoản đã thu cần hoàn?}
+    H -- Không --> I[Cập nhật booking canceled]
+    H -- Có --> J[Tạo refund idempotency key]
+    J --> K[Gọi provider refund]
+    K --> L{Kết quả chắc chắn?}
+    L -- Thành công --> M[Cập nhật refund/payment/invoice/revenue]
+    L -- Thất bại --> N[Ghi failed và lý do]
+    L -- Pending/timeout --> O[Ghi pending và recovery query]
+    O --> P{Recovery result}
+    P -- Success --> M
+    P -- Fail --> N
+    I --> Q[Ghi audit và thông báo]
+    M --> Q
+    N --> Q
+    D --> R([Kết thúc])
+    F --> R
+    Q --> R

@@ -2,7 +2,11 @@ package com.hotel.controllers;
 
 import com.hotel.paymentprovider.error.FinancialErrorCode;
 import com.hotel.exceptions.ApiErrorResponse;
+import com.hotel.exceptions.PropertyNotOperationalException;
+import com.hotel.exceptions.RegistrationConflictException;
+import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.paymentprovider.error.FinancialException;
+import com.hotel.security.PasswordChangeException;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 
@@ -42,5 +46,36 @@ class FinancialErrorContractTest {
 
         assertTrue(response.correlationId().length() <= 100);
         assertTrue(response.correlationId().matches("[A-Za-z0-9._:-]+"));
+    }
+
+    @Test
+    void exceptionMessagesAreNeverReflectedFromGenericOrFinancialFailures() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/test");
+        String sensitive = "token=secret customer@example.test";
+
+        assertEquals("The amount is invalid.", handler.handleFinancial(
+                new FinancialException(FinancialErrorCode.INVALID_AMOUNT, sensitive), request).getBody().message());
+        assertEquals("The request is invalid.", handler.handleBadRequest(
+                new IllegalArgumentException(sensitive), request).getBody().message());
+        assertEquals("The request conflicts with current state.", handler.handleConflict(
+                new IllegalStateException(sensitive), request).getBody().message());
+        assertEquals("The requested resource was not found.", handler.handleNotFound(
+                new ResourceNotFoundException(sensitive), request).getBody().message());
+    }
+
+    @Test
+    void domainHandlersUseAllowListedMessages() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/test");
+
+        assertEquals(PropertyNotOperationalException.DEFAULT_MESSAGE, handler.handlePropertyNotOperational(
+                new PropertyNotOperationalException("PENDING", "INACTIVE"), request).getBody().message());
+        assertEquals("An account with this username already exists.", handler.handleRegistrationConflict(
+                RegistrationConflictException.username(), request).getBody().message());
+        assertEquals("An account with this email already exists.", handler.handleRegistrationConflict(
+                RegistrationConflictException.email(), request).getBody().message());
+        assertEquals("The current password is incorrect.", handler.handlePasswordChange(
+                PasswordChangeException.currentPasswordInvalid(), request).getBody().message());
     }
 }

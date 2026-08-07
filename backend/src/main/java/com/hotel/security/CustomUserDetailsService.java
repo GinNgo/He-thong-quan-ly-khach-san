@@ -10,7 +10,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.Locale;
-import java.util.EnumMap;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,17 +36,15 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .map(role -> new SimpleGrantedAuthority(role.getCode()))
                 .collect(Collectors.toSet());
 
-        java.util.Map<FunctionCode, Integer> permissionMasks = new EnumMap<>(FunctionCode.class);
+        java.util.Map<FunctionCode, Integer> permissionMasks = new java.util.HashMap<>();
 
         user.getRoles().forEach(role -> {
             if (role.getRolePermissions() != null) {
                 role.getRolePermissions().forEach(rp -> {
                     try {
-                        if (rp.getFunction() == null || rp.getFunction().getCode() == null) return;
                         FunctionCode functionCode = FunctionCode.valueOf(rp.getFunction().getCode());
                         int existingMask = permissionMasks.getOrDefault(functionCode, 0);
-                        int actionMask = rp.getActionMask() == null ? 0 : rp.getActionMask();
-                        permissionMasks.put(functionCode, existingMask | actionMask);
+                        permissionMasks.put(functionCode, existingMask | rp.getActionMask());
                     } catch (IllegalArgumentException e) {
                         // Ignore unknown functions
                     }

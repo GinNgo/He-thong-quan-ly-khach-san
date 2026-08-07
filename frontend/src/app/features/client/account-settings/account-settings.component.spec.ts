@@ -19,6 +19,7 @@ describe('Authenticated password change', () => {
       imports: [AccountSettingsComponent],
       providers: [
         { provide: UserService, useValue: { changePassword } },
+<<<<<<< HEAD
         {
           provide: AuthService,
           useValue: {
@@ -28,6 +29,9 @@ describe('Authenticated password change', () => {
             unlinkSocialIdentity: vi.fn(() => of(void 0)),
           },
         },
+=======
+        { provide: AuthService, useValue: { logout, listSocialIdentities: () => of([]) } },
+>>>>>>> codex/ui-functional-audit-polish
         { provide: Router, useValue: { navigate } },
         { provide: ActivatedRoute, useValue: { snapshot: {} } },
         { provide: PublicI18nService, useValue: { text: (key: string) => key } },

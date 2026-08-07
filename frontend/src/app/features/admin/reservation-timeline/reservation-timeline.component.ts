@@ -72,7 +72,8 @@ export class ReservationTimelineComponent implements OnInit {
     if (!status) return 'bg-gray-300 text-gray-800';
     switch (status) {
       case 'CONFIRMED': return 'bg-green-500 text-white';
-      case 'PENDING': return 'bg-yellow-500 text-white';
+      case 'PENDING':
+      case 'PENDING_PAYMENT': return 'bg-yellow-500 text-white';
       case 'CHECKED_IN': return 'bg-blue-500 text-white';
       case 'CHECKED_OUT': return 'bg-gray-500 text-white';
       case 'CANCELLED': return 'bg-red-500 text-white';

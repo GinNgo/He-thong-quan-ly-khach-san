@@ -1,0 +1,29 @@
+P0-02C focused reproduction - cleaned stack trace
+Date: 2026-08-06 Asia/Saigon
+
+Suite: com.hotel.services.ReservationLifecycleLockingTest
+Result before fix: Tests run: 4, Failures: 0, Errors: 3, Skipped: 0
+
+Root exception for all three errors:
+java.lang.NullPointerException:
+Cannot invoke
+"com.hotel.propertycommerce.refund.PropertyRefundRequestRepository.findByReservationIdOrderByRequestedAtAsc(java.lang.Long)"
+because "this.propertyRefundRequestRepository" is null
+
+Call chain 1:
+ReservationService.mapToDTO(ReservationService.java:640)
+ReservationService.assignRooms(ReservationService.java:274)
+ReservationLifecycleLockingTest.assignmentLocksReservationAssignmentsAndRoomsInDeterministicOrder(ReservationLifecycleLockingTest.java:133)
+
+Call chain 2:
+ReservationService.mapToDTO(ReservationService.java:640)
+ReservationService.assignRooms(ReservationService.java:244)
+ReservationLifecycleLockingTest.identicalAssignmentReplayReturnsExistingResultWithoutWritingAgain(ReservationLifecycleLockingTest.java:159)
+
+Call chain 3:
+ReservationService.mapToDTO(ReservationService.java:640)
+ReservationService.updateReservationStatus(ReservationService.java:353)
+ReservationLifecycleLockingTest.checkInLocksAssignmentsAndRoomsBeforeChangingPhysicalRoomState(ReservationLifecycleLockingTest.java:177)
+
+Spring context failure threshold: not applicable; this is a MockitoExtension unit fixture.
+Full raw output: P0-02C-focused-before.log

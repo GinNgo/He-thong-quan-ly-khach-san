@@ -12,7 +12,7 @@ import lombok.Data;
 public class SupportChatReplyRequest {
 
     @Positive
-    private Long customerId;
+    private Long conversationId;
 
     @NotNull
     @Positive

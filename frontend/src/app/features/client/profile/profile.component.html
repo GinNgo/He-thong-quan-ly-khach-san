@@ -1,59 +1,127 @@
 <main class="profile-page">
   <aside class="profile-sidebar">
     <div class="profile-avatar">
-      <img *ngIf="profileForm.controls.avatarUrl.value" [src]="profileForm.controls.avatarUrl.value" alt="Ảnh đại diện" (error)="avatarError()">
+      <img
+        *ngIf="profileForm.controls.avatarUrl.value"
+        [src]="profileForm.controls.avatarUrl.value"
+        [attr.alt]="i18n.text('PUBLIC.ACCOUNT.AVATAR_ALT')"
+        (error)="avatarError()"
+      />
       <span *ngIf="!profileForm.controls.avatarUrl.value">{{ initials }}</span>
     </div>
-    <strong>{{ user?.fullName || user?.username }}</strong><small>{{ user?.email }}</small>
-    <label class="upload-button"><i class="pi pi-camera"></i>{{ uploading ? 'Đang tải...' : 'Đổi ảnh' }}<input type="file" accept="image/*" (change)="uploadAvatar($event)" [disabled]="uploading"></label>
+    <strong>{{ user?.fullName || user?.username }}</strong
+    ><small>{{ user?.email }}</small>
+    <label class="upload-button"
+      ><i class="pi pi-camera"></i>{{ uploading ? i18n.text('PUBLIC.ACCOUNT.UPLOADING') : i18n.text('PUBLIC.ACCOUNT.CHANGE_PHOTO')
+      }}<input type="file" accept="image/*" (change)="uploadAvatar($event)" [disabled]="uploading"
+    /></label>
     <nav>
-      <button type="button" [class.active]="activeTab === 'profile'" (click)="setActiveTab('profile')"><i class="pi pi-user"></i>Thông tin cá nhân</button>
-      <button type="button" [class.active]="activeTab === 'bookings'" (click)="setActiveTab('bookings')"><i class="pi pi-suitcase"></i>Chuyến đi của tôi</button>
-      <a routerLink="/my-invoices"><i class="pi pi-file"></i>Hóa đơn của tôi</a>
-      <button type="button" class="logout" (click)="logout()"><i class="pi pi-sign-out"></i>Đăng xuất</button>
+      <button
+        type="button"
+        [class.active]="activeTab === 'profile'"
+        (click)="setActiveTab('profile')"
+      >
+        <i class="pi pi-user"></i>{{ i18n.text('PUBLIC.ACCOUNT.PERSONAL_INFO') }}
+      </button>
+      <button
+        type="button"
+        [class.active]="activeTab === 'bookings'"
+        (click)="setActiveTab('bookings')"
+      >
+        <i class="pi pi-suitcase"></i>{{ i18n.text('PUBLIC.ACCOUNT.MY_TRIPS') }}
+      </button>
+      <a routerLink="/my-invoices"><i class="pi pi-file"></i>{{ i18n.text('PUBLIC.ACCOUNT.MY_INVOICES') }}</a>
+      <a routerLink="/support"><i class="pi pi-question-circle"></i>{{ i18n.text('LAYOUT.SUPPORT_CENTER') }}</a>
+      <button type="button" class="logout" (click)="logout()">
+        <i class="pi pi-sign-out"></i>{{ i18n.text('PUBLIC.ACCOUNT.LOGOUT') }}
+      </button>
     </nav>
   </aside>
 
   <section class="profile-content">
-    <div *ngIf="loading" class="message"><i class="pi pi-spin pi-spinner"></i>Đang tải thông tin</div>
+    <div *ngIf="loading" class="message">
+      <i class="pi pi-spin pi-spinner"></i>{{ i18n.text('PUBLIC.ACCOUNT.LOADING_PROFILE') }}
+    </div>
     <div *ngIf="error" class="alert error">
       <span>{{ error }}</span>
-      <button *ngIf="profileLoadFailed" type="button" class="profile-retry" (click)="loadProfile()">{{ profileReadText.retry }}</button>
-    </div><div *ngIf="success" class="alert success">{{ success }}</div>
-    <section *ngIf="!loading && !error && profileEmpty && activeTab === 'profile'" class="content-panel empty profile-empty">
+      <button
+        *ngIf="profileLoadFailed"
+        type="button"
+        class="profile-retry"
+        (click)="loadProfile()"
+      >
+        {{ profileReadText.retry }}
+      </button>
+    </div>
+    <div *ngIf="success" class="alert success">{{ success }}</div>
+    <section
+      *ngIf="!loading && !error && profileEmpty && activeTab === 'profile'"
+      class="content-panel empty profile-empty"
+    >
       <i class="pi pi-user-minus" aria-hidden="true"></i>
       <strong>{{ profileReadText.emptyTitle }}</strong>
       <span>{{ profileReadText.emptyHelp }}</span>
-      <button type="button" class="profile-retry" (click)="loadProfile()">{{ profileReadText.retry }}</button>
+      <button type="button" class="profile-retry" (click)="loadProfile()">
+        {{ profileReadText.retry }}
+      </button>
     </section>
     <section *ngIf="!loading && !profileEmpty && activeTab === 'profile'" class="content-panel">
-      <header><h1>Thông tin cá nhân</h1><p>Cập nhật thông tin dùng cho tài khoản và đặt phòng.</p></header>
+      <header>
+        <h1>{{ i18n.text('PUBLIC.ACCOUNT.PROFILE_TITLE') }}</h1>
+        <p>{{ i18n.text('PUBLIC.ACCOUNT.PROFILE_HELP') }}</p>
+      </header>
       <form [formGroup]="profileForm" (ngSubmit)="saveProfile()">
-        <label>Họ và tên<input formControlName="fullName" type="text"></label>
+        <label>{{ i18n.text('PUBLIC.ACCOUNT.FULL_NAME') }}<input formControlName="fullName" type="text" /></label>
         <div class="email-field">
-          <label>Email<input formControlName="email" type="email" autocomplete="email"></label>
+          <label>{{ i18n.text('PUBLIC.ACCOUNT.EMAIL') }}<input formControlName="email" type="email" autocomplete="email" /></label>
           <div class="email-status" [class.email-status--verified]="user?.emailVerified">
-            <strong>{{ user?.emailVerified ? emailVerificationText.verified : emailVerificationText.unverified }}</strong>
-            <span *ngIf="user?.pendingEmail">{{ emailVerificationText.pending }}: {{ user.pendingEmail }}</span>
+            <strong>
+              {{ user?.emailVerified
+                ? emailVerificationText.verified
+                : emailVerificationText.unverified }}
+            </strong>
+            <span *ngIf="user?.pendingEmail">
+              {{ emailVerificationText.pending }}: {{ user.pendingEmail }}
+            </span>
             <button
               *ngIf="user && (!user.emailVerified || user.pendingEmail)"
               type="button"
               [disabled]="emailActionBusy"
-              (click)="resendEmailVerification()">
-              {{ emailActionBusy ? emailVerificationText.sending : emailVerificationText.resend }}
+              (click)="resendEmailVerification()"
+            >
+              {{ emailActionBusy
+                ? emailVerificationText.sending
+                : emailVerificationText.resend }}
             </button>
           </div>
         </div>
-        <label>Số điện thoại<input formControlName="phone" type="tel"></label>
-        <button type="submit" [disabled]="saving || profileForm.invalid">{{ saving ? 'Đang lưu...' : 'Lưu thay đổi' }}</button>
+        <label>{{ i18n.text('PUBLIC.ACCOUNT.PHONE') }}<input formControlName="phone" type="tel" /></label>
+        <button type="submit" [disabled]="saving || profileForm.invalid">
+          {{ saving ? i18n.text('PUBLIC.ACCOUNT.SAVING') : i18n.text('PUBLIC.ACCOUNT.SAVE') }}
+        </button>
       </form>
     </section>
-    <section *ngIf="!loading && activeTab === 'bookings'" class="content-panel">
-      <header><h1>Chuyến đi của tôi</h1><p>Các đặt phòng thuộc tài khoản hiện tại.</p></header>
-      <div *ngIf="bookingsLoading" class="message"><i class="pi pi-spin pi-spinner"></i>Đang tải chuyến đi</div>
-      <div *ngIf="bookingsError" class="alert error">{{ bookingsError }} <button type="button" (click)="loadBookings()">Thử lại</button></div>
-      <div *ngIf="!bookingsLoading && !bookingsError && !bookings.length" class="empty"><i class="pi pi-suitcase"></i><strong>Chưa có chuyến đi</strong><a routerLink="/search">Tìm chỗ nghỉ</a></div>
+    <section
+      *ngIf="!loading && activeTab === 'bookings'"
+      class="content-panel bookings-panel"
+      [attr.aria-busy]="bookingsLoading"
+    >
+      <header>
+        <h1>{{ i18n.text('PUBLIC.ACCOUNT.BOOKINGS_TITLE') }}</h1>
+        <p>{{ i18n.text('PUBLIC.ACCOUNT.BOOKINGS_HELP') }}</p>
+      </header>
+      <div *ngIf="bookingsLoading" class="message bookings-loading">
+        <i class="pi pi-spin pi-spinner"></i>{{ i18n.text('PUBLIC.ACCOUNT.LOADING_BOOKINGS') }}
+      </div>
+      <div *ngIf="bookingsError" class="alert error">
+        {{ bookingsError }} <button type="button" (click)="loadBookings()">{{ i18n.text('PUBLIC.ACCOUNT.RETRY') }}</button>
+      </div>
+      <div *ngIf="!bookingsLoading && !bookingsError && !bookings.length" class="empty">
+        <i class="pi pi-suitcase"></i><strong>{{ i18n.text('PUBLIC.ACCOUNT.NO_TRIPS') }}</strong
+        ><a routerLink="/search">{{ i18n.text('PUBLIC.SEARCH.SUBMIT') }}</a>
+      </div>
       <div class="booking-list" *ngIf="!bookingsLoading && bookings.length">
+<<<<<<< HEAD
         <article *ngFor="let booking of bookings">
           <div><small>Mã đặt phòng</small><strong>#{{ booking.id }}</strong></div>
           <div><small>Thời gian</small><span>{{ booking.checkInDate | date:'dd/MM/yyyy' }} - {{ booking.checkOutDate | date:'dd/MM/yyyy' }}</span></div>
@@ -83,6 +151,87 @@
               {{ cancellingId === booking.id ? 'Đang hủy...' : 'Hủy đặt phòng' }}
             </button>
           </div>
+=======
+        <article *ngFor="let booking of bookings" [attr.data-booking-id]="booking.id">
+          <header class="booking-card-header">
+            <div>
+              <small>{{ i18n.text('PUBLIC.ACCOUNT.BOOKING_CODE') }}</small><strong>#{{ booking.id }}</strong>
+            </div>
+            <div class="booking-actions">
+              <span class="status">{{ getStatusLabel(booking.status) }}</span>
+              <button
+                *ngIf="
+                  booking.status === 'PENDING' ||
+                  booking.status === 'PENDING_PAYMENT' ||
+                  booking.status === 'CONFIRMED'
+                "
+                type="button"
+                class="cancel-btn"
+                [disabled]="cancellingId !== null"
+                [attr.aria-busy]="cancellingId === booking.id"
+                (click)="cancelBooking(booking.id)"
+              >
+                {{ cancellingId === booking.id ? i18n.text('PUBLIC.ACCOUNT.CANCEL_PENDING') : i18n.text('PUBLIC.ACCOUNT.CANCEL_BOOKING') }}
+              </button>
+            </div>
+          </header>
+
+          <dl class="booking-meta">
+            <div>
+              <dt>{{ i18n.text('PUBLIC.ACCOUNT.TIME') }}</dt>
+              <dd>
+                {{ booking.checkInDate | date: 'dd/MM/yyyy' }} -
+                {{ booking.checkOutDate | date: 'dd/MM/yyyy' }}
+              </dd>
+            </div>
+            <div>
+              <dt>{{ i18n.text('PUBLIC.ACCOUNT.TOTAL') }}</dt>
+              <dd>{{ booking.totalAmount | currency: 'VND' : 'symbol' : '1.0-0' }}</dd>
+            </div>
+          </dl>
+
+          <section class="financial-summary" [attr.aria-label]="i18n.text('PUBLIC.ACCOUNT.PAYMENT_REFUND')">
+            <div class="financial-row">
+              <div class="financial-heading">
+                <small>{{ i18n.text('PUBLIC.ACCOUNT.PAYMENT') }}</small>
+                <strong>{{
+                  booking.payment?.amount
+                    ? (booking.payment.amount | currency: 'VND' : 'symbol' : '1.0-0')
+                    : getProviderLabel(booking.paymentMethod)
+                }}</strong>
+              </div>
+              <span
+                class="lifecycle-chip"
+                [ngClass]="getPaymentTone(booking.payment)"
+                [attr.data-payment-status]="
+                  booking.payment?.reconciliationRequired
+                    ? 'RECONCILIATION'
+                    : booking.payment?.status || 'NONE'
+                "
+              >
+                <i [class]="getPaymentIcon(booking.payment)" aria-hidden="true"></i>
+                {{ getPaymentLabel(booking.payment) }}
+              </span>
+              <p>{{ getPaymentDescription(booking.payment) }}</p>
+            </div>
+
+            <div class="financial-row refund-row" *ngFor="let refund of booking.refunds">
+              <div class="financial-heading">
+                <small>{{ i18n.text('PUBLIC.ACCOUNT.REFUND') }} · {{ getProviderLabel(refund.provider) }}</small>
+                <strong>{{ refund.amount | currency: 'VND' : 'symbol' : '1.0-0' }}</strong>
+              </div>
+              <span
+                class="lifecycle-chip"
+                [ngClass]="getRefundTone(refund)"
+                [attr.data-refund-status]="refund.status"
+              >
+                <i [class]="getRefundIcon(refund)" aria-hidden="true"></i>
+                {{ getRefundLabel(refund) }}
+              </span>
+              <p>{{ getRefundDescription(refund) }}</p>
+            </div>
+          </section>
+>>>>>>> codex/ui-functional-audit-polish
         </article>
       </div>
       <div *ngIf="bookingDetailLoading" class="message"><i class="pi pi-spin pi-spinner"></i>Đang tải chi tiết chuyến đi</div>

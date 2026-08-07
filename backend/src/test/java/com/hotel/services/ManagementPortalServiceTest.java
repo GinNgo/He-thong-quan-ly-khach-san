@@ -179,6 +179,7 @@ class ManagementPortalServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
+<<<<<<< HEAD
     void dashboardReconcilesOnePropertySnapshotAndUsesItsAuthoritativeEntitlement() {
         User owner = new User(); owner.setId(10L); owner.setFullName("Owner");
         Hotel hotel = hotel(20L, "Hotel A");
@@ -242,6 +243,32 @@ class ManagementPortalServiceTest {
         assertEquals(2L, ((Map<String, Long>) secondContext.get("usage")).get("rooms"));
         verify(propertyEntitlementService).getCurrent(20L);
         verify(propertyEntitlementService).getCurrent(30L);
+=======
+    void systemAdministratorCanUseAnExplicitPropertyWithoutAssignmentRows() {
+        User administrator = new User();
+        administrator.setId(1L);
+        Hotel property = new Hotel();
+        property.setId(20L);
+        property.setNameVi("Hotel 20");
+        property.setApprovalStatus("APPROVED");
+        property.setOperationStatus("ACTIVE");
+
+        when(propertyAccessService.currentUser()).thenReturn(administrator);
+        when(propertyAccessService.assignedHotelIds()).thenReturn(Set.of());
+        when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
+        when(propertyAccessService.requireAssignedHotel(20L)).thenReturn(property);
+        when(propertyAccessService.isOperational(property)).thenReturn(true);
+        when(propertyEntitlementService.getCurrent(20L)).thenReturn(
+                PropertySubscriptionEntitlementService.EntitlementView.none(20L, "NO_ENTITLEMENT"));
+
+        Map<String, Object> context = service.context(20L);
+        List<Map<String, Object>> properties = (List<Map<String, Object>>) context.get("properties");
+
+        assertEquals(20L, context.get("activePropertyId"));
+        assertEquals(1, properties.size());
+        assertEquals(20L, properties.getFirst().get("id"));
+        verify(hotelRepository, never()).findAllById(Set.of());
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     @Test

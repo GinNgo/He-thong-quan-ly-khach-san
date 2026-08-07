@@ -44,6 +44,7 @@ public class PublicSearchSuggestionService {
             return emptyGroups();
         }
 
+<<<<<<< HEAD
         int safeLimit = Math.min(Math.max(propertyLimit, 1), 10);
         int candidateLimit = Math.min(safeLimit * 3, 30);
         Set<Long> provinceScope = provinceCompatibilityService.provinceScopeIds(provinceId);
@@ -69,6 +70,20 @@ public class PublicSearchSuggestionService {
                 : locationRepository.searchWardsInProvinceScope(
                         normalizedKeyword, rawKeyword, provinceScope, PageRequest.of(0, candidateLimit));
         List<LocationSuggestionDTO> wards = wardPage.stream()
+=======
+        int safePropertyLimit = Math.min(Math.max(propertyLimit, 1), 10);
+        Set<Long> provinceScope = provinceCompatibilityService.provinceScopeIds(provinceId);
+        List<LocationSuggestionDTO> provinces = locationRepository
+                .searchCurrentProvinces(normalizedKeyword, rawKeyword, PageRequest.of(0, 5))
+                .stream()
+                .filter(location -> provinceId == null || provinceScope.contains(location.getId()))
+                .map(this::toLocationSuggestion)
+                .toList();
+        List<LocationSuggestionDTO> wards = locationRepository
+                .searchLocations(normalizedKeyword, rawKeyword, "WARD", PageRequest.of(0, 8))
+                .stream()
+                .filter(location -> provinceId == null || belongsToProvince(location, provinceScope))
+>>>>>>> codex/ui-functional-audit-polish
                 .map(this::toLocationSuggestion)
                 .collect(java.util.stream.Collectors.collectingAndThen(
                         java.util.stream.Collectors.toList(), items -> distinctAndLimit(items, safeLimit)));
@@ -78,6 +93,7 @@ public class PublicSearchSuggestionService {
                         normalizedKeyword, rawKeyword, provinceScope, PageRequest.of(0, candidateLimit));
         List<LocationSuggestionDTO> properties = propertyCandidates.stream()
                 .filter(hotel -> includeDemo() || !Boolean.TRUE.equals(hotel.getIsDemo()))
+<<<<<<< HEAD
                 .map(hotel -> toPropertySuggestion(hotel, latitude, longitude))
                 .collect(java.util.stream.Collectors.collectingAndThen(
                         java.util.stream.Collectors.toList(), items -> distinctAndLimit(items, safeLimit)));
@@ -90,6 +106,19 @@ public class PublicSearchSuggestionService {
                 .map(this::toLandmarkSuggestion)
                 .collect(java.util.stream.Collectors.collectingAndThen(
                         java.util.stream.Collectors.toList(), items -> distinctAndLimit(items, safeLimit)));
+=======
+                .filter(hotel -> provinceId == null || provinceScope.contains(hotel.getProvinceId()))
+                .map(hotel -> toPropertySuggestion(hotel, latitude, longitude))
+                .toList();
+        var landmarkPage = provinceId == null
+                ? locationRepository.searchActiveLandmarks(normalizedKeyword, rawKeyword, null, PageRequest.of(0, 8))
+                : locationRepository.searchActiveLandmarksInProvinceScope(
+                        normalizedKeyword, rawKeyword, provinceScope, PageRequest.of(0, 8));
+        List<LocationSuggestionDTO> landmarks = landmarkPage
+                .stream()
+                .map(this::toLandmarkSuggestion)
+                .toList();
+>>>>>>> codex/ui-functional-audit-polish
 
         return SearchSuggestionGroupsDTO.builder()
                 .provinces(provinces)
@@ -139,12 +168,18 @@ public class PublicSearchSuggestionService {
                 .provinces(List.of()).wards(List.of()).properties(List.of()).landmarks(List.of()).build();
     }
 
+<<<<<<< HEAD
     private List<LocationSuggestionDTO> distinctAndLimit(List<LocationSuggestionDTO> items, int limit) {
         LinkedHashMap<String, LocationSuggestionDTO> distinct = new LinkedHashMap<>();
         for (LocationSuggestionDTO item : items) {
             distinct.putIfAbsent(item.getType() + ":" + item.getId(), item);
         }
         return distinct.values().stream().limit(limit).toList();
+=======
+    private boolean belongsToProvince(Location location, Set<Long> provinceIds) {
+        Location province = provinceFor(location);
+        return province != null && provinceIds.contains(province.getId());
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     private LocationSuggestionDTO toLocationSuggestion(Location location) {
@@ -175,18 +210,28 @@ public class PublicSearchSuggestionService {
         Location parent = landmark.getParent();
         Location ward = parent != null && "WARD".equals(parent.getLocationType()) ? parent : null;
         String provinceName = province == null ? null : province.getNameVi();
+<<<<<<< HEAD
         String displayName = provinceName == null
                 ? landmark.getNameVi()
                 : landmark.getNameVi() + ", " + provinceName;
         String secondary = categoryLabel(landmark.getCategory());
         if (ward != null) secondary += " · " + ward.getNameVi();
+=======
+        String displayName = provinceName == null ? landmark.getNameVi() : landmark.getNameVi() + ", " + provinceName;
+        String context = categoryLabel(landmark.getCategory());
+        if (ward != null) context += " · " + ward.getNameVi();
+>>>>>>> codex/ui-functional-audit-polish
         return LocationSuggestionDTO.builder()
                 .type("LANDMARK")
                 .id(landmark.getId())
                 .parentId(parent == null ? null : parent.getId())
                 .name(landmark.getNameVi())
                 .displayName(displayName)
+<<<<<<< HEAD
                 .secondaryText(secondary)
+=======
+                .secondaryText(context)
+>>>>>>> codex/ui-functional-audit-polish
                 .provinceId(province == null ? null : province.getId())
                 .provinceName(provinceName)
                 .wardId(ward == null ? null : ward.getId())
@@ -200,8 +245,22 @@ public class PublicSearchSuggestionService {
                 .build();
     }
 
+<<<<<<< HEAD
     private Double defaultRadius(Double radius) {
         if (radius == null || !Double.isFinite(radius) || radius <= 0) return 5d;
+=======
+    private Location provinceFor(Location location) {
+        Location cursor = location;
+        for (int depth = 0; cursor != null && depth < 3; depth++) {
+            if ("PROVINCE".equals(cursor.getLocationType())) return cursor;
+            cursor = cursor.getParent();
+        }
+        return null;
+    }
+
+    private Double defaultRadius(Double radius) {
+        if (radius == null || radius <= 0) return 5d;
+>>>>>>> codex/ui-functional-audit-polish
         return Math.min(radius, 50d);
     }
 
@@ -217,6 +276,7 @@ public class PublicSearchSuggestionService {
 
     private long countProperties(Location location) {
         boolean province = "PROVINCE".equals(location.getLocationType());
+<<<<<<< HEAD
         Set<Long> provinceIds = province
                 ? provinceCompatibilityService.provinceScopeIds(location.getId())
                 : Set.of();
@@ -229,6 +289,16 @@ public class PublicSearchSuggestionService {
         return province
                 ? hotelRepository.countByProvinceIdInAndApprovalStatusAndOperationStatusAndIsDemoFalse(
                         provinceIds, "APPROVED", "ACTIVE")
+=======
+        Set<Long> provinceIds = province ? provinceCompatibilityService.provinceScopeIds(location.getId()) : Set.of();
+        if (includeDemo()) {
+            return province
+                    ? hotelRepository.countByProvinceIdInAndApprovalStatusAndOperationStatus(provinceIds, "APPROVED", "ACTIVE")
+                    : hotelRepository.countByWardIdAndApprovalStatusAndOperationStatus(location.getId(), "APPROVED", "ACTIVE");
+        }
+        return province
+                ? hotelRepository.countByProvinceIdInAndApprovalStatusAndOperationStatusAndIsDemoFalse(provinceIds, "APPROVED", "ACTIVE")
+>>>>>>> codex/ui-functional-audit-polish
                 : hotelRepository.countByWardIdAndApprovalStatusAndOperationStatusAndIsDemoFalse(location.getId(), "APPROVED", "ACTIVE");
     }
 

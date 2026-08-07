@@ -1,0 +1,26 @@
+P0-02G clean assertion trace
+
+Suite: com.hotel.security.FeatureGateIntegrationTest
+Test: whenTokenLacksFeature_thenReturns403
+
+Request before fix:
+GET /api/v1/hotels/my-hotels
+Actor: authenticated CustomUserDetails, userId=1
+Role: PROPERTY_OWNER
+Hotel/property context: none selected; read-only owner property listing
+Feature map: empty
+Legacy feature expected by test: HOTEL
+Payload/query: none
+
+Expected: HTTP 403, code FORBIDDEN_FEATURE
+Actual: HTTP 200, response body [] in the clean focused environment
+
+Assertion:
+java.lang.AssertionError: Status expected:<403> but was:<200>
+at FeatureGateIntegrationTest.whenTokenLacksFeature_thenReturns403(FeatureGateIntegrationTest.java:67)
+
+Contract evidence:
+- T198: read-only GET /api/hotels/my-hotels is no longer blocked by a subscription feature annotation.
+- Current feature catalog uses MAX_PROPERTIES for account-level property growth; HOTEL is not a current plan feature.
+- HotelController.getMyHotels has no RequireFeature annotation.
+- Property creation/claim mutation paths enforce MAX_PROPERTIES.

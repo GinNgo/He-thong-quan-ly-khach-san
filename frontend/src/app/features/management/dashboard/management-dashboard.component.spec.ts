@@ -136,6 +136,7 @@ describe('ManagementDashboardComponent', () => {
     expect(element.textContent).not.toContain('Đang tải tổng quan...');
     expect(element.textContent).toContain('LuxeStay Hà Nội');
     expect(element.textContent).toContain('STANDARD');
+<<<<<<< HEAD
     expect(element.textContent).toContain('Entitlement source: PLATFORM');
     expect(element.textContent).toContain('Updated');
   });
@@ -167,6 +168,10 @@ describe('ManagementDashboardComponent', () => {
     expect(component.context?.planCode).toBe('PLAN-B');
     expect(component.context?.usage.rooms).toBe(8);
     expect(component.loading).toBe(false);
+=======
+    expect(element.textContent).toContain('Nguồn quyền lợi: Hệ thống thanh toán gói');
+    expect(element.textContent).toContain('Phòng trống');
+>>>>>>> codex/ui-functional-audit-polish
   });
 
   it('shows approval guidance instead of operational metrics for a pending property', async () => {
@@ -213,7 +218,7 @@ describe('ManagementDashboardComponent', () => {
 
     const text = (fixture.nativeElement as HTMLElement).textContent || '';
     expect(text).toContain('Chưa thể vận hành');
-    expect(text).toContain('PENDING_APPROVAL');
+    expect(text).toContain('Trạng thái duyệt: Chờ duyệt');
     expect(text).not.toContain('Phòng trống');
   });
 

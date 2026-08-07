@@ -10,9 +10,13 @@ import com.hotel.services.HotelManagementService;
 import com.hotel.services.PropertyAccessService;
 import com.hotel.services.PropertyApprovalWorkflowService;
 import com.hotel.services.PropertyRegistrationService;
+<<<<<<< HEAD
 import com.hotel.services.PropertySearchService;
 import com.hotel.services.PublicInventoryEligibilityPolicy;
 import com.hotel.exceptions.ResourceNotFoundException;
+=======
+import com.hotel.services.PublicPlacementDisclosureService;
+>>>>>>> codex/ui-functional-audit-polish
 import com.hotel.observability.OperationalMetrics;
 import com.hotel.services.RoomTypeService;
 import org.junit.jupiter.api.BeforeEach;
@@ -75,10 +79,14 @@ class HotelControllerIntegrationTest {
     private PropertyRegistrationService propertyRegistrationService;
 
     @MockBean
+<<<<<<< HEAD
     private PropertyApprovalWorkflowService propertyApprovalWorkflowService;
 
     @MockBean
     private PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
+=======
+    private PublicPlacementDisclosureService publicPlacementDisclosureService;
+>>>>>>> codex/ui-functional-audit-polish
 
     @MockBean
     private OperationalMetrics operationalMetrics;

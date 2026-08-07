@@ -1,0 +1,110 @@
+%PDF-1.4
+%LUXE
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R ] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 2865 >>
+stream
+BT /F1 9 Tf 42 800 Td (LUXESTAY - FINALIZED PROPERTY INVOICE) Tj ET
+BT /F1 9 Tf 42 783 Td (Invoice number: INV-3-42) Tj ET
+BT /F1 9 Tf 42 766 Td (Finalized at UTC: 2026-08-01T10:30:00) Tj ET
+BT /F1 9 Tf 42 749 Td (Reservation: 42 | Status: FINALIZED | Currency: VND) Tj ET
+BT /F1 9 Tf 42 732 Td () Tj ET
+BT /F1 9 Tf 42 715 Td (PROPERTY SNAPSHOT) Tj ET
+BT /F1 9 Tf 42 698 Td (Name: Luxe Beach Hotel) Tj ET
+BT /F1 9 Tf 42 681 Td (Code: LUXE-BEACH | Property ID: 3) Tj ET
+BT /F1 9 Tf 42 664 Td (Address: 1 Beach Road, Da Nang, VN) Tj ET
+BT /F1 9 Tf 42 647 Td (Contact: 0900000000 | billing@luxe.test) Tj ET
+BT /F1 9 Tf 42 630 Td () Tj ET
+BT /F1 9 Tf 42 613 Td (CUSTOMER SNAPSHOT) Tj ET
+BT /F1 9 Tf 42 596 Td (Name: Nguyen Van A) Tj ET
+BT /F1 9 Tf 42 579 Td (Customer ID: 8 | Username: customer@example.test) Tj ET
+BT /F1 9 Tf 42 562 Td (Contact: 0911111111 | customer@example.test) Tj ET
+BT /F1 9 Tf 42 545 Td () Tj ET
+BT /F1 9 Tf 42 528 Td (ITEMIZED LINES) Tj ET
+BT /F1 9 Tf 42 511 Td (Line 1 [ROOM]: Deluxe room) Tj ET
+BT /F1 9 Tf 42 494 Td (  Code: DLX | Quantity: 1 | Unit price VND: 1000000) Tj ET
+BT /F1 9 Tf 42 477 Td (  Tax VND: 0 | Discount VND: 0 | Total VND: 1000000) Tj ET
+BT /F1 9 Tf 42 460 Td (  Usage: 2026-08-01T08:00:00 -> -) Tj ET
+BT /F1 9 Tf 42 443 Td (Line 2 [SERVICE]: Breakfast buffet) Tj ET
+BT /F1 9 Tf 42 426 Td (  Code: BREAKFAST | Quantity: 2 | Unit price VND: 50000) Tj ET
+BT /F1 9 Tf 42 409 Td (  Tax VND: 0 | Discount VND: 0 | Total VND: 100000) Tj ET
+BT /F1 9 Tf 42 392 Td (  Usage: 2026-08-01T08:00:00 -> -) Tj ET
+BT /F1 9 Tf 42 375 Td (Line 3 [MINIBAR]: Mineral water) Tj ET
+BT /F1 9 Tf 42 358 Td (  Code: WATER | Quantity: 3 | Unit price VND: 20000) Tj ET
+BT /F1 9 Tf 42 341 Td (  Tax VND: 0 | Discount VND: 0 | Total VND: 60000) Tj ET
+BT /F1 9 Tf 42 324 Td (  Usage: 2026-08-01T08:00:00 -> -) Tj ET
+BT /F1 9 Tf 42 307 Td (Line 4 [SURCHARGE]: Late checkout) Tj ET
+BT /F1 9 Tf 42 290 Td (  Code: LATE | Quantity: 1 | Unit price VND: 40000) Tj ET
+BT /F1 9 Tf 42 273 Td (  Tax VND: 0 | Discount VND: 0 | Total VND: 40000) Tj ET
+BT /F1 9 Tf 42 256 Td (  Usage: 2026-08-01T08:00:00 -> -) Tj ET
+BT /F1 9 Tf 42 239 Td (Line 5 [TAX]: VAT) Tj ET
+BT /F1 9 Tf 42 222 Td (  Code: VAT | Quantity: 1 | Unit price VND: 0) Tj ET
+BT /F1 9 Tf 42 205 Td (  Tax VND: 100000 | Discount VND: 0 | Total VND: 100000) Tj ET
+BT /F1 9 Tf 42 188 Td (  Usage: 2026-08-01T08:00:00 -> -) Tj ET
+BT /F1 9 Tf 42 171 Td (Line 6 [FEE]: Service fee) Tj ET
+BT /F1 9 Tf 42 154 Td (  Code: SERVICE_FEE | Quantity: 1 | Unit price VND: 30000) Tj ET
+BT /F1 9 Tf 42 137 Td (  Tax VND: 0 | Discount VND: 0 | Total VND: 30000) Tj ET
+BT /F1 9 Tf 42 120 Td (  Usage: 2026-08-01T08:00:00 -> -) Tj ET
+BT /F1 9 Tf 42 103 Td (Line 7 [DISCOUNT]: Member discount) Tj ET
+BT /F1 9 Tf 42 86 Td (  Code: MEMBER | Quantity: 1 | Unit price VND: 0) Tj ET
+BT /F1 8 Tf 500 24 Td (Page 1 of 2) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 1462 >>
+stream
+BT /F1 9 Tf 42 800 Td (  Tax VND: 0 | Discount VND: 150000 | Total VND: 150000) Tj ET
+BT /F1 9 Tf 42 783 Td (  Usage: 2026-08-01T08:00:00 -> -) Tj ET
+BT /F1 9 Tf 42 766 Td () Tj ET
+BT /F1 9 Tf 42 749 Td (PAYMENT ALLOCATIONS) Tj ET
+BT /F1 9 Tf 42 732 Td (Payment 1: Amount VND: 1200000 | Method: MANUAL_TRANSFER | Provider: SIMULATOR) Tj ET
+BT /F1 9 Tf 42 715 Td (  Reference: txn-public-1 | Occurred at UTC: 2026-08-01T10:00:00) Tj ET
+BT /F1 9 Tf 42 698 Td () Tj ET
+BT /F1 9 Tf 42 681 Td (REFUNDS AND CREDIT NOTES) Tj ET
+BT /F1 9 Tf 42 664 Td (Refunds/credits snapshot VND: 20000) Tj ET
+BT /F1 9 Tf 42 647 Td (Credit note: CN-3-88-1 | Amount VND: 20000 | Issued at UTC: 2026-08-01T11:00:00) Tj ET
+BT /F1 9 Tf 42 630 Td (  Reason: Returned minibar item) Tj ET
+BT /F1 9 Tf 42 613 Td (  Credit line: Mineral water returned | Amount VND: 20000) Tj ET
+BT /F1 9 Tf 42 596 Td () Tj ET
+BT /F1 9 Tf 42 579 Td (TOTALS) Tj ET
+BT /F1 9 Tf 42 562 Td (Subtotal VND: 1200000) Tj ET
+BT /F1 9 Tf 42 545 Td (Tax VND: 100000) Tj ET
+BT /F1 9 Tf 42 528 Td (Fees/surcharges VND: 30000) Tj ET
+BT /F1 9 Tf 42 511 Td (Discount VND: 150000) Tj ET
+BT /F1 9 Tf 42 494 Td (TOTAL VND: 1180000) Tj ET
+BT /F1 9 Tf 42 477 Td (PAID VND: 1200000) Tj ET
+BT /F1 9 Tf 42 460 Td (REFUNDED/CREDITED VND: 20000) Tj ET
+BT /F1 9 Tf 42 443 Td (BALANCE VND: 0) Tj ET
+BT /F1 9 Tf 42 426 Td (This document renders only the immutable finalized invoice snapshot.) Tj ET
+BT /F1 8 Tf 500 24 Td (Page 2 of 2) Tj ET
+endstream
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000128 00000 n 
+0000000198 00000 n 
+0000000324 00000 n 
+0000003241 00000 n 
+0000003367 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+4881
+%%EOF

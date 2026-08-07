@@ -31,8 +31,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${MAIL_USERNAME:your-email@gmail.com}
-    password: ${MAIL_PASSWORD:your-app-password}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -66,17 +66,6 @@ payment:
     return-url: ${VNPAY_RETURN_URL:http://localhost:4200/payment-result}
     version: 2.1.0
     command: pay
-  momo:
-    partner-code: ${MOMO_PARTNER_CODE:}
-    access-key: ${MOMO_ACCESS_KEY:}
-    secret-key: ${MOMO_SECRET_KEY:}
-    create-url: ${MOMO_CREATE_URL:https://test-payment.momo.vn/v2/gateway/api/create}
-    query-url: ${MOMO_QUERY_URL:https://test-payment.momo.vn/v2/gateway/api/query}
-    refund-url: ${MOMO_REFUND_URL:https://test-payment.momo.vn/v2/gateway/api/refund}
-    refund-query-url: ${MOMO_REFUND_QUERY_URL:https://test-payment.momo.vn/v2/gateway/api/refund/query}
-    redirect-url: ${MOMO_REDIRECT_URL:http://localhost:4200/payment-result}
-    ipn-url: ${MOMO_IPN_URL:http://localhost:8080/api/payments/momo-ipn}
-    request-type: captureWallet
   zalopay:
     app-id: ${ZALOPAY_APP_ID:}
     key1: ${ZALOPAY_KEY1:}
@@ -123,8 +112,11 @@ app:
       max-ip-requests: ${EMAIL_VERIFICATION_MAX_IP_REQUESTS:8}
       max-user-requests: ${EMAIL_VERIFICATION_MAX_USER_REQUESTS:3}
   mail:
+    sender-name: ${MAIL_SENDER_NAME:LuxeStay}
+    registration-enabled: ${REGISTRATION_EMAIL_ENABLED:true}
     password-reset-enabled: ${PASSWORD_RESET_EMAIL_ENABLED:true}
     password-reset-url: ${PASSWORD_RESET_URL:http://localhost:4200/reset-password}
+<<<<<<< HEAD
     email-verification-enabled: ${EMAIL_VERIFICATION_ENABLED:true}
     email-verification-url: ${EMAIL_VERIFICATION_URL:http://localhost:4200/verify-email}
     payment-receipt-enabled: ${PAYMENT_RECEIPT_EMAIL_ENABLED:true}
@@ -144,6 +136,18 @@ app:
     default-departure-time: ${STAY_CHECK_IN_DEFAULT_DEPARTURE_TIME:12:00}
     early-window-minutes: ${STAY_CHECK_IN_EARLY_WINDOW_MINUTES:0}
     demo-early-window-minutes: ${STAY_CHECK_IN_DEMO_EARLY_WINDOW_MINUTES:5}
+=======
+    login-url: ${REGISTRATION_LOGIN_URL:http://localhost:4200/login}
+    outbox:
+      enabled: ${MAIL_OUTBOX_ENABLED:true}
+      delivery-enabled: ${MAIL_OUTBOX_DELIVERY_ENABLED:false}
+      scan-ms: ${MAIL_OUTBOX_SCAN_MS:30000}
+      base-backoff-seconds: ${MAIL_OUTBOX_BASE_BACKOFF_SECONDS:30}
+      max-backoff-seconds: ${MAIL_OUTBOX_MAX_BACKOFF_SECONDS:3600}
+      max-attempts: ${MAIL_OUTBOX_MAX_ATTEMPTS:5}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+>>>>>>> codex/ui-functional-audit-polish
   websocket:
     allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:4200}
   observability:
@@ -151,11 +155,19 @@ app:
       pool-size: ${OBSERVABILITY_SCHEDULER_POOL_SIZE:2}
   location-import:
     enabled: true
+<<<<<<< HEAD
     file-path: ${LOCATION_IMPORT_FILE_PATH:}
+=======
+>>>>>>> codex/ui-functional-audit-polish
     resource: ${LOCATION_IMPORT_RESOURCE:classpath:data/locations.json}
     current-province-resource: ${CURRENT_PROVINCE_IMPORT_RESOURCE:classpath:data/provinces-current-34.json}
     landmark-resource: ${LANDMARK_IMPORT_RESOURCE:classpath:data/landmarks.json}
     cleanup-obsolete: false
+  e2e-fixtures:
+    enabled: false
+  reservation-hold:
+    ttl-minutes: ${RESERVATION_HOLD_TTL_MINUTES:15}
+    expiry-scan-ms: ${RESERVATION_HOLD_EXPIRY_SCAN_MS:60000}
   demo-data:
     enabled: false
     legacy-seed: false
@@ -172,6 +184,15 @@ app:
     max-results-per-batch: 100
     request-delay-ms: 1000
     auto-publish: false
+
+google:
+  client:
+    id: ${GOOGLE_CLIENT_ID:}
+
+social:
+  facebook:
+    app-id: ${FACEBOOK_APP_ID:}
+    app-secret: ${FACEBOOK_APP_SECRET:}
 
 management:
   endpoints:

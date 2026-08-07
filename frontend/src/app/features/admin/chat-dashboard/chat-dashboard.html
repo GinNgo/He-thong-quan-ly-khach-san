@@ -86,6 +86,7 @@
         (click)="selectConversation(conversation)">
         <span class="conversation-avatar" aria-hidden="true">{{ conversationInitials(conversation) }}</span>
         <span class="conversation-copy">
+<<<<<<< HEAD
           <strong>{{ conversation.subject }}</strong>
           <span>{{ conversation.customerName }} / {{ conversation.lastMessage || 'Cuoc hoi thoai moi' }}</span>
           <span class="queue-meta">
@@ -96,6 +97,11 @@
               {{ slaLabel(conversation) }}
             </span>
           </span>
+=======
+          <strong>{{ conversation.customerName }}</strong>
+          <small>{{ conversation.hotelName }} · {{ conversation.status }}</small>
+          <span>{{ conversation.lastMessage || 'Cuộc hội thoại mới' }}</span>
+>>>>>>> codex/ui-functional-audit-polish
         </span>
         <time *ngIf="conversation.lastMessageAt" [attr.datetime]="conversation.lastMessageAt">
           {{ conversation.lastMessageAt | date:'HH:mm' }}
@@ -112,6 +118,7 @@
         </div>
         <div>
           <p class="eyebrow">CUSTOMER CONVERSATION</p>
+<<<<<<< HEAD
           <h2>{{ getConversation(selectedId)?.subject || ('Hoi thoai #' + selectedId) }}</h2>
           <p>
             {{ getConversation(selectedId)?.customerName }}
@@ -136,6 +143,10 @@
           <small *ngIf="selectedConversation.lastActivityAt">
             Hoat dong cuoi: {{ selectedConversation.lastActivityAt | date:'dd/MM/yyyy HH:mm' }}
           </small>
+=======
+          <h2>{{ getConversation(selectedId)?.customerName || ('Khách hàng #' + selectedId) }}</h2>
+          <p>{{ getConversation(selectedId)?.hotelName }} · {{ getConversation(selectedId)?.status }}</p>
+>>>>>>> codex/ui-functional-audit-polish
         </div>
       </header>
 

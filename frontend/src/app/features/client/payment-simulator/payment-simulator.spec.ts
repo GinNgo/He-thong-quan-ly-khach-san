@@ -1,24 +1,29 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-
-import { PaymentSimulatorComponent } from './payment-simulator';
 import { provideRouter } from '@angular/router';
+import { Subject } from 'rxjs';
+import { PaymentService } from '../../../core/services/payment.service';
+import { PaymentSimulatorComponent } from './payment-simulator';
 
 describe('PaymentSimulator', () => {
   let component: PaymentSimulatorComponent;
   let fixture: ComponentFixture<PaymentSimulatorComponent>;
-  let http: HttpTestingController;
+  let confirmation$: Subject<{ status: string; message: string }>;
+  let paymentService: { confirmDemoPayment: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
+    confirmation$ = new Subject();
+    paymentService = { confirmDemoPayment: vi.fn(() => confirmation$) };
+
     await TestBed.configureTestingModule({
       imports: [PaymentSimulatorComponent],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideRouter([]),
+        { provide: PaymentService, useValue: paymentService },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(PaymentSimulatorComponent);
     component = fixture.componentInstance;
-    http = TestBed.inject(HttpTestingController);
     await fixture.whenStable();
   });
 
@@ -26,29 +31,26 @@ describe('PaymentSimulator', () => {
     expect(component).toBeTruthy();
   });
 
-  it('shows an explicit recovery state when payment context is missing', () => {
+  it('shows an explicit recovery state when the signed token is missing', () => {
     fixture.detectChanges();
 
     expect(component.hasValidContext).toBe(false);
     expect(fixture.nativeElement.textContent).toContain('Phiên thanh toán không hợp lệ');
     component.confirmPayment();
-    http.verify();
+    expect(paymentService.confirmDemoPayment).not.toHaveBeenCalled();
   });
 
-  it('ignores duplicate confirmation while the callback is pending', () => {
-    component.reservationId = 1;
-    component.method = 'MOMO';
-    component.amount = 100000;
-    component.transactionId = 'TX-1';
+  it('submits only the signed token and ignores duplicate confirmation while pending', () => {
+    component.token = 'signed-token';
     component.contextError = '';
 
     component.confirmPayment();
     component.confirmPayment();
 
-    const request = http.expectOne(request => request.url.includes('/payments/callback'));
-    expect(request.request.method).toBe('GET');
-    request.flush({ message: 'ok' });
+    expect(paymentService.confirmDemoPayment).toHaveBeenCalledTimes(1);
+    expect(paymentService.confirmDemoPayment).toHaveBeenCalledWith('signed-token');
+    confirmation$.next({ status: 'APPLIED', message: 'ok' });
+    confirmation$.complete();
     expect(component.isSuccess).toBe(true);
-    http.verify();
   });
 });

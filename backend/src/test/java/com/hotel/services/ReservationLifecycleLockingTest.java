@@ -13,8 +13,12 @@ import com.hotel.entities.User;
 import com.hotel.propertycommerce.checkout.CheckoutOperationsService;
 import com.hotel.propertycommerce.config.PropertyPaymentConfigurationRepository;
 import com.hotel.propertycommerce.invoice.InvoiceFinalizationService;
+<<<<<<< HEAD
 import com.hotel.paymentprovider.error.FinancialException;
 import com.hotel.propertycommerce.stay.CheckInPolicy;
+=======
+import com.hotel.propertycommerce.refund.PropertyRefundRequestRepository;
+>>>>>>> codex/ui-functional-audit-polish
 import com.hotel.repositories.HotelServiceRepository;
 import com.hotel.repositories.HousekeepingTaskRepository;
 import com.hotel.repositories.InvoiceRepository;
@@ -68,6 +72,13 @@ class ReservationLifecycleLockingTest {
     @Mock private InvoiceRepository invoiceRepository;
     @Mock private PaymentRepository paymentRepository;
     @Mock private PaymentService paymentService;
+<<<<<<< HEAD
+=======
+    @Mock private PaymentSessionRepository paymentSessionRepository;
+    @Mock private RefundRequestRepository refundRequestRepository;
+    @Mock private RefundService refundService;
+    @Mock private PropertyRefundRequestRepository propertyRefundRequestRepository;
+>>>>>>> codex/ui-functional-audit-polish
     @Mock private HousekeepingTaskRepository housekeepingTaskRepository;
     @Mock private PropertyAccessService propertyAccessService;
     @Mock private ReservationHoldService reservationHoldService;
@@ -122,8 +133,14 @@ class ReservationLifecycleLockingTest {
 
         when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
         lenient().when(reservationRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(reservation));
+<<<<<<< HEAD
         lenient().when(reservationRepository.findById(42L)).thenReturn(Optional.of(reservation));
         lenient().when(reservationDetailRepository.findByReservationId(42L)).thenReturn(List.of(detail));
+=======
+        when(reservationDetailRepository.findByReservationId(42L)).thenReturn(List.of(detail));
+        lenient().when(propertyRefundRequestRepository.findByReservationIdOrderByRequestedAtAsc(42L))
+                .thenReturn(List.of());
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     @Test

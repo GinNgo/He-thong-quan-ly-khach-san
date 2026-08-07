@@ -18,5 +18,9 @@ public interface PropertyImageRepository extends JpaRepository<PropertyImage, Lo
     @Query("select image from PropertyImage image join fetch image.hotel hotel where hotel.id in :hotelIds order by hotel.id, image.sortOrder, image.id")
     List<PropertyImage> findByHotelIdInOrderByHotelIdAscSortOrderAscIdAsc(@Param("hotelIds") Collection<Long> hotelIds);
     long countByHotelId(Long hotelId);
+<<<<<<< HEAD
     long countByMediaId(Long mediaId);
+=======
+    long countByIsDemoTrue();
+>>>>>>> codex/ui-functional-audit-polish
 }

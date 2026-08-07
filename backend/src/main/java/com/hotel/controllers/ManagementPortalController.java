@@ -1,7 +1,14 @@
 package com.hotel.controllers;
 
 import com.hotel.dtos.*;
+<<<<<<< HEAD
 import com.hotel.services.HotelManagementService;
+=======
+import com.hotel.housekeeping.HousekeepingQueueService;
+import com.hotel.security.ActionCode;
+import com.hotel.security.FunctionCode;
+import com.hotel.security.Permission;
+>>>>>>> codex/ui-functional-audit-polish
 import com.hotel.services.ManagementPortalService;
 import com.hotel.security.ActionCode;
 import com.hotel.security.FunctionCode;
@@ -18,10 +25,14 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/management")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyAuthority('PROPERTY_OWNER','HOTEL_ADMIN','HOTEL_MANAGER','SUPER_ADMIN','ADMIN')")
+@PreAuthorize("hasAnyAuthority('PROPERTY_OWNER','HOTEL_ADMIN','HOTEL_MANAGER','HOUSEKEEPING','SUPER_ADMIN','ADMIN')")
 public class ManagementPortalController {
     private final ManagementPortalService service;
+<<<<<<< HEAD
     private final HotelManagementService hotelManagementService;
+=======
+    private final HousekeepingQueueService housekeepingQueueService;
+>>>>>>> codex/ui-functional-audit-polish
 
     @GetMapping("/context")
     @Permission(function = FunctionCode.HOTEL, action = ActionCode.VIEW)
@@ -122,8 +133,24 @@ public class ManagementPortalController {
     }
 
     @PostMapping("/housekeeping/{taskId}/complete")
+<<<<<<< HEAD
     @Permission(function = FunctionCode.ROOM, action = ActionCode.UPDATE)
     public ResponseEntity<Map<String, Object>> completeHousekeeping(@PathVariable Long taskId) {
         return ResponseEntity.ok(service.completeHousekeeping(taskId));
+=======
+    @Permission(function = FunctionCode.HOUSEKEEPING, action = ActionCode.APPROVE)
+    public ResponseEntity<Map<String, Object>> completeHousekeeping(
+            @PathVariable Long taskId,
+            @RequestBody(required = false) HousekeepingCommandRequest request) {
+        HousekeepingTaskDTO task = housekeepingQueueService.complete(taskId, request);
+        return ResponseEntity.ok(Map.of(
+                "taskId", task.id(),
+                "status", task.status(),
+                "roomId", task.roomId(),
+                "roomStatus", task.roomStatus(),
+                "housekeepingStatus", task.roomHousekeepingStatus(),
+                "maintenanceStatus", task.roomMaintenanceStatus(),
+                "roomReleased", task.roomReleased()));
+>>>>>>> codex/ui-functional-audit-polish
     }
 }

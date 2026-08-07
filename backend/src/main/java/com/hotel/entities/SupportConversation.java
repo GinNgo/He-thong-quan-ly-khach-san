@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+<<<<<<< HEAD
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -31,6 +32,35 @@ import java.util.UUID;
                         columnList = "assigned_agent_id,status")
         })
 public class SupportConversation {
+=======
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Version;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.ParamDef;
+
+import java.time.Instant;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Table(name = "support_conversations",
+        uniqueConstraints = @UniqueConstraint(name = "UQ_support_conversations_public_id", columnNames = "public_id"),
+        indexes = {
+                @Index(name = "IX_support_conversations_hotel_status_activity", columnList = "hotel_id,status,last_activity_at"),
+                @Index(name = "IX_support_conversations_customer_activity", columnList = "customer_id,last_activity_at"),
+                @Index(name = "IX_support_conversations_agent_status", columnList = "assigned_agent_id,status")
+        })
+@FilterDef(name = "supportConversationTenantFilter", parameters = @ParamDef(name = "hotelId", type = Long.class))
+@Filter(name = "supportConversationTenantFilter", condition = "hotel_id = :hotelId")
+public class SupportConversation extends AuditableEntity {
+
+>>>>>>> codex/ui-functional-audit-polish
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -38,6 +68,7 @@ public class SupportConversation {
     @Column(name = "public_id", nullable = false, length = 64)
     private String publicId;
 
+<<<<<<< HEAD
     @Column(name = "customer_id", nullable = false)
     private Long customerId;
 
@@ -67,6 +98,22 @@ public class SupportConversation {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_agent_id", insertable = false, updatable = false)
+=======
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "customer_id", nullable = false)
+    private User customer;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "hotel_id", nullable = false)
+    private Hotel hotel;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reservation_id")
+    private Reservation reservation;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_agent_id")
+>>>>>>> codex/ui-functional-audit-polish
     private User assignedAgent;
 
     @Column(nullable = false, length = 20)
@@ -78,9 +125,12 @@ public class SupportConversation {
     @Column(name = "last_activity_at", nullable = false)
     private Instant lastActivityAt;
 
+<<<<<<< HEAD
     @Column(name = "sla_deadline_at")
     private Instant slaDeadlineAt;
 
+=======
+>>>>>>> codex/ui-functional-audit-polish
     @Column(name = "assigned_at")
     private Instant assignedAt;
 
@@ -90,6 +140,7 @@ public class SupportConversation {
     @Column(name = "closed_at")
     private Instant closedAt;
 
+<<<<<<< HEAD
     @Column(name = "first_response_at")
     private Instant firstResponseAt;
 
@@ -200,4 +251,9 @@ public class SupportConversation {
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
     public Long getVersion() { return version; }
     public void setVersion(Long version) { this.version = version; }
+=======
+    @Version
+    @Column(nullable = false)
+    private Long version;
+>>>>>>> codex/ui-functional-audit-polish
 }

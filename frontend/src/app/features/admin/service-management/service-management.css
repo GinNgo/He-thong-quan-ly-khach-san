@@ -1,2 +1,22 @@
+<<<<<<< HEAD
 .service-page { padding: 1rem; color: #172033; }.page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }.page-header h1 { margin: .2rem 0; }.page-header p { margin: 0; color: #617086; }.eyebrow { color: #47756d; font-size: .75rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }.header-actions, .row-actions { display: flex; align-items: center; gap: .5rem; }.table-shell { border: 1px solid #dbe2ea; border-radius: 14px; overflow: hidden; background: white; }.error-state { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; padding: .8rem 1rem; border-radius: 10px; background: #fff1f0; color: #9f211b; }.error-state span { display: flex; align-items: center; gap: .5rem; }.error-state button { border: 0; background: transparent; color: inherit; font-weight: 700; }.status { display: inline-flex; border-radius: 999px; padding: .3rem .6rem; background: #dcfce7; color: #166534; font-size: .78rem; font-weight: 800; }.status.inactive { background: #e5e7eb; color: #4b5563; }.empty-state { display: grid; justify-items: center; gap: .4rem; padding: 2.5rem; color: #617086; }.service-form { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }.service-form label { display: grid; gap: .35rem; font-weight: 700; }.service-form input, .service-form textarea, .service-form select { width: 100%; padding: .65rem; border: 1px solid #bdc8d6; border-radius: 8px; background: white; }.service-form small { color: #b42318; }.service-form .wide { grid-column: 1 / -1; }
 @media (max-width: 760px) { .page-header { align-items: stretch; flex-direction: column; }.header-actions { align-items: stretch; flex-direction: column; }.service-form { grid-template-columns: 1fr; }.service-form .wide { grid-column: auto; } }
+=======
+:host { display: block; }
+.catalog-intro { max-width: 58rem; margin: -.25rem 0 1.25rem; color: #5b6b7b; line-height: 1.55; }
+.property-picker { display: grid; min-width: min(320px, 100%); gap: .35rem; color: #334155; font-size: .82rem; font-weight: 700; }
+.catalog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .65rem; }
+.service-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.service-form label { display: grid; gap: .4rem; color: #334155; font-weight: 700; }
+.service-form label span { font-size: .82rem; }
+.service-form input, .service-form select, .service-form textarea { width: 100%; }
+.service-form .wide { grid-column: 1 / -1; }
+@media (max-width: 720px) {
+  .d-flex { align-items: stretch !important; flex-direction: column; }
+  .property-picker { min-width: 100%; }
+  .catalog-actions { justify-content: stretch; }
+  .catalog-actions p-button { flex: 1; }
+  .service-form { grid-template-columns: 1fr; }
+  .service-form .wide { grid-column: auto; }
+}
+>>>>>>> codex/ui-functional-audit-polish

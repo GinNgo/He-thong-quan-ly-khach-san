@@ -2,7 +2,10 @@ package com.hotel.services;
 
 import com.hotel.dtos.ChatConversationDTO;
 import com.hotel.dtos.ChatMessageDTO;
+<<<<<<< HEAD
 import com.hotel.dtos.ChatPageDTO;
+=======
+>>>>>>> codex/ui-functional-audit-polish
 import com.hotel.entities.ChatMessage;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.Reservation;
@@ -19,16 +22,21 @@ import com.hotel.repositories.UserRepository;
 import com.hotel.security.ActionCode;
 import com.hotel.security.ChatAuthorizationService;
 import com.hotel.security.CustomUserDetails;
+<<<<<<< HEAD
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+=======
+import lombok.RequiredArgsConstructor;
+>>>>>>> codex/ui-functional-audit-polish
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+<<<<<<< HEAD
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -37,11 +45,17 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+=======
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.List;
+>>>>>>> codex/ui-functional-audit-polish
 import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class ChatService {
+<<<<<<< HEAD
     private static final Set<String> ACTIVE_STATUSES = Set.of("OPEN", "ASSIGNED", "ESCALATED");
     private static final Set<String> QUEUE_STATUSES = Set.of("OPEN", "ASSIGNED", "ESCALATED", "CLOSED");
     private static final Set<String> ASSIGNMENT_FILTERS = Set.of("ALL", "UNASSIGNED", "MINE");
@@ -220,10 +234,61 @@ public class ChatService {
     @Transactional
     public ChatMessageDTO replyToCustomer(CustomUserDetails support, Long conversationId, String content) {
         return replyToConversation(support, conversationId, content, null);
+=======
+
+    private static final Set<String> ACTIVE_STATUSES = Set.of("OPEN", "ASSIGNED", "ESCALATED");
+
+    private final ChatMessageRepository chatMessageRepository;
+    private final SupportConversationRepository conversationRepository;
+    private final UserRepository userRepository;
+    private final UserPropertyRepository userPropertyRepository;
+    private final ReservationRepository reservationRepository;
+    private final HotelRepository hotelRepository;
+    private final ChatAuthorizationService authorizationService;
+    private final SupportConversationAuditService auditService;
+
+    @Transactional
+    public ChatMessageDTO sendToSupport(
+            CustomUserDetails sender,
+            Long requestedHotelId,
+            Long reservationId,
+            String content) {
+        CustomerContext context = resolveCustomerContext(sender.getUserId(), requestedHotelId, reservationId);
+        SupportConversation conversation = conversationRepository
+                .findFirstByCustomerIdAndHotelIdAndChannelAndStatusInOrderByLastActivityAtDesc(
+                        sender.getUserId(),
+                        context.hotel().getId(),
+                        "IN_APP",
+                        ACTIVE_STATUSES)
+                .orElseGet(() -> createConversation(context.customer(), context.hotel(), context.reservation()));
+        if (conversation.getReservation() == null && context.reservation() != null) {
+            conversation.setReservation(context.reservation());
+        }
+        conversation.setLastActivityAt(Instant.now());
+        conversationRepository.save(conversation);
+        return saveMessage(conversation, sender.getUserId(), 0L, normalizeContent(content));
+    }
+
+    @Transactional
+    public ChatMessageDTO replyToCustomer(CustomUserDetails support, Long conversationId, String content) {
+        authorizationService.requirePermission(support, ActionCode.CREATE);
+        SupportConversation conversation = requireAccessibleConversation(support, conversationId, "REPLY");
+        assignForReply(conversation, support);
+        conversation.setLastActivityAt(Instant.now());
+        conversationRepository.save(conversation);
+        ChatMessageDTO message = saveMessage(
+                conversation,
+                support.getUserId(),
+                conversation.getCustomer().getId(),
+                normalizeContent(content));
+        auditService.record(conversation, support.getUserId(), "REPLIED", "Support reply accepted");
+        return message;
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     @Transactional
     public ChatConversationDTO claimConversation(CustomUserDetails support, Long conversationId) {
+<<<<<<< HEAD
         return claimConversation(support, conversationId, null);
     }
 
@@ -252,11 +317,27 @@ public class ChatService {
         conversation.setAssignedAt(Instant.now());
         conversation.setStatus("ASSIGNED");
         conversationRepository.saveAndFlush(conversation);
+=======
+        authorizationService.requirePermission(support, ActionCode.CREATE);
+        SupportConversation conversation = requireAccessibleConversation(support, conversationId, "ASSIGN");
+        User agent = requireUser(support.getUserId());
+        if (conversation.getAssignedAgent() != null
+                && !conversation.getAssignedAgent().getId().equals(agent.getId())
+                && !authorizationService.isSystemAdministrator(support)) {
+            auditService.recordDenied(conversation, support.getUserId(), "ACCESS_DENIED_ASSIGN", "Conversation already assigned");
+            throw new AccessDeniedException("Conversation is assigned to another support agent");
+        }
+        conversation.setAssignedAgent(agent);
+        conversation.setAssignedAt(Instant.now());
+        conversation.setStatus("ASSIGNED");
+        conversationRepository.save(conversation);
+>>>>>>> codex/ui-functional-audit-polish
         auditService.record(conversation, support.getUserId(), "ASSIGNED", "Conversation assigned to support agent");
         return toConversation(conversation);
     }
 
     @Transactional
+<<<<<<< HEAD
     public ChatConversationDTO unassignConversation(
             CustomUserDetails support, Long conversationId, Long expectedVersion) {
         authorizationService.requirePermission(support, ActionCode.CREATE);
@@ -373,18 +454,42 @@ public class ChatService {
             CustomUserDetails customer, Long conversationId, int page, int size) {
         requireOwnedConversation(conversationId, customer.getUserId());
         return messagePage(conversationId, page, size);
+=======
+    public ChatConversationDTO escalateConversation(CustomUserDetails support, Long conversationId) {
+        authorizationService.requirePermission(support, ActionCode.CREATE);
+        SupportConversation conversation = requireAccessibleConversation(support, conversationId, "ESCALATE");
+        if (conversation.getAssignedAgent() != null
+                && !conversation.getAssignedAgent().getId().equals(support.getUserId())
+                && !authorizationService.isSystemAdministrator(support)) {
+            auditService.recordDenied(conversation, support.getUserId(), "ACCESS_DENIED_ESCALATE", "Conversation assigned to another agent");
+            throw new AccessDeniedException("Only the assigned agent can escalate this conversation");
+        }
+        conversation.setStatus("ESCALATED");
+        conversation.setEscalatedAt(Instant.now());
+        conversation.setLastActivityAt(Instant.now());
+        conversationRepository.save(conversation);
+        auditService.record(conversation, support.getUserId(), "ESCALATED", "Conversation returned to the tenant queue");
+        return toConversation(conversation);
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     @Transactional(readOnly = true)
     public List<ChatMessageDTO> getMyHistory(CustomUserDetails userDetails) {
+<<<<<<< HEAD
         return conversationRepository.findFirstByCustomerIdOrderByUpdatedAtDesc(userDetails.getUserId())
                 .map(conversation -> messagePage(conversation.getId(), 0, 100).content())
                 .orElseGet(() -> mapLegacyHistory(userDetails.getUserId()));
+=======
+        return conversationRepository.findFirstByCustomerIdOrderByLastActivityAtDesc(userDetails.getUserId())
+                .map(this::mapHistory)
+                .orElseGet(List::of);
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     @Transactional(readOnly = true)
     public List<ChatMessageDTO> getSupportHistory(CustomUserDetails support, Long conversationId) {
         authorizationService.requirePermission(support, ActionCode.VIEW);
+<<<<<<< HEAD
         requireAccessibleConversation(support, conversationId, "HISTORY");
         return messagePage(conversationId, 0, 100).content();
     }
@@ -395,6 +500,9 @@ public class ChatService {
         authorizationService.requirePermission(support, ActionCode.VIEW);
         requireAccessibleConversation(support, conversationId, "HISTORY");
         return messagePage(conversationId, page, size);
+=======
+        return mapHistory(requireAccessibleConversation(support, conversationId, "HISTORY"));
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     @Transactional(readOnly = true)
@@ -421,6 +529,7 @@ public class ChatService {
             Long requestedHotelId,
             String query) {
         authorizationService.requirePermission(support, ActionCode.VIEW);
+<<<<<<< HEAD
         String normalizedStatus = normalizeOptionalFilter(status, QUEUE_STATUSES, "status");
         String normalizedAssignment = normalizeFilter(assignment, ASSIGNMENT_FILTERS, "assignment");
         String normalizedSla = normalizeFilter(sla, SLA_FILTERS, "sla");
@@ -445,6 +554,18 @@ public class ChatService {
                 .map(this::toConversation)
                 .filter(item -> matchesSearch(item, normalizedQuery))
                 .toList();
+=======
+        List<SupportConversation> conversations;
+        if (authorizationService.isSystemAdministrator(support)) {
+            conversations = conversationRepository.findByStatusNotOrderByLastActivityAtDesc("CLOSED");
+        } else {
+            Set<Long> hotelIds = accessibleHotelIds(support.getUserId());
+            conversations = hotelIds.isEmpty()
+                    ? List.of()
+                    : conversationRepository.findByHotelIdInAndStatusNotOrderByLastActivityAtDesc(hotelIds, "CLOSED");
+        }
+        return conversations.stream().map(this::toConversation).toList();
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     @Transactional(readOnly = true)
@@ -453,6 +574,7 @@ public class ChatService {
     }
 
     @Transactional(readOnly = true)
+<<<<<<< HEAD
     public Long getConversationCustomerId(Long conversationId) {
         return conversationRepository.findById(conversationId)
                 .map(SupportConversation::getCustomerId)
@@ -600,6 +722,33 @@ public class ChatService {
         entity.setConversationId(conversation.getId());
         entity.setHotelId(conversation.getHotelId());
         entity.setLegacyUnscoped(conversation.getHotelId() == null);
+=======
+    public List<String> getSupportRecipients(Long hotelId) {
+        return userRepository.findSupportRecipientUsernames(hotelId);
+    }
+
+    private SupportConversation createConversation(User customer, Hotel hotel, Reservation reservation) {
+        SupportConversation conversation = new SupportConversation();
+        conversation.setPublicId(UUID.randomUUID().toString());
+        conversation.setCustomer(customer);
+        conversation.setHotel(hotel);
+        conversation.setReservation(reservation);
+        conversation.setChannel("IN_APP");
+        conversation.setStatus("OPEN");
+        conversation.setLastActivityAt(Instant.now());
+        return conversationRepository.save(conversation);
+    }
+
+    private ChatMessageDTO saveMessage(
+            SupportConversation conversation,
+            Long senderId,
+            Long receiverId,
+            String content) {
+        ChatMessage entity = new ChatMessage();
+        entity.setConversation(conversation);
+        entity.setHotel(conversation.getHotel());
+        entity.setLegacyUnscoped(false);
+>>>>>>> codex/ui-functional-audit-polish
         entity.setSenderId(senderId);
         entity.setReceiverId(receiverId);
         entity.setContent(content);
@@ -607,6 +756,7 @@ public class ChatService {
         return new MessageWrite(mapToDTO(chatMessageRepository.save(entity)), true);
     }
 
+<<<<<<< HEAD
     private ChatPageDTO<ChatMessageDTO> messagePage(Long conversationId, int page, int size) {
         Page<ChatMessage> result = chatMessageRepository
                 .findByConversationIdAndTimestampGreaterThanEqualOrderByTimestampDescIdDesc(
@@ -620,11 +770,18 @@ public class ChatService {
     private List<ChatMessageDTO> mapLegacyHistory(Long customerId) {
         return chatMessageRepository.findCustomerSupportHistory(customerId).stream()
                 .filter(message -> message.getTimestamp() == null || !message.getTimestamp().isBefore(cutoff()))
+=======
+    private List<ChatMessageDTO> mapHistory(SupportConversation conversation) {
+        return chatMessageRepository
+                .findByConversationIdAndLegacyUnscopedFalseOrderByTimestampAsc(conversation.getId())
+                .stream()
+>>>>>>> codex/ui-functional-audit-polish
                 .map(this::mapToDTO)
                 .toList();
     }
 
     private ChatConversationDTO toConversation(SupportConversation conversation) {
+<<<<<<< HEAD
         User customer = requireUser(conversation.getCustomerId());
         ChatMessage lastMessage = chatMessageRepository
                 .findFirstByConversationIdOrderByTimestampDesc(conversation.getId()).orElse(null);
@@ -660,13 +817,136 @@ public class ChatService {
                 conversation.getReopenReason(),
                 lastMessage == null ? "" : lastMessage.getContent(),
                 lastMessage == null ? conversation.getLastActivityAt() : lastMessage.getTimestamp());
+=======
+        List<ChatMessage> history = chatMessageRepository
+                .findByConversationIdAndLegacyUnscopedFalseOrderByTimestampAsc(conversation.getId());
+        ChatMessage lastMessage = history.isEmpty() ? null : history.get(history.size() - 1);
+        User customer = conversation.getCustomer();
+        String customerName = customer.getFullName() == null || customer.getFullName().isBlank()
+                ? customer.getUsername()
+                : customer.getFullName();
+        return new ChatConversationDTO(
+                conversation.getId(),
+                customer.getId(),
+                customerName,
+                conversation.getHotel().getId(),
+                conversation.getHotel().getName(),
+                conversation.getReservation() == null ? null : conversation.getReservation().getId(),
+                conversation.getAssignedAgent() == null ? null : conversation.getAssignedAgent().getId(),
+                conversation.getStatus(),
+                lastMessage == null ? "" : lastMessage.getContent(),
+                lastMessage == null ? conversation.getLastActivityAt() : lastMessage.getTimestamp());
+    }
+
+    private SupportConversation requireAccessibleConversation(
+            CustomUserDetails support,
+            Long conversationId,
+            String action) {
+        if (conversationId == null) {
+            throw new ResourceNotFoundException("Support conversation was not found.");
+        }
+        SupportConversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Support conversation was not found."));
+        if (!authorizationService.isSystemAdministrator(support)
+                && !accessibleHotelIds(support.getUserId()).contains(conversation.getHotel().getId())) {
+            auditService.recordDenied(
+                    conversation,
+                    support.getUserId(),
+                    "ACCESS_DENIED_" + action,
+                    "Actor is outside the conversation tenant");
+            throw new ResourceNotFoundException("Support conversation was not found.");
+        }
+        return conversation;
+    }
+
+    private void assignForReply(SupportConversation conversation, CustomUserDetails support) {
+        if ("CLOSED".equals(conversation.getStatus())) {
+            throw new IllegalStateException("Closed conversations cannot receive replies.");
+        }
+        User assigned = conversation.getAssignedAgent();
+        if (assigned == null || "ESCALATED".equals(conversation.getStatus())) {
+            conversation.setAssignedAgent(requireUser(support.getUserId()));
+            conversation.setAssignedAt(Instant.now());
+            conversation.setStatus("ASSIGNED");
+            return;
+        }
+        if (!assigned.getId().equals(support.getUserId())
+                && !authorizationService.isSystemAdministrator(support)) {
+            auditService.recordDenied(conversation, support.getUserId(), "ACCESS_DENIED_REPLY", "Conversation assigned to another agent");
+            throw new AccessDeniedException("Conversation is assigned to another support agent");
+        }
+    }
+
+    private CustomerContext resolveCustomerContext(Long customerId, Long requestedHotelId, Long reservationId) {
+        User customer = userRepository.findByIdForUpdate(customerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Support conversation was not found."));
+        if (reservationId != null) {
+            Reservation reservation = reservationRepository.findById(reservationId)
+                    .filter(item -> item.getUser().getId().equals(customerId))
+                    .orElseThrow(() -> new ResourceNotFoundException("Reservation was not found."));
+            if (requestedHotelId != null && !reservation.getHotel().getId().equals(requestedHotelId)) {
+                throw new ResourceNotFoundException("Reservation was not found.");
+            }
+            return new CustomerContext(customer, reservation.getHotel(), reservation);
+        }
+        if (requestedHotelId != null) {
+            Hotel hotel = hotelRepository.findById(requestedHotelId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Property was not found."));
+            if (!"APPROVED".equalsIgnoreCase(hotel.getApprovalStatus())
+                    || !"ACTIVE".equalsIgnoreCase(hotel.getOperationStatus())) {
+                throw new ResourceNotFoundException("Property was not found.");
+            }
+            return new CustomerContext(customer, hotel, null);
+        }
+        Reservation latestReservation = reservationRepository.findByUserIdOrderByIdDesc(customerId)
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Choose a property before starting a tenant support conversation."));
+        return new CustomerContext(customer, latestReservation.getHotel(), latestReservation);
+    }
+
+    private Set<Long> accessibleHotelIds(Long userId) {
+        Set<Long> hotelIds = new LinkedHashSet<>();
+        for (UserProperty assignment : safeList(userPropertyRepository.findByUserId(userId))) {
+            if ("ACTIVE".equals(assignment.getStatus()) && assignment.getHotel() != null) {
+                hotelIds.add(assignment.getHotel().getId());
+            }
+        }
+        userRepository.findById(userId)
+                .map(User::getHotel)
+                .map(Hotel::getId)
+                .ifPresent(hotelIds::add);
+        return hotelIds;
+    }
+
+    private User requireUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Support conversation was not found."));
+    }
+
+    private String normalizeContent(String content) {
+        if (content == null || content.isBlank()) {
+            throw new IllegalArgumentException("Message content is required.");
+        }
+        String normalized = content.trim();
+        if (normalized.length() > 2000) {
+            throw new IllegalArgumentException("Message content cannot exceed 2,000 characters.");
+        }
+        return normalized;
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     private ChatMessageDTO mapToDTO(ChatMessage entity) {
         ChatMessageDTO dto = new ChatMessageDTO();
         dto.setId(entity.getId());
+<<<<<<< HEAD
         dto.setConversationId(entity.getConversationId());
         dto.setHotelId(entity.getHotelId());
+=======
+        dto.setConversationId(entity.getConversation().getId());
+        dto.setHotelId(entity.getHotel().getId());
+>>>>>>> codex/ui-functional-audit-polish
         dto.setSenderId(entity.getSenderId());
         dto.setReceiverId(entity.getReceiverId());
         dto.setClientMessageId(entity.getClientMessageId());
@@ -679,6 +959,7 @@ public class ChatService {
         return dto;
     }
 
+<<<<<<< HEAD
     private void authorizeAcknowledgement(
             CustomUserDetails actor,
             ChatMessage message,
@@ -914,13 +1195,19 @@ public class ChatService {
         return normalized;
     }
 
+=======
+>>>>>>> codex/ui-functional-audit-polish
     private <T> List<T> safeList(Collection<T> values) {
         return values == null ? List.of() : List.copyOf(values);
     }
 
+<<<<<<< HEAD
     private record CustomerContext(Hotel hotel, Reservation reservation) {
     }
 
     private record MessageWrite(ChatMessageDTO message, boolean created) {
+=======
+    private record CustomerContext(User customer, Hotel hotel, Reservation reservation) {
+>>>>>>> codex/ui-functional-audit-polish
     }
 }

@@ -18,6 +18,7 @@ import java.util.Optional;
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
     long countByReceiverIdAndIsReadFalse(Long receiverId);
 
+<<<<<<< HEAD
     boolean existsBySenderIdAndReceiverId(Long senderId, Long receiverId);
 
     @Query("""
@@ -43,5 +44,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     @Query("select message from ChatMessage message where message.id = :id")
     Optional<ChatMessage> findLockedById(@Param("id") Long id);
 
+=======
+>>>>>>> codex/ui-functional-audit-polish
     List<ChatMessage> findByConversationIdAndLegacyUnscopedFalseOrderByTimestampAsc(Long conversationId);
 }

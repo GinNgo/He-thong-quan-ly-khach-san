@@ -31,7 +31,7 @@ public class PaymentEnvironmentGuard {
             @Value("${payment.production.enabled:false}") boolean productionEnabled,
             @Value("${payment.production.approved:false}") boolean productionApproved) {
         this(environment, simulatorEnabled, sandboxEnabled, productionEnabled, productionApproved,
-                environment != null && environment.matchesProfiles("production"));
+                environment != null && environment.matchesProfiles("production", "prod"));
     }
 
     public PaymentEnvironmentGuard(boolean simulatorEnabled, boolean sandboxEnabled,

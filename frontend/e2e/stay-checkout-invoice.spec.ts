@@ -15,6 +15,7 @@ interface JourneyState {
   roomStatus: 'RESERVED' | 'OCCUPIED' | 'DIRTY';
   serviceAdded: boolean;
   serviceMutations: number;
+  legacyInvoiceMutations: number;
 }
 
 async function seedAdminSession(page: Page): Promise<void> {
@@ -28,6 +29,7 @@ async function seedAdminSession(page: Page): Promise<void> {
       roles: ['ADMIN'],
       permissions: [],
     }));
+    window.print = () => document.body.setAttribute('data-invoice-printed', 'true');
   });
 }
 
@@ -175,8 +177,36 @@ async function installJourneyApi(page: Page, state: JourneyState): Promise<void>
     if (method === 'GET' && path === '/api/invoices/finalized/my') {
       return json(200, state.reservationStatus === 'CHECKED_OUT' ? [invoiceSummary()] : []);
     }
+    if (method === 'GET' && path === '/api/management/invoices/finalized') {
+      return json(200, state.reservationStatus === 'CHECKED_OUT' ? [invoiceSummary()] : []);
+    }
     if (method === 'GET' && path === `/api/invoices/${invoiceId}`) {
       return json(200, invoiceDetail(state));
+    }
+    if (method === 'GET' && path === `/api/invoices/${invoiceId}/pdf`) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/pdf',
+        headers: {
+          'Content-Disposition': 'attachment; filename="INV-2026-0314.pdf"',
+          'X-Content-SHA256': 'fixture-checksum',
+        },
+        body: '%PDF-1.4\nBreakfast buffet\nMineral water\n%%EOF',
+      });
+    }
+    if (method === 'POST' && path === `/api/invoices/${invoiceId}/email`) {
+      return json(200, {
+        invoiceId,
+        invoiceNumber: 'INV-2026-0314',
+        recipient: 'customer@example.test',
+        sent: true,
+        contentSha256: 'fixture-checksum',
+        correlationId: null,
+      });
+    }
+    if (method === 'POST' && path === `/api/invoices/reservation/${reservationId}`) {
+      state.legacyInvoiceMutations += 1;
+      return json(409, { code: 'FINALIZED_INVOICE_REQUIRED' });
     }
 
     return json(404, { code: 'E2E_ROUTE_NOT_STUBBED', method, path });
@@ -250,6 +280,7 @@ test.describe('Stay checkout and invoice journey', () => {
       roomStatus: 'RESERVED',
       serviceAdded: false,
       serviceMutations: 0,
+      legacyInvoiceMutations: 0,
     };
     await seedAdminSession(page);
     await installJourneyApi(page, state);
@@ -301,6 +332,18 @@ test.describe('Stay checkout and invoice journey', () => {
     await expect(reservationRow.locator('button:has(.pi-file-pdf)')).toBeVisible();
     await expect(page.getByText('INV-2026-0314')).toBeVisible();
 
+    await page.goto('/admin/invoices', { waitUntil: 'domcontentloaded' });
+    const finalizedRow = page.locator('tbody tr').filter({ hasText: 'INV-2026-0314' });
+    await expect(finalizedRow).toContainText('Invoice Customer');
+    await finalizedRow.getByRole('button', { name: /Xem và in|View & print/i }).click();
+    const adminInvoice = page.locator('#invoice-print-area');
+    await expect(adminInvoice).toContainText('Breakfast buffet');
+    await expect(adminInvoice).toContainText('Deluxe room');
+    await expect(adminInvoice).toContainText('MANUAL_TRANSFER');
+    await page.getByRole('button', { name: /In hóa đơn|Print invoice/i }).click();
+    await expect(page.locator('body')).toHaveAttribute('data-invoice-printed', 'true');
+    expect(state.legacyInvoiceMutations).toBe(0);
+
     await page.goto('/admin/rooms', { waitUntil: 'domcontentloaded' });
     const roomRow = page.locator('tbody tr').filter({ hasText: '1204' });
     await expect(roomRow).toContainText('DIRTY');
@@ -322,6 +365,9 @@ test.describe('Stay checkout and invoice journey', () => {
     await invoiceCard.click();
     await expect(page.locator('.detail-panel')).toContainText('INV-2026-0314');
     await expect(page.locator('.detail-panel')).toContainText('Breakfast buffet');
+    await expect(page.locator('.detail-panel')).toContainText('MANUAL_TRANSFER');
+    await page.getByRole('button', { name: /In hóa đơn|Print invoice/i }).click();
+    await expect(page.locator('body')).toHaveAttribute('data-invoice-printed', 'true');
 
     expect(state.reservationStatus).toBe('CHECKED_OUT');
     expect(state.roomStatus).toBe('DIRTY');
@@ -447,6 +493,9 @@ function invoiceSummary() {
     finalizedAt: '2026-08-01T09:31:00Z',
     totalAmount: 1_050_000,
     status: 'FINALIZED',
+    currency: 'VND',
+    customerSnapshotJson: '{"fullName":"Invoice Customer","email":"customer@example.test"}',
+    propertySnapshotJson: '{"nameVi":"Khách sạn Fixture","nameEn":"Fixture Hotel"}',
   };
 }
 

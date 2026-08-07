@@ -140,6 +140,13 @@ export class PropertyPaymentService {
     );
   }
 
+  confirmSimulator(attemptId: string): Observable<unknown> {
+    return this.http.post(
+      `${environment.apiUrl}/financial-simulator/property-payment-attempts/${encodeURIComponent(attemptId)}/confirm`,
+      null,
+    );
+  }
+
   private mutationHeaders(options?: FinancialMutationOptions): HttpHeaders {
     let headers = new HttpHeaders();
     if (options?.idempotencyKey) {

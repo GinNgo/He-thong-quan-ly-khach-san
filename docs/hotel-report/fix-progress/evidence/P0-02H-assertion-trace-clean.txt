@@ -1,0 +1,31 @@
+P0-02H clean assertion trace
+
+Suite: com.hotel.security.EndpointSecurityArchitectureTest
+Test: allEndpointMethodsShouldHaveSecurityAnnotation
+
+Before fix:
+- Tests run: 1
+- Failures: 1
+- Errors: 0
+- Skipped: 0
+
+Reported endpoints:
+1. EmailVerificationController.confirm
+2. HotelController.getMyHotels
+3. PublicDiscoveryController.recommendations
+4. PublicDiscoveryController.recommendationDestinations
+5. PublicHomeSpotlightController.spotlights
+6. PublicPromotionController.list
+7. PublicQuoteController.quote
+
+Root assertion:
+org.opentest4j.AssertionFailedError: Endpoints lacking security annotations
+at EndpointSecurityArchitectureTest.allEndpointMethodsShouldHaveSecurityAnnotation(EndpointSecurityArchitectureTest.java:114)
+
+Contract evidence:
+- POST /api/auth/email-verification/confirm is public through /api/auth/**; the one-time token is the credential.
+- GET /api/v1/hotels/my-hotels is protected by SecurityConfig.anyRequest().authenticated().
+- The five discovery/spotlight/promotion/quote methods are under /api/public/** and are intentionally permitAll.
+- No reported method is a privileged mutation or an ownership-targeted operation.
+
+Classification: 7 false positives, 0 real security gaps.

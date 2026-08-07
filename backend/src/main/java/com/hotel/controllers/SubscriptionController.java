@@ -3,6 +3,11 @@ package com.hotel.controllers;
 import com.hotel.dtos.AccountSubscriptionDTO;
 import com.hotel.dtos.SubscriptionPlanDTO;
 import com.hotel.dtos.SubscriptionUsageDTO;
+<<<<<<< HEAD
+=======
+import com.hotel.security.CustomUserDetails;
+import com.hotel.services.SubscriptionFeatureService;
+>>>>>>> codex/ui-functional-audit-polish
 import com.hotel.services.SubscriptionCatalogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +25,10 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SubscriptionController {
 
+<<<<<<< HEAD
+=======
+    private final SubscriptionFeatureService featureService;
+>>>>>>> codex/ui-functional-audit-polish
     private final SubscriptionCatalogService catalogService;
 
     @GetMapping("/plans")
@@ -29,9 +38,17 @@ public class SubscriptionController {
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/me")
+<<<<<<< HEAD
     public ResponseEntity<AccountSubscriptionDTO> getCurrentSubscription(
             @RequestParam Long targetHotelId) {
         return ResponseEntity.ok(catalogService.getCurrent(targetHotelId));
+=======
+    public ResponseEntity<List<AccountSubscriptionDTO>> getMySubscriptions(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return ResponseEntity.ok(catalogService.getSubscriptions(userDetails.getUserId()));
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     @PreAuthorize("isAuthenticated()")
@@ -46,5 +63,14 @@ public class SubscriptionController {
     public ResponseEntity<SubscriptionUsageDTO> getCurrentUsage(
             @RequestParam Long targetHotelId) {
         return ResponseEntity.ok(catalogService.getUsage(targetHotelId));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/me/usage")
+    public ResponseEntity<SubscriptionUsageDTO> getMyUsage(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return ResponseEntity.ok(catalogService.getUsage(userDetails.getUserId()));
     }
 }

@@ -205,10 +205,10 @@ describe('ManagementLayout', () => {
 
     const text = (fixture.nativeElement as HTMLElement).textContent || '';
     expect(text).toContain('Cơ sở lưu trú');
-    expect(text).toContain('Gói dịch vụ');
+    expect(text).toContain('Gói phần mềm');
     expect(text).toContain('Chưa thể vận hành');
     expect(text).not.toContain('Loại phòng');
-    expect(text).not.toContain('Phòng vật lý');
+    expect(text).not.toContain('Danh sách phòng');
     expect(text).not.toContain('Cấu hình thanh toán');
     expect(text).not.toContain('Doanh thu cơ sở');
   });

@@ -165,6 +165,7 @@ public class HotelManagementServiceImpl implements HotelManagementService {
         return hotelRepository.findByOwnerId(ownerId);
     }
 
+<<<<<<< HEAD
     private void requireEditableState(Hotel hotel, boolean ownerMutation) {
         String approval = normalize(hotel.getApprovalStatus());
         String operation = normalize(hotel.getOperationStatus());
@@ -241,4 +242,13 @@ public class HotelManagementServiceImpl implements HotelManagementService {
                 null, null, reason, before, after, null));
     }
 
+=======
+    @Override
+    public List<Hotel> getAccessibleHotels() {
+        if (propertyAccessService.isSystemAdministrator()) {
+            return hotelRepository.findAll();
+        }
+        return hotelRepository.findAllById(propertyAccessService.assignedHotelIds());
+    }
+>>>>>>> codex/ui-functional-audit-polish
 }

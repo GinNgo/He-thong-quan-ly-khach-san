@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { AuthService } from './auth';
 
 export interface AdminPropertyOption { id: number; name: string; nameVi?: string; code?: string; }
 export interface AdminRoomType {
@@ -26,9 +27,14 @@ export interface BulkRoomResult { created: AdminRoom[]; failedRoomNumbers: strin
 @Injectable({ providedIn: 'root' })
 export class AdminInventoryService {
   private http = inject(HttpClient);
+  private auth = inject(AuthService);
   private api = environment.apiUrl;
 
-  getProperties(): Observable<AdminPropertyOption[]> { return this.http.get<AdminPropertyOption[]>(`${this.api}/v1/hotels`); }
+  getProperties(): Observable<AdminPropertyOption[]> {
+    const isSystemAdministrator = this.auth.getRoles().includes('SUPER_ADMIN');
+    const endpoint = isSystemAdministrator ? '/v1/hotels' : '/v1/hotels/accessible';
+    return this.http.get<AdminPropertyOption[]>(`${this.api}${endpoint}`);
+  }
   getRoomTypes(): Observable<AdminRoomType[]> { return this.http.get<AdminRoomType[]>(`${this.api}/room-types`); }
   createRoomType(value: Partial<AdminRoomType>): Observable<AdminRoomType> { return this.http.post<AdminRoomType>(`${this.api}/room-types`, value); }
   updateRoomType(id: number, value: Partial<AdminRoomType>): Observable<AdminRoomType> { return this.http.put<AdminRoomType>(`${this.api}/room-types/${id}`, value); }

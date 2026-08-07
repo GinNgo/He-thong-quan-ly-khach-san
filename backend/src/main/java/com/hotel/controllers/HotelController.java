@@ -61,6 +61,9 @@ public class HotelController {
         this.publicInventoryEligibilityPolicy = publicInventoryEligibilityPolicy;
     }
 
+    @Autowired
+    private com.hotel.services.PublicPlacementDisclosureService publicPlacementDisclosureService;
+
     @GetMapping("/public/search")
     public ResponseEntity<Page<PropertySearchResponseDTO>> searchHotels(
             @RequestParam(required = false) String city,
@@ -94,9 +97,20 @@ public class HotelController {
 
     @GetMapping("/public/{id}")
     public ResponseEntity<PublicHotelDetailDTO> getHotelById(@PathVariable Long id) {
+<<<<<<< HEAD
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(PublicHotelDetailDTO.from(publicInventoryEligibilityPolicy.requirePublicProperty(id)));
+=======
+        return hotelService.getHotelById(id)
+                .map(hotel -> {
+                    PublicHotelDetailDTO dto = PublicHotelDetailDTO.from(hotel);
+                    dto.setSponsoredPlacement(publicPlacementDisclosureService.searchDisclosure(hotel.getId()).orElse(null));
+                    return dto;
+                })
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     @GetMapping("/my-hotels")
@@ -106,6 +120,14 @@ public class HotelController {
         if (userDetails == null) return ResponseEntity.status(401).build();
         return ResponseEntity.ok(hotelService.getHotelsByOwnerId(userDetails.getUserId()).stream()
                 .map(PropertyProfileDTO::from).toList());
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/accessible")
+    public ResponseEntity<List<PublicHotelDetailDTO>> getAccessibleHotels() {
+        return ResponseEntity.ok(hotelService.getAccessibleHotels().stream()
+                .map(PublicHotelDetailDTO::from)
+                .toList());
     }
 
     @PreAuthorize("hasAuthority('SUPER_ADMIN')")

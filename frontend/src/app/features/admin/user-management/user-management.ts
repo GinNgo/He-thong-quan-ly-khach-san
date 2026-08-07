@@ -52,11 +52,20 @@ export class UserManagement implements OnInit {
       if (nextUserType !== this.userType) {
         this.userType = nextUserType;
         this.loadUsers();
+        if (this.userType === 'STAFF') {
+          this.loadRoles();
+          this.loadHotels();
+        }
       }
     });
 
+<<<<<<< HEAD
     this.loadRoles();
     if (this.userType === 'STAFF') {
+=======
+    if (this.userType === 'STAFF') {
+      this.loadRoles();
+>>>>>>> codex/ui-functional-audit-polish
       this.loadHotels();
     }
   }
@@ -66,10 +75,18 @@ export class UserManagement implements OnInit {
     this.errorMessage = '';
     this.users = [];
 
+<<<<<<< HEAD
     const request = this.userType === 'STAFF'
       ? this.userService.getStaff()
       : this.userService.getUsers();
     request.pipe(
+=======
+    const usersRequest = this.userType === 'CUSTOMER'
+      ? this.userService.getCustomers()
+      : this.userService.getUsers();
+
+    usersRequest.pipe(
+>>>>>>> codex/ui-functional-audit-polish
       timeout(10000),
       finalize(() => {
         this.loading = false;
@@ -78,8 +95,13 @@ export class UserManagement implements OnInit {
     ).subscribe({
       next: (data) => {
         this.users = this.userType === 'CUSTOMER'
+<<<<<<< HEAD
           ? data.filter(u => u.roles && u.roles.some((r: any) => r.code === 'CUSTOMER'))
           : data;
+=======
+          ? data
+          : data.filter(u => !u.roles || !u.roles.some((r: any) => r.code === 'CUSTOMER'));
+>>>>>>> codex/ui-functional-audit-polish
       },
       error: (error) => {
         this.errorMessage = error?.error?.message || 'Không thể tải danh sách người dùng.';
@@ -153,6 +175,7 @@ export class UserManagement implements OnInit {
       }
     }
 
+<<<<<<< HEAD
     let request;
     if (this.userDialogMode === 'create' && this.userType === 'STAFF') {
       const validationMessage = this.staffCreateValidationMessage();
@@ -192,6 +215,15 @@ export class UserManagement implements OnInit {
         ? this.userService.createUser(payload)
         : this.userService.updateUser(this.userForm.id, payload);
     }
+=======
+    const request = this.userType === 'CUSTOMER'
+      ? (this.userDialogMode === 'create'
+        ? this.userService.createCustomer(payload)
+        : this.userService.updateCustomer(this.userForm.id, payload))
+      : (this.userDialogMode === 'create'
+        ? this.userService.createUser(payload)
+        : this.userService.updateUser(this.userForm.id, payload));
+>>>>>>> codex/ui-functional-audit-polish
 
     this.saving = true;
     request.pipe(

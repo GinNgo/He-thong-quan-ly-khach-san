@@ -7,6 +7,8 @@ import lombok.Setter;
 
 import jakarta.persistence.*;
 
+import java.time.LocalDateTime;
+
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -72,6 +74,30 @@ public class Location extends AuditableEntity {
     @Column(name = "description_en", columnDefinition = "nvarchar(1000)")
     private String descriptionEn;
 
+<<<<<<< HEAD
+=======
+    @Column(name = "source_provider", length = 50)
+    private String sourceProvider;
+
+    @Column(name = "source_object_type", length = 50)
+    private String sourceObjectType;
+
+    @Column(name = "source_object_id", length = 255)
+    private String sourceObjectId;
+
+    @Column(name = "source_updated_at")
+    private LocalDateTime sourceUpdatedAt;
+
+    @Column(name = "last_seen_at")
+    private LocalDateTime lastSeenAt;
+
+    @Column(name = "data_quality_status", length = 30)
+    private String dataQualityStatus;
+
+    @Column(name = "manual_override", nullable = false)
+    private Boolean manualOverride = false;
+
+>>>>>>> codex/ui-functional-audit-polish
     @Column(name = "status")
     private String status = "ACTIVE";
 

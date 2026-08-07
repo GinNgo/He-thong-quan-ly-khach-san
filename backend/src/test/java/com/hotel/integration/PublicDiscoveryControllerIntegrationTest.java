@@ -7,7 +7,12 @@ import com.hotel.entities.RoomType;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.LocationRepository;
 import com.hotel.repositories.RoomTypeRepository;
+<<<<<<< HEAD
 import com.jayway.jsonpath.JsonPath;
+=======
+import com.hotel.repositories.RoomRepository;
+import com.hotel.entities.Room;
+>>>>>>> codex/ui-functional-audit-polish
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,6 +56,7 @@ class PublicDiscoveryControllerIntegrationTest {
     @Autowired private LocationRepository locationRepository;
     @Autowired private HotelRepository hotelRepository;
     @Autowired private RoomTypeRepository roomTypeRepository;
+    @Autowired private RoomRepository roomRepository;
 
     private Location province;
     private Location currentProvince;
@@ -97,8 +103,10 @@ class PublicDiscoveryControllerIntegrationTest {
         hotel.setAverageRating(8.7);
         hotel.setMainImage("/assets/demo/hotel-demo-1.png");
         hotelRepository.saveAndFlush(hotel);
-        roomTypeRepository.saveAndFlush(roomType("ACTIVE-" + suffix, "ACTIVE"));
+        RoomType activeType = roomType("ACTIVE-" + suffix, "ACTIVE");
+        roomTypeRepository.saveAndFlush(activeType);
         roomTypeRepository.saveAndFlush(roomType("INACTIVE-" + suffix, "INACTIVE"));
+        roomRepository.saveAndFlush(room(hotel, activeType, "101"));
     }
 
     @Test
@@ -323,6 +331,75 @@ class PublicDiscoveryControllerIntegrationTest {
                 .andExpect(jsonPath("$[?(@.sourceCode == 'VN34-FAKE')]").isEmpty());
     }
 
+    @Test
+    void homeRecommendationEndpointsExpandLegacyProvinceAndReturnOnlyAvailableProperties() throws Exception {
+        mockMvc.perform(get("/api/public/home/recommendation-destinations")
+                        .param("preferredProvinceId", currentProvince.getId().toString())
+                        .param("limit", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(currentProvince.getId()))
+                .andExpect(jsonPath("$[0].selectedByDefault").value(true))
+                .andExpect(jsonPath("$[0].propertyCount").value(1));
+
+        mockMvc.perform(get("/api/public/home/recommendations")
+                        .param("provinceId", currentProvince.getId().toString())
+                        .param("checkInDate", "2026-08-05")
+                        .param("checkOutDate", "2026-08-07")
+                        .param("adultCount", "2")
+                        .param("roomCount", "1")
+                        .param("limit", "8"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.destination.id").value(currentProvince.getId()))
+                .andExpect(jsonPath("$.items", hasSize(1)))
+                .andExpect(jsonPath("$.items[0].propertyId").value(hotel.getId()))
+                .andExpect(jsonPath("$.items[0].sponsored").value(false))
+                .andExpect(jsonPath("$.items[0].pricing.discountedNightlyPrice").doesNotExist());
+    }
+
+    @Test
+    void homeRecommendationsUseStableRatingReviewAndIdTieBreakers() throws Exception {
+        hotel.setReviewCount(10);
+        hotelRepository.saveAndFlush(hotel);
+
+        Hotel rival = new Hotel();
+        rival.setName("LuxeStay Riverside Rival");
+        rival.setNameVi("KhÃ¡ch sáº¡n Äá»‘i ChÃ­nh");
+        rival.setCode("TEST-H-RIVAL-PUB030");
+        rival.setSlug("khach-san-doi-chinh-pub030");
+        rival.setAddressLine("22 ÄÆ°á»ng VÆ°á»n Xanh");
+        rival.setCity("Tiá»n Giang");
+        rival.setCountry("Viá»‡t Nam");
+        rival.setProvinceId(province.getId());
+        rival.setWardId(ward.getId());
+        rival.setPropertyType("HOTEL");
+        rival.setApprovalStatus("APPROVED");
+        rival.setOperationStatus("ACTIVE");
+        rival.setStatus("ACTIVE");
+        rival.setAverageRating(8.7);
+        rival.setReviewCount(10);
+        rival = hotelRepository.saveAndFlush(rival);
+        RoomType rivalType = roomType("RIVAL-ACTIVE-PUB030", "ACTIVE");
+        rivalType.setHotel(rival);
+        roomTypeRepository.saveAndFlush(rivalType);
+        roomRepository.saveAndFlush(room(rival, rivalType, "201"));
+
+        mockMvc.perform(get("/api/public/home/recommendations")
+                        .param("provinceId", currentProvince.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(2)))
+                .andExpect(jsonPath("$.items[0].propertyId").value(rival.getId()))
+                .andExpect(jsonPath("$.items[1].propertyId").value(hotel.getId()));
+    }
+
+    @Test
+    void homeRecommendationsRejectInvalidStayRange() throws Exception {
+        mockMvc.perform(get("/api/public/home/recommendations")
+                        .param("provinceId", currentProvince.getId().toString())
+                        .param("checkInDate", "2026-08-08")
+                        .param("checkOutDate", "2026-08-08"))
+                .andExpect(status().isBadRequest());
+    }
+
     private Location location(String code, String name, String type, Location parent) {
         return location(code, code, name, type, parent);
     }
@@ -369,6 +446,7 @@ class PublicDiscoveryControllerIntegrationTest {
         return roomType;
     }
 
+<<<<<<< HEAD
     private void createApprovedHotels(Location destination, int count, String prefix) {
         for (int index = 0; index < count; index++) {
             Hotel destinationHotel = new Hotel();
@@ -395,5 +473,16 @@ class PublicDiscoveryControllerIntegrationTest {
     private String expectedDestinationAsset(Location destination) {
         int assetNumber = Math.floorMod(destination.getSourceCode().hashCode(), 8) + 1;
         return "destination-" + String.format("%02d", assetNumber) + ".webp";
+=======
+    private Room room(Hotel owner, RoomType roomType, String roomNumber) {
+        Room room = new Room();
+        room.setHotel(owner);
+        room.setRoomType(roomType);
+        room.setRoomNumber(roomNumber);
+        room.setFloor(1);
+        room.setStatus("AVAILABLE");
+        room.setMaintenanceStatus("NONE");
+        return room;
+>>>>>>> codex/ui-functional-audit-polish
     }
 }

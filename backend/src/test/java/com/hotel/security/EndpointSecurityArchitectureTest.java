@@ -35,6 +35,11 @@ class EndpointSecurityArchitectureTest {
             // Public discovery — /api/public/**
             "PublicDiscoveryController.popularDestinations",
             "PublicDiscoveryController.suggestions",
+            "PublicDiscoveryController.recommendationDestinations",
+            "PublicDiscoveryController.recommendations",
+            "PublicHomeSpotlightController.spotlights",
+            "PublicPromotionController.list",
+            "PublicQuoteController.quote",
             "PropertySearchController.searchProperties",
             // Location lookup — /api/public/**
             "LocationController.search",
@@ -45,13 +50,18 @@ class EndpointSecurityArchitectureTest {
             "RoomTypeController.getRoomTypesByHotelId",
             // Public reservation — /api/reservations/public/**
             "ReservationController.createPublicReservation",
-            // Notifications — /api/notifications/** permitAll (ponytail: tighten in P0-D)
-            "NotificationController.getAdminNotifications",
-            "NotificationController.markAsRead",
             // Subscription plans — /api/subscriptions/plans permitAll
             "SubscriptionController.getAllPlans",
             // File serving — static assets
-            "FileUploadController.serveFile"
+            "FileUploadController.serveFile",
+            // Token confirmation is intentionally public; the one-time token is the credential.
+            "EmailVerificationController.confirm"
+    );
+
+    // Endpoints protected by SecurityConfig.anyRequest().authenticated(). Keep this list narrow so
+    // a new mutation cannot silently rely on authentication when role/permission checks are required.
+    private static final Set<String> KNOWN_AUTHENTICATED_ENDPOINTS = Set.of(
+            "HotelController.getMyHotels"
     );
 
     @Test
@@ -86,8 +96,8 @@ class EndpointSecurityArchitectureTest {
 
                 String key = clazz.getSimpleName() + "." + method.getName();
 
-                if (KNOWN_PUBLIC_ENDPOINTS.contains(key)) {
-                    continue; // intentionally public per SecurityConfig
+                if (KNOWN_PUBLIC_ENDPOINTS.contains(key) || KNOWN_AUTHENTICATED_ENDPOINTS.contains(key)) {
+                    continue; // explicit request-matcher contract in SecurityConfig
                 }
 
                 boolean hasSecurity = method.isAnnotationPresent(PreAuthorize.class)

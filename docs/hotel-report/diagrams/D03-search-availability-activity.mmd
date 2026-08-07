@@ -1,0 +1,21 @@
+flowchart TD
+    A([Bắt đầu]) --> B[Nhập địa điểm, ngày, khách, số phòng]
+    B --> C{Input hợp lệ?}
+    C -- Không --> D[Hiển thị validation]
+    D --> B
+    C -- Có --> E[Gọi public search API]
+    E --> F[Backend lọc property publish + địa điểm]
+    F --> G[Kiểm tra capacity/availability/pricing]
+    G --> H{Có kết quả?}
+    H -- Không --> I[Empty state và gợi ý đổi tiêu chí]
+    H -- Có --> J[Hiển thị danh sách]
+    J --> K[Người dùng mở chi tiết khách sạn]
+    K --> L[Tải ảnh, tiện ích, dịch vụ, loại phòng]
+    L --> M[Chọn ngày/loại phòng/số lượng]
+    M --> N[Backend tái kiểm tra availability]
+    N --> O{Còn phòng?}
+    O -- Không --> P[Thông báo hết phòng / chọn lại]
+    P --> M
+    O -- Có --> Q[Chuyển checkout / tạo hold]
+    I --> R([Kết thúc])
+    Q --> R

@@ -1,0 +1,29 @@
+P0-02I clean assertion trace
+
+Suite: com.hotel.security.AuthExceptionIntegrationTest
+Test: commonControllerErrorsUseStableEnvelope
+Endpoint: GET /api/test/invalid-request
+Scenario: authenticated test principal triggers IllegalArgumentException("Invalid request fixture")
+Sanitized request: no query/body; X-Correlation-ID=corr-invalid
+
+Before fix:
+- Tests run: 7
+- Pass: 6
+- Failures: 1
+- Errors: 0
+- Skipped: 0
+
+Expected by stale test:
+- HTTP 400
+- code INVALID_REQUEST
+- message "Invalid request fixture"
+
+Actual production envelope:
+{"status":400,"code":"INVALID_REQUEST","message":"The request is invalid.","correlationId":"corr-invalid","fieldErrors":{},"retryable":false,"currentState":null,"path":"/api/test/invalid-request"}
+
+Assertion:
+java.lang.AssertionError: JSON path "$.message" expected:<Invalid request fixture> but was:<The request is invalid.>
+at AuthExceptionIntegrationTest.commonControllerErrorsUseStableEnvelope(AuthExceptionIntegrationTest.java:168)
+
+Classification: production redaction is correct; test expectation is stale.
+Sensitive scan after fix: no match for bearer token, invalid fixture token, secret marker, or internal exception message in P0-02I after/regression/full logs.

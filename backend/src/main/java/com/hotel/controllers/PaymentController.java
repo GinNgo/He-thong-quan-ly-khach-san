@@ -1,7 +1,21 @@
 package com.hotel.controllers;
 
 import com.hotel.config.VnpayConfig;
+import com.hotel.dtos.CreatePaymentSessionRequest;
 import com.hotel.dtos.PaymentDTO;
+import com.hotel.dtos.PaymentSessionResponse;
+import com.hotel.dtos.PaymentSessionStatusResponse;
+import com.hotel.dtos.MomoCallbackRequest;
+import com.hotel.dtos.ZaloPayCallbackRequest;
+import com.hotel.services.PaymentSessionService;
+import com.hotel.services.payment.MomoCallbackVerification;
+import com.hotel.services.payment.MomoPaymentGateway;
+import com.hotel.services.payment.ProviderCallbackOutcome;
+import com.hotel.services.payment.VnpayCallbackVerification;
+import com.hotel.services.payment.VnpayIpnResponse;
+import com.hotel.services.payment.VnpayPaymentGateway;
+import com.hotel.services.payment.ZaloPayCallbackVerification;
+import com.hotel.services.payment.ZaloPayPaymentGateway;
 import com.hotel.services.PaymentService;
 import com.hotel.services.ReservationService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,10 +27,8 @@ import com.hotel.security.Permission;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.ActionCode;
 import org.springframework.web.bind.annotation.*;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
 import java.util.*;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/payments")
@@ -24,7 +36,10 @@ import java.util.*;
 public class PaymentController {
     private final PaymentService paymentService;
     private final ReservationService reservationService;
-    private final VnpayConfig vnpayConfig;
+    private final PaymentSessionService paymentSessionService;
+    private final VnpayPaymentGateway vnpayPaymentGateway;
+    private final MomoPaymentGateway momoPaymentGateway;
+    private final ZaloPayPaymentGateway zaloPayPaymentGateway;
 
     @GetMapping("/reservation/{reservationId}")
     @Permission(function = FunctionCode.FINANCE, action = ActionCode.VIEW)
@@ -44,145 +59,114 @@ public class PaymentController {
                 .build();
     }
 
-    // Generate Online Payment URL
+    @PostMapping("/sessions")
+    @PreAuthorize("hasAuthority('CUSTOMER')")
+    public ResponseEntity<PaymentSessionResponse> createPaymentSession(
+            @Valid @RequestBody CreatePaymentSessionRequest request,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(paymentSessionService.createSession(
+                request.getReservationId(),
+                request.getProvider(),
+                idempotencyKey,
+                VnpayConfig.getIpAddress(httpRequest)));
+    }
+
+    @GetMapping("/sessions/{sessionId}")
+    @PreAuthorize("hasAuthority('CUSTOMER')")
+    public ResponseEntity<PaymentSessionStatusResponse> getPaymentSessionStatus(@PathVariable String sessionId) {
+        return ResponseEntity.ok(paymentSessionService.getOwnedSessionStatus(sessionId));
+    }
+
+    // Transitional compatibility endpoint. New clients should POST /sessions.
     @GetMapping("/create-url")
-    @PreAuthorize("hasAnyAuthority('CUSTOMER','PROPERTY_OWNER','HOTEL_MANAGER','RECEPTIONIST','HOTEL_ADMIN','SUPER_ADMIN','ADMIN')")
+    @PreAuthorize("hasAuthority('CUSTOMER')")
     public ResponseEntity<java.util.Map<String, String>> createPaymentUrl(
             @RequestParam Long reservationId,
             @RequestParam String method,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
             HttpServletRequest request) {
-        var reservation = reservationService.getReservationById(reservationId);
-        String normalizedMethod = method == null ? "" : method.trim().toUpperCase(Locale.ROOT);
-        if (!Set.of("MOMO", "VNPAY", "STRIPE").contains(normalizedMethod)) {
-            throw new IllegalArgumentException("Phương thức thanh toán không hợp lệ.");
-        }
-        double amount = reservation.getTotalAmount().doubleValue();
-
-        if ("VNPAY".equals(normalizedMethod)) {
-            String vnp_Version = vnpayConfig.getVersion();
-            String vnp_Command = vnpayConfig.getCommand();
-            String vnp_OrderInfo = "Thanh toan dat phong " + reservationId;
-            String orderType = "other";
-            String vnp_TxnRef = reservationId + "_" + VnpayConfig.getRandomNumber(6);
-            String vnp_IpAddr = VnpayConfig.getIpAddress(request);
-            String vnp_TmnCode = vnpayConfig.getTmnCode();
-
-            int amountParam = (int) (amount * 100);
-            Map<String, String> vnp_Params = new HashMap<>();
-            vnp_Params.put("vnp_Version", vnp_Version);
-            vnp_Params.put("vnp_Command", vnp_Command);
-            vnp_Params.put("vnp_TmnCode", vnp_TmnCode);
-            vnp_Params.put("vnp_Amount", String.valueOf(amountParam));
-            vnp_Params.put("vnp_CurrCode", "VND");
-            vnp_Params.put("vnp_TxnRef", vnp_TxnRef);
-            vnp_Params.put("vnp_OrderInfo", vnp_OrderInfo);
-            vnp_Params.put("vnp_OrderType", orderType);
-            vnp_Params.put("vnp_Locale", "vn");
-            vnp_Params.put("vnp_ReturnUrl", vnpayConfig.getReturnUrl());
-            vnp_Params.put("vnp_IpAddr", vnp_IpAddr);
-
-            Calendar cld = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
-            SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
-            String vnp_CreateDate = formatter.format(cld.getTime());
-            vnp_Params.put("vnp_CreateDate", vnp_CreateDate);
-            
-            cld.add(Calendar.MINUTE, 15);
-            String vnp_ExpireDate = formatter.format(cld.getTime());
-            vnp_Params.put("vnp_ExpireDate", vnp_ExpireDate);
-
-            // Build data to hash and querystring
-            List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
-            Collections.sort(fieldNames);
-            StringBuilder hashData = new StringBuilder();
-            StringBuilder query = new StringBuilder();
-            Iterator<String> itr = fieldNames.iterator();
-            while (itr.hasNext()) {
-                String fieldName = itr.next();
-                String fieldValue = vnp_Params.get(fieldName);
-                if ((fieldValue != null) && (fieldValue.length() > 0)) {
-                    //Build hash data
-                    hashData.append(fieldName);
-                    hashData.append('=');
-                    hashData.append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII));
-                    //Build query
-                    query.append(URLEncoder.encode(fieldName, StandardCharsets.US_ASCII));
-                    query.append('=');
-                    query.append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII));
-                    if (itr.hasNext()) {
-                        query.append('&');
-                        hashData.append('&');
-                    }
-                }
-            }
-            String queryUrl = query.toString();
-            String vnp_SecureHash = VnpayConfig.hmacSHA512(vnpayConfig.getHashSecret(), hashData.toString());
-            queryUrl += "&vnp_SecureHash=" + vnp_SecureHash;
-            String paymentUrl = vnpayConfig.getPayUrl() + "?" + queryUrl;
-            
-            return ResponseEntity.ok(Map.of("url", paymentUrl));
-        }
-        
-        // Fallback simulator for other methods
-        String baseUrl = "http://localhost:4200/payment-simulator";
-        String transactionId = normalizedMethod + "_" + reservationId + "_" + UUID.randomUUID();
-        String redirectUrl = String.format("%s?reservationId=%d&method=%s&amount=%.0f&transactionId=%s",
-                baseUrl, reservationId, normalizedMethod, amount, transactionId);
-                
-        return ResponseEntity.ok(Map.of("url", redirectUrl));
+        PaymentSessionResponse session = paymentSessionService.createSession(
+                reservationId,
+                method,
+                idempotencyKey,
+                VnpayConfig.getIpAddress(request));
+        return ResponseEntity.ok(Map.of("url", session.getUrl(), "sessionId", session.getSessionId()));
     }
 
-    // Callback for VNPAY
+    // Browser return is display-only; the server-to-server IPN is authoritative.
     @GetMapping("/vnpay-callback")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<Map<String, String>> vnpayCallback(HttpServletRequest request) {
+        VnpayCallbackVerification verification = vnpayPaymentGateway.verifyCallback(requestFields(request));
+        if (!verification.valid()) {
+            return ResponseEntity.ok(Map.of("status", "INVALID_SIGNATURE", "message", "Invalid checksum"));
+        }
+        if (!verification.data().successful()) {
+            return ResponseEntity.ok(Map.of("status", "FAILED", "message", "Payment failed at gateway"));
+        }
+        return ResponseEntity.ok(Map.of(
+                "status", "PENDING_VERIFICATION",
+                "message", "Payment return received; waiting for authoritative IPN confirmation"));
+    }
+
+    @GetMapping("/vnpay-ipn")
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<Map<String, String>> vnpayIpn(HttpServletRequest request) {
+        VnpayCallbackVerification verification = vnpayPaymentGateway.verifyCallback(requestFields(request));
+        if (!verification.valid()) {
+            return ResponseEntity.ok(Map.of(
+                    "RspCode", verification.responseCode(),
+                    "Message", verification.message()));
+        }
+        try {
+            VnpayIpnResponse response = paymentSessionService.processVnpayCallback(verification.data());
+            return ResponseEntity.ok(Map.of(
+                    "RspCode", response.responseCode(),
+                    "Message", response.message()));
+        } catch (RuntimeException exception) {
+            return ResponseEntity.ok(Map.of("RspCode", "99", "Message", "Unknown error"));
+        }
+    }
+
+    @PostMapping("/momo-ipn")
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<Void> momoIpn(@RequestBody MomoCallbackRequest request) {
+        MomoCallbackVerification verification = momoPaymentGateway.verifyCallback(request);
+        if (!verification.valid()) {
+            return ResponseEntity.badRequest().build();
+        }
+        ProviderCallbackOutcome outcome = paymentSessionService.processProviderCallback(verification.data());
+        return switch (outcome) {
+            case CONFIRMED, DUPLICATE, FAILED_RECORDED -> ResponseEntity.noContent().build();
+            case NOT_FOUND, INVALID_AMOUNT -> ResponseEntity.badRequest().build();
+        };
+    }
+
+    @PostMapping("/zalopay-callback")
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<Map<String, Object>> zaloPayCallback(@RequestBody ZaloPayCallbackRequest request) {
+        ZaloPayCallbackVerification verification = zaloPayPaymentGateway.verifyCallback(request);
+        if (!verification.valid()) {
+            return ResponseEntity.ok(Map.of("return_code", 2, "return_message", "Invalid"));
+        }
+        ProviderCallbackOutcome outcome = paymentSessionService.processProviderCallback(verification.data());
+        if (outcome == ProviderCallbackOutcome.NOT_FOUND || outcome == ProviderCallbackOutcome.INVALID_AMOUNT) {
+            return ResponseEntity.ok(Map.of("return_code", 2, "return_message", "Invalid"));
+        }
+        return ResponseEntity.ok(Map.of("return_code", 1, "return_message", "Success"));
+    }
+
+    private Map<String, String> requestFields(HttpServletRequest request) {
         Map<String, String> fields = new HashMap<>();
         for (Enumeration<String> params = request.getParameterNames(); params.hasMoreElements();) {
             String fieldName = params.nextElement();
             String fieldValue = request.getParameter(fieldName);
-            if ((fieldValue != null) && (fieldValue.length() > 0)) {
+            if (fieldValue != null && !fieldValue.isBlank()) {
                 fields.put(fieldName, fieldValue);
             }
         }
-
-        String vnp_SecureHash = request.getParameter("vnp_SecureHash");
-        if (fields.containsKey("vnp_SecureHashType")) {
-            fields.remove("vnp_SecureHashType");
-        }
-        if (fields.containsKey("vnp_SecureHash")) {
-            fields.remove("vnp_SecureHash");
-        }
-
-        // Check checksum
-        List<String> fieldNames = new ArrayList<>(fields.keySet());
-        Collections.sort(fieldNames);
-        StringBuilder hashData = new StringBuilder();
-        Iterator<String> itr = fieldNames.iterator();
-        while (itr.hasNext()) {
-            String fieldName = itr.next();
-            String fieldValue = fields.get(fieldName);
-            if ((fieldValue != null) && (fieldValue.length() > 0)) {
-                hashData.append(fieldName);
-                hashData.append('=');
-                hashData.append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII));
-                if (itr.hasNext()) {
-                    hashData.append('&');
-                }
-            }
-        }
-        String signValue = VnpayConfig.hmacSHA512(vnpayConfig.getHashSecret(), hashData.toString());
-        
-        if (signValue.equals(vnp_SecureHash)) {
-            if ("00".equals(request.getParameter("vnp_ResponseCode"))) {
-                // Success
-                String txnRef = request.getParameter("vnp_TxnRef");
-                Long reservationId = Long.parseLong(txnRef.split("_")[0]);
-                paymentService.handleSuccessfulPayment(reservationId, "VNPAY", txnRef);
-                return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Payment processed successfully"));
-            } else {
-                return ResponseEntity.ok(Map.of("status", "FAILED", "message", "Payment failed at gateway"));
-            }
-        } else {
-            return ResponseEntity.ok(Map.of("status", "INVALID_SIGNATURE", "message", "Invalid checksum"));
-        }
+        return fields;
     }
 
 }

@@ -25,6 +25,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Boolean existsByUsername(String username);
     Boolean existsByEmail(String email);
 
+    @Query("select distinct user from User user join user.roles role where role.code = 'CUSTOMER'")
+    List<User> findCustomers();
+
     @Query("select count(user) from User user join user.roles role where role.id = :roleId")
     long countByRoleId(@Param("roleId") Long roleId);
 
@@ -53,6 +56,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("hotelIds") Collection<Long> hotelIds);
 
     @Query("""
+<<<<<<< HEAD
             select distinct user
             from User user join user.roles role
             where role.code = 'CUSTOMER'
@@ -65,6 +69,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> searchActiveCustomers(@Param("query") String query, Pageable pageable);
 
     @Query("""
+=======
+>>>>>>> codex/ui-functional-audit-polish
             select distinct user.username
             from User user
             left join UserProperty up
@@ -77,6 +83,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
                    or role.code = 'SUPER_ADMIN')
             """)
     List<String> findSupportRecipientUsernames(@Param("hotelId") Long hotelId);
+<<<<<<< HEAD
 
     @Query("""
             select distinct user.username
@@ -84,4 +91,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
             where user.status = 'ACTIVE' and role.code = 'SUPER_ADMIN'
             """)
     List<String> findSystemAdministratorUsernames();
+=======
+>>>>>>> codex/ui-functional-audit-polish
 }

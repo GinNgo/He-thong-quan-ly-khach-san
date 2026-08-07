@@ -54,7 +54,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(
         classes = BackendApplication.class,
-        properties = "payment.property.encryption-key=test-property-payment-encryption-key")
+        properties = {
+                "spring.datasource.url=jdbc:h2:mem:chat-controller;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
+                "payment.property.encryption-key=test-property-payment-encryption-key"
+        })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)

@@ -15,13 +15,22 @@
       </div>
       <div class="support-heading">
         <h2 id="support-chat-title">LuxeStay Care</h2>
+<<<<<<< HEAD
         <p id="support-chat-description">Ho tro truc tuyen tu doi ngu trung tam</p>
         <span class="connection-status" role="status" aria-live="polite" [class.is-connected]="connectionState() === 'connected'">
+=======
+        <p id="support-chat-description">{{ i18n.text('PUBLIC.SUPPORT.DESCRIPTION') }}</p>
+        <span class="connection-status" [class.is-connected]="connectionState() === 'connected'">
+>>>>>>> codex/ui-functional-audit-polish
           <span class="connection-dot" aria-hidden="true"></span>
           {{ connectionLabel() }}
         </span>
       </div>
+<<<<<<< HEAD
       <button type="button" class="icon-button close-button" aria-label="Dong cua so ho tro" (click)="closeChat()">
+=======
+      <button type="button" class="icon-button close-button" [attr.aria-label]="i18n.text('PUBLIC.SUPPORT.CLOSE')" (click)="closeChat()">
+>>>>>>> codex/ui-functional-audit-polish
         <i class="pi pi-times" aria-hidden="true"></i>
       </button>
     </header>
@@ -60,6 +69,7 @@
     <div class="support-body" #scrollMe role="log" aria-live="polite" aria-relevant="additions">
       <div *ngIf="!isLoggedIn()" class="support-state support-state-centered">
         <span class="state-icon" aria-hidden="true"><i class="pi pi-lock"></i></span>
+<<<<<<< HEAD
         <h3>Dang nhap de tro chuyen</h3>
         <p>Ban can dang nhap de xem lich su va gui yeu cau toi bo phan cham soc khach hang.</p>
         <a routerLink="/login" class="support-primary-link">Dang nhap ngay</a>
@@ -70,18 +80,37 @@
           aria-label="Dang tai lich su chat">
           <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
           <span>Dang tai lich su ho tro...</span>
+=======
+        <h3>{{ i18n.text('PUBLIC.SUPPORT.LOGIN_TITLE') }}</h3>
+        <p>{{ i18n.text('PUBLIC.SUPPORT.LOGIN_BODY') }}</p>
+        <a routerLink="/login" class="support-primary-link">{{ i18n.text('PUBLIC.SUPPORT.LOGIN') }}</a>
+      </div>
+
+      <ng-container *ngIf="isLoggedIn()">
+        <div *ngIf="historyState() === 'loading'" class="support-state" [attr.aria-label]="i18n.text('PUBLIC.SUPPORT.LOADING_HISTORY')">
+          <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+          <span>{{ i18n.text('PUBLIC.SUPPORT.LOADING_HISTORY_TEXT') }}</span>
+>>>>>>> codex/ui-functional-audit-polish
         </div>
 
         <div *ngIf="historyState() === 'error' || conversationState() === 'error'"
           class="support-state support-error" role="alert" aria-live="assertive" [appFocusOnError]="true">
           <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
           <span>{{ historyError() }}</span>
+<<<<<<< HEAD
           <button type="button" class="text-action" (click)="retryHistory()">Thu lai</button>
+=======
+          <button type="button" class="text-action" (click)="loadHistory()">{{ i18n.text('PUBLIC.SUPPORT.RETRY') }}</button>
+>>>>>>> codex/ui-functional-audit-polish
         </div>
 
         <div *ngIf="connectionError()" class="connection-alert" role="status">
           <span>{{ connectionError() }}</span>
+<<<<<<< HEAD
           <button type="button" class="text-action" (click)="retryConnection()">Ket noi lai</button>
+=======
+          <button type="button" class="text-action" (click)="retryConnection()">{{ i18n.text('PUBLIC.SUPPORT.RECONNECT') }}</button>
+>>>>>>> codex/ui-functional-audit-polish
         </div>
 
         <button *ngIf="hasOlderMessages()" type="button" class="load-older"
@@ -94,8 +123,13 @@
         <div *ngIf="conversationState() === 'ready' && conversations().length === 0"
           class="support-state support-state-centered empty-state">
           <span class="state-icon" aria-hidden="true"><i class="pi pi-comments"></i></span>
+<<<<<<< HEAD
           <h3>Tao cuoc tro chuyen dau tien</h3>
           <p>Dat chu de ngan gon de doi ngu ho tro nam duoc van de cua ban.</p>
+=======
+          <h3>{{ i18n.text('PUBLIC.SUPPORT.EMPTY_TITLE') }}</h3>
+          <p>{{ i18n.text('PUBLIC.SUPPORT.EMPTY_BODY') }}</p>
+>>>>>>> codex/ui-functional-audit-polish
         </div>
 
         <div *ngIf="historyState() === 'ready' && selectedConversationId() && messages().length === 0"
@@ -142,7 +176,11 @@
     </section>
 
     <form *ngIf="isLoggedIn()" class="support-composer" (ngSubmit)="sendMessage()">
+<<<<<<< HEAD
       <label class="visually-hidden" for="support-message">Noi dung tin nhan ho tro</label>
+=======
+      <label class="visually-hidden" for="support-message">{{ i18n.text('PUBLIC.SUPPORT.MESSAGE_LABEL') }}</label>
+>>>>>>> codex/ui-functional-audit-polish
       <input
         #messageInput
         id="support-message"
@@ -153,6 +191,7 @@
         [(ngModel)]="newMessage"
         [disabled]="isSending() || !selectedConversationId() || isSelectedConversationClosed()"
         aria-describedby="support-send-status"
+<<<<<<< HEAD
         placeholder="Nhap noi dung can ho tro...">
       <button
         type="submit"
@@ -165,6 +204,19 @@
       <p id="support-send-status" class="composer-status" [class.has-error]="sendError()" aria-live="polite"
         [appFocusOnError]="!!sendError()">
         {{ sendError() || (isSending() ? 'Dang cho may chu xac nhan...' : '') }}
+=======
+        [placeholder]="i18n.text('PUBLIC.SUPPORT.MESSAGE_PLACEHOLDER')">
+      <button
+        type="submit"
+        class="send-button"
+        [attr.aria-label]="i18n.text('PUBLIC.SUPPORT.SEND')"
+        [disabled]="!newMessage.trim() || isSending() || connectionState() !== 'connected'">
+        <i *ngIf="!isSending()" class="pi pi-send" aria-hidden="true"></i>
+        <i *ngIf="isSending()" class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+      </button>
+      <p id="support-send-status" class="composer-status" [class.has-error]="sendError()" aria-live="polite">
+        {{ sendError() || (isSending() ? i18n.text('PUBLIC.SUPPORT.WAITING_ACK') : '') }}
+>>>>>>> codex/ui-functional-audit-polish
       </p>
     </form>
   </section>
@@ -174,11 +226,19 @@
     #triggerButton
     type="button"
     class="support-trigger"
+<<<<<<< HEAD
     aria-label="Mo ho tro truc tuyen LuxeStay"
+=======
+    [attr.aria-label]="i18n.text('PUBLIC.SUPPORT.OPEN')"
+>>>>>>> codex/ui-functional-audit-polish
     [attr.aria-expanded]="isOpen()"
     aria-controls="support-chat-panel"
     (click)="toggleChat()">
     <i class="pi pi-comments" aria-hidden="true"></i>
+<<<<<<< HEAD
     <span>Ho tro</span>
+=======
+    <span>{{ i18n.text('LAYOUT.SUPPORT') }}</span>
+>>>>>>> codex/ui-functional-audit-polish
   </button>
 </div>

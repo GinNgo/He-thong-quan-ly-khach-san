@@ -35,6 +35,7 @@ public class UserController {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
+<<<<<<< HEAD
     @GetMapping("/staff")
     @Permission(function = FunctionCode.USER, action = ActionCode.VIEW)
     public ResponseEntity<List<StaffListItemDto>> getStaff() {
@@ -65,6 +66,39 @@ public class UserController {
             @PathVariable Long id,
             @Valid @RequestBody StaffUpdateRequest request) {
         return ResponseEntity.ok(userService.updateStaff(id, request));
+=======
+    @GetMapping("/customers")
+    @Permission(function = FunctionCode.CUSTOMER, action = ActionCode.VIEW)
+    public ResponseEntity<List<UserDto>> getCustomers() {
+        return ResponseEntity.ok(userService.getCustomers());
+    }
+
+    @PostMapping("/customers")
+    @Permission(function = FunctionCode.CUSTOMER, action = ActionCode.CREATE)
+    public ResponseEntity<UserDto> createCustomer(@RequestBody com.hotel.dtos.UserRequest request) {
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setPasswordHash(request.getPassword());
+        user.setFullName(request.getFullName());
+        user.setPhone(request.getPhone());
+        user.setStatus(request.getStatus());
+        return ResponseEntity.ok(userService.createCustomer(user));
+    }
+
+    @PutMapping("/customers/{id}")
+    @Permission(function = FunctionCode.CUSTOMER, action = ActionCode.UPDATE)
+    public ResponseEntity<UserDto> updateCustomer(
+            @PathVariable Long id,
+            @RequestBody com.hotel.dtos.UserRequest request) {
+        User user = new User();
+        user.setEmail(request.getEmail());
+        user.setFullName(request.getFullName());
+        user.setPhone(request.getPhone());
+        user.setStatus(request.getStatus());
+        user.setPasswordHash(request.getPassword());
+        return ResponseEntity.ok(userService.updateCustomer(id, user));
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     @GetMapping("/{id}")

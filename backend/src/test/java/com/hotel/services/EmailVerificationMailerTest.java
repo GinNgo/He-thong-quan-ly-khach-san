@@ -45,7 +45,11 @@ class EmailVerificationMailerTest {
                 60);
 
         assertTrue(sent);
+<<<<<<< HEAD
         assertTrue(message.getSubject().contains("Confirm your new email"));
+=======
+        assertTrue(message.getSubject().contains("email mới"));
+>>>>>>> codex/ui-functional-audit-polish
         assertTrue(message.getContent().toString().contains("Guest &lt;script&gt;"));
         assertTrue(message.getContent().toString().contains("next=&lt;script&gt;"));
         assertTrue(message.getContent().toString().contains("Xác nhận email / Verify email"));

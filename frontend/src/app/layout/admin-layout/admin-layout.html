@@ -64,9 +64,16 @@
             [attr.aria-expanded]="isNotificationOpen"
             aria-controls="notification-panel"
             aria-haspopup="dialog"
-            [attr.aria-label]="'Thông báo, ' + unreadCount + ' chưa đọc'"
+            [attr.aria-label]="'Thông báo, ' + unreadCount + ' chưa đọc. ' + notificationConnectionLabel"
           >
             <i class="pi pi-bell" aria-hidden="true"></i>
+            @if (notificationConnectionState !== 'connected' && notificationConnectionState !== 'idle') {
+              <span
+                class="notification-connection-dot"
+                [class.is-error]="notificationConnectionState === 'offline' || notificationConnectionState === 'error'"
+                aria-hidden="true"
+              ></span>
+            }
             @if (unreadCount > 0) {
               <span class="notification-count" aria-hidden="true">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
             }
@@ -84,6 +91,38 @@
                 <h2 id="notification-heading">Thông báo</h2>
                 <span class="status-badge">{{ unreadCount }} chưa đọc</span>
               </header>
+
+              @if (notificationConnectionState !== 'connected' && notificationConnectionState !== 'idle') {
+                <div
+                  class="notification-connection-status"
+                  [class.is-error]="notificationConnectionState === 'offline' || notificationConnectionState === 'error'"
+                  [attr.role]="notificationConnectionState === 'offline' || notificationConnectionState === 'error' ? 'alert' : 'status'"
+                >
+                  <i
+                    class="pi"
+                    [class.pi-spin]="notificationConnectionState === 'connecting' || notificationConnectionState === 'reconnecting'"
+                    [class.pi-refresh]="notificationConnectionState === 'connecting' || notificationConnectionState === 'reconnecting'"
+                    [class.pi-exclamation-circle]="notificationConnectionState === 'offline' || notificationConnectionState === 'error'"
+                    aria-hidden="true"
+                  ></i>
+                  <span>{{ notificationConnectionMessage || notificationConnectionLabel }}</span>
+                  @if (notificationConnectionState === 'offline' || notificationConnectionState === 'error' || notificationConnectionState === 'reconnecting') {
+                    <button type="button" class="text-action" (click)="retryNotificationConnection()">
+                      Kết nối lại
+                    </button>
+                  }
+                </div>
+              }
+
+              <p class="notification-retention">
+                Lịch sử trong {{ notificationRetentionDays }} ngày gần nhất
+              </p>
+
+              @if (notificationActionError) {
+                <div class="notification-action-error" role="alert">
+                  {{ notificationActionError }}
+                </div>
+              }
 
               <div class="notification-list" aria-live="polite">
                 @if (notificationsLoading) {
@@ -108,12 +147,30 @@
                       class="notification-item"
                       [class.unread]="!notif.isRead"
                       (click)="markAsRead(notif)"
+                      [disabled]="notificationMarkingIds.has(notif.id)"
+                      [attr.aria-busy]="notificationMarkingIds.has(notif.id)"
                     >
                       <span class="notification-title">{{ notif.title }}</span>
                       <span class="notification-message">{{ notif.message }}</span>
                       <time>{{ notif.createdAt | date: 'dd/MM/yyyy HH:mm' }}</time>
                       @if (!notif.isRead) {
                         <span class="unread-dot" aria-label="Chưa đọc"></span>
+                      }
+                    </button>
+                  }
+
+                  @if (notificationHasMore) {
+                    <button
+                      type="button"
+                      class="notification-load-more"
+                      (click)="loadMoreNotifications()"
+                      [disabled]="notificationsLoadingMore"
+                    >
+                      @if (notificationsLoadingMore) {
+                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                        Đang tải...
+                      } @else {
+                        Xem thêm thông báo
                       }
                     </button>
                   }

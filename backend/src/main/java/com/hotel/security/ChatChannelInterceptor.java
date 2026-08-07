@@ -26,8 +26,11 @@ public class ChatChannelInterceptor implements ChannelInterceptor {
     private static final String SUPPORT_REPLY_DESTINATION = "/app/chat.support.reply";
     private static final String CUSTOMER_QUEUE_DESTINATION = "/user/queue/messages";
     private static final String SUPPORT_QUEUE_DESTINATION = "/user/queue/support/messages";
+<<<<<<< HEAD
     private static final String CHAT_AUTHENTICATION_ATTRIBUTE =
             ChatChannelInterceptor.class.getName() + ".AUTHENTICATION";
+=======
+>>>>>>> codex/ui-functional-audit-polish
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
@@ -46,7 +49,11 @@ public class ChatChannelInterceptor implements ChannelInterceptor {
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         SimpMessageHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(
                 message, SimpMessageHeaderAccessor.class);
+<<<<<<< HEAD
         boolean usingOriginalAccessor = accessor != null;
+=======
+        boolean originalAccessor = accessor != null;
+>>>>>>> codex/ui-functional-audit-polish
         if (accessor == null) {
             accessor = SimpMessageHeaderAccessor.wrap(message);
         }
@@ -57,7 +64,13 @@ public class ChatChannelInterceptor implements ChannelInterceptor {
         SimpMessageType messageType = accessor.getMessageType();
         if (messageType == SimpMessageType.CONNECT) {
             authenticate(accessor);
+<<<<<<< HEAD
             return authenticatedMessage(message, accessor, usingOriginalAccessor);
+=======
+            return originalAccessor
+                    ? message
+                    : MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders());
+>>>>>>> codex/ui-functional-audit-polish
         }
 
         if (messageType == SimpMessageType.DISCONNECT || messageType == SimpMessageType.HEARTBEAT) {

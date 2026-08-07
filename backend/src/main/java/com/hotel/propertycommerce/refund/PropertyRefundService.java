@@ -21,6 +21,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.List;
@@ -153,6 +154,27 @@ public class PropertyRefundService {
     }
 
     @Transactional
+    public List<RefundResult> requestCancellationRefunds(
+            Long reservationId,
+            String reason,
+            String correlationId) {
+        if (reservationId == null) {
+            throw new IllegalArgumentException("reservationId is required.");
+        }
+        String normalizedReason = normalize(reason, "reason", 1000);
+        return transactionRepository.findByReservationIdOrderByOccurredAtAsc(reservationId).stream()
+                .filter(this::isCancellationRefundable)
+                .filter(transaction -> availableForNewRequest(transaction).amount().signum() > 0)
+                .map(transaction -> request(new RequestCommand(
+                        transaction.getPublicId(),
+                        availableForNewRequest(transaction).amount(),
+                        normalizedReason,
+                        "reservation-cancellation:" + reservationId + ":" + transaction.getPublicId(),
+                        correlationId)))
+                .toList();
+    }
+
+    @Transactional
     public RefundResult approve(String refundPublicId, String correlationId) {
         PropertyRefundRequest refund = lockedRequest(refundPublicId);
         authorize(refund.getOriginalTransaction());
@@ -163,6 +185,14 @@ public class PropertyRefundService {
         audit(refund, actor, previous, refund.getStatus().name(), "Property refund approved",
                 correlationId, Map.of("amount", refund.getRequestedAmount()));
         return result(refund, refundableBalance(refund.getOriginalTransaction()), false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<RefundResult> listForProperty(Long propertyId) {
+        propertyAccessService.requireAssignedHotel(propertyId);
+        return requestRepository.findByHotelIdOrderByRequestedAtDesc(propertyId).stream()
+                .map(refund -> result(refund, refundableBalance(refund.getOriginalTransaction()), false))
+                .toList();
     }
 
     @Transactional
@@ -268,6 +298,14 @@ public class PropertyRefundService {
         }
     }
 
+    private boolean isCancellationRefundable(PropertyFinancialTransaction transaction) {
+        return transaction != null
+                && !transaction.isLegacyReconciliationRequired()
+                && transaction.getDirection() == PropertyFinancialTransaction.Direction.DEBIT
+                && transaction.getTransactionType() != PropertyFinancialTransaction.TransactionType.REFUND
+                && transaction.getTransactionType() != PropertyFinancialTransaction.TransactionType.MANUAL_ADJUSTMENT;
+    }
+
     private void verifyReplay(PropertyRefundRequest existing, String requestHash) {
         if (!MessageDigest.isEqual(existing.getRequestHash().getBytes(StandardCharsets.UTF_8),
                 requestHash.getBytes(StandardCharsets.UTF_8))) {
@@ -292,7 +330,10 @@ public class PropertyRefundService {
     private RefundResult result(PropertyRefundRequest refund, VndMoney remaining, boolean replayed) {
         return new RefundResult(refund.getPublicId(), refund.getOriginalTransaction().getPublicId(),
                 refund.getRequestedAmount(), refund.getCurrency(), refund.getStatus(), remaining.amount(),
-                refund.getRequestedAt(), refund.getCompletedAt(), replayed);
+                refund.getRequestedAt(), refund.getCompletedAt(),
+                refund.getOriginalTransaction().getProvider(),
+                refund.getOriginalTransaction().getEnvironment(),
+                replayed);
     }
 
     private LocalDateTime now() {
@@ -350,6 +391,8 @@ public class PropertyRefundService {
             BigDecimal remainingRefundableAmount,
             LocalDateTime requestedAt,
             LocalDateTime completedAt,
+            String provider,
+            com.hotel.paymentprovider.config.PaymentEnvironmentGuard.PaymentEnvironment environment,
             boolean replayed) {
     }
 }

@@ -20,10 +20,10 @@ public class CustomUserDetails extends User {
 
     public CustomUserDetails(String username, String password, Collection<? extends GrantedAuthority> authorities, Map<FunctionCode, Integer> permissionMasks, Long userId, Long hotelId, Map<String, Integer> featureLimits, Instant authRevokedAt) {
         super(username, password, authorities);
-        this.permissionMasks = permissionMasks == null ? Map.of() : Map.copyOf(permissionMasks);
+        this.permissionMasks = permissionMasks;
         this.userId = userId;
         this.hotelId = hotelId;
-        this.featureLimits = featureLimits == null ? Map.of() : Map.copyOf(featureLimits);
+        this.featureLimits = featureLimits;
         this.authRevokedAt = authRevokedAt;
     }
 

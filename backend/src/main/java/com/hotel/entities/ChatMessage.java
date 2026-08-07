@@ -3,11 +3,16 @@ package com.hotel.entities;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.ParamDef;
 
 import java.time.Instant;
 
 @Entity
 @Table(name = "chat_messages")
+@FilterDef(name = "chatMessageTenantFilter", parameters = @ParamDef(name = "hotelId", type = Long.class))
+@Filter(name = "chatMessageTenantFilter", condition = "hotel_id = :hotelId")
 @Getter
 @Setter
 public class ChatMessage {
@@ -25,6 +30,7 @@ public class ChatMessage {
     @Column(name = "receiver_id", nullable = false)
     private Long receiverId;
 
+<<<<<<< HEAD
     @Column(name = "conversation_id")
     private Long conversationId;
 
@@ -37,14 +43,25 @@ public class ChatMessage {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hotel_id", insertable = false, updatable = false)
+=======
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "conversation_id")
+    private SupportConversation conversation;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hotel_id")
+>>>>>>> codex/ui-functional-audit-polish
     private Hotel hotel;
 
     @Column(name = "legacy_unscoped", nullable = false)
     private boolean legacyUnscoped;
 
+<<<<<<< HEAD
     @Column(name = "client_message_id", length = 64, updatable = false)
     private String clientMessageId;
 
+=======
+>>>>>>> codex/ui-functional-audit-polish
     @Column(columnDefinition = "NVARCHAR(MAX)")
     private String content;
 

@@ -62,6 +62,7 @@ export class ManagementDashboardComponent implements OnInit {
     void this.router.navigate([], { queryParams: { propertyId: this.selectedPropertyId }, queryParamsHandling: 'merge' });
   }
   get activeProperty(): ManagedProperty | undefined { return this.context?.properties.find(property => property.id === this.selectedPropertyId); }
+<<<<<<< HEAD
   get activePropertyOperational(): boolean { return this.context?.activePropertyOperational ?? this.activeProperty?.operational ?? false; }
   get activePropertySuspended(): boolean { return this.normalizedPropertyState() === 'SUSPENDED'; }
   get activePropertyClosed(): boolean { return this.normalizedPropertyState() === 'CLOSED'; }
@@ -199,5 +200,31 @@ export class ManagementDashboardComponent implements OnInit {
   private normalizedPropertyState(): string {
     const property = this.activeProperty;
     return String(property?.operationStatus || property?.status || '').trim().toUpperCase();
+=======
+  get activePropertyOperational(): boolean {
+    return this.context?.activePropertyOperational
+      ?? this.activeProperty?.operational
+      ?? (this.activeProperty?.approvalStatus === 'APPROVED' && this.activeProperty?.operationStatus === 'ACTIVE');
+  }
+  value(name: string): number { return this.context?.dashboard?.[name] || 0; }
+  limit(name: string): string { const value = this.context?.limits?.[name]; return value === -1 ? 'Không giới hạn' : String(value ?? 0); }
+  statusLabel(status?: string): string {
+    return ({
+      ACTIVE: 'Đang hoạt động',
+      INACTIVE: 'Không hoạt động',
+      EXPIRED: 'Đã hết hạn',
+      SUSPENDED: 'Tạm ngưng',
+      PENDING: 'Chờ xử lý',
+      PENDING_PAYMENT: 'Chờ thanh toán',
+      DRAFT: 'Bản nháp',
+      PENDING_APPROVAL: 'Chờ duyệt',
+      APPROVED: 'Đã duyệt',
+      REJECTED: 'Bị từ chối',
+      NONE: 'Chưa có',
+    } as Record<string, string>)[status || 'NONE'] || status || 'Chưa có';
+  }
+  sourceLabel(source?: string): string {
+    return ({ PLATFORM: 'Hệ thống thanh toán gói', LEGACY: 'Dữ liệu thuê bao cũ', NONE: 'Chưa có' } as Record<string, string>)[source || 'NONE'] || source || 'Chưa có';
+>>>>>>> codex/ui-functional-audit-polish
   }
 }

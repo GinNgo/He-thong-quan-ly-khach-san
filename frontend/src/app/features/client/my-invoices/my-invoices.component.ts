@@ -8,6 +8,8 @@ import {
 } from '../../../core/services/invoice.service';
 import { PublicI18nService } from '../../../core/i18n/public-i18n.service';
 
+type InvoiceSnapshot = Record<string, string | number | null | undefined>;
+
 @Component({
   selector: 'app-my-invoices',
   standalone: true,
@@ -132,6 +134,42 @@ export class MyInvoicesComponent implements OnInit {
     });
   }
 
+  printInvoice(): void {
+    if (!this.selectedInvoice()) return;
+    window.print();
+  }
+
+  customerSnapshot(invoice: PropertyInvoiceDetail): InvoiceSnapshot {
+    return this.snapshot(invoice.customerSnapshotJson);
+  }
+
+  propertySnapshot(invoice: PropertyInvoiceDetail): InvoiceSnapshot {
+    return this.snapshot(invoice.propertySnapshotJson);
+  }
+
+  snapshotValue(snapshot: InvoiceSnapshot, ...keys: string[]): string {
+    for (const key of keys) {
+      const value = snapshot[key];
+      if (value !== null && value !== undefined && String(value).trim()) return String(value).trim();
+    }
+    return '';
+  }
+
+  lineTypeLabel(type: string): string {
+    const labels: Record<string, [string, string]> = {
+      ROOM: ['Phòng', 'Room'],
+      SERVICE: ['Dịch vụ', 'Service'],
+      MINIBAR: ['Minibar', 'Minibar'],
+      SURCHARGE: ['Phụ thu', 'Surcharge'],
+      TAX: ['Thuế', 'Tax'],
+      FEE: ['Phí', 'Fee'],
+      DISCOUNT: ['Giảm giá', 'Discount'],
+      ADJUSTMENT: ['Điều chỉnh', 'Adjustment'],
+    };
+    const label = labels[type];
+    return label ? this.copy(label[0], label[1]) : type;
+  }
+
   displayNumber(invoice: CustomerInvoiceSummary): string {
     return invoice.invoiceNumber || invoice.invoiceCode || `INV-${invoice.id}`;
   }
@@ -179,5 +217,15 @@ export class MyInvoicesComponent implements OnInit {
     const headerName = encoded ? decodeURIComponent(encoded) : plain;
     const fallback = `${invoiceNumber || 'invoice'}.pdf`;
     return (headerName || fallback).replace(/[^A-Za-z0-9._-]/g, '_');
+  }
+
+  private snapshot(json: string | undefined): InvoiceSnapshot {
+    if (!json) return {};
+    try {
+      const parsed: unknown = JSON.parse(json);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as InvoiceSnapshot : {};
+    } catch {
+      return {};
+    }
   }
 }

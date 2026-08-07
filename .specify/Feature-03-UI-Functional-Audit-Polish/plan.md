@@ -2,7 +2,7 @@
 
 **Branch**: `codex/ui-functional-audit-polish` | **Date**: 2026-07-27 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `.specify/Feature-03-UI-Functional-Audit-Polish/spec.md`
+**Input**: Feature specification from `.specify/Feature-03-UI-Functional-Audit-Polish/spec.md`; latest planning addition is the LuxeStay luxury logo refresh tracked by T073-T076.
 
 ## Summary
 
@@ -22,15 +22,15 @@ Kiểm kê toàn bộ route/menu đang được công bố cho Public, Customer,
 
 ## Constitution Check
 
-*GATE: Passed before Phase 0 research and re-checked after Phase 1 design.*
+*GATE: Initial design review passed; implementation re-check remains conditional until the open browser, responsive, accessibility and payment-policy work converges.*
 
-- [x] **I. An toàn chức năng**: Chỉ sửa gap có bằng chứng; giữ backend authorization và tenant boundary hiện tại.
+- [ ] **I. An toàn chức năng**: Các remediation notification/chat/tenant đã có regression, nhưng callback thanh toán demo trong T058/GAP-022 vẫn chưa có policy được phê duyệt nên feature chưa đạt production-ready gate.
 - [x] **II. Hiểu biết toàn diện**: Đã đọc route inventory, audit cũ, design/standards/development rules và cấu trúc source liên quan.
 - [x] **III. Tái sử dụng**: Ưu tiên `feedback-state`, data table, filter panel, dialogs, shell và design tokens hiện có.
-- [x] **IV. Validation & Error Handling**: Mọi luồng P1 bao gồm input validation, loading, error, recovery, success và duplicate-submit protection.
-- [x] **V. Trải nghiệm thực tế**: Browser audit chạy trên frontend/backend và dữ liệu thật; mock không được dùng làm bằng chứng hoàn thiện.
-- [x] **VI & VII. Kiểm định & Xác minh**: Có unit, build, backend test, browser regression và breakpoint review trước khi kết luận.
-- [x] **VIII. Ghi chép**: Audit matrix và gap register ghi route, actor, bước tái hiện, bằng chứng, severity và hướng xử lý.
+- [ ] **IV. Validation & Error Handling**: Shared async states và AI/notification widget branches đã được sửa; T021-T025, T049 và payment callback policy vẫn chưa hội tụ đủ.
+- [ ] **V. Trải nghiệm thực tế**: Route inventory có real-browser evidence; protected notification realtime đã được fixture-verified, nhưng authenticated customer/owner journeys và chat reconnect vẫn cần fixture-based rerun.
+- [ ] **VI & VII. Kiểm định & Xác minh**: Unit/build/backend regression đang pass; T036/T040 breakpoint, keyboard, reduced-motion và final P1 rate chưa hoàn tất.
+- [x] **VIII. Ghi chép**: Audit matrix và gap register ghi route, actor, bước tái hiện, bằng chứng, severity và hướng xử lý; final metrics được giữ cho T053.
 
 ## Project Structure
 
@@ -50,6 +50,8 @@ Kiểm kê toàn bộ route/menu đang được công bố cho Public, Customer,
 |-- checklists/
 |   |-- requirements.md
 |   `-- ux.md
+|-- brand/
+|   `-- logo-brief.md
 `-- tasks.md
 ```
 
@@ -119,6 +121,14 @@ docs/
 2. Sửa shared tokens/components/shell trước page-level CSS.
 3. Sửa lỗi navigation, async states, duplicate submission, responsive và accessibility có severity cao.
 4. Không triển khai fake UI cho review, mixed-room booking hoặc customer add-on services nếu backend/domain chưa hỗ trợ.
+5. Với breakpoint gần mobile (375-760px), account drawer phải chiếm đúng `100dvh`, giữ header/điểm thưởng nhìn thấy và cho phép phần menu cuộn độc lập; guest/room selector phải giữ summary trong chiều cao field và giới hạn popover theo viewport/safe-area thay vì cắt nội dung.
+
+### Phase 3A - Brand Identity Refresh
+
+1. Turn the supplied luxury-hotel reference into an original LuxeStay design brief; do not reproduce its watermark, lettering or exact ornamental composition.
+2. Create and approve the emblem/monogram direction before exporting assets.
+3. Ship a reusable SVG-first asset family with light/dark, monochrome, stacked, horizontal and favicon variants.
+4. Integrate one shared asset family across all application shells and verify contrast, clear space, small-size legibility and responsive layout behavior.
 
 ### Phase 4 - Verification and Convergence
 
@@ -128,6 +138,7 @@ docs/
 4. Cập nhật audit evidence, gap status và task checkboxes.
 5. Chạy Spec Kit analyze read-only; chỉ sửa artifact inconsistency sau khi được người dùng chấp thuận nếu analyze phát hiện vấn đề.
 6. Chạy converge để append phần việc còn thiếu vào `tasks.md`, không ghi đè lịch sử.
+7. Kiểm tra riêng các chiều rộng 375px, 504px, 532px và 768px cho account drawer cùng guest/room selector; không chấp nhận page overflow, CTA/menu bị che hoặc summary vượt khỏi search-field.
 
 ## Test Strategy
 
@@ -139,6 +150,7 @@ docs/
 | Backend | Auth, tenant, permission, reservation/payment regressions | `mvnw.cmd test` exit 0 |
 | Browser functional | Primary/alternate/error/recovery/permission flows | Route, actor, steps, outcome, screenshot/note |
 | Responsive/a11y | 375/768/1024/1440, keyboard, focus, reduced motion | Evidence attached to representative core pages |
+| Brand asset QA | SVG variants, favicon sizes, contrast, clear space and shell integration | Approved brief, asset inventory, focused UI/build and browser evidence |
 
 ## Risk Controls
 
@@ -149,6 +161,10 @@ docs/
 - Không biến E2E mock/intercept thành bằng chứng runtime thật.
 - Nếu DB hoặc account thiếu làm route không kiểm thử được, đánh dấu `BLOCKED` kèm điều kiện mở khóa.
 
+Logo artwork must remain original and SVG-first; do not ship copied reference imagery, watermarks or raster-only marks, and do not allow a decorative emblem to reduce text/icon contrast below the accessibility baseline.
+
 ## Complexity Tracking
 
-Không có constitution violation cần exception. Scope rộng được kiểm soát bằng audit-first, shared remediation và ưu tiên P1/P2 thay vì sửa mọi page một cách rời rạc.
+T073-T076 add an explicit brand-asset gate: the logo must be approved, original, reusable across shells and validated at small sizes before the final premium-polish gate can close.
+
+Scope rộng được kiểm soát bằng audit-first, shared remediation và ưu tiên P1/P2. Hai vi phạm đã có remediation trong convergence là notification authorization/realtime transport (T057) và runtime local-path coupling (T059), đã có regression tương ứng. Payment simulator callback (T058/GAP-022) vẫn là thay đổi policy cần người dùng phê duyệt. AI response rendering, authenticated chat reconnect, assigned-property browser coverage, responsive/accessibility and final P1 metrics tiếp tục là gate mở, không được suy diễn là production-ready.

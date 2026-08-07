@@ -35,12 +35,16 @@ public class ReservationRequest {
     private String lastName;
     @Size(max = 30, message = "Phone must not exceed 30 characters.")
     private String phone;
+<<<<<<< HEAD
     private Long operationalPolicyVersion;
 
     @AssertTrue(message = "Check-out date must be after check-in date.")
     public boolean isStayRangeValid() {
         return checkInDate == null || checkOutDate == null || checkOutDate.isAfter(checkInDate);
     }
+=======
+    private String couponCode;
+>>>>>>> codex/ui-functional-audit-polish
 
     // Getters and Setters omitted for brevity
     public Long getRoomTypeId() { return roomTypeId; }
@@ -79,6 +83,11 @@ public class ReservationRequest {
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
 
+<<<<<<< HEAD
     public Long getOperationalPolicyVersion() { return operationalPolicyVersion; }
     public void setOperationalPolicyVersion(Long operationalPolicyVersion) { this.operationalPolicyVersion = operationalPolicyVersion; }
+=======
+    public String getCouponCode() { return couponCode; }
+    public void setCouponCode(String couponCode) { this.couponCode = couponCode; }
+>>>>>>> codex/ui-functional-audit-polish
 }

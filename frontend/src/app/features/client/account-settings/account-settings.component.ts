@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, ChangeDetectorRef, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { finalize } from 'rxjs';
+
 import { PASSWORD_POLICY, passwordValidators } from '../../../core/auth/password-policy';
+import { PublicI18nService } from '../../../core/i18n/public-i18n.service';
 import { AuthService } from '../../../core/services/auth';
 import { UserService } from '../../../core/services/user';
 import { SocialAccountLinksComponent } from './social-account-links.component';
@@ -11,13 +13,14 @@ import { SocialAccountLinksComponent } from './social-account-links.component';
 @Component({
   selector: 'app-account-settings', standalone: true, imports: [CommonModule, ReactiveFormsModule, RouterModule, SocialAccountLinksComponent],
   template: `
-    <main class="settings-page"><header><a routerLink="/profile"><i class="pi pi-arrow-left"></i> Tài khoản</a><h1>Cài đặt tài khoản</h1><p>Thay đổi mật khẩu đăng nhập của bạn.</p></header>
+    <main class="settings-page">
+      <header><a routerLink="/profile"><i class="pi pi-arrow-left"></i> {{ i18n.text('PUBLIC.ACCOUNT.SETTINGS_BACK') }}</a><h1>{{ i18n.text('PUBLIC.ACCOUNT.SETTINGS_TITLE') }}</h1><p>{{ i18n.text('PUBLIC.ACCOUNT.SETTINGS_HELP') }}</p></header>
       <section><form [formGroup]="form" (ngSubmit)="submit()">
-        <label>Mật khẩu hiện tại<input type="password" formControlName="currentPassword" autocomplete="current-password"></label>
-        <label>Mật khẩu mới<input type="password" formControlName="newPassword" autocomplete="new-password" [attr.minlength]="passwordPolicy.minLength" [attr.maxlength]="passwordPolicy.maxLength"><small>Tối thiểu 8 ký tự.</small></label>
-        <label>Nhập lại mật khẩu mới<input type="password" formControlName="confirmPassword" autocomplete="new-password" [attr.minlength]="passwordPolicy.minLength" [attr.maxlength]="passwordPolicy.maxLength"></label>
+        <label>{{ i18n.text('PUBLIC.ACCOUNT.CURRENT_PASSWORD') }}<input type="password" formControlName="currentPassword" autocomplete="current-password"></label>
+        <label>{{ i18n.text('PUBLIC.ACCOUNT.NEW_PASSWORD') }}<input type="password" formControlName="newPassword" autocomplete="new-password" [attr.minlength]="passwordPolicy.minLength" [attr.maxlength]="passwordPolicy.maxLength"><small>{{ i18n.text('PUBLIC.ACCOUNT.MIN_PASSWORD') }}</small></label>
+        <label>{{ i18n.text('PUBLIC.ACCOUNT.CONFIRM_PASSWORD') }}<input type="password" formControlName="confirmPassword" autocomplete="new-password" [attr.minlength]="passwordPolicy.minLength" [attr.maxlength]="passwordPolicy.maxLength"></label>
         <div *ngIf="error" class="alert error">{{ error }}</div><div *ngIf="success" class="alert success">{{ success }}</div>
-        <button type="submit" [disabled]="form.invalid || saving">{{ saving ? 'Đang lưu...' : 'Đổi mật khẩu' }}</button>
+        <button type="submit" [disabled]="form.invalid || saving">{{ saving ? i18n.text('PUBLIC.ACCOUNT.SAVING') : i18n.text('PUBLIC.ACCOUNT.CHANGE_PASSWORD') }}</button>
       </form></section><app-social-account-links></app-social-account-links>
     </main>`,
   styles: [`
@@ -25,24 +28,32 @@ import { SocialAccountLinksComponent } from './social-account-links.component';
   `]
 })
 export class AccountSettingsComponent {
-  private readonly fb = inject(FormBuilder); private readonly users = inject(UserService); private readonly auth = inject(AuthService); private readonly router = inject(Router); private readonly cdr = inject(ChangeDetectorRef);
+  private readonly fb = inject(FormBuilder);
+  private readonly users = inject(UserService);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly cdr = inject(ChangeDetectorRef);
+  readonly i18n = inject(PublicI18nService);
   readonly passwordPolicy = PASSWORD_POLICY;
-  saving = false; error = ''; success = '';
+  saving = false;
+  error = '';
+  success = '';
   readonly form = this.fb.nonNullable.group({ currentPassword: ['', Validators.required], newPassword: ['', passwordValidators()], confirmPassword: ['', passwordValidators()] });
+
   submit(): void {
     if (this.form.invalid) return;
     const value = this.form.getRawValue();
-    if (value.newPassword !== value.confirmPassword) { this.error = 'Mật khẩu nhập lại chưa khớp.'; return; }
+    if (value.newPassword !== value.confirmPassword) { this.error = this.i18n.text('PUBLIC.ACCOUNT.PASSWORD_MISMATCH'); return; }
     this.saving = true; this.error = ''; this.success = '';
     this.users.changePassword({ currentPassword: value.currentPassword, newPassword: value.newPassword }).pipe(finalize(() => this.saving = false)).subscribe({
       next: () => {
-        this.success = 'Mật khẩu đã được thay đổi.';
+        this.success = this.i18n.text('PUBLIC.ACCOUNT.PASSWORD_CHANGED');
         this.form.reset();
         this.auth.logout();
         void this.router.navigate(['/login'], { queryParams: { reason: 'PASSWORD_CHANGED' } });
         this.cdr.detectChanges();
       },
-      error: () => { this.error = 'Không thể đổi mật khẩu. Vui lòng kiểm tra mật khẩu hiện tại.'; this.cdr.detectChanges(); }
+      error: () => { this.error = this.i18n.text('PUBLIC.ACCOUNT.PASSWORD_CHANGE_ERROR'); this.cdr.detectChanges(); }
     });
   }
 }

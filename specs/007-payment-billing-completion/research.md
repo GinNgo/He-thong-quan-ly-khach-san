@@ -173,3 +173,25 @@ The audit also found blocking gaps:
 - Prorated credit for unused time: rejected because no proration/accounting policy has been approved.
 - Replace the remaining term with only the new plan duration: rejected because it would discard paid entitlement.
 - Allow a plan with lower limits when current usage happens to fit: rejected because an upgrade must be strictly non-decreasing and improve at least one limit.
+
+## Decision 16: Canonical finalized invoice for every print/export path
+
+**Decision**: Customer and staff invoice views, PDF downloads, email attachments and browser print previews all consume the same finalized `Invoice`/`InvoiceLine` snapshot. Legacy invoice-generation endpoints remain read-only compatibility adapters or are deprecated; they must not create a second invoice or calculate totals from mutable reservation totals.
+
+**Rationale**: The audit found a legacy admin print path that omits consumed services and a PDF renderer that prints only aggregate totals. One immutable source prevents drift between customer and staff documents and preserves historical names/prices.
+
+**Alternatives considered**:
+
+- Keep separate legacy and property invoice renderers: rejected because service lines and tenant/immutability rules would continue to diverge.
+- Recalculate from the current service catalog at print time: rejected because catalog prices/names can change after checkout.
+
+## Decision 17: Property selection is explicit for multi-property service catalogs
+
+**Decision**: Resolve the service catalog from the reservation's server-authorized property. If a caller can access multiple properties and no reservation context identifies one, require an explicit selected property and reject ambiguous requests; never infer a tenant from the first accessible property.
+
+**Rationale**: A service catalog is tenant-owned. Silent inference can show one property's food/minibar catalog while charging another property's reservation or expose cross-property data.
+
+**Alternatives considered**:
+
+- Return all accessible property services and filter in the browser: rejected because client filtering is not a tenant boundary.
+- Infer the first accessible property: rejected because ordering is not an authorization decision.

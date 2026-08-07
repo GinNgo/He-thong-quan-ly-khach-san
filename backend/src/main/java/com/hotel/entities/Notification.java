@@ -1,6 +1,9 @@
 package com.hotel.entities;
 
+<<<<<<< HEAD
 import com.fasterxml.jackson.annotation.JsonIgnore;
+=======
+>>>>>>> codex/ui-functional-audit-polish
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -37,6 +40,7 @@ public class Notification {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+<<<<<<< HEAD
     @JsonIgnore
     @Column(name = "event_key", length = 160)
     private String eventKey;
@@ -44,6 +48,11 @@ public class Notification {
     @Column(name = "archived_at")
     private LocalDateTime archivedAt;
 
+=======
+    @Column(name = "event_key", length = 160)
+    private String eventKey;
+
+>>>>>>> codex/ui-functional-audit-polish
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -69,7 +78,10 @@ public class Notification {
 
     public String getEventKey() { return eventKey; }
     public void setEventKey(String eventKey) { this.eventKey = eventKey; }
+<<<<<<< HEAD
 
     public LocalDateTime getArchivedAt() { return archivedAt; }
     public void setArchivedAt(LocalDateTime archivedAt) { this.archivedAt = archivedAt; }
+=======
+>>>>>>> codex/ui-functional-audit-polish
 }

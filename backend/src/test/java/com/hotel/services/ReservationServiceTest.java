@@ -2,6 +2,8 @@ package com.hotel.services;
 
 import com.hotel.dtos.ReservationDTO;
 import com.hotel.dtos.ReservationRequest;
+import com.hotel.entities.PaymentSession;
+import com.hotel.entities.RefundRequest;
 import com.hotel.entities.Reservation;
 import com.hotel.entities.RoomType;
 import com.hotel.entities.User;
@@ -10,6 +12,8 @@ import com.hotel.paymentprovider.error.FinancialErrorCode;
 import com.hotel.paymentprovider.error.FinancialException;
 import com.hotel.propertycommerce.config.PropertyPaymentConfiguration;
 import com.hotel.propertycommerce.config.PropertyPaymentConfigurationRepository;
+import com.hotel.propertycommerce.refund.PropertyRefundService;
+import com.hotel.propertycommerce.refund.PropertyRefundRequestRepository;
 import com.hotel.repositories.ReservationRepository;
 import com.hotel.repositories.UserRepository;
 import com.hotel.repositories.HotelRepository;
@@ -23,8 +27,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -71,10 +76,25 @@ public class ReservationServiceTest {
     private com.hotel.repositories.HotelServiceRepository hotelServiceRepository;
 
     @Mock
+    private com.hotel.repositories.PaymentRepository paymentRepository;
+
+    @Mock
+    private com.hotel.repositories.PaymentSessionRepository paymentSessionRepository;
+
+    @Mock
+    private com.hotel.repositories.RefundRequestRepository refundRequestRepository;
+
+    @Mock
     private com.hotel.services.PropertyAccessService propertyAccessService;
 
     @Mock
-    private PaymentService paymentService;
+    private RefundService refundService;
+
+    @Mock
+    private PropertyRefundService propertyRefundService;
+
+    @Mock
+    private PropertyRefundRequestRepository propertyRefundRequestRepository;
 
     @Mock
     private ReservationHoldService reservationHoldService;
@@ -150,32 +170,6 @@ public class ReservationServiceTest {
     }
 
     @Test
-    void getAllReservations_AsPropertyStaff_ReturnsOnlyAccessibleHotels() {
-        when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
-        when(propertyAccessService.accessibleHotelIds()).thenReturn(java.util.Set.of(1L));
-        when(reservationRepository.findByHotelIdIn(java.util.Set.of(1L)))
-                .thenReturn(java.util.List.of(mockReservation));
-        when(reservationDetailRepository.findByReservationId(1L)).thenReturn(java.util.List.of());
-
-        java.util.List<ReservationDTO> result = reservationService.getAllReservations();
-
-        assertEquals(java.util.List.of(1L), result.stream().map(ReservationDTO::getId).toList());
-        verify(reservationRepository).findByHotelIdIn(java.util.Set.of(1L));
-        verify(reservationRepository, never()).findAll();
-    }
-
-    @Test
-    void getAllReservations_AsUnassignedStaff_ReturnsEmptyWithoutQueryingReservations() {
-        when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
-        when(propertyAccessService.accessibleHotelIds()).thenReturn(java.util.Set.of());
-
-        assertTrue(reservationService.getAllReservations().isEmpty());
-
-        verify(reservationRepository, never()).findAll();
-        verify(reservationRepository, never()).findByHotelIdIn(any());
-    }
-
-    @Test
     void findByBookingIdempotencyReturnsTheCommittedReservationForRecovery() {
         when(reservationRepository.findByBookingIdempotencyScopeAndBookingIdempotencyKey(
                 "customer@example.test", "booking-key")).thenReturn(Optional.of(mockReservation));
@@ -189,7 +183,6 @@ public class ReservationServiceTest {
         verify(reservationRepository).findByBookingIdempotencyScopeAndBookingIdempotencyKey(
                 "customer@example.test", "booking-key");
     }
-
 
     @Test
     void createReservationCalculatesAndPersistsServerOwnedPercentageDeposit() {
@@ -226,6 +219,7 @@ public class ReservationServiceTest {
         assertEquals(4L, saved.getDepositConfigurationVersion());
         assertEquals("testcustomer", saved.getBookingIdempotencyScope());
         assertEquals("booking-key", saved.getBookingIdempotencyKey());
+<<<<<<< HEAD
         assertEquals(0, BigDecimal.valueOf(1_200_000).compareTo(response.getTotalAmount()));
         assertEquals(11L, response.getDepositPolicySnapshot().configurationId());
         assertEquals(4L, response.getDepositPolicySnapshot().configurationVersion());
@@ -234,6 +228,8 @@ public class ReservationServiceTest {
                 .compareTo(response.getDepositPolicySnapshot().requiredDeposit()));
         assertEquals("VND", response.getDepositPolicySnapshot().currency());
         verify(reservationHoldService).createHold(99L, 5L, 1, "RESERVATION-99");
+=======
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     @Test
@@ -296,12 +292,83 @@ public class ReservationServiceTest {
 
         assertEquals(FinancialErrorCode.PAYMENT_ENVIRONMENT_DISABLED, exception.code());
         verify(reservationRepository, never()).save(any());
-        verify(reservationHoldService, never()).createHold(any(), any(), anyInt(), any());
     }
+
     @Test
+    void getAllReservations_AsPropertyStaff_ReturnsOnlyAccessibleHotels() {
+        when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
+        when(propertyAccessService.accessibleHotelIds()).thenReturn(java.util.Set.of(1L));
+        when(reservationRepository.findByHotelIdIn(java.util.Set.of(1L)))
+                .thenReturn(java.util.List.of(mockReservation));
+        when(reservationDetailRepository.findByReservationId(1L)).thenReturn(java.util.List.of());
+
+        java.util.List<ReservationDTO> result = reservationService.getAllReservations();
+
+        assertEquals(java.util.List.of(1L), result.stream().map(ReservationDTO::getId).toList());
+        verify(reservationRepository).findByHotelIdIn(java.util.Set.of(1L));
+        verify(reservationRepository, never()).findAll();
+    }
+
+    @Test
+    void getAllReservations_AsUnassignedStaff_ReturnsEmptyWithoutQueryingReservations() {
+        when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
+        when(propertyAccessService.accessibleHotelIds()).thenReturn(java.util.Set.of());
+
+        assertTrue(reservationService.getAllReservations().isEmpty());
+
+        verify(reservationRepository, never()).findAll();
+        verify(reservationRepository, never()).findByHotelIdIn(any());
+    }
+
+    @Test
+    void getMyReservations_ExposesSafePaymentAndRefundLifecycleSummary() {
+        PaymentSession paymentSession = new PaymentSession();
+        paymentSession.setProvider("MOMO");
+        paymentSession.setExpectedAmount(new BigDecimal("1250000"));
+        paymentSession.setCurrency("VND");
+        paymentSession.setStatus("FAILED");
+        paymentSession.setExpiresAt(LocalDateTime.now().plusMinutes(5));
+        paymentSession.setFailureCode("PROVIDER_REJECTED");
+
+        RefundRequest refund = new RefundRequest();
+        refund.setPublicId("refund-public-id");
+        refund.setRequestedAmount(new BigDecimal("1250000"));
+        refund.setCurrency("VND");
+        refund.setProvider("MOMO");
+        refund.setStatus("PENDING_PROVIDER");
+        refund.setRequestedAt(LocalDateTime.of(2026, 7, 30, 10, 0));
+
+        when(reservationRepository.findByUserUsername("testcustomer"))
+                .thenReturn(java.util.List.of(mockReservation));
+        when(reservationDetailRepository.findByReservationId(1L)).thenReturn(java.util.List.of());
+        when(paymentSessionRepository.findByReservationIdOrderByIdDesc(1L))
+                .thenReturn(java.util.List.of(paymentSession));
+        when(refundRequestRepository.findByReservationIdOrderByIdAsc(1L))
+                .thenReturn(java.util.List.of(refund));
+
+        ReservationDTO result = reservationService.getMyReservations("testcustomer").get(0);
+
+        assertEquals("FAILED", result.getPayment().getStatus());
+        assertEquals("MOMO", result.getPayment().getProvider());
+        assertEquals("PROVIDER_REJECTED", result.getPayment().getFailureCode());
+        assertEquals(1, result.getRefunds().size());
+        assertEquals("PENDING_PROVIDER", result.getRefunds().get(0).getStatus());
+        assertEquals("refund-public-id", result.getRefunds().get(0).getPublicId());
+    }
+
+    @Test
+<<<<<<< HEAD
     void legacyStatusUpdateRejectsCheckInSoDedicatedWorkflowCannotBeBypassed() {
         when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
         when(reservationRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(mockReservation));
+=======
+    void testCheckIn_Success() {
+        mockReservation.setStatus("CONFIRMED");
+        when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
+        when(reservationRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(mockReservation));
+        when(reservationDetailRepository.findByReservationId(1L)).thenReturn(java.util.Collections.emptyList());
+        when(reservationRepository.save(any(Reservation.class))).thenReturn(mockReservation);
+>>>>>>> codex/ui-functional-audit-polish
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> reservationService.updateReservationStatus(1L, "CHECKED_IN"));
@@ -335,7 +402,7 @@ public class ReservationServiceTest {
         assignment.setStatus("ASSIGNED");
 
         when(reservationRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(mockReservation));
-        when(reservationRoomRepository.findByReservationDetailReservationId(1L))
+        when(reservationRoomRepository.findAssignedByReservationIdForUpdate(1L))
                 .thenReturn(java.util.List.of(assignment));
         when(roomRepository.findAllByIdForUpdate(java.util.List.of(12L)))
                 .thenReturn(java.util.List.of(room));
@@ -346,7 +413,9 @@ public class ReservationServiceTest {
         assertEquals("CANCELLED", result.getStatus());
         assertEquals("AVAILABLE", room.getStatus());
         assertEquals("RELEASED", assignment.getStatus());
-        verify(paymentService).refundSuccessfulPayments(1L);
+        verify(refundService).requestRefundsForSuccessfulPayments(1L, "RESERVATION_CANCELLED");
+        verify(propertyRefundService).requestCancellationRefunds(
+                1L, "Khách hủy đặt phòng", "reservation-cancellation:1");
         verify(reservationHoldService).releaseActiveHold(eq(1L), any(java.time.LocalDateTime.class));
         verify(reservationRepository).save(mockReservation);
     }
@@ -358,8 +427,8 @@ public class ReservationServiceTest {
         assertThrows(org.springframework.security.access.AccessDeniedException.class,
                 () -> reservationService.cancelMyReservation(1L, "attacker"));
 
-        verify(paymentService, never()).refundSuccessfulPayments(any());
-        verify(reservationHoldService, never()).releaseActiveHold(any(), any());
+        verify(refundService, never()).requestRefundsForSuccessfulPayments(any(), any());
+        verify(propertyRefundService, never()).requestCancellationRefunds(any(), any(), any());
     }
 
     @Test
@@ -370,8 +439,8 @@ public class ReservationServiceTest {
         assertThrows(IllegalStateException.class,
                 () -> reservationService.cancelMyReservation(1L, "testcustomer"));
 
-        verify(paymentService, never()).refundSuccessfulPayments(any());
-        verify(reservationHoldService, never()).releaseActiveHold(any(), any());
+        verify(refundService, never()).requestRefundsForSuccessfulPayments(any(), any());
+        verify(propertyRefundService, never()).requestCancellationRefunds(any(), any(), any());
     }
 
     @Test
@@ -382,10 +451,12 @@ public class ReservationServiceTest {
         ReservationDTO result = reservationService.cancelMyReservation(1L, "testcustomer");
 
         assertEquals("CANCELLED", result.getStatus());
-        verify(paymentService, never()).refundSuccessfulPayments(any());
+        verify(refundService, never()).requestRefundsForSuccessfulPayments(any(), any());
+        verify(propertyRefundService, never()).requestCancellationRefunds(any(), any(), any());
         verify(reservationHoldService).releaseActiveHold(eq(1L), any(java.time.LocalDateTime.class));
         verify(reservationRepository, never()).save(any());
     }
+
     private ReservationRequest bookingRequest() {
         ReservationRequest request = new ReservationRequest();
         request.setRoomTypeId(5L);
@@ -403,7 +474,7 @@ public class ReservationServiceTest {
         RoomType roomType = new RoomType();
         roomType.setId(5L);
         roomType.setHotel(mockHotel);
-        roomType.setNameVi("Deluxe room");
+        roomType.setNameVi("Phòng Deluxe");
         roomType.setNameEn("Deluxe room");
         roomType.setBasePrice(BigDecimal.valueOf(600_000));
         roomType.setStatus("ACTIVE");

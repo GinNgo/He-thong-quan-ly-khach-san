@@ -40,6 +40,7 @@ public class RoomTypeDTO {
     private Long availableRooms;
     private Long nights;
     private BigDecimal totalPrice;
+    private PromotionQuoteDTO quote;
     private List<String> imageUrls;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -163,6 +164,9 @@ public class RoomTypeDTO {
     public void setTotalPrice(BigDecimal totalPrice) {
         this.totalPrice = totalPrice;
     }
+
+    public PromotionQuoteDTO getQuote() { return quote; }
+    public void setQuote(PromotionQuoteDTO quote) { this.quote = quote; }
 
     public List<String> getImageUrls() { return imageUrls; }
     public void setImageUrls(List<String> imageUrls) { this.imageUrls = imageUrls; }

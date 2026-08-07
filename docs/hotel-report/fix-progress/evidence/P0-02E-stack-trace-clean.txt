@@ -1,0 +1,26 @@
+P0-02E clean bootstrap failure
+
+Affected suites:
+- com.hotel.integration.PackagedLocationImportIntegrationTest
+- com.hotel.integration.UnicodeAndInventoryIntegrationTest
+
+Root exception:
+java.lang.IllegalStateException: Found multiple @SpringBootConfiguration annotated classes
+
+Discovery path:
+AnnotatedClassFinder.scanPackage
+SpringBootTestContextBootstrapper.findConfigurationClass
+
+Candidates in com.hotel.integration (test source -> target/test-classes):
+- FinancialRefundConcurrencyIntegrationTest$TestApplication
+- FinancialRefundSecurityIntegrationTest$TestApplication
+- FinancialTenantFilterIntegrationTest$TestApplication
+- SupportConversationIsolationIntegrationTest$TestApplication
+
+Required production entry:
+- com.hotel.BackendApplication
+- backend/src/main/java/com/hotel/BackendApplication.java
+
+Both affected tests omitted SpringBootTest.classes. Spring searched their nearest
+package, found the four nested test-only configurations, and failed before walking
+up to com.hotel.BackendApplication.

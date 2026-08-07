@@ -1,0 +1,30 @@
+P0-02J CLEAN ASSERTION TRACE
+Date: 2026-08-06 Asia/Saigon
+
+Suite: com.hotel.integration.PropertySearchControllerIntegrationTest
+Case: searchProperties_WithRoomQuantity_ShouldCalculateStayPricing
+Endpoint: GET /api/public/properties/search
+JSON path: $.content[0].pricing.taxAmount
+
+Before fix:
+Tests run: 5, Failures: 1, Errors: 0, Skipped: 0
+java.lang.AssertionError:
+JSON path "$.content[0].pricing.taxAmount"
+Expected: is <300000.0>
+     but: was <300000>
+at com.hotel.integration.PropertySearchControllerIntegrationTest
+    .searchProperties_WithRoomQuantity_ShouldCalculateStayPricing(
+        PropertySearchControllerIntegrationTest.java:166)
+
+Type analysis:
+- Expected matcher value: java.lang.Double, 300000.0
+- Actual JsonPath value: java.lang.Integer, 300000
+- Backend DTO field: java.math.BigDecimal
+- Currency: VND
+- Business value: equal (300000 VND)
+- JSON contract: numeric value; fixed textual scale is not required
+
+After fix:
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0
+Assertion still verifies the exact JSON path and exact numeric business value by
+mapping the JSON number to BigDecimal and using comparesEqualTo.

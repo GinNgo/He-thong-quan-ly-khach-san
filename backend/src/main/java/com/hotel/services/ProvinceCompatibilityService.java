@@ -41,8 +41,13 @@ public class ProvinceCompatibilityService {
 
     public List<Location> currentProvinces() {
         return locationRepository
+<<<<<<< HEAD
                 .findByLocationTypeAndStatusAndSourceCodeInOrderBySortOrderAscNameViAsc(
                         "PROVINCE", "ACTIVE", currentSourceCodes());
+=======
+                .findByLocationTypeAndStatusAndSourceCodeStartingWithOrderBySortOrderAscNameViAsc(
+                        "PROVINCE", "ACTIVE", CURRENT_PREFIX);
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     public List<Location> wardsFor(Long provinceId) {
@@ -64,9 +69,13 @@ public class ProvinceCompatibilityService {
         sourceCodes.add(definition.sourceCode());
         Set<Long> ids = new LinkedHashSet<>();
         locationRepository.findByLocationTypeAndSourceCodeIn("PROVINCE", sourceCodes).stream()
+<<<<<<< HEAD
                 .map(Location::getId)
                 .filter(java.util.Objects::nonNull)
                 .forEach(ids::add);
+=======
+                .map(Location::getId).filter(java.util.Objects::nonNull).forEach(ids::add);
+>>>>>>> codex/ui-functional-audit-polish
         ids.add(provinceId);
         return ids;
     }
@@ -79,7 +88,12 @@ public class ProvinceCompatibilityService {
 
     public Location currentProvinceFor(Location location) {
         Location province = provinceFor(location);
+<<<<<<< HEAD
         if (province == null || isCurrent(province)) return province;
+=======
+        if (province == null) return null;
+        if (isCurrent(province)) return province;
+>>>>>>> codex/ui-functional-audit-polish
         ProvinceDefinition definition = definitionFor(province.getSourceCode()).orElse(null);
         if (definition == null) return province;
         return locationRepository.findByLocationTypeAndSourceCode("PROVINCE", definition.sourceCode())
@@ -89,6 +103,7 @@ public class ProvinceCompatibilityService {
     public Location currentProvinceForId(Long provinceId) {
         if (provinceId == null) return null;
         return locationRepository.findByIdAndLocationType(provinceId, "PROVINCE")
+<<<<<<< HEAD
                 .map(this::currentProvinceFor)
                 .orElse(null);
     }
@@ -131,17 +146,38 @@ public class ProvinceCompatibilityService {
 
     public boolean isCurrentProvince(Location province) {
         return province != null && currentSourceCodes().contains(province.getSourceCode());
+=======
+                .map(this::currentProvinceFor).orElse(null);
+    }
+
+    public Set<Long> currentProvinceIdsFor(Collection<Long> provinceIds) {
+        Set<Long> currentIds = new LinkedHashSet<>();
+        for (Long provinceId : provinceIds) {
+            Location current = currentProvinceForId(provinceId);
+            if (current != null && current.getId() != null) currentIds.add(current.getId());
+        }
+        return currentIds;
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     private Optional<ProvinceDefinition> definitionFor(String sourceCode) {
         if (sourceCode == null) return Optional.empty();
         Catalog loaded = catalog();
         ProvinceDefinition current = loaded.byCurrentCode().get(sourceCode);
+<<<<<<< HEAD
         return current != null ? Optional.of(current) : Optional.ofNullable(loaded.byLegacyCode().get(sourceCode));
     }
 
     private boolean isCurrent(Location province) {
         return isCurrentProvince(province);
+=======
+        if (current != null) return Optional.of(current);
+        return Optional.ofNullable(loaded.byLegacyCode().get(sourceCode));
+    }
+
+    private boolean isCurrent(Location province) {
+        return province.getSourceCode() != null && province.getSourceCode().startsWith(CURRENT_PREFIX);
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     private Location provinceFor(Location location) {
@@ -165,7 +201,11 @@ public class ProvinceCompatibilityService {
     private Catalog loadCatalog() {
         if (currentProvinceResource == null || !currentProvinceResource.exists()
                 || !currentProvinceResource.isReadable()) {
+<<<<<<< HEAD
             throw new IllegalStateException("Current province compatibility catalog is unavailable.");
+=======
+            throw new IllegalStateException("Không thể đọc danh mục tương thích 34 tỉnh/thành hiện hành.");
+>>>>>>> codex/ui-functional-audit-polish
         }
         try (InputStream input = currentProvinceResource.getInputStream()) {
             List<ProvinceDefinition> definitions = objectMapper.readValue(input, new TypeReference<>() { });
@@ -173,6 +213,7 @@ public class ProvinceCompatibilityService {
             Map<String, ProvinceDefinition> byLegacy = new LinkedHashMap<>();
             for (ProvinceDefinition definition : definitions) {
                 if (definition.sourceCode() == null || !definition.sourceCode().startsWith(CURRENT_PREFIX)) {
+<<<<<<< HEAD
                     throw new IllegalStateException("Invalid current province code: " + definition.sourceCode());
                 }
                 if (byCurrent.putIfAbsent(definition.sourceCode(), definition) != null) {
@@ -184,23 +225,47 @@ public class ProvinceCompatibilityService {
                 for (String legacyCode : definition.legacyProvinceCodes()) {
                     if (byLegacy.putIfAbsent(legacyCode, definition) != null) {
                         throw new IllegalStateException("Legacy province code mapped more than once: " + legacyCode);
+=======
+                    throw new IllegalStateException("Mã tỉnh hiện hành không hợp lệ: " + definition.sourceCode());
+                }
+                if (byCurrent.putIfAbsent(definition.sourceCode(), definition) != null) {
+                    throw new IllegalStateException("Trùng mã tỉnh hiện hành: " + definition.sourceCode());
+                }
+                if (definition.legacyProvinceCodes() == null || definition.legacyProvinceCodes().isEmpty()) {
+                    throw new IllegalStateException("Thiếu ánh xạ tỉnh cũ: " + definition.sourceCode());
+                }
+                for (String legacyCode : definition.legacyProvinceCodes()) {
+                    if (byLegacy.putIfAbsent(legacyCode, definition) != null) {
+                        throw new IllegalStateException("Mã tỉnh cũ được ánh xạ nhiều lần: " + legacyCode);
+>>>>>>> codex/ui-functional-audit-polish
                     }
                 }
             }
             if (byCurrent.size() != 34 || byLegacy.size() != 63) {
+<<<<<<< HEAD
                 throw new IllegalStateException("Province catalog must contain 34 current and 63 legacy codes.");
             }
             return new Catalog(Map.copyOf(byCurrent), Map.copyOf(byLegacy));
         } catch (IOException exception) {
             throw new IllegalStateException("Cannot parse current province compatibility catalog.", exception);
+=======
+                throw new IllegalStateException("Danh mục tỉnh phải có 34 tỉnh hiện hành và 63 ánh xạ tỉnh cũ.");
+            }
+            return new Catalog(Map.copyOf(byCurrent), Map.copyOf(byLegacy));
+        } catch (IOException exception) {
+            throw new IllegalStateException("Không thể phân tích danh mục tương thích 34 tỉnh/thành.", exception);
+>>>>>>> codex/ui-functional-audit-polish
         }
     }
 
     private record Catalog(Map<String, ProvinceDefinition> byCurrentCode,
                            Map<String, ProvinceDefinition> byLegacyCode) { }
 
+<<<<<<< HEAD
     public record CatalogValidation(int currentProvinceCount, int legacyProvinceCount) { }
 
+=======
+>>>>>>> codex/ui-functional-audit-polish
     public record ProvinceDefinition(String sourceCode, String officialCode, String name, String codename,
                                      String divisionType, Integer phoneCode, List<String> legacyProvinceCodes) {
         public ProvinceDefinition {

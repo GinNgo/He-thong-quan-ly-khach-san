@@ -52,6 +52,17 @@ class NotificationChannelInterceptorTest {
     }
 
     @Test
+    void expiredOrInvalidNotificationBearerTokenIsRejected() {
+        when(jwtTokenProvider.validateToken("expired-token")).thenReturn(false);
+
+        assertThrows(
+                AuthenticationCredentialsNotFoundException.class,
+                () -> interceptor.preSend(
+                        message(SimpMessageType.CONNECT, null, "Bearer expired-token", null),
+                        channel));
+    }
+
+    @Test
     void validNotificationConnectAttachesAuthenticatedPrincipal() {
         CustomUserDetails staff = staff(ActionCode.VIEW);
         when(jwtTokenProvider.validateToken("valid-token")).thenReturn(true);

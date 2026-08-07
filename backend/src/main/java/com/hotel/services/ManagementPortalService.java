@@ -39,10 +39,20 @@ public class ManagementPortalService {
     public Map<String, Object> context(Long activePropertyId) {
         User user = propertyAccessService.currentUser();
         Set<Long> assignedIds = propertyAccessService.assignedHotelIds();
+<<<<<<< HEAD
         List<PropertyProfileDTO> properties = hotelRepository.findAllById(assignedIds).stream()
                 .map(PropertyProfileDTO::from).toList();
         Long selectedId = activePropertyId != null ? activePropertyId : assignedIds.stream().findFirst().orElse(null);
+=======
+        boolean systemAdministrator = propertyAccessService.isSystemAdministrator();
+        Long selectedId = activePropertyId != null
+                ? activePropertyId
+                : assignedIds.stream().findFirst().orElse(null);
+>>>>>>> codex/ui-functional-audit-polish
         Hotel selectedProperty = selectedId == null ? null : propertyAccessService.requireAssignedHotel(selectedId);
+        List<Map<String, Object>> properties = systemAdministrator
+                ? selectedProperty == null ? List.of() : List.of(propertySummary(selectedProperty))
+                : hotelRepository.findAllById(assignedIds).stream().map(this::propertySummary).toList();
         PropertySubscriptionEntitlementService.EntitlementView entitlement = selectedId == null
                 ? PropertySubscriptionEntitlementService.EntitlementView.none(null, "PROPERTY_NOT_SELECTED")
                 : propertyEntitlementService.getCurrent(selectedId);

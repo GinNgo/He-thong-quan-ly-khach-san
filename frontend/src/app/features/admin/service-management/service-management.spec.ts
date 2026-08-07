@@ -1,8 +1,14 @@
 import { registerLocaleData } from '@angular/common';
 import localeVi from '@angular/common/locales/vi';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+<<<<<<< HEAD
 import { ConfirmationService } from 'primeng/api';
 import { of, throwError } from 'rxjs';
+=======
+import { ActivatedRoute } from '@angular/router';
+import { of } from 'rxjs';
+
+>>>>>>> codex/ui-functional-audit-polish
 import { HotelServiceService } from '@app/core/services/hotel-service.service';
 import { ManagementApiService } from '@app/core/services/management-api.service';
 import { PermissionService } from '@app/core/services/permission.service';
@@ -19,6 +25,7 @@ describe('ServiceManagement', () => {
     updateService: ReturnType<typeof vi.fn>;
     deleteService: ReturnType<typeof vi.fn>;
   };
+<<<<<<< HEAD
   let permissionService: { hasPermission: ReturnType<typeof vi.fn> };
   const catalogItem = { id: 4, hotelId: 20, code: 'BREAKFAST', nameVi: 'Bữa sáng', nameEn: 'Breakfast', price: 120000, status: 'ACTIVE', systemService: false };
 
@@ -28,14 +35,38 @@ describe('ServiceManagement', () => {
       createService: vi.fn(request => of({ id: 5, ...request })),
       updateService: vi.fn((_id, request) => of(request)),
       deleteService: vi.fn(() => of(undefined)),
+=======
+  let managementApi: { context: ReturnType<typeof vi.fn> };
+
+  beforeEach(async () => {
+    hotelService = {
+      getServices: vi.fn(() => of([])),
+      createService: vi.fn((service) => of({ ...service, id: 99 })),
+      updateService: vi.fn((id, service) => of({ ...service, id })),
+      deleteService: vi.fn(() => of(undefined)),
+    };
+    managementApi = {
+      context: vi.fn(() => of({
+        properties: [
+          { id: 10, code: 'P-10', nameVi: 'Property 10' },
+          { id: 20, code: 'P-20', nameVi: 'Property 20' },
+        ],
+        activePropertyId: 20,
+      })),
+>>>>>>> codex/ui-functional-audit-polish
     };
     permissionService = { hasPermission: vi.fn(() => true) };
     await TestBed.configureTestingModule({
       imports: [ServiceManagement],
       providers: [
         { provide: HotelServiceService, useValue: hotelService },
+<<<<<<< HEAD
         { provide: ManagementApiService, useValue: { context: vi.fn(() => of({ properties: [{ id: 10, nameVi: 'Property 10' }, { id: 20, nameVi: 'Property 20' }], activePropertyId: 20 })) } },
         { provide: PermissionService, useValue: permissionService },
+=======
+        { provide: ManagementApiService, useValue: managementApi },
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: { get: () => null } } } },
+>>>>>>> codex/ui-functional-audit-polish
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(ServiceManagement);
@@ -93,5 +124,44 @@ describe('ServiceManagement', () => {
     expect(restrictedFixture.componentInstance.canUpdate).toBe(false);
     expect(restrictedFixture.componentInstance.canDelete).toBe(false);
     expect(restrictedFixture.nativeElement.querySelector('[aria-label="Chỉnh sửa dịch vụ"]')).toBeNull();
+  });
+
+  it('creates a tenant service for the selected property', () => {
+    component.openCreate();
+    component.form = {
+      ...component.form,
+      code: ' breakfast ',
+      nameVi: 'Bữa sáng',
+      nameEn: '',
+      price: 150000,
+    };
+
+    component.save();
+
+    expect(hotelService.createService).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'BREAKFAST', nameEn: 'Bữa sáng', hotelId: 20 }),
+      20,
+    );
+  });
+
+  it('updates and deletes only tenant-owned services', () => {
+    const service = {
+      id: 7,
+      hotelId: 20,
+      code: 'SPA',
+      nameVi: 'Spa',
+      nameEn: 'Spa',
+      price: 400000,
+      status: 'ACTIVE',
+      systemService: false,
+    };
+    component.openEdit(service);
+    component.form.price = 450000;
+    component.save();
+
+    expect(hotelService.updateService).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ price: 450000, hotelId: 20 }),
+    );
   });
 });

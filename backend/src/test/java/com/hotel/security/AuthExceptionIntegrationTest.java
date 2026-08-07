@@ -165,7 +165,9 @@ public class AuthExceptionIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
-                .andExpect(jsonPath("$.message").value("Invalid request fixture"))
+                .andExpect(jsonPath("$.message").value("The request is invalid."))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("fixture"))))
                 .andExpect(jsonPath("$.correlationId").value("corr-invalid"))
                 .andExpect(jsonPath("$.fieldErrors").isMap())
                 .andExpect(jsonPath("$.retryable").value(false))

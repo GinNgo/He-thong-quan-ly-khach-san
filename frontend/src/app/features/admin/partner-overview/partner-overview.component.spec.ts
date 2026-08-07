@@ -10,11 +10,19 @@ import { PartnerOverviewComponent } from './partner-overview.component';
 describe('PartnerOverviewComponent', () => {
   let http: HttpTestingController;
   let routeData: Record<string, string>;
+<<<<<<< HEAD
   let authService: { getRoles: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     routeData = { title: 'Chủ cơ sở', endpoint: 'property-owners' };
     authService = { getRoles: vi.fn(() => []) };
+=======
+  let roles: string[];
+
+  beforeEach(async () => {
+    routeData = { title: 'Chủ cơ sở', endpoint: 'property-owners' };
+    roles = [];
+>>>>>>> codex/ui-functional-audit-polish
     await TestBed.configureTestingModule({
       imports: [PartnerOverviewComponent],
       providers: [
@@ -22,7 +30,11 @@ describe('PartnerOverviewComponent', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: ActivatedRoute, useFactory: () => ({ snapshot: { data: routeData } }) },
+<<<<<<< HEAD
         { provide: AuthService, useValue: authService },
+=======
+        { provide: AuthService, useValue: { getRoles: () => roles } },
+>>>>>>> codex/ui-functional-audit-polish
       ],
     }).compileComponents();
 
@@ -58,9 +70,15 @@ describe('PartnerOverviewComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Bạn không có quyền truy cập');
   });
 
+<<<<<<< HEAD
   it('approves an actionable row once, disables cross-actions and refreshes the queue', () => {
     const fixture = approvalFixture();
     loadApprovalQueue(fixture, [approvalItem()]);
+=======
+  it('uses the real property approval endpoint for the approve action', async () => {
+    routeData = { title: 'Duyệt cơ sở', endpoint: 'property-approvals' };
+    roles = ['ADMIN'];
+>>>>>>> codex/ui-functional-audit-polish
 
     const approve = actionButton(fixture, 'Duyệt cơ sở');
     approve.click();

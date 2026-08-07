@@ -11,11 +11,15 @@ public class ChatConversationDTO {
     private Long conversationId;
     private Long customerId;
     private String customerName;
+<<<<<<< HEAD
     private String subject;
+=======
+>>>>>>> codex/ui-functional-audit-polish
     private Long hotelId;
     private String hotelName;
     private Long reservationId;
     private Long assignedAgentId;
+<<<<<<< HEAD
     private String assignedAgentName;
     private String status;
     private Long version;
@@ -32,6 +36,9 @@ public class ChatConversationDTO {
     private String closedReason;
     private Instant reopenedAt;
     private String reopenReason;
+=======
+    private String status;
+>>>>>>> codex/ui-functional-audit-polish
     private String lastMessage;
     private Instant lastMessageAt;
 }

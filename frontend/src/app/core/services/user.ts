@@ -1,4 +1,4 @@
-﻿import { Injectable, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -96,6 +96,7 @@ export class UserService {
     return this.http.get<User[]>(this.apiUrl);
   }
 
+<<<<<<< HEAD
   getStaff(): Observable<User[]> {
     return this.http.get<User[]>(`${this.apiUrl}/staff`);
   }
@@ -106,6 +107,10 @@ export class UserService {
 
   getStaffRoles(): Observable<StaffRoleOption[]> {
     return this.http.get<StaffRoleOption[]>(`${this.apiUrl}/staff/roles`);
+=======
+  getCustomers(): Observable<User[]> {
+    return this.http.get<User[]>(`${this.apiUrl}/customers`);
+>>>>>>> codex/ui-functional-audit-polish
   }
 
   getUserById(id: number): Observable<User> {
@@ -116,16 +121,25 @@ export class UserService {
     return this.http.post<User>(this.apiUrl, user);
   }
 
+<<<<<<< HEAD
   createStaff(request: StaffCreateRequest): Observable<User> {
     return this.http.post<User>(`${this.apiUrl}/staff`, request);
   }
 
   updateStaff(id: number, request: StaffUpdateRequest): Observable<User> {
     return this.http.put<User>(`${this.apiUrl}/staff/${id}`, request);
+=======
+  createCustomer(user: any): Observable<User> {
+    return this.http.post<User>(`${this.apiUrl}/customers`, user);
+>>>>>>> codex/ui-functional-audit-polish
   }
 
   updateUser(id: number, user: any): Observable<User> {
     return this.http.put<User>(`${this.apiUrl}/${id}`, user);
+  }
+
+  updateCustomer(id: number, user: any): Observable<User> {
+    return this.http.put<User>(`${this.apiUrl}/customers/${id}`, user);
   }
 
   deactivateStaff(id: number, request: StaffLifecycleRequest): Observable<User> {

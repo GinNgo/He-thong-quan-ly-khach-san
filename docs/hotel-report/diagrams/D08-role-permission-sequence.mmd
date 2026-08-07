@@ -1,0 +1,29 @@
+sequenceDiagram
+    actor Admin as System Admin
+    actor User as Owner/Staff
+    participant UI as Angular Menu/Guard
+    participant API as Spring Security/API
+    participant RBAC as Role/Permission Service
+    participant DB as SQL Server
+    participant Audit as Audit Log
+
+    Admin->>API: Tạo/sửa role và permission
+    API->>RBAC: Validate protected permission + scope
+    RBAC->>DB: Lưu role/permission mapping
+    RBAC->>Audit: Ghi actor/action/target
+    API-->>Admin: Kết quả
+
+    User->>UI: Đăng nhập / tải context
+    UI->>API: GET profile/permissions
+    API->>RBAC: Resolve role + property scope
+    RBAC->>DB: Đọc mapping authoritative
+    API-->>UI: Permission codes + tenant context
+    UI->>UI: Hiển thị menu và guard route
+    User->>API: Gọi endpoint nghiệp vụ
+    API->>RBAC: Kiểm tra permission + tenant ownership
+    alt Được phép
+      API-->>User: 2xx dữ liệu trong scope
+    else Bị từ chối
+      API->>Audit: Ghi denial có correlation
+      API-->>User: 403 ổn định
+    end

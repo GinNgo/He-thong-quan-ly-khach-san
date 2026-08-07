@@ -5,15 +5,26 @@ import com.hotel.dto.PropertySearchResponseDTO;
 import com.hotel.entities.Location;
 import com.hotel.entities.RoomType;
 import com.hotel.entities.PropertyImage;
+<<<<<<< HEAD
 import com.hotel.repositories.LocationRepository;
+=======
+import com.hotel.entities.Location;
+>>>>>>> codex/ui-functional-audit-polish
 import com.hotel.repositories.PropertyImageRepository;
+import com.hotel.repositories.LocationRepository;
 import com.hotel.repositories.RoomTypeRepository;
 import com.hotel.services.AmenityService;
 import com.hotel.services.PropertySearchService;
+<<<<<<< HEAD
 import com.hotel.services.PublicInventoryEligibilityPolicy;
 import com.hotel.services.ProvinceCompatibilityService;
 import com.hotel.services.RoomAvailabilityPolicy;
+=======
+import com.hotel.services.ProvinceCompatibilityService;
+>>>>>>> codex/ui-functional-audit-polish
 import com.hotel.services.RoomAvailabilityService;
+import com.hotel.services.PromotionQuoteService;
+import com.hotel.services.PublicPlacementDisclosureService;
 import com.hotel.util.VietnameseTextNormalizer;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
@@ -33,6 +44,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+<<<<<<< HEAD
+=======
+import org.springframework.beans.factory.annotation.Autowired;
+>>>>>>> codex/ui-functional-audit-polish
 
 @Service
 public class PropertySearchServiceImpl implements PropertySearchService {
@@ -46,35 +61,63 @@ public class PropertySearchServiceImpl implements PropertySearchService {
     private final RoomTypeRepository roomTypeRepository;
     private final PropertyImageRepository propertyImageRepository;
     private final RoomAvailabilityService roomAvailabilityService;
+<<<<<<< HEAD
     private final AmenityService amenityService;
     private final RoomAvailabilityPolicy roomAvailabilityPolicy;
     private final ProvinceCompatibilityService provinceCompatibilityService;
     private final PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
+=======
+    private final Environment environment;
+    private final LocationRepository locationRepository;
+    private final ProvinceCompatibilityService provinceCompatibilityService;
+
+    @Autowired(required = false)
+    private PromotionQuoteService promotionQuoteService;
+
+    @Autowired(required = false)
+    private PublicPlacementDisclosureService publicPlacementDisclosureService;
+>>>>>>> codex/ui-functional-audit-polish
 
     public PropertySearchServiceImpl(EntityManager entityManager, LocationRepository locationRepository,
                                      RoomTypeRepository roomTypeRepository,
                                      PropertyImageRepository propertyImageRepository,
+<<<<<<< HEAD
                                      RoomAvailabilityService roomAvailabilityService,
                                      AmenityService amenityService,
                                      RoomAvailabilityPolicy roomAvailabilityPolicy,
                                      ProvinceCompatibilityService provinceCompatibilityService,
                                      PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy) {
+=======
+                                     RoomAvailabilityService roomAvailabilityService, Environment environment,
+                                     LocationRepository locationRepository,
+                                     ProvinceCompatibilityService provinceCompatibilityService) {
+>>>>>>> codex/ui-functional-audit-polish
         this.entityManager = entityManager;
         this.locationRepository = locationRepository;
         this.roomTypeRepository = roomTypeRepository;
         this.propertyImageRepository = propertyImageRepository;
         this.roomAvailabilityService = roomAvailabilityService;
+<<<<<<< HEAD
         this.amenityService = amenityService;
         this.roomAvailabilityPolicy = roomAvailabilityPolicy;
         this.provinceCompatibilityService = provinceCompatibilityService;
         this.publicInventoryEligibilityPolicy = publicInventoryEligibilityPolicy;
+=======
+        this.environment = environment;
+        this.locationRepository = locationRepository;
+        this.provinceCompatibilityService = provinceCompatibilityService;
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public Page<PropertySearchResponseDTO> searchProperties(PropertySearchRequestDTO request) {
+<<<<<<< HEAD
         validateSupportedRequestContract(request);
         String sortBy = request.getSortBy();
+=======
+        LandmarkArea landmarkArea = resolveLandmark(request);
+>>>>>>> codex/ui-functional-audit-polish
         LocalDate checkIn = parseDate(request.getCheckInDate(), "checkInDate");
         LocalDate checkOut = parseDate(request.getCheckOutDate(), "checkOutDate");
         if ((checkIn == null) != (checkOut == null)) {
@@ -110,13 +153,18 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         String qualifyingRoomPredicate = eligibleRoomPredicate(
                 "rt_offer", request.getMinPrice() != null, request.getMaxPrice() != null, checkIn != null);
 
-        boolean hasCoordinates = request.getLatitude() != null && request.getLongitude() != null;
+        Double searchLatitude = landmarkArea == null ? request.getLatitude() : landmarkArea.latitude();
+        Double searchLongitude = landmarkArea == null ? request.getLongitude() : landmarkArea.longitude();
+        Double searchRadiusKm = landmarkArea == null ? request.getRadiusKm() : landmarkArea.radiusKm();
+        Long searchProvinceId = request.getProvinceId() == null && landmarkArea != null
+                ? landmarkArea.provinceId() : request.getProvinceId();
+        boolean hasCoordinates = searchLatitude != null && searchLongitude != null;
         String distance = hasCoordinates
                 ? "(6371 * ACOS(COS(RADIANS(:userLat)) * COS(RADIANS(h.latitude)) * COS(RADIANS(h.longitude) - RADIANS(:userLng)) + SIN(RADIANS(:userLat)) * SIN(RADIANS(h.latitude))))"
                 : "NULL";
         if (hasCoordinates) {
-            params.put("userLat", request.getLatitude());
-            params.put("userLng", request.getLongitude());
+            params.put("userLat", searchLatitude);
+            params.put("userLng", searchLongitude);
         }
 
         String select = """
@@ -132,17 +180,38 @@ public class PropertySearchServiceImpl implements PropertySearchService {
                        (SELECT TOP 1 rt.id FROM room_types rt WHERE rt.hotel_id=h.id AND rt.status='ACTIVE' ORDER BY rt.base_price,rt.id) AS lowest_room_id,
                        (SELECT TOP 1 rt.name_vi FROM room_types rt WHERE rt.hotel_id=h.id AND rt.status='ACTIVE' ORDER BY rt.base_price,rt.id) AS lowest_room_name,
                        (SELECT TOP 1 COALESCE(rt.max_guests,rt.max_guest) FROM room_types rt WHERE rt.hotel_id=h.id AND rt.status='ACTIVE' ORDER BY rt.base_price,rt.id) AS lowest_room_guests,
+<<<<<<< HEAD
                        p.id AS province_id
+=======
+                       h.province_id AS stored_province_id
+>>>>>>> codex/ui-functional-audit-polish
                 """;
         String from = " FROM hotels h LEFT JOIN locations p ON p.id=h.province_id LEFT JOIN locations w ON w.id=h.ward_id ";
         StringBuilder where = new StringBuilder(" WHERE ")
                 .append(publicInventoryEligibilityPolicy.publicSearchPredicate("h"))
                 .append(' ');
 
+<<<<<<< HEAD
         if (request.getProvinceId() != null) {
             Set<Long> provinceIds = provinceCompatibilityService.provinceScopeIds(request.getProvinceId());
             where.append(" AND h.province_id IN (:provinceIds) ");
             params.put("provinceIds", provinceIds);
+=======
+        if (searchProvinceId != null) {
+            Set<Long> provinceIds = provinceCompatibilityService.provinceScopeIds(searchProvinceId);
+            List<String> placeholders = new ArrayList<>();
+            int index = 0;
+            for (Long provinceId : provinceIds) {
+                String name = "provinceId" + index++;
+                placeholders.add(":" + name);
+                params.put(name, provinceId);
+            }
+            if (placeholders.isEmpty()) {
+                where.append(" AND 1=0 ");
+            } else {
+                where.append(" AND h.province_id IN (").append(String.join(",", placeholders)).append(") ");
+            }
+>>>>>>> codex/ui-functional-audit-polish
         }
         if (request.getWardId() != null) {
             where.append(" AND h.ward_id=:wardId ");
@@ -198,11 +267,12 @@ public class PropertySearchServiceImpl implements PropertySearchService {
                 .append(qualifyingRoomPredicate)
                 .append(") ");
 
-        if (hasCoordinates && request.getRadiusKm() != null) {
+        if (hasCoordinates && searchRadiusKm != null) {
             where.append(" AND ").append(distance).append("<=:radiusKm ");
-            params.put("radiusKm", request.getRadiusKm());
+            params.put("radiusKm", searchRadiusKm);
         }
 
+<<<<<<< HEAD
         String orderBy = switch (sortBy) {
             case "NEAREST" -> hasCoordinates ? " ORDER BY distance ASC,h.id ASC" : " ORDER BY h.id DESC";
             case "PRICE_ASC" -> " ORDER BY min_price ASC,h.id ASC";
@@ -212,6 +282,14 @@ public class PropertySearchServiceImpl implements PropertySearchService {
                     + " CASE WHEN h.average_rating IS NULL OR COALESCE(h.review_count,0)<=0 THEN 0 ELSE h.review_count END DESC,h.id ASC";
             case "POPULAR" -> " ORDER BY h.review_count DESC,h.id DESC";
             default -> throw new IllegalStateException("Unexpected validated sort: " + sortBy);
+=======
+        String orderBy = switch (request.getSortBy() == null ? "POPULAR" : request.getSortBy().toUpperCase()) {
+            case "NEAREST" -> hasCoordinates ? " ORDER BY distance ASC" : " ORDER BY h.id DESC";
+            case "PRICE_ASC" -> " ORDER BY min_price ASC";
+            case "PRICE_DESC" -> " ORDER BY min_price DESC";
+            case "RATING" -> " ORDER BY h.average_rating DESC,h.review_count DESC,h.id DESC";
+            default -> " ORDER BY h.review_count DESC,h.id DESC";
+>>>>>>> codex/ui-functional-audit-polish
         };
 
         Query dataQuery = entityManager.createNativeQuery(select + from + where + orderBy);
@@ -229,12 +307,25 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         dataQuery.setFirstResult((pageNumber - 1) * pageSize);
         dataQuery.setMaxResults(pageSize);
 
+<<<<<<< HEAD
         List<MappedRow> mappedRows = ((List<Object[]>) dataQuery.getResultList()).stream()
                 .map(this::mapBaseRow)
                 .toList();
         List<PropertySearchResponseDTO> content = enrichRows(
                 mappedRows, checkIn, checkOut, adults, children, roomCount,
                 request.getMinPrice(), request.getMaxPrice());
+=======
+        List<PropertySearchResponseDTO> content = new ArrayList<>();
+        for (Object[] row : (List<Object[]>) dataQuery.getResultList()) {
+            content.add(mapRow(row, checkIn, checkOut, adults, children, roomCount));
+        }
+        if (publicPlacementDisclosureService != null && !content.isEmpty()) {
+            Map<Long, com.hotel.dtos.PublicPlacementDisclosureDTO> disclosures =
+                    publicPlacementDisclosureService.searchDisclosures(content.stream()
+                            .map(PropertySearchResponseDTO::getId).toList());
+            content.forEach(item -> item.setSponsoredPlacement(disclosures.get(item.getId())));
+        }
+>>>>>>> codex/ui-functional-audit-polish
         long total = ((Number) countQuery.getSingleResult()).longValue();
         return new PageImpl<>(content, PageRequest.of(pageNumber - 1, pageSize), total);
     }
@@ -312,6 +403,7 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         dto.setLatitude(decimal(row[6]));
         dto.setLongitude(decimal(row[7]));
         dto.setPropertyType((String) row[8]);
+<<<<<<< HEAD
         Integer storedReviewCount = integer(row[10]);
         Double storedReviewScore = decimal(row[9]);
         boolean reviewed = storedReviewCount != null && storedReviewCount > 0 && storedReviewScore != null;
@@ -319,6 +411,13 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         dto.setReviewCount(reviewed ? storedReviewCount : 0);
         Long storedProvinceId = row[19] == null ? null : number(row[19]).longValue();
         dto.setProvinceName((String) row[11]);
+=======
+        dto.setReviewScore(decimal(row[9]));
+        dto.setReviewCount(integer(row[10]) == null ? 0 : integer(row[10]));
+        Long storedProvinceId = row[19] == null ? null : number(row[19]).longValue();
+        Location currentProvince = provinceCompatibilityService.currentProvinceForId(storedProvinceId);
+        dto.setProvinceName(currentProvince == null ? (String) row[11] : currentProvince.getNameVi());
+>>>>>>> codex/ui-functional-audit-polish
         dto.setWardName((String) row[12]);
         dto.setDistanceKm(decimal(row[13]));
         if (dto.getDistanceKm() != null) dto.setDistanceText(String.format("Cách %.1f km", dto.getDistanceKm()));
@@ -388,11 +487,24 @@ public class PropertySearchServiceImpl implements PropertySearchService {
         if (price != null) {
             int nights = checkIn == null ? 1 : (int) ChronoUnit.DAYS.between(checkIn, checkOut);
             BigDecimal subtotal = price.multiply(BigDecimal.valueOf((long) nights * roomCount));
+            com.hotel.dtos.PromotionQuoteDTO quote = null;
             BigDecimal total = roomAvailabilityService.calculateTotal(price, nights, roomCount);
             BigDecimal tax = total.subtract(subtotal);
+            BigDecimal displayedNightly = price;
+            if (promotionQuoteService != null && checkIn != null && checkOut != null) {
+                quote = promotionQuoteService.quoteForRoom(
+                        lowestAvailable, checkIn, checkOut, roomCount,
+                        Math.max(1, adults), children, null, null);
+                total = quote.finalTotal();
+                subtotal = quote.baseSubtotal();
+                tax = quote.taxesAndFees();
+                displayedNightly = subtotal.subtract(quote.totalDiscount())
+                        .divide(BigDecimal.valueOf((long) nights * roomCount), 0, java.math.RoundingMode.HALF_UP);
+            }
             dto.setPricing(new PropertySearchResponseDTO.PricingSummary(
-                    price, price, price, nights, roomCount, subtotal,
+                    price, displayedNightly, displayedNightly, nights, roomCount, subtotal,
                     tax, BigDecimal.ZERO, total, "VND"));
+            dto.setQuote(quote);
         }
 
         PropertyImage primary = images.stream().filter(image -> Boolean.TRUE.equals(image.getIsPrimary())).findFirst()
@@ -475,6 +587,49 @@ public class PropertySearchServiceImpl implements PropertySearchService {
     }
 
     private int value(Integer preferred, Integer fallback) { return preferred != null ? preferred : fallback != null ? fallback : Integer.MAX_VALUE; }
+
+    private LandmarkArea resolveLandmark(PropertySearchRequestDTO request) {
+        if (request.getLandmarkId() == null) return null;
+        Location landmark = locationRepository.findById(request.getLandmarkId())
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy địa danh đã chọn."));
+        if (!"LANDMARK".equals(landmark.getLocationType()) || !"ACTIVE".equals(landmark.getStatus())) {
+            throw new IllegalArgumentException("Địa danh đã chọn không còn hoạt động.");
+        }
+        if (landmark.getLatitude() == null || landmark.getLongitude() == null
+                || landmark.getLatitude() < -90 || landmark.getLatitude() > 90
+                || landmark.getLongitude() < -180 || landmark.getLongitude() > 180) {
+            throw new IllegalArgumentException("Địa danh đã chọn chưa có tọa độ hợp lệ.");
+        }
+        Location province = provinceFor(landmark);
+        if (province == null || province.getId() == null) {
+            throw new IllegalArgumentException("Địa danh phải thuộc một tỉnh hợp lệ.");
+        }
+        if (request.getProvinceId() != null
+                && !provinceCompatibilityService.sameProvinceScope(request.getProvinceId(), province.getId())) {
+            throw new IllegalArgumentException("Địa danh không thuộc tỉnh đã chọn.");
+        }
+        double radius = request.getRadiusKm() == null
+                ? (landmark.getDefaultRadiusKm() == null ? 5d : landmark.getDefaultRadiusKm())
+                : request.getRadiusKm();
+        if (radius <= 0 || radius > 50) {
+            throw new IllegalArgumentException("Bán kính tìm kiếm phải nằm trong khoảng 0 đến 50 km.");
+        }
+        Location currentProvince = provinceCompatibilityService.currentProvinceFor(province);
+        return new LandmarkArea(landmark.getLatitude(), landmark.getLongitude(), radius,
+                currentProvince == null ? province.getId() : currentProvince.getId());
+    }
+
+    private Location provinceFor(Location location) {
+        Location cursor = location;
+        for (int depth = 0; cursor != null && depth < 3; depth++) {
+            if ("PROVINCE".equals(cursor.getLocationType())) return cursor;
+            cursor = cursor.getParent();
+        }
+        return null;
+    }
+
+    private record LandmarkArea(Double latitude, Double longitude, Double radiusKm, Long provinceId) { }
+
     private String firstNotBlank(String preferred, String fallback) {
         return preferred != null && !preferred.isBlank() ? preferred : fallback;
     }

@@ -64,6 +64,7 @@ export interface ReservationCharge {
   totalAmount: FinancialAmount;
   serviceUsedAt: string | null;
   correlationId: string | null;
+  replayed: boolean;
 }
 
 export interface FolioLine {

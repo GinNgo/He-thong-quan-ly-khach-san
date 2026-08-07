@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { AuthService, PermissionMask } from './auth';
 
 export enum ActionCode {
   VIEW = 1,
@@ -30,6 +29,7 @@ export enum FunctionCode {
   RESERVATION_NO_SHOW = 'RESERVATION_NO_SHOW',
   CHECKIN = 'CHECKIN',
   CHECKOUT = 'CHECKOUT',
+  HOUSEKEEPING = 'HOUSEKEEPING',
   INVOICE = 'INVOICE',
   REPORT = 'REPORT',
   AI_CHAT = 'AI_CHAT',
@@ -52,11 +52,10 @@ export enum FunctionCode {
 })
 export class PermissionService {
 
-  constructor(private readonly authService: AuthService) { }
+  constructor() { }
 
-  // Client checks only shape presentation; every protected action is re-authorized by the backend.
-  getPermissions(): PermissionMask[] {
-    return this.authService.getPermissions();
+  getPermissions(): { function: string, actionMask: number }[] {
+    return this.readStoredUser()?.permissions || [];
   }
 
   hasPermission(functionCode: string, actionCode: number): boolean {
@@ -76,8 +75,22 @@ export class PermissionService {
   }
 
   isSuperAdmin(): boolean {
-    const roles = this.authService.getRoles();
-    return roles.includes('SUPER_ADMIN') || roles.includes('ROLE_SUPER_ADMIN');
+    const user = this.readStoredUser();
+    if (user) {
+      const roles = user.roles || [];
+      return user.username === 'admin' || roles.includes('SUPER_ADMIN') || roles.includes('ADMIN');
+    }
+    return false;
+  }
+
+  private readStoredUser(): any | null {
+    try {
+      const storage = globalThis.localStorage;
+      const raw = storage?.getItem('user');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
   }
 
   canView(functionCode: string): boolean {

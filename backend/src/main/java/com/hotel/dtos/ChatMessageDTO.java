@@ -7,6 +7,8 @@ import java.time.Instant;
 @Data
 public class ChatMessageDTO {
     private Long id;
+    private Long conversationId;
+    private Long hotelId;
     private Long senderId;
     private Long receiverId;
     private Long conversationId;

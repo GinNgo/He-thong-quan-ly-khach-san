@@ -6,6 +6,7 @@ import com.hotel.entities.User;
 import com.hotel.paymentprovider.domain.VndMoney;
 import com.hotel.paymentprovider.error.FinancialErrorCode;
 import com.hotel.paymentprovider.error.FinancialException;
+import com.hotel.paymentprovider.idempotency.FinancialIdempotencyService;
 import com.hotel.repositories.HotelServiceRepository;
 import com.hotel.repositories.ReservationRepository;
 import com.hotel.security.ActionCode;
@@ -34,6 +35,7 @@ public class ReservationChargeService {
     private final HotelServiceRepository hotelServiceRepository;
     private final ReservationChargeLineRepository chargeLineRepository;
     private final PropertyAccessService propertyAccessService;
+    private final FinancialIdempotencyService idempotencyService;
     private final Clock clock;
 
     @Autowired
@@ -41,9 +43,10 @@ public class ReservationChargeService {
             ReservationRepository reservationRepository,
             HotelServiceRepository hotelServiceRepository,
             ReservationChargeLineRepository chargeLineRepository,
-            PropertyAccessService propertyAccessService) {
+            PropertyAccessService propertyAccessService,
+            FinancialIdempotencyService idempotencyService) {
         this(reservationRepository, hotelServiceRepository, chargeLineRepository,
-                propertyAccessService, Clock.systemUTC());
+                propertyAccessService, idempotencyService, Clock.systemUTC());
     }
 
     ReservationChargeService(
@@ -51,16 +54,18 @@ public class ReservationChargeService {
             HotelServiceRepository hotelServiceRepository,
             ReservationChargeLineRepository chargeLineRepository,
             PropertyAccessService propertyAccessService,
+            FinancialIdempotencyService idempotencyService,
             Clock clock) {
         this.reservationRepository = reservationRepository;
         this.hotelServiceRepository = hotelServiceRepository;
         this.chargeLineRepository = chargeLineRepository;
         this.propertyAccessService = propertyAccessService;
+        this.idempotencyService = idempotencyService;
         this.clock = clock;
     }
 
     @Transactional
-    public ReservationChargeLine addServiceCharge(AddServiceChargeCommand command) {
+    public AddServiceChargeResult addServiceCharge(AddServiceChargeCommand command) {
         validate(command);
         requireCreatePermission();
         User actor = propertyAccessService.currentUser();
@@ -69,14 +74,49 @@ public class ReservationChargeService {
         requireCheckedIn(reservation);
 
         HotelService catalogService = requireAvailableCatalogService(command.serviceId(), reservation);
+        BigDecimal quantity = requireQuantity(command.quantity());
+        LocalDateTime requestedUsedAt = command.serviceUsedAt();
+        if (requestedUsedAt != null) {
+            requireUsageTime(requestedUsedAt);
+        }
+        ServiceChargeIdentity payload = new ServiceChargeIdentity(
+                reservation.getId(),
+                catalogService.getId(),
+                command.chargeType(),
+                quantity,
+                requestedUsedAt);
+        FinancialIdempotencyService.BeginResult begin = idempotencyService.begin(
+                new FinancialIdempotencyService.BeginCommand(
+                        "PROPERTY_COMMERCE",
+                        "ADD_RESERVATION_SERVICE_CHARGE",
+                        "RESERVATION:" + reservation.getId(),
+                        command.idempotencyKey().trim(),
+                        payload,
+                        reservation.getHotel().getId(),
+                        actor.getId(),
+                        command.correlationId()));
+        if (begin instanceof FinancialIdempotencyService.Replay replay) {
+            return new AddServiceChargeResult(findReplay(replay.responseBody(), reservation), true);
+        }
+        if (begin instanceof FinancialIdempotencyService.InProgress
+                || begin instanceof FinancialIdempotencyService.RetryableFailure) {
+            throw new FinancialException(FinancialErrorCode.CONCURRENT_MODIFICATION);
+        }
+
+        FinancialIdempotencyService.Acquired acquired = (FinancialIdempotencyService.Acquired) begin;
+        LocalDateTime effectiveUsedAt = requestedUsedAt == null
+                ? LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)
+                : requestedUsedAt;
         ReservationChargeLine line = createCatalogLine(
                 reservation,
                 catalogService,
                 command.chargeType(),
-                command.quantity(),
-                command.serviceUsedAt(),
+                quantity,
+                effectiveUsedAt,
                 actor);
-        return chargeLineRepository.saveAndFlush(line);
+        line = chargeLineRepository.saveAndFlush(line);
+        idempotencyService.complete(acquired.recordId(), 201, line.getId().toString());
+        return new AddServiceChargeResult(line, false);
     }
 
     @Transactional
@@ -168,6 +208,20 @@ public class ReservationChargeService {
                 .orElseThrow(() -> new FinancialException(FinancialErrorCode.RESOURCE_NOT_FOUND));
     }
 
+    private ReservationChargeLine findReplay(String responseBody, Reservation reservation) {
+        Long chargeLineId;
+        try {
+            chargeLineId = Long.valueOf(responseBody);
+        } catch (RuntimeException exception) {
+            throw new FinancialException(FinancialErrorCode.CONCURRENT_MODIFICATION);
+        }
+        return chargeLineRepository.findByIdAndHotelIdAndReservationId(
+                        chargeLineId,
+                        reservation.getHotel().getId(),
+                        reservation.getId())
+                .orElseThrow(() -> new FinancialException(FinancialErrorCode.CONCURRENT_MODIFICATION));
+    }
+
     private void authorize(Reservation reservation) {
         Long hotelId = reservation.getHotel() == null ? null : reservation.getHotel().getId();
         if (hotelId == null || (!propertyAccessService.isSystemAdministrator()
@@ -219,15 +273,19 @@ public class ReservationChargeService {
 
     private void validate(AddServiceChargeCommand command) {
         if (command == null || command.reservationId() == null || command.serviceId() == null
-                || command.chargeType() == null || command.quantity() == null || command.serviceUsedAt() == null) {
-            throw new IllegalArgumentException("Reservation, catalog service, charge type, quantity and usage time are required.");
+                || command.chargeType() == null || command.quantity() == null
+                || command.idempotencyKey() == null || command.idempotencyKey().isBlank()) {
+            throw new IllegalArgumentException(
+                    "Reservation, catalog service, charge type, quantity and idempotency key are required.");
         }
         if (command.chargeType() != ReservationChargeLine.ChargeType.SERVICE
                 && command.chargeType() != ReservationChargeLine.ChargeType.MINIBAR) {
             throw new IllegalArgumentException("Charge type must be SERVICE or MINIBAR.");
         }
         requireQuantity(command.quantity());
-        requireUsageTime(command.serviceUsedAt());
+        if (command.serviceUsedAt() != null) {
+            requireUsageTime(command.serviceUsedAt());
+        }
     }
 
     private void validate(CorrectServiceChargeCommand command) {
@@ -329,7 +387,14 @@ public class ReservationChargeService {
             Long serviceId,
             ReservationChargeLine.ChargeType chargeType,
             BigDecimal quantity,
-            LocalDateTime serviceUsedAt) {
+            LocalDateTime serviceUsedAt,
+            String idempotencyKey,
+            String correlationId) {
+    }
+
+    public record AddServiceChargeResult(
+            ReservationChargeLine line,
+            boolean replayed) {
     }
 
     public record CorrectServiceChargeCommand(
@@ -343,5 +408,13 @@ public class ReservationChargeService {
     public record CorrectionResult(
             ReservationChargeLine reversal,
             ReservationChargeLine replacement) {
+    }
+
+    private record ServiceChargeIdentity(
+            Long reservationId,
+            Long serviceId,
+            ReservationChargeLine.ChargeType chargeType,
+            BigDecimal quantity,
+            LocalDateTime serviceUsedAt) {
     }
 }

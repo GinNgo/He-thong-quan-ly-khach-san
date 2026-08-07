@@ -158,6 +158,42 @@ Replace mock analytics with reconciled context-specific report APIs and matching
 
 Resolve every inventory item classified PARTIAL, PLACEHOLDER, BROKEN or MISSING, then rebuild from clean migrations and execute all role journeys on the final worktree. Production payment stays disabled unless a separately approved readiness review is performed.
 
+## Audit-Gap Closure Plan (2026-08-03)
+
+This focused slice closes the gaps found while auditing tenant service usage and invoice printing. It reuses the existing authoritative `ReservationChargeLine` and finalized `InvoiceLine` model; no new money or production-provider capability is introduced.
+
+### Gap A - Tenant-scoped service and minibar usage (T304 / STAY-013)
+
+1. Bind the reservation checkout catalog to the reservation's authorized `hotel_id`. A system user with multiple properties must select an explicit property; an ambiguous or inaccessible property fails closed.
+2. Keep service/minibar prices server-owned and add a caller idempotency identity for repeated charge submissions. Reject cross-property service IDs and invalid quantities before persistence.
+3. Expose an explicit minibar usage choice in the checkout UI while storing both `charge_type` and the immutable service snapshot in `reservation_charge_lines`.
+4. Migrate every invoice/folio/admin consumer away from legacy service-item rows. Preserve the V43 reconciliation/backfill adapter as read-only compatibility and never mutate finalized invoice lines.
+5. Verify controller authorization, tenant isolation, duplicate replay, SQL Server persistence, multi-property catalog selection and frontend error/loading states.
+
+### Gap B - Complete itemized invoice and printing (T309 / STAY-020)
+
+1. Make the finalized invoice snapshot the only source for customer and staff invoice views. Resolve the overlapping legacy/new `/api/invoices/**` mapping and deprecate legacy `generateInvoice()` printing; compatibility reads must not create a second invoice.
+2. Render an itemized PDF from immutable invoice data: property/customer snapshots, invoice number/date, room lines, service/minibar names, quantities, unit prices, taxes, discounts, surcharges, payments, refunds, total, paid and balance.
+3. Keep the PDF output deterministic for a seeded fixture. Add text/content assertions and a checksum or equivalent artifact fingerprint; do not assert only HTTP 200 or file size.
+4. Wire the admin invoice screen and reservation action to the canonical finalized-invoice ID, with a print preview and browser print stylesheet that includes service/minibar lines. The customer screen continues to support download and email from the same snapshot.
+5. Verify Vietnamese/English labels, empty/error states, IDOR denial, cross-property denial, finalized-invoice immutability and browser journeys for both customer and authorized staff.
+
+### Execution order and parallelism
+
+- **Gate 1:** Freeze the API/data contract and fixture shape (invoice line fields, charge type, property scope, idempotency key).
+- **Parallel A:** Backend tenant catalog/charge hardening and backend itemized PDF renderer can proceed independently after Gate 1.
+- **Parallel B:** Customer invoice presentation and admin canonical print flow can proceed independently after the invoice contract is stable.
+- **Gate 2:** Run HTTP, tenant, idempotency, SQL Server and PDF-content tests before browser verification.
+- **Gate 3:** Run one real-backend customer journey and one authorized-staff journey on the same seeded database; record evidence under `docs/testing/evidence/007/final/`.
+
+### Definition of done
+
+- A checked-in reservation can record food, drinks and minibar usage for its own property only.
+- Replaying the same charge request does not create a second charge line.
+- Customer and staff print/download the same finalized, itemized invoice, including consumed services.
+- Legacy invoice generation is no longer used by an active UI path and cannot bypass tenant/immutability rules.
+- Fresh backend/frontend/browser evidence exists; missing `JWT_SECRET` or another startup prerequisite is reported as a test blocker, not marked as a pass.
+
 ## Stop Gates
 
 - Stop before any destructive migration, cleanup of existing financial records or production database execution.

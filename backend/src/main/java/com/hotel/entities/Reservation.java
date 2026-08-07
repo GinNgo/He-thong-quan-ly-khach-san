@@ -8,6 +8,7 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Instant;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -84,6 +85,7 @@ public class Reservation extends AuditableEntity {
     @Column(name = "booking_idempotency_key", length = 160)
     private String bookingIdempotencyKey;
 
+<<<<<<< HEAD
     @Column(name = "operational_policy_id")
     private Long operationalPolicyId;
 
@@ -95,6 +97,46 @@ public class Reservation extends AuditableEntity {
 
     @Column(name = "operational_policy_snapshot", columnDefinition = "nvarchar(max)")
     private String operationalPolicySnapshot;
+=======
+    @Column(name = "pricing_quote_id", length = 64)
+    private String pricingQuoteId;
+
+    @Column(name = "pricing_quote_expires_at")
+    private Instant pricingQuoteExpiresAt;
+
+    @Column(name = "pricing_nightly_price", precision = 19, scale = 0)
+    private BigDecimal pricingNightlyPrice;
+
+    @Column(name = "pricing_room_type_id")
+    private Long pricingRoomTypeId;
+
+    @Column(name = "pricing_nights")
+    private Integer pricingNights;
+
+    @Column(name = "pricing_room_quantity")
+    private Integer pricingRoomQuantity;
+
+    @Column(name = "pricing_base_subtotal", precision = 19, scale = 0)
+    private BigDecimal pricingBaseSubtotal;
+
+    @Column(name = "pricing_tax_amount", precision = 19, scale = 0)
+    private BigDecimal pricingTaxAmount;
+
+    @Column(name = "pricing_fee_amount", precision = 19, scale = 0)
+    private BigDecimal pricingFeeAmount;
+
+    @Column(name = "pricing_discount_amount", precision = 19, scale = 0)
+    private BigDecimal pricingDiscountAmount;
+
+    @Column(name = "pricing_currency", length = 3)
+    private String pricingCurrency;
+
+    @Column(name = "pricing_promotions_json", columnDefinition = "nvarchar(max)")
+    private String pricingPromotionsJson;
+
+    @Column(name = "pricing_member_benefit_json", columnDefinition = "nvarchar(max)")
+    private String pricingMemberBenefitJson;
+>>>>>>> codex/ui-functional-audit-polish
 
 
 
@@ -261,6 +303,7 @@ public class Reservation extends AuditableEntity {
         this.bookingIdempotencyKey = bookingIdempotencyKey;
     }
 
+<<<<<<< HEAD
     public void captureOperationalPolicy(com.hotel.services.OperationalPolicyService.PolicySnapshot snapshot) {
         if (snapshot == null) return;
         if (operationalPolicySnapshot != null) {
@@ -276,4 +319,32 @@ public class Reservation extends AuditableEntity {
     public Long getOperationalPolicyVersion() { return operationalPolicyVersion; }
     public LocalDateTime getOperationalPolicyEffectiveFrom() { return operationalPolicyEffectiveFrom; }
     public String getOperationalPolicySnapshot() { return operationalPolicySnapshot; }
+=======
+    public String getPricingQuoteId() { return pricingQuoteId; }
+    public void setPricingQuoteId(String pricingQuoteId) { this.pricingQuoteId = pricingQuoteId; }
+    public Instant getPricingQuoteExpiresAt() { return pricingQuoteExpiresAt; }
+    public void setPricingQuoteExpiresAt(Instant pricingQuoteExpiresAt) { this.pricingQuoteExpiresAt = pricingQuoteExpiresAt; }
+    public BigDecimal getPricingNightlyPrice() { return pricingNightlyPrice; }
+    public void setPricingNightlyPrice(BigDecimal pricingNightlyPrice) { this.pricingNightlyPrice = pricingNightlyPrice; }
+    public Long getPricingRoomTypeId() { return pricingRoomTypeId; }
+    public void setPricingRoomTypeId(Long pricingRoomTypeId) { this.pricingRoomTypeId = pricingRoomTypeId; }
+    public Integer getPricingNights() { return pricingNights; }
+    public void setPricingNights(Integer pricingNights) { this.pricingNights = pricingNights; }
+    public Integer getPricingRoomQuantity() { return pricingRoomQuantity; }
+    public void setPricingRoomQuantity(Integer pricingRoomQuantity) { this.pricingRoomQuantity = pricingRoomQuantity; }
+    public BigDecimal getPricingBaseSubtotal() { return pricingBaseSubtotal; }
+    public void setPricingBaseSubtotal(BigDecimal pricingBaseSubtotal) { this.pricingBaseSubtotal = pricingBaseSubtotal; }
+    public BigDecimal getPricingTaxAmount() { return pricingTaxAmount; }
+    public void setPricingTaxAmount(BigDecimal pricingTaxAmount) { this.pricingTaxAmount = pricingTaxAmount; }
+    public BigDecimal getPricingFeeAmount() { return pricingFeeAmount; }
+    public void setPricingFeeAmount(BigDecimal pricingFeeAmount) { this.pricingFeeAmount = pricingFeeAmount; }
+    public BigDecimal getPricingDiscountAmount() { return pricingDiscountAmount; }
+    public void setPricingDiscountAmount(BigDecimal pricingDiscountAmount) { this.pricingDiscountAmount = pricingDiscountAmount; }
+    public String getPricingCurrency() { return pricingCurrency; }
+    public void setPricingCurrency(String pricingCurrency) { this.pricingCurrency = pricingCurrency; }
+    public String getPricingPromotionsJson() { return pricingPromotionsJson; }
+    public void setPricingPromotionsJson(String pricingPromotionsJson) { this.pricingPromotionsJson = pricingPromotionsJson; }
+    public String getPricingMemberBenefitJson() { return pricingMemberBenefitJson; }
+    public void setPricingMemberBenefitJson(String pricingMemberBenefitJson) { this.pricingMemberBenefitJson = pricingMemberBenefitJson; }
+>>>>>>> codex/ui-functional-audit-polish
 }

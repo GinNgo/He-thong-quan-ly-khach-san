@@ -19,4 +19,5 @@ public interface HotelManagementService {
     PropertyProfileDTO submitHotel(Long id);
     PropertyProfileDTO closeHotel(Long id, PropertyClosureRequest request);
     List<Hotel> getHotelsByOwnerId(Long ownerId);
+    List<Hotel> getAccessibleHotels();
 }

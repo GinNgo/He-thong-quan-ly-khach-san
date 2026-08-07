@@ -1,7 +1,8 @@
 import { Component, ChangeDetectionStrategy, inject, ChangeDetectorRef, OnInit } from '@angular/core';
 import { SharedModule } from '@app/shared/shared.module';
 import { AuthService } from '@app/core/services/auth';
-import { ActivatedRoute, Router } from '@angular/router';
+import { AuthLegalCopyService } from '../legal-support/auth-legal-copy.service';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import {
   ACCOUNT_DISABLED_CODE,
   ACCOUNT_DISABLED_MESSAGE,
@@ -11,13 +12,20 @@ import { FocusOnErrorDirective } from '../../../shared/directives/focus-manageme
 
 @Component({
   standalone: true,
+<<<<<<< HEAD
   imports: [SharedModule, FocusOnErrorDirective],
+=======
+  imports: [SharedModule, RouterModule],
+>>>>>>> codex/ui-functional-audit-polish
   selector: 'app-admin-login',
   templateUrl: './admin-login.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./admin-login.component.css'],
 })
 export class AdminLoginComponent implements OnInit {
+  private static readonly DEFAULT_PORTAL_URL = '/admin/dashboard';
+
+  readonly i18n = inject(AuthLegalCopyService);
   loginObj = {
     username: '',
     password: ''
@@ -29,27 +37,19 @@ export class AdminLoginComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
+  private returnUrl = AdminLoginComponent.DEFAULT_PORTAL_URL;
 
-  ngOnInit() {
+  ngOnInit(): void {
+    this.returnUrl = this.resolvePortalReturnUrl(this.route.snapshot.queryParams['returnUrl']);
     if (this.route.snapshot.queryParams['reason'] === ACCOUNT_DISABLED_CODE) {
       this.errorMessage = ACCOUNT_DISABLED_MESSAGE;
     }
     if (this.authService.isLoggedIn()) {
-      const userStr = localStorage.getItem('user');
-      let username = '';
-      if (userStr) {
-        username = JSON.parse(userStr).username;
-      }
-      const roles = this.authService.getRoles();
-      if (username === 'admin' || roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) {
-        this.router.navigate(['/admin/dashboard']);
-      } else {
-        this.router.navigate(['/']);
-      }
+      this.redirectToPortal();
     }
   }
 
-  onSubmit() {
+  onSubmit(): void {
     if (!this.loginObj.username || !this.loginObj.password) {
       this.errorMessage = 'Vui lòng nhập tài khoản và mật khẩu.';
       return;
@@ -61,17 +61,15 @@ export class AdminLoginComponent implements OnInit {
     this.authService.login(this.loginObj).subscribe({
       next: (res) => {
         if (res && res.accessToken) {
+          const roles: string[] = Array.isArray(res.roles) ? res.roles : [];
           this.authService.setSession(res.accessToken, {
+            id: res.userId ?? res.id,
             username: res.username,
-            roles: res.roles,
-            permissions: res.permissions
+            roles,
+            permissions: Array.isArray(res.permissions) ? res.permissions : []
           });
-          
-          if (res.username === 'admin' || res.roles.includes('SUPER_ADMIN') || res.roles.includes('ADMIN')) {
-            this.router.navigate(['/admin/dashboard']);
-          } else {
-            this.router.navigate(['/']);
-          }
+
+          this.redirectToPortal();
         }
         this.isLoading = false;
         this.cdr.markForCheck();
@@ -82,5 +80,26 @@ export class AdminLoginComponent implements OnInit {
         this.cdr.markForCheck();
       }
     });
+  }
+
+  private redirectToPortal(): void {
+    void this.router.navigateByUrl(this.returnUrl);
+  }
+
+  private resolvePortalReturnUrl(value: unknown): string {
+    if (typeof value !== 'string' || !value.startsWith('/')) {
+      return AdminLoginComponent.DEFAULT_PORTAL_URL;
+    }
+
+    const path = value.split(/[?#]/, 1)[0];
+    const isPortalRoute = path === '/admin'
+      || path.startsWith('/admin/')
+      || path === '/management'
+      || path.startsWith('/management/');
+    const isLoginRoute = path === '/admin/login';
+
+    return isPortalRoute && !isLoginRoute
+      ? value
+      : AdminLoginComponent.DEFAULT_PORTAL_URL;
   }
 }

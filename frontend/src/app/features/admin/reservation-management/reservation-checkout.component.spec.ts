@@ -1,13 +1,14 @@
 import { registerLocaleData } from '@angular/common';
 import localeVi from '@angular/common/locales/vi';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import {
   CheckoutPreview,
   CheckoutResult,
   PropertyCheckoutService,
 } from '../../../core/services/property-checkout.service';
 import { ReservationCheckoutComponent } from './reservation-checkout.component';
+import { HotelServiceService } from '../../../core/services/hotel-service.service';
 
 registerLocaleData(localeVi);
 
@@ -22,6 +23,7 @@ describe('ReservationCheckoutComponent', () => {
     authorizeDebtOverride: ReturnType<typeof vi.fn>;
     checkout: ReturnType<typeof vi.fn>;
   };
+  let hotelService: { getServicesForHotel: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     checkoutService = {
@@ -32,10 +34,14 @@ describe('ReservationCheckoutComponent', () => {
       authorizeDebtOverride: vi.fn(),
       checkout: vi.fn(),
     };
+    hotelService = { getServicesForHotel: vi.fn(() => of([])) };
 
     await TestBed.configureTestingModule({
       imports: [ReservationCheckoutComponent],
-      providers: [{ provide: PropertyCheckoutService, useValue: checkoutService }],
+      providers: [
+        { provide: PropertyCheckoutService, useValue: checkoutService },
+        { provide: HotelServiceService, useValue: hotelService },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ReservationCheckoutComponent);
@@ -117,6 +123,106 @@ describe('ReservationCheckoutComponent', () => {
     component.checkout();
 
     expect(checkoutService.checkout).toHaveBeenCalledWith(42, 77);
+  });
+
+  it('loads the tenant catalog from the reservation property returned by preview', () => {
+    checkoutService.preview.mockReturnValue(of(makePreview('SETTLED', 0, true)));
+    hotelService.getServicesForHotel.mockReturnValue(of([{
+      id: 17,
+      hotelId: 9,
+      code: 'BREAKFAST',
+      nameVi: 'Bua sang',
+      nameEn: 'Breakfast',
+      price: 150_000,
+      status: 'ACTIVE',
+    }]));
+
+    component.loadPreview();
+
+    expect(hotelService.getServicesForHotel).toHaveBeenCalledWith(9);
+    expect(component.catalogHotelId()).toBe(9);
+    expect(component.serviceOptions()).toEqual([
+      expect.objectContaining({ value: 17 }),
+    ]);
+  });
+
+  it('presents service and minibar as explicit usage choices', () => {
+    fixture.detectChanges();
+    const options = fixture.nativeElement.querySelectorAll('.charge-type-option');
+
+    expect(options).toHaveLength(2);
+    expect(options[0].textContent).toContain('Dịch vụ');
+    expect(options[1].textContent).toContain('Minibar');
+
+    options[1].click();
+    fixture.detectChanges();
+    expect(component.serviceForm.controls.chargeType.value).toBe('MINIBAR');
+    expect(options[1].getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('reuses the same idempotency key when a service submission is retried', () => {
+    component.serviceForm.setValue({ serviceId: 17, chargeType: 'MINIBAR', quantity: 2 });
+    checkoutService.addServiceCharge
+      .mockReturnValueOnce(throwError(() => new Error('network timeout')))
+      .mockReturnValueOnce(of({}));
+    checkoutService.preview.mockReturnValue(of(makePreview('SETTLED', 0, true)));
+
+    component.addService();
+    const firstKey = checkoutService.addServiceCharge.mock.calls[0][2].idempotencyKey;
+    component.addService();
+    const retryKey = checkoutService.addServiceCharge.mock.calls[1][2].idempotencyKey;
+
+    expect(firstKey).toMatch(/^reservation-42-service-/);
+    expect(retryKey).toBe(firstKey);
+  });
+
+  it('reuses the same idempotency key when an approved adjustment is retried', () => {
+    component.adjustmentForm.setValue({
+      mode: 'NEGATIVE_ADJUSTMENT',
+      surchargeType: 'OTHER',
+      negativeType: 'SERVICE_RECOVERY',
+      description: 'Approved service recovery',
+      amount: 50_000,
+    });
+    checkoutService.addNegativeAdjustment
+      .mockReturnValueOnce(throwError(() => new Error('network timeout')))
+      .mockReturnValueOnce(of({}));
+    checkoutService.preview.mockReturnValue(of(makePreview('SETTLED', 0, true)));
+
+    component.addAdjustment();
+    const firstKey = checkoutService.addNegativeAdjustment.mock.calls[0][2].idempotencyKey;
+    component.addAdjustment();
+    const retryKey = checkoutService.addNegativeAdjustment.mock.calls[1][2].idempotencyKey;
+
+    expect(firstKey).toMatch(/^reservation-42-adjustment-/);
+    expect(retryKey).toBe(firstKey);
+  });
+
+  it('shows immutable surcharge and adjustment history from the authoritative folio', () => {
+    const preview = makePreview('SETTLED', 0, true);
+    preview.folio.lines.push({
+      sourceType: 'RESERVATION_CHARGE',
+      sourceId: 71,
+      category: 'DISCOUNT',
+      code: 'ADJUSTMENT:SERVICE_RECOVERY',
+      name: 'Adjustment - Service recovery',
+      description: 'Approved service recovery',
+      quantity: 1,
+      unitPrice: 0,
+      taxAmount: 0,
+      discountAmount: 50_000,
+      snapshotAmount: 50_000,
+      signedEffect: -50_000,
+      usageStartedAt: null,
+      usageEndedAt: null,
+    });
+    component.preview.set(preview);
+    fixture.detectChanges();
+
+    expect(component.adjustmentHistory()).toHaveLength(1);
+    expect(fixture.nativeElement.querySelector('.adjustment-history')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.adjustment-history').textContent)
+      .toContain('Approved service recovery');
   });
 });
 

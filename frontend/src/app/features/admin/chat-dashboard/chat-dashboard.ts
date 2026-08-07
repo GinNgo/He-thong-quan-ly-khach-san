@@ -157,16 +157,25 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
 
   selectConversation(conversation: ChatConversation): void {
     this.selectedConversationId.set(conversation.conversationId);
+<<<<<<< HEAD
     this.messagePage = 0;
+=======
+>>>>>>> codex/ui-functional-audit-polish
     this.messages.set([]);
     this.hasOlderMessages.set(false);
     this.messagesState.set('loading');
     this.messagesError.set('');
+<<<<<<< HEAD
     this.chatService.getSupportConversationMessages(conversation.conversationId, 0, 50).subscribe({
       next: page => {
         this.messages.set(page.content);
         this.acknowledgeVisibleMessages(page.content);
         this.hasOlderMessages.set(!page.last);
+=======
+    this.chatService.getSupportHistory(conversation.conversationId).subscribe({
+      next: (messages) => {
+        this.messages.set(messages);
+>>>>>>> codex/ui-functional-audit-polish
         this.messagesState.set('ready');
       },
       error: () => {
@@ -207,8 +216,25 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
     const conversationId = this.selectedConversationId();
     const content = this.newMessage.trim();
     if (!conversationId || !content || this.isSending()) return;
+<<<<<<< HEAD
     this.sendError.set('');
     this.isSending.set(true);
+=======
+
+    if (!this.chatService.isConnected()) {
+      this.sendError.set('Chat đang offline. Hãy kết nối lại trước khi gửi.');
+      return;
+    }
+
+    this.sendError.set('');
+    this.isSending.set(true);
+    if (!this.chatService.sendSupportReply(conversationId, content)) {
+      this.isSending.set(false);
+      this.sendError.set('Không thể gửi phản hồi. Hãy thử lại.');
+      return;
+    }
+
+>>>>>>> codex/ui-functional-audit-polish
     this.newMessage = '';
     const clientMessageId = this.pendingContent === content && this.pendingClientMessageId
       ? this.pendingClientMessageId
@@ -398,6 +424,7 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   getConversation(conversationId: number): ChatConversation | undefined {
+<<<<<<< HEAD
     return this.conversations().find(conversation => conversation.conversationId === conversationId);
   }
 
@@ -417,21 +444,37 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
       case 'ON_TRACK': return 'Trong SLA';
       default: return 'Khong cho phan hoi';
     }
+=======
+    return this.conversations().find((conversation) => conversation.conversationId === conversationId);
+>>>>>>> codex/ui-functional-audit-polish
   }
 
   private handleIncomingMessage(message: ChatMessage | null): void {
     if (!message) return;
+<<<<<<< HEAD
     if (message.conversationId
         && !this.conversations().some(item => item.conversationId === message.conversationId)) {
       if (message.senderId !== this.currentUserId()) this.acknowledgeIncoming(message, 'DELIVERED');
+=======
+    const selectedConversationId = this.selectedConversationId();
+    if (!this.conversations().some((item) => item.conversationId === message.conversationId)) {
+>>>>>>> codex/ui-functional-audit-polish
       this.loadConversations();
     }
     if (message.conversationId !== this.selectedConversationId()) return;
 
+<<<<<<< HEAD
     this.mergeMessage(message);
     this.conversations.update(items => items.map(item => item.conversationId === message.conversationId
       ? { ...item, lastMessage: message.content, lastMessageAt: message.timestamp }
       : item));
+=======
+    if (message.conversationId !== selectedConversationId) return;
+    this.messages.update((messages) => {
+      if (message.id && messages.some((item) => item.id === message.id)) return messages;
+      return [...messages, message];
+    });
+>>>>>>> codex/ui-functional-audit-polish
 
     if (message.senderId === this.currentUserId()) {
       this.isSending.set(false);

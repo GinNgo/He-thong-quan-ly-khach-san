@@ -1,4 +1,4 @@
-<div class="bg-gradient-to-r from-[#f0f4f8] to-white text-on-background h-screen w-screen flex flex-col font-body-md overflow-hidden relative">
+<div class="bg-gradient-to-r from-[#f0f4f8] to-white text-on-background min-h-screen w-screen flex flex-col font-body-md overflow-x-hidden md:h-screen md:overflow-hidden relative">
   <!-- Top Navigation Bar (Simplified for Auth) -->
   <nav class="w-full bg-white/80 backdrop-blur-md border-b border-outline-variant z-50 shrink-0">
     <div class="max-w-[1440px] mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
@@ -6,15 +6,15 @@
         <h1 class="font-headline-md text-[20px] font-bold tracking-tight m-0">LuxeStay Portal</h1>
       </a>
       <div class="flex items-center gap-4">
-        <span class="font-body-sm text-[13px] text-on-surface-variant font-bold" title="Trung tâm hỗ trợ chưa được tích hợp">Hỗ trợ chưa tích hợp</span>
+        <a class="font-body-sm text-[13px] text-on-surface-variant font-bold" routerLink="/support">{{ i18n.text('AUTH_LEGAL.NAV.SUPPORT') }}</a>
       </div>
     </div>
   </nav>
 
   <!-- Main Content Canvas -->
-  <main class="flex-1 flex flex-col items-center justify-center relative overflow-hidden py-4 px-4">
+  <main class="flex-1 flex flex-col items-center justify-center relative overflow-visible md:overflow-hidden py-4 px-4">
     <!-- Registration Container -->
-    <div class="relative z-10 w-full max-w-[1000px] flex-1 max-h-[650px] shrink-0 flex flex-col md:flex-row shadow-2xl rounded-xl overflow-hidden bg-surface border border-outline-variant">
+    <div class="relative z-10 w-full max-w-[1000px] flex-none md:flex-1 max-h-[650px] shrink-0 flex flex-col md:flex-row shadow-2xl rounded-xl overflow-hidden bg-surface border border-outline-variant">
       
       <!-- Left Side: Editorial Image/Mood Section -->
       <div class="hidden md:flex w-5/12 relative flex-col justify-end p-8 text-on-primary shrink-0">
@@ -33,30 +33,30 @@
             <h2 class="font-headline-lg text-[22px] font-bold text-primary mb-0.5 mt-0">Tạo tài khoản</h2>
             <p class="font-body-md text-[13px] text-on-surface-variant m-0">Hoàn thành biểu mẫu để bắt đầu hành trình với LuxeStay.</p>
           </div>
-          <form class="space-y-2.5 shrink-0" (ngSubmit)="onSubmit()">
+          <form class="space-y-2.5 shrink-0" (ngSubmit)="onSubmit()" #registerForm="ngForm">
             
             <!-- Messages -->
-            <div *ngIf="errorMessage" class="bg-red-50 text-red-600 p-3 rounded-md text-sm border border-red-200 mb-2">
+            <div *ngIf="errorMessage" class="bg-red-50 text-red-600 p-3 rounded-md text-sm border border-red-200 mb-2" role="alert" aria-live="assertive">
               {{ errorMessage }}
             </div>
-            <div *ngIf="successMessage" class="bg-green-50 text-green-600 p-3 rounded-md text-sm border border-green-200 mb-2">
+            <div *ngIf="successMessage" class="bg-green-50 text-green-700 p-3 rounded-md text-sm border border-green-200 mb-2" role="status" aria-live="polite">
               {{ successMessage }}
             </div>
             <!-- Full Name Field -->
             <div class="space-y-0.5">
               <label class="font-label-md text-[10px] font-bold text-on-surface-variant block uppercase tracking-wider" for="full_name">Họ và Tên</label>
-              <div class="relative flex items-center">
-                <span class="material-symbols-outlined absolute left-2.5 text-outline text-[16px] pointer-events-none">person</span>
-                <input class="w-full pl-8 pr-3 py-2 bg-white border border-outline-variant rounded-md font-body-md text-[12px] text-on-surface form-input-focus transition-all duration-200 placeholder:text-gray-400" id="full_name" name="fullName" placeholder="Johnathan Doe" type="text" [(ngModel)]="registerObj.fullName">
+              <div class="auth-field">
+                <span class="material-symbols-outlined field-icon field-icon--start" aria-hidden="true">person</span>
+                <input class="auth-input form-input-focus" id="full_name" name="fullName" placeholder="Nguyễn Văn An" type="text" autocomplete="name" required [(ngModel)]="registerObj.fullName">
               </div>
             </div>
 
             <!-- Email Field -->
             <div class="space-y-0.5">
               <label class="font-label-md text-[10px] font-bold text-on-surface-variant block uppercase tracking-wider" for="email">Email</label>
-              <div class="relative flex items-center">
-                <span class="material-symbols-outlined absolute left-2.5 text-outline text-[16px] pointer-events-none">mail</span>
-                <input class="w-full pl-8 pr-3 py-2 bg-white border border-outline-variant rounded-md font-body-md text-[12px] text-on-surface form-input-focus transition-all duration-200 placeholder:text-gray-400" id="email" name="email" placeholder="john@luxestay.com" type="email" [(ngModel)]="registerObj.email">
+              <div class="auth-field">
+                <span class="material-symbols-outlined field-icon field-icon--start" aria-hidden="true">mail</span>
+                <input class="auth-input form-input-focus" id="email" name="email" placeholder="email@domain.com" type="email" autocomplete="email" inputmode="email" required email [(ngModel)]="registerObj.email">
               </div>
             </div>
 
@@ -64,18 +64,24 @@
               <!-- Password Field -->
               <div class="space-y-0.5">
                 <label class="font-label-md text-[10px] font-bold text-on-surface-variant block uppercase tracking-wider" for="password">Mật khẩu</label>
-                <div class="relative flex items-center">
-                  <span class="material-symbols-outlined absolute left-2.5 text-outline text-[16px] pointer-events-none">lock</span>
-                  <input class="w-full pl-8 pr-3 py-2 bg-white border border-outline-variant rounded-md font-body-md text-[12px] text-on-surface form-input-focus transition-all duration-200 placeholder:text-gray-400" id="password" name="password" placeholder="••••••••" type="password" autocomplete="new-password" required [attr.minlength]="passwordPolicy.minLength" [attr.maxlength]="passwordPolicy.maxLength" [(ngModel)]="registerObj.password">
+                <div class="auth-field">
+                  <span class="material-symbols-outlined field-icon field-icon--start" aria-hidden="true">lock</span>
+                  <input class="auth-input auth-input--password form-input-focus" id="password" name="password" placeholder="••••••••" [type]="passwordVisible ? 'text' : 'password'" autocomplete="new-password" required [attr.minlength]="passwordPolicy.minLength" [attr.maxlength]="passwordPolicy.maxLength" [(ngModel)]="registerObj.password">
+                  <button class="field-icon field-icon--end password-toggle" type="button" (click)="togglePasswordVisibility('password')" [attr.aria-label]="passwordVisible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'" [attr.aria-pressed]="passwordVisible">
+                    <span class="material-symbols-outlined" aria-hidden="true">{{ passwordVisible ? 'visibility_off' : 'visibility' }}</span>
+                  </button>
                 </div>
               </div>
               
               <!-- Confirm Password Field -->
               <div class="space-y-0.5">
                 <label class="font-label-md text-[10px] font-bold text-on-surface-variant block uppercase tracking-wider" for="confirmPassword">Xác nhận mật khẩu</label>
-                <div class="relative flex items-center">
-                  <span class="material-symbols-outlined absolute left-2.5 text-outline text-[16px] pointer-events-none">lock_reset</span>
-                  <input class="w-full pl-8 pr-3 py-2 bg-white border border-outline-variant rounded-md font-body-md text-[12px] text-on-surface form-input-focus transition-all duration-200 placeholder:text-gray-400" id="confirmPassword" name="confirmPassword" placeholder="••••••••" type="password" autocomplete="new-password" required [attr.minlength]="passwordPolicy.minLength" [attr.maxlength]="passwordPolicy.maxLength" [(ngModel)]="registerObj.confirmPassword">
+                <div class="auth-field">
+                  <span class="material-symbols-outlined field-icon field-icon--start" aria-hidden="true">lock_reset</span>
+                  <input class="auth-input auth-input--password form-input-focus" id="confirmPassword" name="confirmPassword" placeholder="••••••••" [type]="confirmPasswordVisible ? 'text' : 'password'" autocomplete="new-password" required [attr.minlength]="passwordPolicy.minLength" [attr.maxlength]="passwordPolicy.maxLength" [(ngModel)]="registerObj.confirmPassword">
+                  <button class="field-icon field-icon--end password-toggle" type="button" (click)="togglePasswordVisibility('confirmPassword')" [attr.aria-label]="confirmPasswordVisible ? 'Ẩn mật khẩu xác nhận' : 'Hiện mật khẩu xác nhận'" [attr.aria-pressed]="confirmPasswordVisible">
+                    <span class="material-symbols-outlined" aria-hidden="true">{{ confirmPasswordVisible ? 'visibility_off' : 'visibility' }}</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -97,29 +103,28 @@
                       <option value="+33">🇫🇷 +33</option>
                       <option value="+65">🇸🇬 +65</option>
                    </select>
-                   <span class="material-symbols-outlined absolute right-1 text-outline text-[16px] pointer-events-none">expand_more</span>
+                   <span class="material-symbols-outlined field-icon country-code-arrow" aria-hidden="true">expand_more</span>
                 </div>
-                <input class="w-full pl-3 pr-3 py-2 bg-white font-body-md text-[12px] text-on-surface border-0 outline-none placeholder:text-gray-400 rounded-r-md" id="phone" name="phone" placeholder="901 234 567" type="tel" [(ngModel)]="registerObj.phone">
+                <input class="w-full pl-3 pr-3 py-2 bg-white font-body-md text-[12px] text-on-surface border-0 outline-none placeholder:text-gray-400 rounded-r-md" id="phone" name="phone" placeholder="901 234 567" type="tel" autocomplete="tel-national" inputmode="tel" [(ngModel)]="registerObj.phone">
               </div>
             </div>
 
             <!-- Terms and Privacy -->
-            <div class="flex items-center gap-2 pt-0.5">
+            <div class="flex items-start gap-2 pt-0.5">
               <div class="flex items-center h-4">
-                <input class="h-[13px] w-[13px] rounded border-outline-variant text-primary focus:ring-primary transition-all cursor-pointer m-0" id="terms" name="terms" type="checkbox" [(ngModel)]="registerObj.terms">
+                <input class="h-[13px] w-[13px] rounded border-outline-variant text-primary focus:ring-primary transition-all cursor-pointer m-0" id="terms" name="terms" type="checkbox" aria-describedby="terms-consent-copy" [(ngModel)]="registerObj.terms">
               </div>
-              <div class="text-[11px]">
-                <label class="text-on-surface-variant select-none cursor-pointer leading-none m-0 flex items-center h-full" for="terms">
-                  Tôi đồng ý với&nbsp;
-                  <a class="text-primary font-bold hover:underline" href="#">Điều khoản</a>&nbsp;và&nbsp;
-                  <a class="text-primary font-bold hover:underline" href="#">Bảo mật</a>.
-                </label>
-              </div>
+              <p id="terms-consent-copy" class="text-[11px] text-on-surface-variant leading-5 m-0">
+                <label class="select-none cursor-pointer" for="terms">{{ i18n.text('AUTH_LEGAL.CONSENT.PREFIX') }}</label>
+                <a class="text-primary font-bold hover:underline" routerLink="/terms">{{ i18n.text('AUTH_LEGAL.NAV.TERMS') }}</a>
+                {{ i18n.text('AUTH_LEGAL.CONSENT.AND') }}
+                <a class="text-primary font-bold hover:underline" routerLink="/privacy">{{ i18n.text('AUTH_LEGAL.NAV.PRIVACY') }}</a>.
+              </p>
             </div>
 
             <!-- Action Button -->
             <div class="pt-1.5">
-              <button class="w-full bg-primary text-white py-2.5 px-4 rounded-md font-bold text-[11px] uppercase tracking-widest hover:bg-primary-container active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-1.5 border-0 disabled:opacity-50" type="submit" [disabled]="isLoading">
+              <button class="w-full bg-primary text-white py-2.5 px-4 rounded-md font-bold text-[11px] uppercase tracking-widest hover:bg-primary-container active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-1.5 border-0 disabled:opacity-50 disabled:cursor-not-allowed" type="submit" [disabled]="isLoading || registerForm.invalid">
                 <span *ngIf="!isLoading">Tạo tài khoản</span>
                 <span *ngIf="isLoading" class="material-symbols-outlined animate-spin text-[14px]">progress_activity</span>
                 <span *ngIf="!isLoading" class="material-symbols-outlined text-[14px]">arrow_forward</span>
@@ -142,16 +147,16 @@
 
   <!-- Footer -->
   <footer class="bg-surface-container-low border-t border-outline-variant shrink-0">
-    <div class="flex flex-col md:flex-row justify-between items-center py-4 px-gutter max-w-container-max mx-auto gap-stack-md h-[64px]">
+    <div class="flex flex-col md:flex-row justify-between items-center py-4 px-gutter max-w-container-max mx-auto gap-stack-md min-h-[64px]">
       <div class="flex flex-col md:flex-row items-center md:items-start gap-4">
         <span class="font-headline-md text-headline-md text-primary font-bold">LuxeStay</span>
         <p class="font-body-sm text-body-sm text-on-surface-variant m-0 mt-1">© 2026 LuxeStay Hospitality Group. All rights reserved.</p>
       </div>
       <div class="flex flex-wrap justify-center gap-x-6 gap-y-2">
-        <a class="font-body-sm text-[13px] text-on-surface-variant hover:text-primary transition-colors no-underline font-medium" href="#">Chính sách Bảo mật</a>
-        <a class="font-body-sm text-[13px] text-on-surface-variant hover:text-primary transition-colors no-underline font-medium" href="#">Điều khoản Dịch vụ</a>
-        <a class="font-body-sm text-[13px] text-on-surface-variant hover:text-primary transition-colors no-underline font-medium" href="#">Cài đặt Cookie</a>
-        <a class="font-body-sm text-[13px] text-on-surface-variant hover:text-primary transition-colors no-underline font-medium" href="#">Liên hệ</a>
+        <a class="font-body-sm text-[13px] text-on-surface-variant hover:text-primary transition-colors no-underline font-medium" routerLink="/privacy">{{ i18n.text('AUTH_LEGAL.NAV.PRIVACY') }}</a>
+        <a class="font-body-sm text-[13px] text-on-surface-variant hover:text-primary transition-colors no-underline font-medium" routerLink="/terms">{{ i18n.text('AUTH_LEGAL.NAV.TERMS') }}</a>
+        <a class="font-body-sm text-[13px] text-on-surface-variant hover:text-primary transition-colors no-underline font-medium" routerLink="/cookies">{{ i18n.text('AUTH_LEGAL.NAV.COOKIES') }}</a>
+        <a class="font-body-sm text-[13px] text-on-surface-variant hover:text-primary transition-colors no-underline font-medium" routerLink="/contact">{{ i18n.text('AUTH_LEGAL.NAV.CONTACT') }}</a>
       </div>
     </div>
   </footer>

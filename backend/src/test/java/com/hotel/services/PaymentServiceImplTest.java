@@ -1,5 +1,6 @@
 package com.hotel.services;
 
+import com.hotel.dtos.PaymentDTO;
 import com.hotel.entities.Payment;
 import com.hotel.entities.Reservation;
 import com.hotel.entities.User;
@@ -22,7 +23,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -171,75 +171,6 @@ class PaymentServiceImplTest {
         verify(paymentRepository).save(any(Payment.class));
         verify(reservationRepository, never()).save(any(Reservation.class));
         verify(reservationHoldService, never()).consumeActiveHold(any(), any());
-        verify(userRepository, never()).save(any(User.class));
-    }
-
-    @Test
-    void refundSuccessfulPayments_ShouldRefundEverySuccessfulPaymentAndDeductPoints() {
-        User user = new User();
-        user.setPoints(10);
-
-        Reservation reservation = new Reservation();
-        reservation.setId(42L);
-        reservation.setUser(user);
-
-        Payment firstPayment = new Payment();
-        firstPayment.setId(101L);
-        firstPayment.setReservation(reservation);
-        firstPayment.setAmount(new BigDecimal("100000"));
-        firstPayment.setPaymentMethod("MOMO");
-        firstPayment.setStatus("SUCCESS");
-
-        Payment secondPayment = new Payment();
-        secondPayment.setId(102L);
-        secondPayment.setReservation(reservation);
-        secondPayment.setAmount(new BigDecimal("250000"));
-        secondPayment.setPaymentMethod("CARD");
-        secondPayment.setStatus("SUCCESS");
-
-        when(reservationRepository.findByIdForUpdate(42L))
-                .thenReturn(Optional.of(reservation));
-        when(paymentRepository.findByReservationId(42L))
-                .thenReturn(java.util.List.of(firstPayment, secondPayment));
-        when(paymentRepository.findByTransactionId("REFUND-101"))
-                .thenReturn(Optional.empty());
-        when(paymentRepository.findByTransactionId("REFUND-102"))
-                .thenReturn(Optional.empty());
-
-        paymentService.refundSuccessfulPayments(42L);
-
-        assertEquals(7, user.getPoints());
-        verify(paymentRepository, times(2)).save(any(Payment.class));
-        verify(userRepository, times(2)).save(user);
-    }
-
-    @Test
-    void refundSuccessfulPayments_WithExistingRefund_ShouldNotRefundOrDeductPointsAgain() {
-        User user = new User();
-        user.setPoints(10);
-
-        Reservation reservation = new Reservation();
-        reservation.setId(42L);
-        reservation.setUser(user);
-
-        Payment originalPayment = new Payment();
-        originalPayment.setId(101L);
-        originalPayment.setReservation(reservation);
-        originalPayment.setAmount(new BigDecimal("200000"));
-        originalPayment.setPaymentMethod("MOMO");
-        originalPayment.setStatus("SUCCESS");
-
-        when(reservationRepository.findByIdForUpdate(42L))
-                .thenReturn(Optional.of(reservation));
-        when(paymentRepository.findByReservationId(42L))
-                .thenReturn(java.util.List.of(originalPayment));
-        when(paymentRepository.findByTransactionId("REFUND-101"))
-                .thenReturn(Optional.of(new Payment()));
-
-        paymentService.refundSuccessfulPayments(42L);
-
-        assertEquals(10, user.getPoints());
-        verify(paymentRepository, never()).save(any(Payment.class));
         verify(userRepository, never()).save(any(User.class));
     }
 

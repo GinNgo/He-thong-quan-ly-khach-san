@@ -1,9 +1,9 @@
 package com.hotel.controllers;
 
 import com.hotel.dtos.AuthResponse;
-import com.hotel.dtos.LoginRequest;
-import com.hotel.dtos.GoogleLoginRequest;
 import com.hotel.dtos.FacebookLoginRequest;
+import com.hotel.dtos.GoogleLoginRequest;
+import com.hotel.dtos.LoginRequest;
 import com.hotel.dtos.PasswordResetCompletionRequest;
 import com.hotel.dtos.PasswordResetRequest;
 import com.hotel.dtos.PasswordResetResponse;
@@ -14,11 +14,15 @@ import com.hotel.dtos.SocialIdentityResponse;
 import com.hotel.dtos.SocialIdentityUnlinkRequest;
 import com.hotel.exceptions.ApiErrorResponse;
 import com.hotel.exceptions.CorrelationIdSupport;
+import com.hotel.exceptions.SocialAccountLinkException;
 import com.hotel.security.AccountDisabledAuthenticationException;
 import com.hotel.security.RefreshTokenException;
 import com.hotel.security.PasswordResetException;
+<<<<<<< HEAD
 import com.hotel.security.LoginTemporarilyBlockedException;
 import com.hotel.exceptions.SocialAccountLinkException;
+=======
+>>>>>>> codex/ui-functional-audit-polish
 import com.hotel.services.AuthService;
 import com.hotel.services.PasswordResetService;
 import com.hotel.services.RefreshTokenCookieService;
@@ -30,9 +34,16 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
@@ -179,13 +190,6 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
-    @ExceptionHandler(PasswordResetException.class)
-    public ResponseEntity<ApiErrorResponse> handlePasswordResetException(
-            PasswordResetException exception,
-            HttpServletRequest request) {
-        return error(exception.getStatus(), exception.getCode(), exception.getMessage(), request);
-    }
-
     @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
     public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
             org.springframework.security.core.AuthenticationException ex,
@@ -239,6 +243,13 @@ public class AuthController {
                 .body(response.getBody());
     }
 
+    @ExceptionHandler(PasswordResetException.class)
+    public ResponseEntity<ApiErrorResponse> handlePasswordResetException(
+            PasswordResetException exception,
+            HttpServletRequest request) {
+        return error(exception.getStatus(), exception.getCode(), exception.getMessage(), request);
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiErrorResponse> handleProviderConfigurationException(
             IllegalStateException exception,
@@ -261,7 +272,6 @@ public class AuthController {
     }
 
     @GetMapping("/my-menu")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<java.util.List<com.hotel.dtos.AppModuleDto>> getMyMenu() {
         return ResponseEntity.ok(authService.getMyMenu());
     }

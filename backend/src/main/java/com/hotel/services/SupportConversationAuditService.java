@@ -3,8 +3,13 @@ package com.hotel.services;
 import com.hotel.entities.SupportConversation;
 import com.hotel.entities.SupportConversationEvent;
 import com.hotel.repositories.SupportConversationEventRepository;
+<<<<<<< HEAD
 import com.hotel.repositories.SupportConversationRepository;
 import com.hotel.repositories.UserRepository;
+=======
+import com.hotel.repositories.UserRepository;
+import lombok.RequiredArgsConstructor;
+>>>>>>> codex/ui-functional-audit-polish
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 
 @Service
+<<<<<<< HEAD
 public class SupportConversationAuditService {
     private static final int RETENTION_DAYS = 730;
     private final SupportConversationEventRepository eventRepository;
@@ -29,6 +35,13 @@ public class SupportConversationAuditService {
         this.conversationRepository = conversationRepository;
         this.propertyAccessService = propertyAccessService;
     }
+=======
+@RequiredArgsConstructor
+public class SupportConversationAuditService {
+
+    private final SupportConversationEventRepository eventRepository;
+    private final UserRepository userRepository;
+>>>>>>> codex/ui-functional-audit-polish
 
     @Transactional
     public void record(SupportConversation conversation, Long actorUserId, String eventType, String details) {
@@ -43,13 +56,21 @@ public class SupportConversationAuditService {
     private void save(SupportConversation conversation, Long actorUserId, String eventType, String details) {
         SupportConversationEvent event = new SupportConversationEvent();
         event.setConversation(conversation);
+<<<<<<< HEAD
         event.setHotelId(conversation.getHotelId());
         if (actorUserId != null) userRepository.findById(actorUserId).ifPresent(event::setActor);
+=======
+        event.setHotel(conversation.getHotel());
+        if (actorUserId != null) {
+            userRepository.findById(actorUserId).ifPresent(event::setActor);
+        }
+>>>>>>> codex/ui-functional-audit-polish
         event.setEventType(eventType);
         event.setDetails(details);
         event.setOccurredAt(Instant.now());
         eventRepository.save(event);
     }
+<<<<<<< HEAD
 
     @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<com.hotel.dtos.SupportConversationEventDTO> history(
@@ -74,4 +95,6 @@ public class SupportConversationAuditService {
         return java.util.Map.of("appendOnly", true, "retentionDays", RETENTION_DAYS, "pageMaxRows", 100,
                 "events", java.util.List.of("CREATED", "ASSIGNED", "UNASSIGNED", "ESCALATED", "CLOSED", "REOPENED", "MESSAGE_DELIVERED", "MESSAGE_READ"));
     }
+=======
+>>>>>>> codex/ui-functional-audit-polish
 }

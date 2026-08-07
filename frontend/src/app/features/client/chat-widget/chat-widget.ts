@@ -24,7 +24,11 @@ import {
   SupportAttachment
 } from '../../../core/services/chat.service';
 import { AuthService } from '../../../core/services/auth';
+<<<<<<< HEAD
 import { FocusOnErrorDirective } from '../../../shared/directives/focus-management.directive';
+=======
+import { PublicI18nService } from '../../../core/i18n/public-i18n.service';
+>>>>>>> codex/ui-functional-audit-polish
 
 const SEND_ACK_TIMEOUT_MS = 10_000;
 
@@ -39,6 +43,7 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
   private readonly chatService = inject(ChatService);
   private readonly authService = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+  readonly i18n = inject(PublicI18nService);
 
   @ViewChild('scrollMe') private scrollContainer?: ElementRef<HTMLElement>;
   @ViewChild('triggerButton') private triggerButton?: ElementRef<HTMLButtonElement>;
@@ -182,7 +187,11 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
       },
       error: () => {
         this.historyState.set('error');
+<<<<<<< HEAD
         this.historyError.set('Khong the tai lich su cuoc tro chuyen.');
+=======
+        this.historyError.set(this.i18n.text('PUBLIC.SUPPORT.LOADING_HISTORY'));
+>>>>>>> codex/ui-functional-audit-polish
       }
     });
     this.loadAttachments(conversation.conversationId);
@@ -249,12 +258,27 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
     const content = this.newMessage.trim();
     const conversationId = this.selectedConversationId();
     if (!content || this.isSending()) return;
+<<<<<<< HEAD
     if (!conversationId) {
       this.sendError.set('Hay tao hoac chon mot cuoc tro chuyen truoc khi gui.');
+=======
+
+    if (!this.chatService.isConnected()) {
+      this.sendError.set(this.i18n.text('PUBLIC.SUPPORT.OFFLINE'));
+>>>>>>> codex/ui-functional-audit-polish
       return;
     }
     this.sendError.set('');
     this.isSending.set(true);
+<<<<<<< HEAD
+=======
+    if (!this.chatService.sendCustomerMessage(content)) {
+      this.isSending.set(false);
+      this.sendError.set(this.i18n.text('PUBLIC.SUPPORT.SEND_ERROR'));
+      return;
+    }
+
+>>>>>>> codex/ui-functional-audit-polish
     this.newMessage = '';
     const clientMessageId = this.pendingContent === content && this.pendingClientMessageId
       ? this.pendingClientMessageId
@@ -265,8 +289,12 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
     this.sendTimeoutId = setTimeout(() => {
       if (!this.isSending()) return;
       this.isSending.set(false);
+<<<<<<< HEAD
       if (!this.newMessage) this.newMessage = content;
       this.sendError.set('Chua nhan duoc xac nhan gui. Ban co the thu lai.');
+=======
+      this.sendError.set(this.i18n.text('PUBLIC.SUPPORT.ACK_TIMEOUT'));
+>>>>>>> codex/ui-functional-audit-polish
     }, SEND_ACK_TIMEOUT_MS);
     this.chatService.sendMyConversationMessage(conversationId, content, clientMessageId).subscribe({
       next: message => this.handleIncomingMessage(message),
@@ -315,11 +343,19 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
 
   connectionLabel(): string {
     switch (this.connectionState()) {
+<<<<<<< HEAD
       case 'connected': return 'Da ket noi';
       case 'connecting': return 'Dang ket noi...';
       case 'reconnecting': return 'Dang ket noi lai...';
       case 'error': return 'Mat ket noi';
       default: return 'Chua ket noi';
+=======
+      case 'connected': return this.i18n.text('PUBLIC.SUPPORT.CONNECTED');
+      case 'connecting': return this.i18n.text('PUBLIC.SUPPORT.CONNECTING');
+      case 'reconnecting': return this.i18n.text('PUBLIC.SUPPORT.RECONNECTING');
+      case 'error': return this.i18n.text('PUBLIC.SUPPORT.DISCONNECTED');
+      default: return this.i18n.text('PUBLIC.SUPPORT.NOT_CONNECTED');
+>>>>>>> codex/ui-functional-audit-polish
     }
   }
 

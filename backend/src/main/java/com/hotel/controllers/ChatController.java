@@ -49,6 +49,7 @@ public class ChatController {
             @Valid @Payload CustomerChatMessageRequest request,
             Principal principal) {
         CustomUserDetails customer = authorizationService.requireUser(principal);
+<<<<<<< HEAD
         ChatMessageDTO savedMessage = request.getConversationId() == null
                 ? chatService.sendToSupport(
                         customer, request.getHotelId(), request.getReservationId(), request.getContent(),
@@ -57,6 +58,22 @@ public class ChatController {
                         customer, request.getConversationId(), request.getContent(), request.getClientMessageId());
         messagingTemplate.convertAndSendToUser(customer.getUsername(), "/queue/messages", savedMessage);
         publishToSupportRecipients(savedMessage);
+=======
+        ChatMessageDTO savedMessage = chatService.sendToSupport(
+                customer,
+                request.getHotelId(),
+                request.getReservationId(),
+                request.getContent());
+        messagingTemplate.convertAndSendToUser(
+                customer.getUsername(),
+                "/queue/messages",
+                savedMessage);
+        chatService.getSupportRecipients(savedMessage.getHotelId()).forEach(username ->
+                messagingTemplate.convertAndSendToUser(
+                        username,
+                        "/queue/support/messages",
+                        savedMessage));
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     @MessageMapping("/chat.support.reply")
@@ -64,6 +81,7 @@ public class ChatController {
             @Valid @Payload SupportChatReplyRequest request,
             Principal principal) {
         CustomUserDetails support = authorizationService.requireUser(principal);
+<<<<<<< HEAD
         ChatMessageDTO savedMessage = chatService.replyToConversation(
                 support, request.getConversationId(), request.getContent(), request.getExpectedVersion(),
                 request.getClientMessageId());
@@ -71,6 +89,20 @@ public class ChatController {
         messagingTemplate.convertAndSendToUser(
                 chatService.getUsername(customerId), "/queue/messages", savedMessage);
         publishToSupportRecipients(savedMessage);
+=======
+        ChatMessageDTO savedMessage = chatService.replyToCustomer(
+                support,
+                request.getConversationId(),
+                request.getContent());
+        messagingTemplate.convertAndSendToUser(
+                chatService.getUsername(savedMessage.getReceiverId()),
+                "/queue/messages",
+                savedMessage);
+        messagingTemplate.convertAndSendToUser(
+                support.getUsername(),
+                "/queue/support/messages",
+                savedMessage);
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     @GetMapping("/api/chat/me/history")
@@ -89,6 +121,7 @@ public class ChatController {
                 authorizationService.requireUser(principal), page, size));
     }
 
+<<<<<<< HEAD
     @PostMapping("/api/chat/me/conversations")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ChatConversationDTO> createMyConversation(
@@ -137,12 +170,15 @@ public class ChatController {
                 authorizationService.requireUser(principal), status, assignment, sla, hotelId, query));
     }
 
+=======
+>>>>>>> codex/ui-functional-audit-polish
     @GetMapping("/api/chat/support/conversations/{conversationId}")
     @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.VIEW)
     public ResponseEntity<List<ChatMessageDTO>> getSupportHistory(
             @PathVariable Long conversationId,
             Principal principal) {
         return ResponseEntity.ok(chatService.getSupportHistory(
+<<<<<<< HEAD
                 authorizationService.requireUser(principal), conversationId));
     }
 
@@ -185,12 +221,17 @@ public class ChatController {
                 chatService.getUsername(customerId), "/queue/messages", savedMessage);
         publishToSupportRecipients(savedMessage);
         return ResponseEntity.ok(savedMessage);
+=======
+                authorizationService.requireUser(principal),
+                conversationId));
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     @PostMapping("/api/chat/support/conversations/{conversationId}/assign")
     @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.CREATE)
     public ResponseEntity<ChatConversationDTO> assignConversation(
             @PathVariable Long conversationId,
+<<<<<<< HEAD
             @RequestParam(required = false) Long expectedVersion,
             Principal principal) {
         return ResponseEntity.ok(chatService.claimConversation(
@@ -205,12 +246,19 @@ public class ChatController {
             Principal principal) {
         return ResponseEntity.ok(chatService.unassignConversation(
                 authorizationService.requireUser(principal), conversationId, expectedVersion));
+=======
+            Principal principal) {
+        return ResponseEntity.ok(chatService.claimConversation(
+                authorizationService.requireUser(principal),
+                conversationId));
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     @PostMapping("/api/chat/support/conversations/{conversationId}/escalate")
     @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.CREATE)
     public ResponseEntity<ChatConversationDTO> escalateConversation(
             @PathVariable Long conversationId,
+<<<<<<< HEAD
             @RequestParam(required = false) Long expectedVersion,
             Principal principal) {
         return ResponseEntity.ok(chatService.escalateConversation(
@@ -312,5 +360,11 @@ public class ChatController {
         if (recipients == null) return;
         recipients.forEach(username ->
                 messagingTemplate.convertAndSendToUser(username, "/queue/support/messages", message));
+=======
+            Principal principal) {
+        return ResponseEntity.ok(chatService.escalateConversation(
+                authorizationService.requireUser(principal),
+                conversationId));
+>>>>>>> codex/ui-functional-audit-polish
     }
 }

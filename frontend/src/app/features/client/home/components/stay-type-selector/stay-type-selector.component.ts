@@ -1,6 +1,11 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+<<<<<<< HEAD
 import { HomeSearchStateService } from '../../services/home-search-state.service';
+=======
+import { PublicI18nService } from '../../../../../core/i18n/public-i18n.service';
+import { HomeSearchStateService, StayType } from '../../services/home-search-state.service';
+>>>>>>> codex/ui-functional-audit-polish
 
 @Component({
   selector: 'app-stay-type-selector',
@@ -16,16 +21,21 @@ import { HomeSearchStateService } from '../../services/home-search-state.service
                [class.scale-100]="isOvernight"
                [class.group-hover:scale-100]="isOvernight"></div>
         </div>
+<<<<<<< HEAD
         <span class="text-[14px] font-semibold" [class.text-gray-900]="isOvernight" [class.text-gray-600]="!isOvernight">Chỗ Ở Qua Đêm</span>
         <input type="radio" name="stayType" value="OVERNIGHT" class="hidden" checked>
+=======
+        <span class="text-[14px] font-semibold" [class.text-gray-900]="isOvernight" [class.text-gray-600]="!isOvernight">{{ i18n.text('PUBLIC.STAY_TYPE.OVERNIGHT') }}</span>
+        <input type="radio" name="stayType" value="OVERNIGHT" class="hidden" [checked]="isOvernight" (change)="selectType('OVERNIGHT')">
+>>>>>>> codex/ui-functional-audit-polish
       </label>
 
-      <label class="flex items-center gap-2 cursor-not-allowed group relative opacity-50" title="Tính năng đang được phát triển">
+      <label class="flex items-center gap-2 cursor-not-allowed group relative opacity-50" [title]="i18n.text('PUBLIC.STAY_TYPE.UNAVAILABLE_TITLE')">
         <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center">
         </div>
-        <span class="text-[14px] font-semibold text-gray-600">Chỗ Ở Trong Ngày</span>
+        <span class="text-[14px] font-semibold text-gray-600">{{ i18n.text('PUBLIC.STAY_TYPE.DAY_USE') }}</span>
         <div class="absolute -top-3 -right-6 bg-gray-200 text-gray-600 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">
-          Sắp ra mắt
+          {{ i18n.text('PUBLIC.STAY_TYPE.COMING_SOON') }}
         </div>
         <!-- Disable day-use for now as backend doesn't support hourly booking yet -->
         <span class="sr-only" role="radio" aria-checked="false" aria-disabled="true">Chỗ ở Trong Ngày chưa khả dụng</span>
@@ -35,6 +45,7 @@ import { HomeSearchStateService } from '../../services/home-search-state.service
 })
 export class StayTypeSelectorComponent {
   private stateService = inject(HomeSearchStateService);
+  readonly i18n = inject(PublicI18nService);
 
   get isOvernight(): boolean {
     return this.stateService.state().stayType === 'OVERNIGHT';

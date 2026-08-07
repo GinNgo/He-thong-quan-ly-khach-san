@@ -30,6 +30,31 @@ export interface ReservationEvent {
   occurredAt: string;
 }
 
+export type PaymentLifecycleStatus = 'CREATED' | 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'EXPIRED';
+export type RefundLifecycleStatus = 'REQUESTED' | 'PENDING_PROVIDER' | 'SUCCEEDED' | 'FAILED';
+
+export interface PaymentLifecycleSummary {
+  provider: string;
+  amount: number;
+  currency: 'VND';
+  status: PaymentLifecycleStatus;
+  expiresAt?: string;
+  completedAt?: string;
+  reconciliationRequired: boolean;
+  failureCode?: string;
+}
+
+export interface RefundSummary {
+  publicId: string;
+  amount: number;
+  currency: 'VND';
+  provider: string;
+  status: RefundLifecycleStatus;
+  requestedAt: string;
+  completedAt?: string;
+  failureCode?: string;
+}
+
 export interface Reservation {
   id?: number;
   userId: number;
@@ -43,6 +68,7 @@ export interface Reservation {
   paymentMethod: string;
   specialRequests?: string;
   details: ReservationDetail[];
+<<<<<<< HEAD
   events?: ReservationEvent[];
 }
 
@@ -191,14 +217,17 @@ export interface ReservationAmendmentQuote {
     refundRequestPublicId?: string | null;
   };
   replayed: boolean;
+=======
+  payment?: PaymentLifecycleSummary;
+  refunds?: RefundSummary[];
+>>>>>>> codex/ui-functional-audit-polish
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ReservationService {
   private apiUrl = `${environment.apiUrl}/reservations`;
-
 
   constructor(private http: HttpClient) {}
 

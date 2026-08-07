@@ -59,6 +59,7 @@ class AvatarUploadIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
+    @Autowired private RefreshTokenSessionRepository refreshTokenRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private RefreshTokenSessionRepository refreshTokenRepository;
     @Autowired private PasswordEncoder passwordEncoder;

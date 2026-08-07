@@ -22,7 +22,7 @@ public class Payment extends AuditableEntity {
     private String paymentMethod;
 
     @Column(nullable = false)
-    private String status;
+    private String status; // Canonical values are defined by PaymentStatus.
 
     @Column(name = "transaction_id", unique = true)
     private String transactionId;

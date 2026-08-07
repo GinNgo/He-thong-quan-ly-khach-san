@@ -21,6 +21,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     // Lấy tất cả thông báo chung cho admin/staff
     List<Notification> findByUserIdIsNullOrderByCreatedAtDesc();
 
+<<<<<<< HEAD
     @Query("""
             select notification
             from Notification notification
@@ -33,12 +34,25 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     Page<Notification> findCustomerHistory(
             @Param("userId") Long userId,
             @Param("archived") boolean archived,
+=======
+    Optional<Notification> findByEventKey(String eventKey);
+
+    @Query("""
+            select notification
+            from Notification notification
+            where notification.createdAt >= :cutoff
+              and (notification.userId is null or notification.userId = :userId)
+            """)
+    Page<Notification> findVisibleToUser(
+            @Param("userId") Long userId,
+>>>>>>> codex/ui-functional-audit-polish
             @Param("cutoff") LocalDateTime cutoff,
             Pageable pageable);
 
     @Query("""
             select count(notification)
             from Notification notification
+<<<<<<< HEAD
             where notification.userId = :userId
               and notification.isRead = false
               and notification.archivedAt is null
@@ -52,4 +66,15 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             Long id, Long userId, LocalDateTime cutoff);
 
     Optional<Notification> findByEventKey(String eventKey);
+=======
+            where notification.createdAt >= :cutoff
+              and notification.isRead = false
+              and (notification.userId is null or notification.userId = :userId)
+            """)
+    long countUnreadVisibleToUser(
+            @Param("userId") Long userId,
+            @Param("cutoff") LocalDateTime cutoff);
+
+    Optional<Notification> findByIdAndCreatedAtGreaterThanEqual(Long id, LocalDateTime cutoff);
+>>>>>>> codex/ui-functional-audit-polish
 }

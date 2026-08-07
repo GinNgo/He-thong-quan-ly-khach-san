@@ -1,6 +1,10 @@
 package com.hotel.services;
 
+import com.hotel.domain.lifecycle.BookingLifecyclePolicy;
+import com.hotel.domain.lifecycle.PaymentStatus;
+import com.hotel.domain.lifecycle.RefundStatus;
 import com.hotel.domain.lifecycle.ReservationStatus;
+import com.hotel.domain.lifecycle.TransitionDecision;
 import com.hotel.dtos.*;
 import com.hotel.entities.*;
 import com.hotel.paymentprovider.error.FinancialErrorCode;
@@ -11,6 +15,7 @@ import com.hotel.propertycommerce.config.PropertyPaymentConfigurationRepository;
 import com.hotel.propertycommerce.checkout.CheckoutOperationsService;
 import com.hotel.propertycommerce.invoice.InvoiceFinalizationService;
 import com.hotel.propertycommerce.invoice.PropertyInvoice;
+<<<<<<< HEAD
 import com.hotel.propertycommerce.stay.CheckInPolicy;
 import com.hotel.repositories.*;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +23,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+=======
+import com.hotel.propertycommerce.refund.PropertyRefundService;
+import com.hotel.propertycommerce.refund.PropertyRefundRequest;
+import com.hotel.propertycommerce.refund.PropertyRefundRequestRepository;
+import com.hotel.repositories.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+>>>>>>> codex/ui-functional-audit-polish
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,11 +57,14 @@ public class ReservationService {
     private final RoomAvailabilityService roomAvailabilityService;
     private final NotificationService notificationService;
     private final EmailService emailService;
-    private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
-    private final PaymentService paymentService;
-    private final ReservationHoldService reservationHoldService;
+    private final PaymentSessionRepository paymentSessionRepository;
+    private final RefundRequestRepository refundRequestRepository;
+    private final RefundService refundService;
+    private final PropertyRefundService propertyRefundService;
+    private final PropertyRefundRequestRepository propertyRefundRequestRepository;
     private final PropertyAccessService propertyAccessService;
+    private final ReservationHoldService reservationHoldService;
     private final PropertyPaymentConfigurationRepository propertyPaymentConfigurationRepository;
     private final InvoiceFinalizationService invoiceFinalizationService;
     private final CheckoutOperationsService checkoutOperationsService;
@@ -56,6 +72,13 @@ public class ReservationService {
     private final OperationalPolicyService operationalPolicyService;
     private final OperationalAuditService operationalAuditService;
     private final CheckInPolicy checkInPolicy;
+
+    /** Legacy unit fixtures omit this field; production always wires the canonical evaluator. */
+    @Autowired(required = false)
+    private PromotionQuoteService promotionQuoteService;
+
+    @Autowired(required = false)
+    private OperationalAuditService operationalAuditService;
 
     @Transactional
     public ReservationDTO createReservation(String username, ReservationRequest request) {
@@ -117,7 +140,19 @@ public class ReservationService {
         }
 
         long nights = roomAvailabilityService.getNights(request.getCheckInDate(), request.getCheckOutDate());
-        BigDecimal totalAmount = roomAvailabilityService.calculateTotal(roomType.getBasePrice(), nights, quantity);
+        PromotionQuoteDTO acceptedQuote = promotionQuoteService == null ? null
+                : promotionQuoteService.quoteForRoom(
+                roomType,
+                request.getCheckInDate(),
+                request.getCheckOutDate(),
+                quantity,
+                adults,
+                children,
+                request.getCouponCode(),
+                user.getId());
+        BigDecimal totalAmount = acceptedQuote == null
+                ? roomAvailabilityService.calculateTotal(roomType.getBasePrice(), nights, quantity)
+                : acceptedQuote.finalTotal();
         PropertyPaymentConfiguration paymentConfiguration = propertyPaymentConfigurationRepository.findByHotelId(hotel.getId())
                 .orElseThrow(() -> new FinancialException(
                         FinancialErrorCode.POLICY_NOT_CONFIGURED,
@@ -142,6 +177,9 @@ public class ReservationService {
         reservation.setTotalAmount(totalAmount);
         reservation.setBookingIdempotencyScope(idempotencyScope);
         reservation.setBookingIdempotencyKey(idempotencyKey);
+        if (acceptedQuote != null) {
+            promotionQuoteService.captureSnapshot(reservation, acceptedQuote);
+        }
         reservation.captureDepositPolicy(depositPolicySnapshot);
         operationalPolicyService.capture(hotel.getId(), request.getCheckInDate()).ifPresent(snapshot -> {
             if (request.getOperationalPolicyVersion() != null
@@ -163,6 +201,11 @@ public class ReservationService {
         detail.setUnitPrice(roomType.getBasePrice());
         detail.setSubtotal(roomType.getBasePrice().multiply(BigDecimal.valueOf(nights * quantity)));
         reservationDetailRepository.save(detail);
+
+        if (acceptedQuote != null) {
+            promotionQuoteService.redeem(savedReservation, user, acceptedQuote);
+        }
+
         reservationHoldService.createHold(
                 savedReservation.getId(),
                 roomType.getId(),
@@ -182,6 +225,7 @@ public class ReservationService {
                 "Khách hàng " + user.getFullName() + " vừa đặt " + quantity + " " + roomType.getNameVi()
                         + " từ " + request.getCheckInDate() + " đến " + request.getCheckOutDate()
         );
+        auditReservation("RESERVATION_CREATED", savedReservation, null, reservationSnapshot(savedReservation), "Reservation created");
         return mapToDTO(savedReservation);
     }
 
@@ -285,7 +329,15 @@ public class ReservationService {
         Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy booking."));
         requireOperationalAccess(reservation);
+<<<<<<< HEAD
         requireRoomAssignmentMutable(reservation);
+=======
+        java.util.Map<String, Object> before = reservationSnapshot(reservation);
+        if (Set.of("CHECKED_OUT", "COMPLETED", "CANCELLED", "REJECTED", "EXPIRED", "NO_SHOW")
+                .contains(reservation.getStatus())) {
+            throw new IllegalStateException("Không thể gán phòng cho booking đã kết thúc hoặc bị hủy.");
+        }
+>>>>>>> codex/ui-functional-audit-polish
 
         List<ReservationDetail> details = reservationDetailRepository.findByReservationId(reservationId);
         if (details.size() != 1 || details.get(0).getRoomType() == null) {
@@ -428,12 +480,16 @@ public class ReservationService {
         reservation.setRoom(primaryRoom);
         reservationDetailRepository.save(detail);
         reservationRepository.save(reservation);
+<<<<<<< HEAD
         appendReservationEvent(
                 reservation,
                 currentRoomIds.isEmpty() ? "ROOMS_ASSIGNED" : "ROOMS_REASSIGNED",
                 reason,
                 Map.of("roomIds", currentRoomIds),
                 Map.of("roomIds", targetRoomIds));
+=======
+        auditReservation("RESERVATION_ROOMS_ASSIGNED", reservation, before, reservationSnapshot(reservation), "Physical rooms assigned");
+>>>>>>> codex/ui-functional-audit-polish
         return mapToDTO(reservation);
     }
 
@@ -495,6 +551,7 @@ public class ReservationService {
         Reservation reservation = reservationRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy booking."));
         requireOperationalAccess(reservation);
+<<<<<<< HEAD
         String normalizedStatus = status == null ? "" : status.trim().toUpperCase();
         if ("CHECKED_IN".equals(normalizedStatus)) {
             throw new IllegalArgumentException(
@@ -503,16 +560,40 @@ public class ReservationService {
 
         if (normalizedStatus.equals(reservation.getStatus())) {
             reconcileReservationHold(id, normalizedStatus, LocalDateTime.now());
+=======
+        ReservationStatus currentStatus = ReservationStatus.fromStorage(reservation.getStatus());
+        java.util.Map<String, Object> before = reservationSnapshot(reservation);
+        ReservationStatus targetStatus = ReservationStatus.fromStorage(status);
+        TransitionDecision transition = BookingLifecyclePolicy.reservationTransition(currentStatus, targetStatus);
+        if (transition == TransitionDecision.IDEMPOTENT) {
+            reconcileReservationHold(id, targetStatus, LocalDateTime.now());
+            auditReservation("RESERVATION_STATUS_REPLAYED", reservation, before, reservationSnapshot(reservation), "Idempotent lifecycle replay");
+>>>>>>> codex/ui-functional-audit-polish
             return mapToDTO(reservation);
         }
+        if (transition == TransitionDecision.REJECT) {
+            throw new IllegalStateException(
+                    "Không thể chuyển booking từ " + currentStatus + " sang " + targetStatus + ".");
+        }
+        String normalizedStatus = targetStatus.name();
 
+<<<<<<< HEAD
         String previousStatus = reservation.getStatus();
 
         List<ReservationRoom> assignments = reservationRoomRepository.findByReservationDetailReservationId(id);
+=======
+        boolean roomMutation = "CHECKED_IN".equals(normalizedStatus)
+                || "CANCELLED".equals(normalizedStatus)
+                || RoomAvailabilityService.RELEASED_RESERVATION_STATUSES.contains(normalizedStatus);
+        List<ReservationRoom> assignments = roomMutation
+                ? reservationRoomRepository.findAssignedByReservationIdForUpdate(id)
+                : reservationRoomRepository.findByReservationDetailReservationId(id);
+>>>>>>> codex/ui-functional-audit-polish
 
         if ("CHECKED_OUT".equals(normalizedStatus)) {
             completeCheckoutLocked(reservation, null);
-            reconcileReservationHold(id, normalizedStatus, LocalDateTime.now());
+            reconcileReservationHold(id, targetStatus, LocalDateTime.now());
+            auditReservation("RESERVATION_CHECKED_OUT", reservation, before, reservationSnapshot(reservation), "Reservation checked out");
             return mapToDTO(reservation);
         } else if ("CANCELLED".equals(normalizedStatus)) {
             cancelLockedReservation(reservation, assignments);
@@ -527,8 +608,14 @@ public class ReservationService {
 
         reservation.setStatus(normalizedStatus);
         Reservation saved = reservationRepository.save(reservation);
+<<<<<<< HEAD
         reconcileReservationHold(id, normalizedStatus, LocalDateTime.now());
         appendStatusChangedEvent(saved, previousStatus, normalizedStatus, "Trạng thái vận hành đã được cập nhật.");
+=======
+        reconcileReservationHold(id, targetStatus, LocalDateTime.now());
+        auditReservation("RESERVATION_" + normalizedStatus, saved, before, reservationSnapshot(saved),
+                "Reservation lifecycle transitioned to " + normalizedStatus);
+>>>>>>> codex/ui-functional-audit-polish
         return mapToDTO(saved);
     }
 
@@ -643,6 +730,7 @@ public class ReservationService {
             throw new org.springframework.security.access.AccessDeniedException(
                     "Bạn không có quyền hủy booking này.");
         }
+        java.util.Map<String, Object> before = reservationSnapshot(reservation);
         if ("CANCELLED".equals(reservation.getStatus())) {
             reservationHoldService.releaseActiveHold(id, LocalDateTime.now());
             return mapToDTO(reservation);
@@ -650,22 +738,33 @@ public class ReservationService {
 
         cancelLockedReservation(
                 reservation,
+<<<<<<< HEAD
                 reservationRoomRepository.findByReservationDetailReservationId(id));
         String previousStatus = reservation.getStatus();
         reservation.setStatus("CANCELLED");
         Reservation saved = reservationRepository.save(reservation);
         reservationHoldService.releaseActiveHold(id, LocalDateTime.now());
         appendStatusChangedEvent(saved, previousStatus, "CANCELLED", "Khách hàng đã hủy đặt phòng.");
+=======
+                reservationRoomRepository.findAssignedByReservationIdForUpdate(id));
+        reservation.setStatus("CANCELLED");
+        Reservation saved = reservationRepository.save(reservation);
+        reservationHoldService.releaseActiveHold(id, LocalDateTime.now());
+        auditReservation("RESERVATION_CANCELLED", saved, before, reservationSnapshot(saved), "Customer cancelled reservation");
+>>>>>>> codex/ui-functional-audit-polish
         return mapToDTO(saved);
     }
 
-    private void reconcileReservationHold(Long reservationId, String status, LocalDateTime now) {
+    private void reconcileReservationHold(
+            Long reservationId,
+            ReservationStatus status,
+            LocalDateTime now) {
         switch (status) {
-            case "PENDING", "PENDING_PAYMENT" -> {
-                // Pending payment keeps the inventory hold active.
+            case PENDING_PAYMENT -> {
+                // Pending payment remains the inventory-holding state.
             }
-            case "EXPIRED" -> reservationHoldService.expireActiveHold(reservationId, now);
-            case "CANCELLED", "REJECTED", "NO_SHOW" -> reservationHoldService.releaseActiveHold(reservationId, now);
+            case EXPIRED -> reservationHoldService.expireActiveHold(reservationId, now);
+            case CANCELLED, REJECTED, NO_SHOW -> reservationHoldService.releaseActiveHold(reservationId, now);
             default -> reservationHoldService.consumeActiveHold(reservationId, now);
         }
     }
@@ -676,7 +775,11 @@ public class ReservationService {
             throw new IllegalStateException("Không thể hủy booking đã check-in hoặc kết thúc.");
         }
 
-        paymentService.refundSuccessfulPayments(reservation.getId());
+        refundService.requestRefundsForSuccessfulPayments(reservation.getId(), "RESERVATION_CANCELLED");
+        propertyRefundService.requestCancellationRefunds(
+                reservation.getId(),
+                "Khách hủy đặt phòng",
+                "reservation-cancellation:" + reservation.getId());
         releaseAssignments(assignments);
     }
 
@@ -897,6 +1000,24 @@ public class ReservationService {
         return value != null && !value.isBlank();
     }
 
+    private java.util.Map<String, Object> reservationSnapshot(Reservation reservation) {
+        java.util.Map<String, Object> snapshot = new java.util.LinkedHashMap<>();
+        snapshot.put("id", reservation.getId());
+        snapshot.put("status", reservation.getStatus());
+        snapshot.put("hotelId", reservation.getHotel() == null ? null : reservation.getHotel().getId());
+        snapshot.put("checkInDate", reservation.getCheckInDate());
+        snapshot.put("checkOutDate", reservation.getCheckOutDate());
+        snapshot.put("roomId", reservation.getRoom() == null ? null : reservation.getRoom().getId());
+        return snapshot;
+    }
+
+    private void auditReservation(String eventType, Reservation reservation, Object before, Object after, String reason) {
+        if (operationalAuditService == null || reservation == null || reservation.getHotel() == null) return;
+        operationalAuditService.append(new OperationalAuditService.AuditCommand(
+                "TENANT", reservation.getHotel().getId(), "RESERVATION", eventType, "RESERVATION",
+                String.valueOf(reservation.getId()), null, null, reason, before, after, null));
+    }
+
     private void validateAssignableRoom(Reservation reservation, ReservationDetail detail, Room room) {
         if (!room.getHotel().getId().equals(reservation.getHotel().getId())) {
             throw new IllegalArgumentException("Không thể gán phòng của cơ sở khác.");
@@ -1008,6 +1129,7 @@ public class ReservationService {
         }
         dto.setDetails(reservationDetailRepository.findByReservationId(reservation.getId()).stream()
                 .map(this::mapDetailToDTO).toList());
+<<<<<<< HEAD
         if (includeEvents) {
             dto.setEvents(operationalAuditService.findAuthorizedAggregateHistory(
                             reservation.getHotel().getId(), "STAY", "RESERVATION",
@@ -1088,6 +1210,98 @@ public class ReservationService {
                 "checkOutDate", reservation.getCheckOutDate(),
                 "guests", reservation.getGuests(),
                 "totalAmount", reservation.getTotalAmount());
+=======
+        dto.setPayment(mapPaymentSummary(reservation));
+        dto.setRefunds(java.util.stream.Stream.concat(
+                        refundRequestRepository.findByReservationIdOrderByIdAsc(reservation.getId()).stream()
+                                .map(this::mapRefundSummary),
+                        propertyRefundRequestRepository.findByReservationIdOrderByRequestedAtAsc(reservation.getId()).stream()
+                                .map(this::mapCanonicalRefundSummary))
+                .sorted(java.util.Comparator.comparing(
+                        RefundSummaryDTO::getRequestedAt,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                .toList());
+        dto.setQuote(promotionQuoteService == null ? null : promotionQuoteService.restoreSnapshot(reservation));
+        return dto;
+    }
+
+    private PaymentLifecycleSummaryDTO mapPaymentSummary(Reservation reservation) {
+        List<Payment> successfulCharges = paymentRepository.findByReservationId(reservation.getId()).stream()
+                .filter(payment -> payment.getAmount() != null && payment.getAmount().signum() > 0)
+                .filter(payment -> PaymentStatus.fromStorage(payment.getStatus()) == PaymentStatus.SUCCEEDED)
+                .toList();
+        List<PaymentSession> sessions = paymentSessionRepository
+                .findByReservationIdOrderByIdDesc(reservation.getId());
+
+        if (!sessions.isEmpty()) {
+            PaymentSession session = sessions.get(0);
+            String displayStatus = displayPaymentStatus(session);
+            return PaymentLifecycleSummaryDTO.builder()
+                    .provider(session.getProvider())
+                    .amount(session.getExpectedAmount())
+                    .currency(session.getCurrency())
+                    .status(displayStatus)
+                    .expiresAt(session.getExpiresAt())
+                    .completedAt(session.getCompletedAt())
+                    .reconciliationRequired(session.isReconciliationRequired())
+                    .failureCode(session.getFailureCode())
+                    .build();
+        }
+
+        if (successfulCharges.isEmpty()) {
+            return null;
+        }
+        BigDecimal paidAmount = successfulCharges.stream()
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        Payment latestCharge = successfulCharges.stream()
+                .max(java.util.Comparator.comparing(
+                        payment -> payment.getPaymentDate() == null ? LocalDateTime.MIN : payment.getPaymentDate()))
+                .orElseThrow();
+        return PaymentLifecycleSummaryDTO.builder()
+                .provider(latestCharge.getPaymentMethod())
+                .amount(paidAmount)
+                .currency("VND")
+                .status(PaymentStatus.SUCCEEDED.name())
+                .completedAt(latestCharge.getPaymentDate())
+                .reconciliationRequired(false)
+                .build();
+    }
+
+    private String displayPaymentStatus(PaymentSession session) {
+        PaymentStatus status = PaymentStatus.fromStorage(session.getStatus());
+        if ((status == PaymentStatus.CREATED || status == PaymentStatus.PENDING)
+                && session.getExpiresAt() != null
+                && !session.getExpiresAt().isAfter(LocalDateTime.now())) {
+            return PaymentStatus.EXPIRED.name();
+        }
+        return status.name();
+    }
+
+    private RefundSummaryDTO mapRefundSummary(RefundRequest request) {
+        return RefundSummaryDTO.builder()
+                .publicId(request.getPublicId())
+                .amount(request.getRequestedAmount())
+                .currency(request.getCurrency())
+                .provider(request.getProvider())
+                .status(RefundStatus.fromStorage(request.getStatus()).name())
+                .requestedAt(request.getRequestedAt())
+                .completedAt(request.getCompletedAt())
+                .failureCode(request.getFailureCode())
+                .build();
+    }
+
+    private RefundSummaryDTO mapCanonicalRefundSummary(PropertyRefundRequest request) {
+        return RefundSummaryDTO.builder()
+                .publicId(request.getPublicId())
+                .amount(request.getRequestedAmount())
+                .currency(request.getCurrency())
+                .provider(request.getOriginalTransaction().getProvider())
+                .status(request.getStatus().name())
+                .requestedAt(request.getRequestedAt())
+                .completedAt(request.getCompletedAt())
+                .build();
+>>>>>>> codex/ui-functional-audit-polish
     }
 
     private ReservationDetailDTO mapDetailToDTO(ReservationDetail detail) {

@@ -1,5 +1,6 @@
 package com.hotel.integration;
 
+import com.hotel.BackendApplication;
 import com.hotel.entities.*;
 import com.hotel.repositories.*;
 import com.hotel.services.RoomAvailabilityService;
@@ -17,7 +18,9 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
+@SpringBootTest(
+        classes = BackendApplication.class,
+        properties = "payment.property.encryption-key=test-property-payment-encryption-key")
 @ActiveProfiles("test")
 @Transactional
 class UnicodeAndInventoryIntegrationTest {

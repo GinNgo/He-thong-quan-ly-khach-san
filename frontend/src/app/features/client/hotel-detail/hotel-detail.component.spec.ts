@@ -4,10 +4,17 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NgForm } from '@angular/forms';
 import { ActivatedRoute, ParamMap, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
+<<<<<<< HEAD
 import { AuthService } from '../../../core/services/auth';
 import { ClientApiService } from '../../../core/services/client-api.service';
 import { OperationalPolicyService } from '../../../core/services/operational-policy.service';
 import { PropertyClaimResponse, PropertyClaimService } from '../../../core/services/property-claim.service';
+=======
+import { signal } from '@angular/core';
+import { ClientApiService } from '../../../core/services/client-api.service';
+import { AuthService } from '../../../core/services/auth';
+import { FavoriteService } from '../../../core/services/favorite.service';
+>>>>>>> codex/ui-functional-audit-polish
 import { HotelDetailComponent } from './hotel-detail.component';
 
 describe('HotelDetailComponent', () => {
@@ -32,7 +39,12 @@ describe('HotelDetailComponent', () => {
       imports: [HotelDetailComponent],
       providers: [
         provideRouter([]),
+<<<<<<< HEAD
         { provide: AuthService, useValue: auth },
+=======
+        { provide: AuthService, useValue: { logout$: new Subject<void>(), isLoggedIn: () => false } },
+        { provide: FavoriteService, useValue: { favorites: signal([]), ensureLoaded: () => of([]), isFavorite: () => false, add: vi.fn(), remove: vi.fn() } },
+>>>>>>> codex/ui-functional-audit-polish
         { provide: ClientApiService, useValue: api },
         { provide: PropertyClaimService, useValue: claims },
         { provide: OperationalPolicyService, useValue: { current: vi.fn(() => of(null)) } },
@@ -79,6 +91,7 @@ describe('HotelDetailComponent', () => {
     expect(component.pageError).toContain('Không tìm thấy chỗ nghỉ này');
   });
 
+<<<<<<< HEAD
   it('redirects an unauthenticated claimant before opening or resetting the modal', () => {
     auth.isLoggedIn.mockReturnValue(false);
     component.hotel = importedProperty();
@@ -256,6 +269,90 @@ describe('HotelDetailComponent', () => {
     component.handleClaimDialogKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
 
     expect(component.showClaimModal).toBe(true);
+=======
+  it('renders canonical quote totals, member tier, and typed sponsored disclosure', async () => {
+    const room = {
+      id: 901,
+      code: 'DELUXE',
+      nameVi: 'Deluxe',
+      nameEn: 'Deluxe',
+      maxGuest: 2,
+      maxGuests: 2,
+      maxAdults: 2,
+      maxChildren: 1,
+      basePrice: 500000,
+      descriptionVi: 'Deluxe',
+      descriptionEn: 'Deluxe',
+      availableRooms: 2,
+    };
+    const hotel = {
+      id: 44,
+      name: 'LuxeStay Riverside',
+      addressLine: '1 River Road',
+      starRating: 4,
+      latitude: 10.7,
+      longitude: 106.7,
+      propertyType: 'HOTEL',
+      sponsoredPlacement: {
+        placementId: 77,
+        placementKind: 'SPONSORED',
+        disclosureVi: 'Được tài trợ',
+        disclosureEn: 'Sponsored',
+        endsAt: '2026-08-04T00:00:00Z',
+      },
+    };
+    api.getHotelById.mockReturnValue(of(hotel));
+    api.getRoomTypesByHotel.mockReturnValue(of([room]));
+    params$.next(convertToParamMap({ id: '44' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    component.selectQuantity(room, 1);
+    component.bookingQueryParams = {
+      checkIn: '2026-08-10',
+      checkOut: '2026-08-12',
+      adultCount: 2,
+      childCount: 0,
+      roomCount: 1,
+    };
+    component.selectedQuote = {
+      quoteId: 'quote-44',
+      expiresAt: '2026-08-10T12:15:00Z',
+      propertyId: 44,
+      roomTypeId: 901,
+      nightlyPrice: 500000,
+      numberOfNights: 2,
+      roomQuantity: 1,
+      baseSubtotal: 1000000,
+      taxAmount: 120000,
+      feeAmount: 15000,
+      taxesAndFees: 135000,
+      appliedPromotions: [{
+        campaignId: 71,
+        code: 'MEMBER10',
+        applicationType: 'AUTOMATIC',
+        nameVi: 'Giá thành viên',
+        nameEn: 'Member price',
+        discountAmount: 100000,
+      }],
+      memberBenefit: {
+        eligible: true,
+        tierCode: 'GOLD',
+        tierNameVi: 'Vàng',
+        tierNameEn: 'Gold',
+      },
+      totalDiscount: 100000,
+      finalTotal: 1035000,
+      currency: 'VND',
+    };
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-sponsored="true"]')).toBeTruthy();
+    const summary = fixture.nativeElement.querySelector('.booking-summary') as HTMLElement;
+    expect(summary.textContent).toContain('1.000.000');
+    expect(summary.querySelector('.promotion-proof')?.textContent).toContain('Vàng');
+    expect(summary.querySelector('.summary-total strong')?.textContent).toContain('1.035.000');
+>>>>>>> codex/ui-functional-audit-polish
   });
 });
 

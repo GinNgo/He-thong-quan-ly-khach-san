@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+<<<<<<< HEAD
 import jakarta.persistence.PreRemove;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -19,6 +20,29 @@ import java.time.Instant;
 @Table(name = "support_conversation_events", indexes = @Index(
         name = "IX_support_events_conversation_time", columnList = "conversation_id,occurred_at"))
 public class SupportConversationEvent {
+=======
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.ParamDef;
+
+import java.time.Instant;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Table(name = "support_conversation_events", indexes = {
+        @Index(name = "IX_support_events_conversation_time", columnList = "conversation_id,occurred_at")
+})
+@FilterDef(name = "supportConversationEventTenantFilter", parameters = @ParamDef(name = "hotelId", type = Long.class))
+@Filter(name = "supportConversationEventTenantFilter", condition = "hotel_id = :hotelId")
+public class SupportConversationEvent {
+
+>>>>>>> codex/ui-functional-audit-polish
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -27,8 +51,14 @@ public class SupportConversationEvent {
     @JoinColumn(name = "conversation_id", nullable = false)
     private SupportConversation conversation;
 
+<<<<<<< HEAD
     @Column(name = "hotel_id")
     private Long hotelId;
+=======
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "hotel_id", nullable = false)
+    private Hotel hotel;
+>>>>>>> codex/ui-functional-audit-polish
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "actor_user_id")
@@ -42,6 +72,7 @@ public class SupportConversationEvent {
 
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt;
+<<<<<<< HEAD
 
     public Long getId() { return id; }
     public SupportConversation getConversation() { return conversation; }
@@ -60,4 +91,6 @@ public class SupportConversationEvent {
     @PreUpdate
     @PreRemove
     void rejectMutation() { throw new IllegalStateException("Support conversation events are append-only"); }
+=======
+>>>>>>> codex/ui-functional-audit-polish
 }

@@ -36,7 +36,15 @@ public class TenantFilterInterceptor implements HandlerInterceptor {
             "roomTenantFilter",
             "roomTypeTenantFilter",
             "reservationTenantFilter",
+<<<<<<< HEAD
             "reservationAmendmentTenantFilter",
+=======
+            "promotionCampaignTenantFilter",
+            "promotionRedemptionTenantFilter",
+            "membershipTierTenantFilter",
+            "customerMembershipTenantFilter",
+            "sponsoredPlacementTenantFilter",
+>>>>>>> codex/ui-functional-audit-polish
             "propertyPaymentConfigurationTenantFilter",
             "propertyPaymentMethodTenantFilter",
             "propertyPaymentAttemptTenantFilter",

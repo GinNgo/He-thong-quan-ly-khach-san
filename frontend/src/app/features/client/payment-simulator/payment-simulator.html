@@ -1,43 +1,55 @@
 <main class="payment-page">
-  <section class="payment-card" [attr.data-method]="method.toLowerCase()">
+  <section class="payment-card" data-method="demo">
     <header class="payment-header">
-      <span class="payment-mark" aria-hidden="true"><i class="pi pi-credit-card"></i></span>
+      <span class="payment-mark" aria-hidden="true"><i class="pi pi-shield"></i></span>
       <div>
-        <p class="eyebrow">LuxeStay Demo Gateway</p>
-        <h1>Cổng thanh toán {{ method || 'MOMO' }}</h1>
+        <p class="eyebrow">LuxeStay Secure Demo</p>
+        <h1>{{ i18n.text('PUBLIC.PAYMENT.SIMULATOR_TITLE') }}</h1>
       </div>
     </header>
 
     <section *ngIf="!hasValidContext" class="payment-state" role="alert" aria-live="polite">
       <span class="state-icon invalid" aria-hidden="true"><i class="pi pi-link-slash"></i></span>
-      <h2>Phiên thanh toán không hợp lệ</h2>
+      <h2>{{ i18n.text('PUBLIC.PAYMENT.INVALID_SESSION') }}</h2>
       <p>{{ contextError }}</p>
       <div class="state-actions">
-        <button type="button" class="primary-action" (click)="cancelPayment()">Về lịch sử đặt phòng</button>
-        <button type="button" class="secondary-action" (click)="goHome()">Về trang chủ</button>
+        <button type="button" class="primary-action" (click)="cancelPayment()">{{ i18n.text('PUBLIC.PAYMENT.BACK_TO_BOOKINGS') }}</button>
+        <button type="button" class="secondary-action" (click)="goHome()">{{ i18n.text('PUBLIC.PAYMENT.HOME') }}</button>
       </div>
     </section>
 
     <section *ngIf="hasValidContext && isSuccess" class="payment-state" aria-live="polite">
       <span class="state-icon success" aria-hidden="true"><i class="pi pi-check"></i></span>
-      <h2>Thanh toán thành công</h2>
-      <p>Giao dịch đã được ghi nhận. Bạn sẽ được chuyển về lịch sử đặt phòng.</p>
-      <i class="pi pi-spin pi-spinner redirect-spinner" aria-label="Đang chuyển hướng"></i>
+      <h2>{{ i18n.text('PUBLIC.PAYMENT.SUCCESS_SIMULATOR') }}</h2>
+      <p>{{ i18n.text('PUBLIC.PAYMENT.SUCCESS_REDIRECT') }}</p>
+      <i class="pi pi-spin pi-spinner redirect-spinner" [attr.aria-label]="i18n.text('PUBLIC.PAYMENT.REDIRECTING')"></i>
     </section>
 
     <section *ngIf="hasValidContext && !isSuccess" class="payment-form">
-      <div class="demo-note"><i class="pi pi-info-circle"></i><span>Đây là môi trường Demo. Tiền của bạn sẽ không bị trừ.</span></div>
-      <dl class="payment-summary">
-        <div><dt>Mã đơn hàng</dt><dd>#{{ reservationId }}</dd></div>
-        <div><dt>Số tiền thanh toán</dt><dd>{{ amount | number:'1.0-0' }} ₫</dd></div>
-      </dl>
-      <div *ngIf="processingError" class="processing-error" role="alert" aria-live="assertive">{{ processingError }}</div>
+      <div class="demo-note">
+        <i class="pi pi-info-circle"></i>
+        <span>{{ i18n.text('PUBLIC.PAYMENT.DEMO_NOTE') }}</span>
+      </div>
+      <div class="payment-summary">
+        <p>{{ i18n.text('PUBLIC.PAYMENT.LOCKED_SUMMARY') }}</p>
+      </div>
+      <div *ngIf="processingError" class="processing-error" role="alert" aria-live="assertive">
+        {{ processingError }}
+      </div>
       <div class="payment-actions">
-        <button type="button" class="confirm-button" (click)="confirmPayment()" [disabled]="isProcessing" [attr.aria-busy]="isProcessing">
+        <button
+          type="button"
+          class="confirm-button"
+          (click)="confirmPayment()"
+          [disabled]="isProcessing"
+          [attr.aria-busy]="isProcessing"
+        >
           <i class="pi pi-spin pi-spinner" *ngIf="isProcessing"></i>
-          {{ isProcessing ? 'Đang xác nhận...' : 'Xác nhận thanh toán' }}
+          {{ isProcessing ? i18n.text('PUBLIC.PAYMENT.CONFIRMING') : i18n.text('PUBLIC.PAYMENT.CONFIRM') }}
         </button>
-        <button type="button" class="cancel-button" (click)="cancelPayment()" [disabled]="isProcessing">Hủy giao dịch</button>
+        <button type="button" class="cancel-button" (click)="cancelPayment()" [disabled]="isProcessing">
+          {{ i18n.text('PUBLIC.PAYMENT.CANCEL') }}
+        </button>
       </div>
     </section>
   </section>

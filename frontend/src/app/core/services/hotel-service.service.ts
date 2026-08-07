@@ -28,6 +28,13 @@ export class HotelServiceService {
     return this.http.get<HotelServiceDTO[]>(this.apiUrl, hotelId ? { params: { hotelId } } : {});
   }
 
+  getServicesForHotel(hotelId: number): Observable<HotelServiceDTO[]> {
+    if (!Number.isInteger(hotelId) || hotelId <= 0) {
+      throw new Error('A valid hotelId is required to load a tenant service catalog.');
+    }
+    return this.getServices(hotelId);
+  }
+
   createService(service: HotelServiceDTO, hotelId?: number): Observable<HotelServiceDTO> {
     return this.http.post<HotelServiceDTO>(this.apiUrl, service, hotelId ? { params: { hotelId } } : {});
   }

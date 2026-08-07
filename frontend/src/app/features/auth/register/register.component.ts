@@ -7,7 +7,11 @@ import { ChangeDetectorRef, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@app/core/services/auth';
 import { isPasswordLengthValid, PASSWORD_POLICY } from '@app/core/auth/password-policy';
+<<<<<<< HEAD
 import { safeClientReturnUrl } from '@app/core/auth/client-return-url';
+=======
+import { AuthLegalCopyService } from '../legal-support/auth-legal-copy.service';
+>>>>>>> codex/ui-functional-audit-polish
 
 @Component({
   selector: 'app-register',
@@ -22,6 +26,7 @@ export class RegisterComponent {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
+  readonly i18n = inject(AuthLegalCopyService);
   readonly passwordPolicy = PASSWORD_POLICY;
   readonly returnUrl = safeClientReturnUrl(this.route.snapshot.queryParams?.['returnUrl']);
   registerObj = {
@@ -37,8 +42,23 @@ export class RegisterComponent {
   errorMessage = '';
   successMessage = '';
   isLoading = false;
+  passwordVisible = false;
+  confirmPasswordVisible = false;
 
-  onSubmit() {
+  togglePasswordVisibility(field: 'password' | 'confirmPassword'): void {
+    if (field === 'password') {
+      this.passwordVisible = !this.passwordVisible;
+      return;
+    }
+    this.confirmPasswordVisible = !this.confirmPasswordVisible;
+  }
+
+  onSubmit(): void {
+    if (!this.registerObj.fullName.trim() || !this.registerObj.email.trim() || !this.registerObj.password) {
+      this.errorMessage = 'Vui lòng nhập đầy đủ họ tên, email và mật khẩu.';
+      return;
+    }
+
     if (!isPasswordLengthValid(this.registerObj.password)) {
       this.errorMessage = `Mật khẩu phải có từ ${PASSWORD_POLICY.minLength} đến ${PASSWORD_POLICY.maxLength} ký tự.`;
       return;
@@ -74,8 +94,8 @@ export class RegisterComponent {
       next: (res) => {
         this.isLoading = false;
         this.successMessage = res?.verificationEmailSent
-          ? 'Đăng ký thành công! Vui lòng kiểm tra hộp thư để xác minh email. / Registration successful! Check your inbox to verify your email.'
-          : 'Đăng ký thành công! Hãy đăng nhập để gửi lại liên kết xác minh email. / Registration successful! Sign in to resend the verification link.';
+          ? 'Đăng ký thành công! Vui lòng kiểm tra hộp thư để xác minh email.'
+          : 'Đăng ký thành công! Hãy đăng nhập để gửi lại liên kết xác minh email.';
         this.cdr.markForCheck();
         setTimeout(() => {
           this.router.navigate(['/login'], {

@@ -9,9 +9,14 @@ import { ClientObservabilityService } from './client-observability.service';
 
 export interface ChatMessage {
   id?: number;
+<<<<<<< HEAD
   conversationId?: number;
   hotelId?: number;
   clientMessageId?: string;
+=======
+  conversationId: number;
+  hotelId: number;
+>>>>>>> codex/ui-functional-audit-polish
   senderId: number;
   receiverId: number;
   content: string;
@@ -26,6 +31,7 @@ export interface ChatConversation {
   conversationId: number;
   customerId: number;
   customerName: string;
+<<<<<<< HEAD
   subject: string;
   hotelId?: number;
   hotelName?: string;
@@ -47,6 +53,13 @@ export interface ChatConversation {
   closedReason?: string;
   reopenedAt?: string;
   reopenReason?: string;
+=======
+  hotelId: number;
+  hotelName: string;
+  reservationId?: number;
+  assignedAgentId?: number;
+  status: 'OPEN' | 'ASSIGNED' | 'ESCALATED' | 'CLOSED';
+>>>>>>> codex/ui-functional-audit-polish
   lastMessage: string;
   lastMessageAt?: string;
 }
@@ -201,12 +214,21 @@ export class ChatService {
     }
   }
 
+<<<<<<< HEAD
   sendCustomerMessage(content: string, conversationId?: number, clientMessageId?: string): boolean {
     return this.publish('/app/chat.support.send', { content, conversationId, clientMessageId });
   }
 
   sendSupportReply(conversationId: number, content: string, clientMessageId?: string): boolean {
     return this.publish('/app/chat.support.reply', { conversationId, content, clientMessageId });
+=======
+  sendCustomerMessage(content: string, hotelId?: number, reservationId?: number): boolean {
+    return this.publish('/app/chat.support.send', { content, hotelId, reservationId });
+  }
+
+  sendSupportReply(conversationId: number, content: string): boolean {
+    return this.publish('/app/chat.support.reply', { conversationId, content });
+>>>>>>> codex/ui-functional-audit-polish
   }
 
   getMyHistory(): Observable<ChatMessage[]> {
@@ -219,6 +241,7 @@ export class ChatService {
     });
   }
 
+<<<<<<< HEAD
   createMyConversation(subject: string, hotelId?: number, reservationId?: number): Observable<ChatConversation> {
     return this.http.post<ChatConversation>(`${this.apiUrl}/me/conversations`, {
       subject,
@@ -264,10 +287,13 @@ export class ChatService {
     return this.http.get<ChatConversation[]>(`${this.apiUrl}/support/conversations`, { params });
   }
 
+=======
+>>>>>>> codex/ui-functional-audit-polish
   getSupportHistory(conversationId: number): Observable<ChatMessage[]> {
     return this.http.get<ChatMessage[]>(`${this.apiUrl}/support/conversations/${conversationId}`);
   }
 
+<<<<<<< HEAD
   getSupportConversationMessages(conversationId: number, page = 0, size = 50): Observable<ChatPage<ChatMessage>> {
     return this.http.get<ChatPage<ChatMessage>>(
       `${this.apiUrl}/support/conversations/${conversationId}/messages`, { params: { page, size } });
@@ -347,6 +373,14 @@ export class ChatService {
 
   downloadAttachment(attachmentId: number): Observable<Blob> {
     return this.http.get(`${this.apiUrl}/attachments/${attachmentId}`, { responseType: 'blob' });
+=======
+  assignConversation(conversationId: number): Observable<ChatConversation> {
+    return this.http.post<ChatConversation>(`${this.apiUrl}/support/conversations/${conversationId}/assign`, {});
+  }
+
+  escalateConversation(conversationId: number): Observable<ChatConversation> {
+    return this.http.post<ChatConversation>(`${this.apiUrl}/support/conversations/${conversationId}/escalate`, {});
+>>>>>>> codex/ui-functional-audit-polish
   }
 
   isConnected(): boolean {
@@ -367,6 +401,7 @@ export class ChatService {
       });
       return true;
     } catch {
+      this.observability.recordStompFailure('chat', 'publish', this.connectionCorrelationId);
       this.setConnectionState('error', 'Không thể gửi tin nhắn. Hãy thử lại.');
       return false;
     }
@@ -390,6 +425,7 @@ export class ChatService {
     try {
       this.messageSubject.next(JSON.parse(message.body) as ChatMessage);
     } catch {
+      this.observability.recordStompFailure('chat', 'payload', this.connectionCorrelationId);
       this.setConnectionState('error', 'Tin nhắn nhận được không hợp lệ.');
     }
   }

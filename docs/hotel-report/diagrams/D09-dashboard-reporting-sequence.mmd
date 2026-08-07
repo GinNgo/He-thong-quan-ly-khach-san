@@ -1,0 +1,23 @@
+sequenceDiagram
+    actor Viewer as Admin/Owner/Manager
+    participant UI as Dashboard/Report UI
+    participant API as Reporting API
+    participant Auth as Permission/Tenant Policy
+    participant Query as Reporting Service
+    participant DB as SQL Server
+    participant Export as PDF/CSV Export
+
+    Viewer->>UI: Chọn time range/property/chỉ số
+    UI->>API: GET report với filter
+    API->>Auth: Kiểm tra role + tenant scope
+    Auth-->>API: Scope đã giới hạn
+    API->>Query: Chuẩn hóa timezone/filter/status
+    Query->>DB: Aggregate booking/payment/refund/invoice
+    DB-->>Query: Kết quả tổng hợp
+    Query->>Query: Reconcile và tính KPI
+    Query-->>API: DTO có nguồn và timestamp
+    API-->>UI: KPI/chart/table
+    opt Người dùng xuất báo cáo
+      UI->>Export: Tạo PDF/CSV từ dữ liệu đã lọc
+      Export-->>Viewer: File tải xuống
+    end

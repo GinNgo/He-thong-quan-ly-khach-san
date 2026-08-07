@@ -1,5 +1,6 @@
 package com.hotel.integration;
 
+<<<<<<< HEAD
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hotel.entities.Location;
 import com.hotel.repositories.LocationRepository;
@@ -23,11 +24,33 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(properties = {
+=======
+import com.hotel.BackendApplication;
+import com.hotel.entities.Location;
+import com.hotel.repositories.LocationRepository;
+import com.hotel.services.LocationImportService;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@SpringBootTest(classes = BackendApplication.class, properties = {
+>>>>>>> codex/ui-functional-audit-polish
         "app.location-import.enabled=false",
         "app.e2e-fixtures.enabled=false",
         "payment.property.encryption-key=test-property-payment-encryption-key"
 })
 @ActiveProfiles("test")
+<<<<<<< HEAD
+=======
+@Transactional
+>>>>>>> codex/ui-functional-audit-polish
 class PackagedLocationImportIntegrationTest {
 
     @Autowired
@@ -36,6 +59,7 @@ class PackagedLocationImportIntegrationTest {
     @Autowired
     private LocationRepository locationRepository;
 
+<<<<<<< HEAD
     @Autowired
     private ProvinceCompatibilityService provinceCompatibilityService;
 
@@ -46,6 +70,13 @@ class PackagedLocationImportIntegrationTest {
     void packagedCatalogIsCompleteAndIdempotent() throws Exception {
         LocationImportService.ImportReport first = locationImportService.importData(false);
         long firstCount = locationRepository.count();
+=======
+    @Test
+    void packagedCatalogImportsTwiceWithoutAddingRows() {
+        LocationImportService.ImportReport first = locationImportService.importData(false);
+        long firstCount = locationRepository.count();
+
+>>>>>>> codex/ui-functional-audit-polish
         LocationImportService.ImportReport second = locationImportService.importData(false);
         List<Location> locations = locationRepository.findAll();
 
@@ -54,6 +85,7 @@ class PackagedLocationImportIntegrationTest {
         assertTrue(first.added() > 0);
         assertEquals(0, second.added());
         assertEquals(firstCount, locations.size());
+<<<<<<< HEAD
         assertEquals(63, count(locations, "PROVINCE", source -> source.matches("\\d+")));
         assertEquals(34, count(locations, "PROVINCE", source -> source.startsWith("VN34-")));
         assertEquals(10_051, count(locations, "WARD", source -> true));
@@ -132,5 +164,20 @@ class PackagedLocationImportIntegrationTest {
         return location.getLatitude() != null && location.getLongitude() != null
                 && location.getLatitude() >= -90 && location.getLatitude() <= 90
                 && location.getLongitude() >= -180 && location.getLongitude() <= 180;
+=======
+        assertEquals(34, locations.stream()
+                .filter(location -> "PROVINCE".equals(location.getLocationType()))
+                .filter(location -> location.getSourceCode() != null
+                        && location.getSourceCode().startsWith("VN34-"))
+                .count());
+        assertEquals(63, locations.stream()
+                .filter(location -> "PROVINCE".equals(location.getLocationType()))
+                .filter(location -> location.getSourceCode() != null
+                        && location.getSourceCode().matches("\\d+"))
+                .count());
+        assertEquals(122, locations.stream()
+                .filter(location -> "LANDMARK".equals(location.getLocationType()))
+                .count());
+>>>>>>> codex/ui-functional-audit-polish
     }
 }

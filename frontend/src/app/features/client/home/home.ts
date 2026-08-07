@@ -1,6 +1,7 @@
 import { ChangeDetectorRef, Component, OnInit, OnDestroy, inject, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
+import { Subject, takeUntil } from 'rxjs';
 import { ClientApiService } from '../../../core/services/client-api.service';
 import { LayoutStateService } from '../../../core/services/layout-state.service';
 import { HeroSearchComponent } from './components/hero-search/hero-search.component';
@@ -9,7 +10,13 @@ import { PopularDestinationsComponent } from './components/popular-destinations/
 import { FeaturedPropertiesComponent } from './components/featured-properties/featured-properties.component';
 import { HomeSearchStateService } from './services/home-search-state.service';
 import { AuthService } from '../../../core/services/auth';
-import { Hotel, LocationSuggestion } from '../../../core/services/client-api.service';
+import { Hotel, LocationSuggestion, PublicPromotion, PromotionQuote, UserContext } from '../../../core/services/client-api.service';
+import { TranslatePipe } from '@ngx-translate/core';
+import { EditorialSlideshowComponent } from './components/editorial-slideshow/editorial-slideshow.component';
+import { DestinationRecommendationsComponent } from './components/destination-recommendations/destination-recommendations.component';
+import { PartnerSpotlightCarouselComponent } from './components/partner-spotlight-carousel/partner-spotlight-carousel.component';
+import { PromotionsComponent } from './components/promotions/promotions.component';
+import { LocaleService } from '../../../core/i18n/locale.service';
 
 @Component({
   selector: 'app-home',
@@ -19,7 +26,13 @@ import { Hotel, LocationSuggestion } from '../../../core/services/client-api.ser
     HeroSearchComponent,
     StickySearchBarComponent,
     PopularDestinationsComponent,
-    FeaturedPropertiesComponent
+    FeaturedPropertiesComponent,
+    EditorialSlideshowComponent,
+    PartnerSpotlightCarouselComponent,
+    DestinationRecommendationsComponent,
+    PromotionsComponent,
+    TranslatePipe,
+    RouterModule
   ],
   templateUrl: './home.html',
   styleUrls: ['./home.css']
@@ -31,22 +44,47 @@ export class HomeComponent implements OnInit, OnDestroy {
   private searchState = inject(HomeSearchStateService);
   private authService = inject(AuthService);
   private changeDetector = inject(ChangeDetectorRef);
+  private localeService = inject(LocaleService);
   
   destinations: LocationSuggestion[] = [];
   featuredProperties: Hotel[] = [];
+  memberProfile: UserContext | null = null;
+  isAuthenticated = false;
+  memberLoading = false;
+  memberError = false;
+  memberTier: PromotionQuote['memberBenefit'] | null = null;
+  promotions: PublicPromotion[] = [];
+  promotionsLoading = true;
+  promotionsError = false;
   isLoadingDestinations = true;
   isLoadingFeatured = true;
+<<<<<<< HEAD
   destinationError = false;
+=======
+  destinationsError = false;
+>>>>>>> codex/ui-functional-audit-polish
   featuredError = false;
 
   @ViewChild('heroSearchRef', { static: true }) heroSearchRef!: ElementRef;
 
   showStickySearch = false;
   private observer!: IntersectionObserver;
+  private readonly destroy$ = new Subject<void>();
 
   ngOnInit() {
     this.loadPopularDestinations();
     this.loadFeaturedProperties();
+    this.loadPromotions();
+    this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe((state) => {
+      this.isAuthenticated = state.isAuthenticated;
+      if (this.isAuthenticated) this.loadMemberProfile();
+      else {
+        this.memberProfile = null;
+        this.memberTier = null;
+        this.memberLoading = false;
+        this.memberError = false;
+      }
+    });
 
     // IntersectionObserver to show sticky search when hero search is out of view
     this.observer = new IntersectionObserver(
@@ -63,25 +101,105 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
     if (this.observer) {
       this.observer.disconnect();
     }
     this.layoutState.hideMainHeader.set(false);
   }
 
+<<<<<<< HEAD
   loadPopularDestinations(forceRefresh = false) {
     this.isLoadingDestinations = true;
     this.destinationError = false;
     this.clientApi.getPopularDestinations(8, forceRefresh).subscribe({
+=======
+  get memberPoints(): number {
+    return Math.max(0, this.memberProfile?.points ?? 0);
+  }
+
+  get memberTierLabel(): string {
+    if (!this.memberTier?.eligible) return '';
+    return this.localeService.locale() === 'en'
+      ? (this.memberTier.tierNameEn || this.memberTier.tierNameVi || '')
+      : (this.memberTier.tierNameVi || this.memberTier.tierNameEn || '');
+  }
+
+  get promotionSummaryKey(): string {
+    if (this.promotionsLoading) return 'HOME.PROMOTION_LOADING';
+    if (this.promotionsError) return 'HOME.PROMOTION_ERROR';
+    return this.promotions.length ? 'HOME.PROMOTION_ACTIVE_COUNT' : 'HOME.PROMOTION_EMPTY';
+  }
+
+  openLogin(): void {
+    this.router.navigate(['/login'], { queryParams: { returnUrl: '/' } });
+  }
+
+  private loadMemberProfile(): void {
+    this.memberLoading = true;
+    this.memberError = false;
+    this.clientApi.getProfile().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (profile) => {
+        this.memberProfile = profile;
+        this.memberLoading = false;
+        this.changeDetector.detectChanges();
+        this.clientApi.getMyMembership().pipe(takeUntil(this.destroy$)).subscribe({
+          next: membership => {
+            this.memberTier = membership;
+            this.memberError = false;
+            this.changeDetector.detectChanges();
+          },
+          error: () => {
+            this.memberTier = null;
+            this.memberError = true;
+            this.changeDetector.detectChanges();
+          },
+        });
+      },
+      error: () => {
+        this.memberProfile = null;
+        this.memberLoading = false;
+        this.memberError = true;
+        this.changeDetector.detectChanges();
+      }
+    });
+  }
+
+  loadPromotions(): void {
+    this.promotionsLoading = true;
+    this.promotionsError = false;
+    this.clientApi.getPublicPromotions(6).pipe(takeUntil(this.destroy$)).subscribe({
+      next: promotions => {
+        this.promotions = promotions;
+        this.promotionsLoading = false;
+        this.changeDetector.detectChanges();
+      },
+      error: () => {
+        this.promotions = [];
+        this.promotionsLoading = false;
+        this.promotionsError = true;
+        this.changeDetector.detectChanges();
+      },
+    });
+  }
+
+  private loadPopularDestinations() {
+    this.isLoadingDestinations = true;
+    this.destinationsError = false;
+    this.clientApi.getPopularDestinations(8).pipe(takeUntil(this.destroy$)).subscribe({
+>>>>>>> codex/ui-functional-audit-polish
       next: (provinces) => {
         this.destinations = provinces;
         this.isLoadingDestinations = false;
+        this.destinationsError = false;
         this.changeDetector.detectChanges();
       },
       error: () => {
         this.destinations = [];
         this.destinationError = true;
         this.isLoadingDestinations = false;
+        this.destinationsError = true;
         this.changeDetector.detectChanges();
       }
     });
@@ -95,16 +213,18 @@ export class HomeComponent implements OnInit, OnDestroy {
       pageNumber: 0,
       pageSize: 8,
       sortBy: 'RATING'
-    }).subscribe({
+    }).pipe(takeUntil(this.destroy$)).subscribe({
       next: response => {
         this.featuredProperties = response.content;
         this.isLoadingFeatured = false;
+        this.featuredError = false;
         this.changeDetector.detectChanges();
       },
       error: () => {
         this.featuredProperties = [];
         this.featuredError = true;
         this.isLoadingFeatured = false;
+        this.featuredError = true;
         this.changeDetector.detectChanges();
       }
     });
@@ -115,7 +235,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     if (!auth.isAuthenticated) {
       this.router.navigate(['/login'], { queryParams: { returnUrl: '/partner/register' } });
     } else {
-      this.clientApi.getProfile().subscribe({
+      this.clientApi.getProfile().pipe(takeUntil(this.destroy$)).subscribe({
         next: context => {
           const roles = (context.roles || []).map(role => typeof role === 'string' ? role : role.code);
           if (roles.includes('PROPERTY_OWNER') || context.assignedProperties?.length) this.router.navigate(['/management/dashboard']);

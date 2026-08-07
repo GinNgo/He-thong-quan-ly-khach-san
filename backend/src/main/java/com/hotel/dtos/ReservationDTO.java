@@ -18,9 +18,15 @@ public class ReservationDTO {
     private String specialRequests;
     private DepositPolicySnapshotDTO depositPolicySnapshot;
     private List<ReservationDetailDTO> details;
+<<<<<<< HEAD
     private Long operationalPolicyVersion;
     private String operationalPolicySnapshot;
     private List<ReservationEventDTO> events;
+=======
+    private PaymentLifecycleSummaryDTO payment;
+    private List<RefundSummaryDTO> refunds;
+    private PromotionQuoteDTO quote;
+>>>>>>> codex/ui-functional-audit-polish
 
     public Long getId() {
         return id;
@@ -126,6 +132,7 @@ public class ReservationDTO {
         this.details = details;
     }
 
+<<<<<<< HEAD
     public Long getOperationalPolicyVersion() { return operationalPolicyVersion; }
     public void setOperationalPolicyVersion(Long operationalPolicyVersion) { this.operationalPolicyVersion = operationalPolicyVersion; }
     public String getOperationalPolicySnapshot() { return operationalPolicySnapshot; }
@@ -137,5 +144,29 @@ public class ReservationDTO {
 
     public void setEvents(List<ReservationEventDTO> events) {
         this.events = events;
+=======
+    public PaymentLifecycleSummaryDTO getPayment() {
+        return payment;
+    }
+
+    public void setPayment(PaymentLifecycleSummaryDTO payment) {
+        this.payment = payment;
+    }
+
+    public List<RefundSummaryDTO> getRefunds() {
+        return refunds;
+    }
+
+    public void setRefunds(List<RefundSummaryDTO> refunds) {
+        this.refunds = refunds;
+    }
+
+    public PromotionQuoteDTO getQuote() {
+        return quote;
+    }
+
+    public void setQuote(PromotionQuoteDTO quote) {
+        this.quote = quote;
+>>>>>>> codex/ui-functional-audit-polish
     }
 }
