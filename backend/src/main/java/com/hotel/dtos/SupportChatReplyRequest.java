@@ -11,7 +11,7 @@ public class SupportChatReplyRequest {
 
     @NotNull
     @Positive
-    private Long customerId;
+    private Long conversationId;
 
     @NotBlank
     @Size(max = 2000)

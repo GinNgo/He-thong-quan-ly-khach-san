@@ -23,6 +23,12 @@ public interface PropertyInvoiceRepository extends JpaRepository<PropertyInvoice
             Long userId,
             PropertyInvoice.Status status);
 
+    List<PropertyInvoice> findByStatusOrderByFinalizedAtDesc(PropertyInvoice.Status status);
+
+    List<PropertyInvoice> findByHotelIdInAndStatusOrderByFinalizedAtDesc(
+            List<Long> hotelIds,
+            PropertyInvoice.Status status);
+
     boolean existsByReservationIdAndStatus(Long reservationId, PropertyInvoice.Status status);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

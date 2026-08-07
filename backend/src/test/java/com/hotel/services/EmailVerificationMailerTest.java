@@ -45,7 +45,7 @@ class EmailVerificationMailerTest {
                 60);
 
         assertTrue(sent);
-        assertTrue(message.getSubject().contains("new LuxeStay email"));
+        assertTrue(message.getSubject().contains("email mới"));
         assertTrue(message.getContent().toString().contains("Guest &lt;script&gt;"));
         assertTrue(message.getContent().toString().contains("next=&lt;script&gt;"));
         verify(mailSender).send(message);

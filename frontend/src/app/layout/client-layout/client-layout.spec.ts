@@ -2,16 +2,21 @@ import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { BehaviorSubject, Subject, of } from 'rxjs';
+import { provideTranslateService } from '@ngx-translate/core';
 
 import { AuthService, AuthState } from '../../core/services/auth';
 import { ChatService } from '../../core/services/chat.service';
-import { ClientApiService } from '../../core/services/client-api.service';
+import { ClientApiService, UserContext } from '../../core/services/client-api.service';
 import { ClientLayout } from './client-layout';
 
 describe('ClientLayout', () => {
+  let currentUser$: BehaviorSubject<AuthState>;
+  const getProfile = vi.fn();
+
   beforeEach(async () => {
     localStorage.clear();
-    const currentUser$ = new BehaviorSubject<AuthState>({
+    getProfile.mockReset();
+    currentUser$ = new BehaviorSubject<AuthState>({
       isAuthenticated: false,
       username: '',
       fullName: '',
@@ -25,10 +30,11 @@ describe('ClientLayout', () => {
       providers: [
         provideHttpClient(),
         provideRouter([]),
+        provideTranslateService(),
         {
           provide: AuthService,
           useValue: {
-          currentUser$,
+            currentUser$,
             isLoggedIn: vi.fn(() => false),
             getCurrentUserId: vi.fn(() => null),
             getAccessToken: vi.fn(() => null),
@@ -36,7 +42,7 @@ describe('ClientLayout', () => {
             updateCurrentUser: vi.fn(),
           },
         },
-        { provide: ClientApiService, useValue: { getProfile: vi.fn() } },
+        { provide: ClientApiService, useValue: { getProfile } },
         {
           provide: ChatService,
           useValue: {
@@ -54,18 +60,86 @@ describe('ClientLayout', () => {
     }).compileComponents();
   });
 
-  it('renders the fixed Vietnamese locale and VND currency as non-interactive status', () => {
+  it('renders an accessible VI/EN control while keeping VND fixed', () => {
     const fixture = TestBed.createComponent(ClientLayout);
     fixture.detectChanges();
 
     const element: HTMLElement = fixture.nativeElement;
-    const localeStatus = element.querySelector('.locale-status') as HTMLElement;
+    const localeButton = element.querySelector('.locale-button') as HTMLButtonElement;
 
-    expect(localeStatus).not.toBeNull();
-    expect(localeStatus.getAttribute('role')).toBe('group');
-    expect(localeStatus.getAttribute('aria-label')).toContain('Tiếng Việt');
-    expect(localeStatus.getAttribute('aria-label')).toContain('Việt Nam đồng');
-    expect(localeStatus.tabIndex).toBe(-1);
-    expect(element.querySelector('.locale-button')).toBeNull();
+    expect(localeButton).not.toBeNull();
+    expect(localeButton.textContent).toContain('VI');
+    expect(localeButton.textContent).toContain('VND');
+
+    localeButton.click();
+    fixture.detectChanges();
+
+    expect(localeButton.textContent).toContain('EN');
+    expect(localStorage.getItem('luxestay.locale')).toBe('en');
+  });
+
+  it('renders grouped footer navigation and support-safe content structure', () => {
+    const fixture = TestBed.createComponent(ClientLayout);
+    fixture.detectChanges();
+
+    const element: HTMLElement = fixture.nativeElement;
+    expect(element.querySelector('.public-footer')).not.toBeNull();
+    expect(element.querySelectorAll('.footer-column')).toHaveLength(3);
+    expect(element.querySelector('a[href^="mailto:support@luxestay.vn"]')).not.toBeNull();
+    expect(element.querySelector('a[href^="tel:"]')).not.toBeNull();
+  });
+
+  it('keeps partner acquisition out of the primary header actions', () => {
+    const fixture = TestBed.createComponent(ClientLayout);
+    fixture.detectChanges();
+
+    const element: HTMLElement = fixture.nativeElement;
+    expect(element.querySelector('.header-actions .partner-button')).toBeNull();
+    expect(element.querySelector('.mobile-nav .mobile-partner-button')).toBeNull();
+    expect(element.querySelector('.footer-column button')).not.toBeNull();
+  });
+
+  it('keeps rewards and account navigation available when an authenticated menu opens', () => {
+    const context: UserContext = {
+      id: 42,
+      username: 'customer@example.test',
+      email: 'customer@example.test',
+      fullName: 'Nguyen Van An',
+      points: 1250,
+      roles: ['CUSTOMER'],
+      partnerRegistrationStatus: 'NONE',
+      pendingBookingCount: 2,
+    };
+    getProfile.mockReturnValue(of(context));
+
+    const fixture = TestBed.createComponent(ClientLayout);
+    fixture.detectChanges();
+    currentUser$.next({
+      isAuthenticated: true,
+      username: context.username,
+      fullName: context.fullName || context.username,
+      avatarUrl: '',
+      roles: ['CUSTOMER'],
+      permissions: [],
+    });
+    fixture.detectChanges();
+
+    const trigger = fixture.nativeElement.querySelector('.account-trigger') as HTMLButtonElement;
+    trigger.click();
+    fixture.detectChanges();
+
+    const element: HTMLElement = fixture.nativeElement;
+    const menu = element.querySelector('.account-menu');
+    expect(element.querySelector('.public-header')?.classList.contains('account-menu-open')).toBe(true);
+    expect(menu).not.toBeNull();
+    expect(menu?.querySelector('.account-rewards-value strong')?.textContent).toMatch(/1[,.]250/);
+    expect(menu?.querySelectorAll('nav [role="menuitem"]').length).toBeGreaterThanOrEqual(7);
+    expect(menu?.querySelector('.menu-close')?.getAttribute('aria-label')).toBeTruthy();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+
+    expect(element.querySelector('.account-menu')).toBeNull();
+    expect(element.querySelector('.public-header')?.classList.contains('account-menu-open')).toBe(false);
   });
 });

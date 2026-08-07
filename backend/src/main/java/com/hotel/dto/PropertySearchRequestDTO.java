@@ -7,6 +7,7 @@ public class PropertySearchRequestDTO {
     private String keyword;
     private Long provinceId;
     private Long wardId;
+    private Long landmarkId;
     private String checkInDate;
     private String checkOutDate;
     private Integer adultCount;

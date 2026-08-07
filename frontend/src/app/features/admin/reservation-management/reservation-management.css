@@ -1,3 +1,63 @@
+:host {
+  display: block;
+}
+
+.financial-cell {
+  display: flex;
+  min-width: 150px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.financial-cell small {
+  color: var(--hotel-text-muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.lifecycle-chip {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: var(--hotel-radius-pill);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.lifecycle-chip.success {
+  background: var(--hotel-success-light);
+  color: var(--hotel-success);
+}
+
+.lifecycle-chip.warning {
+  background: var(--hotel-warning-light);
+  color: var(--hotel-warning);
+}
+
+.lifecycle-chip.danger {
+  background: var(--hotel-danger-light);
+  color: var(--hotel-danger);
+}
+
+.lifecycle-chip.info {
+  background: var(--hotel-info-light);
+  color: var(--hotel-info);
+}
+
+.lifecycle-chip.neutral {
+  background: var(--hotel-surface-muted);
+  color: var(--hotel-text-muted);
+}
+
+:host ::ng-deep .action-button.p-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
 :host ::ng-deep .checkout-dialog .p-dialog-content {
   padding: 0;
   overflow: auto;
@@ -5,6 +65,10 @@
 }
 
 @media (max-width: 768px) {
+  .financial-cell {
+    min-width: 135px;
+  }
+
   :host ::ng-deep .checkout-dialog {
     max-height: 100dvh;
     margin: 0;

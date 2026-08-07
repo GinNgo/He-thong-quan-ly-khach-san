@@ -24,4 +24,10 @@ public class LocationSuggestionDTO {
     private String imageUrl;
     private Double reviewScore;
     private Double distanceKm;
+    private Double latitude;
+    private Double longitude;
+    private Double defaultRadiusKm;
+    private String category;
+    private String descriptionVi;
+    private String descriptionEn;
 }

@@ -17,28 +17,17 @@
                 </ng-template>
                 
                 <div class="plan-features text-left mt-4 mb-4">
-                    <div class="feature-item">
+                    <div class="feature-item" *ngFor="let feature of plan.features">
                         <i class="pi pi-check-circle"></i>
-                        <span>Quản lý cơ sở lưu trú</span>
+                        <span>{{ feature.nameVi || feature.nameEn || feature.code }}: {{ feature.limit === -1 ? 'Không giới hạn' : feature.limit }}</span>
                     </div>
-                    <div class="feature-item" *ngIf="plan.code !== 'FREE'">
-                        <i class="pi pi-check-circle"></i>
-                        <span>Hỗ trợ 24/7 ưu tiên</span>
-                    </div>
-                    <div class="feature-item" *ngIf="plan.code === 'PREMIUM'">
-                        <i class="pi pi-check-circle"></i>
-                        <span>Không giới hạn phòng</span>
-                    </div>
+                    <div class="feature-item" *ngIf="!plan.features.length">Chưa công bố quyền lợi.</div>
                 </div>
 
                 <ng-template pTemplate="footer">
-                    <button pButton pRipple 
-                            [label]="isCurrentPlan(plan) ? 'Đang sử dụng' : 'Mua ngay'" 
-                            [disabled]="isCurrentPlan(plan)"
-                            (click)="purchase(plan)"
-                            class="w-full"
-                            [ngClass]="{'p-button-outlined': plan.code === 'FREE', 'p-button-success': plan.code === 'PREMIUM'}">
-                    </button>
+                    <span class="p-button p-component w-full" *ngIf="isCurrentPlan(plan)">Đang sử dụng</span>
+                    <a class="p-button p-component p-button-outlined w-full" *ngIf="!isCurrentPlan(plan)"
+                       href="mailto:support@luxestay.vn?subject=Yeu%20cau%20nang%20cap%20goi">Liên hệ để nâng cấp</a>
                 </ng-template>
             </p-card>
         </div>

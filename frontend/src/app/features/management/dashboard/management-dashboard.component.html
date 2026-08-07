@@ -12,16 +12,16 @@
   } @else if (!context || !context.properties.length) {
     <app-feedback-state state="empty" title="Chưa có cơ sở được cấp" message="Tài khoản này chưa có cơ sở lưu trú để hiển thị tổng quan." />
   } @else if (context) {
-    @if (context.upgradeRequired) { <div class="upgrade"><strong>Gói {{ context.planCode }}</strong><span>Một số chức năng nâng cao đang bị giới hạn. Dữ liệu đã nhập vẫn được giữ nguyên.</span><a routerLink="/management/billing">Xem gói dịch vụ</a></div> }
-    <div class="summary"><div><span>Gói hiện tại</span><strong>{{ context.planCode }}</strong></div><div><span>Trạng thái</span><strong>{{ context.subscriptionStatus }}</strong></div><div><span>Cơ sở</span><strong>{{ context.usage.properties || 0 }} / {{ limit('MAX_PROPERTIES') }}</strong></div><div><span>Phòng</span><strong>{{ context.usage.rooms || 0 }} / {{ limit('MAX_ROOMS') }}</strong></div><div><span>Nhân viên</span><strong>{{ context.usage.staff || 0 }} / {{ limit('MAX_STAFF') }}</strong></div></div>
-    <p class="entitlement-source">Entitlement source: <strong>{{ context.subscriptionSource || 'NONE' }}</strong>. Room usage is scoped to the selected property.</p>
+    @if (context.upgradeRequired) { <div class="upgrade"><strong>Gói {{ context.planCode }}</strong><span>Một số chức năng nâng cao đang bị giới hạn. Dữ liệu đã nhập vẫn được giữ nguyên.</span><a routerLink="/management/billing">Xem gói phần mềm</a></div> }
+    <div class="summary"><div><span>Gói hiện tại</span><strong>{{ context.planCode }}</strong></div><div><span>Trạng thái</span><strong>{{ statusLabel(context.subscriptionStatus) }}</strong></div><div><span>Cơ sở</span><strong>{{ context.usage.properties || 0 }} / {{ limit('MAX_PROPERTIES') }}</strong></div><div><span>Phòng</span><strong>{{ context.usage.rooms || 0 }} / {{ limit('MAX_ROOMS') }}</strong></div><div><span>Nhân viên</span><strong>{{ context.usage.staff || 0 }} / {{ limit('MAX_STAFF') }}</strong></div></div>
+    <p class="entitlement-source">Nguồn quyền lợi: <strong>{{ sourceLabel(context.subscriptionSource) }}</strong>. Số phòng sử dụng chỉ tính trong cơ sở đang chọn.</p>
     @if (!activePropertyOperational && activeProperty) {
       <div class="operation-gate" role="status">
         <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>
         <div>
           <strong>Chưa thể vận hành cơ sở này</strong>
-          <p>Trạng thái duyệt: {{ activeProperty.approvalStatus }} · Trạng thái vận hành: {{ activeProperty.operationStatus }}.</p>
-          <p>Hãy hoàn thiện hồ sơ hoặc chờ quản trị viên phê duyệt. Bạn vẫn có thể xem và mua gói dịch vụ.</p>
+          <p>Trạng thái duyệt: {{ statusLabel(activeProperty.approvalStatus) }} · Trạng thái vận hành: {{ statusLabel(activeProperty.operationStatus) }}.</p>
+          <p>Hãy hoàn thiện hồ sơ hoặc chờ quản trị viên phê duyệt. Bạn vẫn có thể xem và mua gói phần mềm.</p>
         </div>
         <a routerLink="/management/properties">Hoàn thiện hồ sơ</a>
         <a routerLink="/management/billing">Quản lý gói</a>

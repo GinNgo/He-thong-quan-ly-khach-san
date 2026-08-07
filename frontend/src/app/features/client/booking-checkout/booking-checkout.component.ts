@@ -2,7 +2,8 @@ import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { ClientApiService, ReservationRequest } from '../../../core/services/client-api.service';
+import { PublicI18nService } from '../../../core/i18n/public-i18n.service';
+import { ClientApiService, PromotionQuote, PublicPlacementDisclosure, ReservationRequest } from '../../../core/services/client-api.service';
 import { PropertyPaymentMethodCode } from '../../../core/services/property-payment-configuration.service';
 import {
   PropertyPaymentAttempt,
@@ -25,6 +26,7 @@ export class BookingCheckoutComponent implements OnInit {
   private propertyPaymentService = inject(PropertyPaymentService);
   private changeDetector = inject(ChangeDetectorRef);
   private actionCoordinator = inject(AsyncActionCoordinatorService);
+  readonly i18n = inject(PublicI18nService);
 
   roomTypeId: number = 0;
   roomTypeName = '';
@@ -53,6 +55,11 @@ export class BookingCheckoutComponent implements OnInit {
   contextError = '';
   reservationDetails: any = null;
   paymentAttempt: PropertyPaymentAttempt | null = null;
+  quote: PromotionQuote | null = null;
+  quoteLoading = false;
+  quoteError = '';
+  sponsoredPlacement: PublicPlacementDisclosure | null = null;
+  private quoteRequestIdentity = '';
   private paymentIdempotencyKey = '';
   private paymentRequestIdentity = '';
   private reservedPaymentMethod = '';
@@ -65,6 +72,7 @@ export class BookingCheckoutComponent implements OnInit {
         this.roomTypeId = Number(id);
         this.bookingData.roomTypeId = this.roomTypeId;
         this.validateBookingContext();
+        this.loadQuote();
       }
     });
 
@@ -80,7 +88,10 @@ export class BookingCheckoutComponent implements OnInit {
       this.nightlyPrice = Number(params['nightlyPrice']) || 0;
       this.serverEstimate = Number(params['estimatedTotal']) || 0;
       this.hotelId = Number(params['hotelId']) || 0;
+      this.loadPlacementDisclosure();
+      this.bookingData.couponCode = params['couponCode'] || undefined;
       this.validateBookingContext();
+      this.loadQuote();
     });
 
     this.prefillUserInfo();
@@ -89,21 +100,26 @@ export class BookingCheckoutComponent implements OnInit {
   submitBooking(): void {
     if (this.isSubmitting || !this.bookingContextValid) return;
     this.errorMessage = '';
+    if (this.quoteLoading || !this.quote) {
+      this.errorMessage = this.quoteError || this.i18n.text('PUBLIC.BOOKING.QUOTE_REQUIRED');
+      if (!this.quoteLoading) this.loadQuote();
+      return;
+    }
     if (this.reservationDetails?.id && !this.paymentAttempt) {
       this.isSubmitting = true;
       this.createPaymentAttempt(this.reservationDetails.id);
       return;
     }
     if (this.bookingData.checkOutDate <= this.bookingData.checkInDate) {
-      this.errorMessage = 'Ngày trả phòng phải sau ngày nhận phòng.';
+      this.errorMessage = this.i18n.text('PUBLIC.BOOKING.ERROR_CHECKOUT_AFTER_CHECKIN');
       return;
     }
     if (this.bookingData.guests < 1) {
-      this.errorMessage = 'Số khách phải lớn hơn 0.';
+      this.errorMessage = this.i18n.text('PUBLIC.BOOKING.ERROR_GUEST_COUNT');
       return;
     }
     if (!this.bookingData.quantity || this.bookingData.quantity < 1) {
-      this.errorMessage = 'Số lượng phòng phải lớn hơn 0.';
+      this.errorMessage = this.i18n.text('PUBLIC.BOOKING.ERROR_ROOM_COUNT');
       return;
     }
 
@@ -126,16 +142,18 @@ export class BookingCheckoutComponent implements OnInit {
       error: (err) => {
         console.error('Error submitting booking', err);
         this.isSubmitting = false;
-        this.changeDetector.markForCheck();
         if (err?.status === 409) {
-          this.errorMessage = 'Số phòng bạn chọn vừa hết. Vui lòng quay lại chọn phòng.';
+          this.errorMessage = this.i18n.text('PUBLIC.BOOKING.ERROR_ROOM_SOLD_OUT');
+          this.changeDetector.markForCheck();
           return;
         }
         if (err?.error?.message) {
           this.errorMessage = err.error.message;
+          this.changeDetector.markForCheck();
           return;
         }
-        this.errorMessage = 'Có lỗi xảy ra khi đặt phòng. Vui lòng kiểm tra thông tin và thử lại.';
+        this.errorMessage = this.i18n.text('PUBLIC.BOOKING.ERROR_BOOKING_GENERIC');
+        this.changeDetector.markForCheck();
       }
     });
   }
@@ -145,8 +163,37 @@ export class BookingCheckoutComponent implements OnInit {
     return Math.max(1, Math.round((new Date(this.bookingData.checkOutDate).getTime() - new Date(this.bookingData.checkInDate).getTime()) / 86400000));
   }
 
+  get guestSummary(): string {
+    const adults = this.i18n.count('PUBLIC.GUESTS.ADULT_COUNT', this.bookingData.adults || 0);
+    const children = this.bookingData.children
+      ? `, ${this.i18n.count('PUBLIC.GUESTS.CHILD_COUNT', this.bookingData.children)}`
+      : '';
+    return `${adults}${children}`;
+  }
+
   get estimatedTotal(): number {
-    return this.serverEstimate || this.nightlyPrice * this.nights * (this.bookingData.quantity || 1);
+    return this.quote?.finalTotal ?? 0;
+  }
+
+  get promotionNames(): string {
+    return (this.quote?.appliedPromotions ?? [])
+      .map(promotion => this.i18n.dateLocale() === 'en-US'
+        ? (promotion.nameEn || promotion.nameVi)
+        : promotion.nameVi)
+      .join(', ');
+  }
+
+  get memberTierLabel(): string {
+    const benefit = this.quote?.memberBenefit;
+    if (!benefit?.eligible) return '';
+    return this.i18n.dateLocale() === 'en-US'
+      ? (benefit.tierNameEn || benefit.tierNameVi || '')
+      : (benefit.tierNameVi || benefit.tierNameEn || '');
+  }
+
+  get sponsoredDisclosure(): string {
+    const placement = this.sponsoredPlacement;
+    return placement ? (this.i18n.dateLocale() === 'en-US' ? placement.disclosureEn : placement.disclosureVi) : '';
   }
 
   formatVnd(value: number): string {
@@ -189,12 +236,70 @@ export class BookingCheckoutComponent implements OnInit {
     const validHotel = Number.isInteger(this.hotelId) && this.hotelId > 0;
     const validDates = !!this.bookingData.checkInDate && !!this.bookingData.checkOutDate
       && this.bookingData.checkOutDate > this.bookingData.checkInDate;
-    const validPrice = this.nightlyPrice > 0 || this.serverEstimate > 0;
     const validName = !!this.roomTypeName.trim();
 
-    this.contextError = validRoom && validHotel && validDates && validPrice && validName
+    this.contextError = validRoom && validHotel && validDates && validName
       ? ''
-      : 'Phiên đặt phòng đã hết hoặc thiếu thông tin loại phòng. Hãy quay lại tìm kiếm và chọn phòng lại để tiếp tục.';
+      : this.i18n.text('PUBLIC.BOOKING.ERROR_INVALID_CONTEXT');
+  }
+
+  private loadPlacementDisclosure(): void {
+    if (!Number.isInteger(this.hotelId) || this.hotelId <= 0) {
+      this.sponsoredPlacement = null;
+      return;
+    }
+    this.clientApi.getHotelById(this.hotelId).subscribe({
+      next: hotel => {
+        this.sponsoredPlacement = hotel.sponsoredPlacement ?? null;
+        this.changeDetector.markForCheck();
+      },
+      error: () => {
+        this.sponsoredPlacement = null;
+        this.changeDetector.markForCheck();
+      },
+    });
+  }
+
+  private loadQuote(): void {
+    this.validateBookingContext();
+    if (!this.bookingContextValid) return;
+    const identity = [
+      this.hotelId,
+      this.roomTypeId,
+      this.bookingData.checkInDate,
+      this.bookingData.checkOutDate,
+      this.bookingData.quantity,
+      this.bookingData.adults,
+      this.bookingData.children,
+      this.bookingData.couponCode || '',
+    ].join(':');
+    if (identity === this.quoteRequestIdentity && (this.quote || this.quoteLoading)) return;
+    this.quoteRequestIdentity = identity;
+    this.quote = null;
+    this.quoteError = '';
+    this.quoteLoading = true;
+    this.clientApi.getPromotionQuote({
+      propertyId: this.hotelId,
+      roomTypeId: this.roomTypeId,
+      checkInDate: this.bookingData.checkInDate,
+      checkOutDate: this.bookingData.checkOutDate,
+      quantity: this.bookingData.quantity || 1,
+      adultCount: this.bookingData.adults || 1,
+      childCount: this.bookingData.children || 0,
+      couponCode: this.bookingData.couponCode,
+    }).subscribe({
+      next: (quote) => {
+        this.quote = quote;
+        this.serverEstimate = quote.finalTotal;
+        this.quoteLoading = false;
+        this.changeDetector.markForCheck();
+      },
+      error: (error) => {
+        this.quoteLoading = false;
+        this.quoteError = error?.error?.message || this.i18n.text('PUBLIC.BOOKING.QUOTE_ERROR');
+        this.changeDetector.markForCheck();
+      },
+    });
   }
 
   private prefillUserInfo() {
@@ -237,9 +342,9 @@ export class BookingCheckoutComponent implements OnInit {
       error: (err) => {
         console.error('Unable to create property payment attempt', err);
         this.isSubmitting = false;
-        this.changeDetector.markForCheck();
         this.errorMessage = err?.error?.message
-          || 'Không thể kết nối đến cổng thanh toán.';
+          || this.i18n.text('PUBLIC.BOOKING.ERROR_PAYMENT_CONNECTION');
+        this.changeDetector.markForCheck();
       },
     });
   }
@@ -260,6 +365,7 @@ export class BookingCheckoutComponent implements OnInit {
       this.bookingData.adults,
       this.bookingData.children,
       this.bookingData.paymentMethod,
+      this.bookingData.couponCode || '',
     ].join(':');
     const storageKey = `hotel:booking:idempotency:${identity}`;
     const stored = localStorage.getItem(storageKey);

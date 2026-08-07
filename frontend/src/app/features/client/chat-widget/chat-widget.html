@@ -13,13 +13,13 @@
       </div>
       <div class="support-heading">
         <h2 id="support-chat-title">LuxeStay Care</h2>
-        <p id="support-chat-description">Hỗ trợ trực tuyến từ đội ngũ trung tâm</p>
+        <p id="support-chat-description">{{ i18n.text('PUBLIC.SUPPORT.DESCRIPTION') }}</p>
         <span class="connection-status" [class.is-connected]="connectionState() === 'connected'">
           <span class="connection-dot" aria-hidden="true"></span>
           {{ connectionLabel() }}
         </span>
       </div>
-      <button type="button" class="icon-button close-button" aria-label="Đóng cửa sổ hỗ trợ" (click)="closeChat()">
+      <button type="button" class="icon-button close-button" [attr.aria-label]="i18n.text('PUBLIC.SUPPORT.CLOSE')" (click)="closeChat()">
         <i class="pi pi-times" aria-hidden="true"></i>
       </button>
     </header>
@@ -27,32 +27,32 @@
     <div class="support-body" #scrollMe role="log" aria-live="polite" aria-relevant="additions">
       <div *ngIf="!isLoggedIn()" class="support-state support-state-centered">
         <span class="state-icon" aria-hidden="true"><i class="pi pi-lock"></i></span>
-        <h3>Đăng nhập để trò chuyện</h3>
-        <p>Bạn cần đăng nhập để xem lịch sử và gửi yêu cầu tới bộ phận CSKH LuxeStay.</p>
-        <a routerLink="/login" class="support-primary-link">Đăng nhập ngay</a>
+        <h3>{{ i18n.text('PUBLIC.SUPPORT.LOGIN_TITLE') }}</h3>
+        <p>{{ i18n.text('PUBLIC.SUPPORT.LOGIN_BODY') }}</p>
+        <a routerLink="/login" class="support-primary-link">{{ i18n.text('PUBLIC.SUPPORT.LOGIN') }}</a>
       </div>
 
       <ng-container *ngIf="isLoggedIn()">
-        <div *ngIf="historyState() === 'loading'" class="support-state" aria-label="Đang tải lịch sử chat">
+        <div *ngIf="historyState() === 'loading'" class="support-state" [attr.aria-label]="i18n.text('PUBLIC.SUPPORT.LOADING_HISTORY')">
           <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
-          <span>Đang tải lịch sử hỗ trợ…</span>
+          <span>{{ i18n.text('PUBLIC.SUPPORT.LOADING_HISTORY_TEXT') }}</span>
         </div>
 
         <div *ngIf="historyState() === 'error'" class="support-state support-error" role="alert">
           <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
           <span>{{ historyError() }}</span>
-          <button type="button" class="text-action" (click)="loadHistory()">Thử lại</button>
+          <button type="button" class="text-action" (click)="loadHistory()">{{ i18n.text('PUBLIC.SUPPORT.RETRY') }}</button>
         </div>
 
         <div *ngIf="connectionError()" class="connection-alert" role="status">
           <span>{{ connectionError() }}</span>
-          <button type="button" class="text-action" (click)="retryConnection()">Kết nối lại</button>
+          <button type="button" class="text-action" (click)="retryConnection()">{{ i18n.text('PUBLIC.SUPPORT.RECONNECT') }}</button>
         </div>
 
         <div *ngIf="historyState() === 'ready' && messages().length === 0" class="support-state support-state-centered empty-state">
           <span class="state-icon" aria-hidden="true"><i class="pi pi-comments"></i></span>
-          <h3>Bắt đầu một cuộc trò chuyện</h3>
-          <p>Hãy mô tả ngắn gọn vấn đề để đội ngũ hỗ trợ phản hồi nhanh hơn.</p>
+          <h3>{{ i18n.text('PUBLIC.SUPPORT.EMPTY_TITLE') }}</h3>
+          <p>{{ i18n.text('PUBLIC.SUPPORT.EMPTY_BODY') }}</p>
         </div>
 
         <article
@@ -70,7 +70,7 @@
     </div>
 
     <form *ngIf="isLoggedIn()" class="support-composer" (ngSubmit)="sendMessage()">
-      <label class="visually-hidden" for="support-message">Nội dung tin nhắn hỗ trợ</label>
+      <label class="visually-hidden" for="support-message">{{ i18n.text('PUBLIC.SUPPORT.MESSAGE_LABEL') }}</label>
       <input
         #messageInput
         id="support-message"
@@ -81,17 +81,17 @@
         [(ngModel)]="newMessage"
         [disabled]="isSending()"
         aria-describedby="support-send-status"
-        placeholder="Nhập nội dung cần hỗ trợ…">
+        [placeholder]="i18n.text('PUBLIC.SUPPORT.MESSAGE_PLACEHOLDER')">
       <button
         type="submit"
         class="send-button"
-        aria-label="Gửi tin nhắn hỗ trợ"
+        [attr.aria-label]="i18n.text('PUBLIC.SUPPORT.SEND')"
         [disabled]="!newMessage.trim() || isSending() || connectionState() !== 'connected'">
         <i *ngIf="!isSending()" class="pi pi-send" aria-hidden="true"></i>
         <i *ngIf="isSending()" class="pi pi-spin pi-spinner" aria-hidden="true"></i>
       </button>
       <p id="support-send-status" class="composer-status" [class.has-error]="sendError()" aria-live="polite">
-        {{ sendError() || (isSending() ? 'Đang chờ máy chủ xác nhận…' : '') }}
+        {{ sendError() || (isSending() ? i18n.text('PUBLIC.SUPPORT.WAITING_ACK') : '') }}
       </p>
     </form>
   </section>
@@ -101,11 +101,11 @@
     #triggerButton
     type="button"
     class="support-trigger"
-    aria-label="Mở hỗ trợ trực tuyến LuxeStay"
+    [attr.aria-label]="i18n.text('PUBLIC.SUPPORT.OPEN')"
     [attr.aria-expanded]="isOpen()"
     aria-controls="support-chat-panel"
     (click)="toggleChat()">
     <i class="pi pi-comments" aria-hidden="true"></i>
-    <span>Hỗ trợ</span>
+    <span>{{ i18n.text('LAYOUT.SUPPORT') }}</span>
   </button>
 </div>

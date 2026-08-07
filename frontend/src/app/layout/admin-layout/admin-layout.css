@@ -34,7 +34,7 @@
   top: 0;
   z-index: 30;
   display: flex;
-  min-height: 4.5rem;
+  min-height: 4.9375rem;
   align-items: center;
   justify-content: space-between;
   gap: var(--hotel-space-4, 1rem);
@@ -54,7 +54,8 @@
 }
 
 .page-context {
-  min-width: 0;
+  min-width: 12rem;
+  min-height: 3.875rem;
 }
 
 .page-context h1 {
@@ -142,6 +143,12 @@
   position: relative;
 }
 
+.profile-anchor {
+  display: flex;
+  min-width: 13rem;
+  justify-content: flex-end;
+}
+
 .notification-count {
   position: absolute;
   top: -0.35rem;
@@ -155,6 +162,21 @@
   font-size: 0.65rem;
   font-weight: 800;
   line-height: 1;
+}
+
+.notification-connection-dot {
+  position: absolute;
+  bottom: -0.2rem;
+  left: -0.2rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 2px solid var(--hotel-surface, #fff);
+  border-radius: 50%;
+  background: var(--hotel-warning, #d97706);
+}
+
+.notification-connection-dot.is-error {
+  background: var(--hotel-error, #c62828);
 }
 
 .profile-button {
@@ -235,6 +257,44 @@
   font-weight: 700;
 }
 
+.notification-retention {
+  margin: 0;
+  padding: var(--hotel-space-2) var(--hotel-space-4);
+  color: var(--hotel-text-muted);
+  border-bottom: 1px solid var(--hotel-border);
+  font-size: 0.75rem;
+}
+
+.notification-connection-status {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--hotel-space-2, 0.5rem);
+  padding: var(--hotel-space-2, 0.5rem) var(--hotel-space-4, 1rem);
+  color: var(--hotel-warning-text, #854d0e);
+  border-bottom: 1px solid var(--hotel-warning-border, #fde68a);
+  background: var(--hotel-warning-soft, #fffbeb);
+  font-size: 0.78rem;
+}
+
+.notification-connection-status.is-error {
+  color: var(--hotel-error, #c62828);
+  border-bottom-color: color-mix(in srgb, var(--hotel-error, #c62828) 25%, transparent);
+  background: color-mix(in srgb, var(--hotel-error, #c62828) 7%, var(--hotel-surface, #fff));
+}
+
+.notification-connection-status .text-action {
+  white-space: nowrap;
+}
+
+.notification-action-error {
+  padding: var(--hotel-space-2) var(--hotel-space-4);
+  color: var(--hotel-error);
+  border-bottom: 1px solid var(--hotel-border);
+  background: var(--hotel-surface-muted);
+  font-size: 0.8rem;
+}
+
 .notification-list {
   max-height: min(26rem, calc(100dvh - 7rem));
   overflow-y: auto;
@@ -282,6 +342,36 @@
 .notification-item:hover,
 .notification-item.unread {
   background: var(--hotel-surface-muted, #f8fafc);
+}
+
+.notification-item:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.notification-load-more {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: var(--hotel-space-2);
+  padding: var(--hotel-space-3);
+  color: var(--hotel-primary);
+  border: 0;
+  background: var(--hotel-surface);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.notification-load-more:hover:not(:disabled) {
+  background: var(--hotel-surface-muted);
+}
+
+.notification-load-more:disabled {
+  color: var(--hotel-text-muted);
+  cursor: wait;
 }
 
 .notification-title {
@@ -341,6 +431,8 @@
 
 .admin-content {
   min-width: 0;
+  min-height: calc(100vh - 4.9375rem);
+  min-height: calc(100dvh - 4.9375rem);
   overflow: auto;
   padding: clamp(1rem, 2.5vw, 2rem);
 }
@@ -358,6 +450,7 @@
 .profile-button:focus-visible,
 .quick-search input:focus-visible,
 .notification-item:focus-visible,
+.notification-load-more:focus-visible,
 .text-action:focus-visible,
 .user-menu button:focus-visible,
 .breadcrumbs a:focus-visible {
@@ -417,6 +510,24 @@
   .admin-header {
     padding-inline: var(--hotel-space-3, 0.75rem);
   }
+
+  .page-context {
+    min-width: 9rem;
+  }
+
+  .profile-anchor {
+    min-width: min(15rem, 40vw);
+  }
+}
+
+@media (min-width: 992px) and (max-width: 1180px) {
+  .quick-search {
+    display: none;
+  }
+
+  .profile-anchor {
+    min-width: 15rem;
+  }
 }
 
 @media (max-width: 575px) {
@@ -433,6 +544,15 @@
 
   .page-context h1 {
     max-width: 8rem;
+  }
+
+  .page-context {
+    min-width: 0;
+    min-height: 2.75rem;
+  }
+
+  .profile-anchor {
+    min-width: 0;
   }
 
   .admin-content {

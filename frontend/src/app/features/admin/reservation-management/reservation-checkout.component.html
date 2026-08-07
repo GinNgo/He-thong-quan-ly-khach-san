@@ -36,7 +36,44 @@
             <p>Giá bán được lấy từ danh mục, nhân viên chỉ chọn dịch vụ và số lượng.</p>
           </div>
         </div>
+        <div class="catalog-state" *ngIf="catalogLoading()" role="status">
+          <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+          <span>Đang tải danh mục của khách sạn...</span>
+        </div>
+        <div class="catalog-state error" *ngIf="catalogError() as error" role="alert">
+          <span>{{ error }}</span>
+          <button type="button" (click)="retryCatalog()">Thử lại</button>
+        </div>
+        <div
+          class="catalog-state"
+          *ngIf="!catalogLoading() && !catalogError() && catalogHotelId() && serviceOptions().length === 0"
+        >
+          Khách sạn chưa có dịch vụ đang hoạt động.
+        </div>
         <form [formGroup]="serviceForm" (ngSubmit)="addService()" class="form-grid">
+          <fieldset class="charge-type-picker field-wide">
+            <legend>Loại sử dụng</legend>
+            <button
+              type="button"
+              class="charge-type-option"
+              [class.selected]="serviceForm.controls.chargeType.value === 'SERVICE'"
+              [attr.aria-pressed]="serviceForm.controls.chargeType.value === 'SERVICE'"
+              (click)="selectChargeType('SERVICE')"
+            >
+              <i class="pi pi-sparkles" aria-hidden="true"></i>
+              <span><strong>Dịch vụ</strong><small>Đồ ăn, đồ uống, giặt ủi...</small></span>
+            </button>
+            <button
+              type="button"
+              class="charge-type-option"
+              [class.selected]="serviceForm.controls.chargeType.value === 'MINIBAR'"
+              [attr.aria-pressed]="serviceForm.controls.chargeType.value === 'MINIBAR'"
+              (click)="selectChargeType('MINIBAR')"
+            >
+              <i class="pi pi-shopping-bag" aria-hidden="true"></i>
+              <span><strong>Minibar</strong><small>Sản phẩm dùng tại phòng</small></span>
+            </button>
+          </fieldset>
           <label class="field field-wide">
             <span>Dịch vụ</span>
             <p-select
@@ -51,16 +88,6 @@
             <small *ngIf="serviceForm.controls.serviceId.touched && serviceForm.controls.serviceId.invalid">
               Vui lòng chọn một dịch vụ hợp lệ.
             </small>
-          </label>
-          <label class="field">
-            <span>Nhóm ghi nhận</span>
-            <p-select
-              formControlName="chargeType"
-              [options]="serviceChargeTypes"
-              optionLabel="label"
-              optionValue="value"
-              styleClass="field-control"
-            ></p-select>
           </label>
           <label class="field">
             <span>Số lượng</span>
@@ -217,6 +244,22 @@
             </span>
           </div>
         </div>
+
+        <section class="adjustment-history" aria-labelledby="adjustment-history-title" *ngIf="adjustmentHistory().length > 0">
+          <div class="lines-heading">
+            <h4 id="adjustment-history-title">Lịch sử phụ thu &amp; điều chỉnh đã duyệt</h4>
+            <span>{{ adjustmentHistory().length }} mục bất biến</span>
+          </div>
+          <div class="adjustment-history-item" *ngFor="let line of adjustmentHistory(); trackBy: trackLine">
+            <div>
+              <strong>{{ line.name }}</strong>
+              <small>{{ line.category }} · {{ line.description || 'Không có mô tả' }}</small>
+            </div>
+            <span [class.negative]="isNegative(line.signedEffect)">
+              {{ line.signedEffect | currency: 'VND' : 'symbol' : '1.0-0' : 'vi-VN' }}
+            </span>
+          </div>
+        </section>
 
         <form
           *ngIf="needsDebtOverride()"

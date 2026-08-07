@@ -220,11 +220,50 @@ public class FolioCalculationService {
                     usageStart(reservation),
                     usageEnd(reservation)));
         }
-        if (reservation.getDepositBookingTotal() != null
+        if (reservation.getPricingBaseSubtotal() != null) {
+            if (money(reservation.getPricingBaseSubtotal(), "pricing base subtotal").compareTo(detailTotal) != 0) {
+                throw new IllegalStateException("Room detail totals do not match the canonical quote subtotal.");
+            }
+            BigDecimal tax = moneyOrZero(reservation.getPricingTaxAmount(), "pricing tax amount");
+            BigDecimal fee = moneyOrZero(reservation.getPricingFeeAmount(), "pricing fee amount");
+            BigDecimal discount = moneyOrZero(reservation.getPricingDiscountAmount(), "pricing discount amount");
+            BigDecimal expectedTotal = detailTotal.add(tax).add(fee).subtract(discount);
+            if (reservation.getDepositBookingTotal() != null
+                    && money(reservation.getDepositBookingTotal(), "booking quote snapshot").compareTo(expectedTotal) != 0) {
+                throw new IllegalStateException("Booking total does not match the canonical quote snapshot.");
+            }
+            totals.tax = totals.tax.add(tax);
+            totals.fee = totals.fee.add(fee);
+            totals.discount = totals.discount.add(discount);
+            addQuoteComponentLines(reservation, tax, fee, discount, lines);
+        } else if (reservation.getDepositBookingTotal() != null
                 && money(reservation.getDepositBookingTotal(), "booking room snapshot").compareTo(detailTotal) != 0) {
             throw new IllegalStateException("Room detail totals do not match the immutable booking snapshot.");
         }
         totals.room = totals.room.add(detailTotal);
+    }
+
+    private void addQuoteComponentLines(
+            Reservation reservation,
+            BigDecimal tax,
+            BigDecimal fee,
+            BigDecimal discount,
+            List<FolioLine> lines) {
+        if (tax.signum() > 0) {
+            lines.add(new FolioLine("RESERVATION_QUOTE", reservation.getId(), "TAX", "QUOTE-TAX",
+                    "Booking taxes", null, BigDecimal.ONE, BigDecimal.ZERO, tax, BigDecimal.ZERO,
+                    tax, tax, usageStart(reservation), usageEnd(reservation)));
+        }
+        if (fee.signum() > 0) {
+            lines.add(new FolioLine("RESERVATION_QUOTE", reservation.getId(), "FEE", "QUOTE-FEE",
+                    "Booking fees", null, BigDecimal.ONE, fee, BigDecimal.ZERO, BigDecimal.ZERO,
+                    fee, fee, usageStart(reservation), usageEnd(reservation)));
+        }
+        if (discount.signum() > 0) {
+            lines.add(new FolioLine("RESERVATION_QUOTE", reservation.getId(), "DISCOUNT", "QUOTE-DISCOUNT",
+                    "Promotion discount", null, BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ZERO, discount,
+                    discount, discount.negate(), usageStart(reservation), usageEnd(reservation)));
+        }
     }
 
     private void addLegacyServiceCharges(

@@ -1,8 +1,8 @@
 package com.hotel.services;
 
-import com.hotel.domain.lifecycle.PaymentStatus;
-import com.hotel.domain.payment.PaymentCompletionResult;
 import com.hotel.dtos.PaymentDTO;
+import com.hotel.domain.payment.PaymentCompletionResult;
+import com.hotel.domain.lifecycle.PaymentStatus;
 import java.util.List;
 
 public interface PaymentService {
@@ -13,5 +13,4 @@ public interface PaymentService {
             String method,
             String transactionId,
             PaymentStatus currentPaymentStatus);
-    void refundSuccessfulPayments(Long reservationId);
 }

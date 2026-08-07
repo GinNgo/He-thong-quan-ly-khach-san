@@ -5,6 +5,8 @@ interface Credentials {
   password: string;
 }
 
+const e2eApiUrl = process.env.LUXESTAY_E2E_API_URL;
+
 function credentials(prefix: 'CUSTOMER' | 'ADMIN' | 'OWNER'): Credentials | null {
   const username = process.env[`LUXESTAY_E2E_${prefix}_USERNAME`];
   const password = process.env[`LUXESTAY_E2E_${prefix}_PASSWORD`];
@@ -18,6 +20,34 @@ async function expectStablePage(page: Page): Promise<void> {
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth
   );
   expect(hasOverflow).toBe(false);
+}
+
+function collectRuntimeIssues(page: Page): string[] {
+  const issues: string[] = [];
+  page.on('pageerror', error => issues.push(`pageerror: ${error.message}`));
+  page.on('console', message => {
+    if (message.type() === 'error') issues.push(`console: ${message.text()}`);
+  });
+  return issues;
+}
+
+async function expectRouteComponent(page: Page, selector: string, issues: string[]): Promise<void> {
+  try {
+    await page.locator(selector).waitFor({ state: 'visible', timeout: 15_000 });
+  } catch {
+    throw new Error(`Route component ${selector} did not mount. ${issues.join(' | ') || 'No browser runtime error was reported.'}`);
+  }
+}
+
+async function routeToE2eBackend(page: Page): Promise<void> {
+  if (!e2eApiUrl) return;
+  const targetPrefix = e2eApiUrl.replace(/\/$/, '');
+  await page.route('**/api/**', route => {
+    const original = route.request().url();
+    return original.startsWith('http://localhost:8080/api')
+      ? route.continue({ url: original.replace('http://localhost:8080/api', targetPrefix) })
+      : route.continue();
+  });
 }
 
 async function loginCustomer(page: Page, account: Credentials): Promise<void> {
@@ -39,13 +69,16 @@ async function loginStaff(page: Page, account: Credentials): Promise<void> {
 test.describe('Real environment smoke', () => {
   test.describe.configure({ mode: 'serial', timeout: 60_000 });
 
+  test.beforeEach(async ({ page }) => routeToE2eBackend(page));
+
   test('public routes expose real recovery states without mocks', async ({ page }) => {
+    const runtimeIssues = collectRuntimeIssues(page);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: 'LuxeStay', exact: true })).toBeVisible();
     await expectStablePage(page);
 
     await page.goto('/search', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('app-property-search-page main.search-page')).toBeVisible();
+    await expectRouteComponent(page, 'app-property-search-page main.search-page', runtimeIssues);
     await expectStablePage(page);
 
     await page.goto('/hotel/999999', { waitUntil: 'domcontentloaded' });

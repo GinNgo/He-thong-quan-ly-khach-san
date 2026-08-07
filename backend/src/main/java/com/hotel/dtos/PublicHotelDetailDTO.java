@@ -25,6 +25,7 @@ public class PublicHotelDetailDTO {
     private Long provinceId;
     private Long wardId;
     private List<String> galleryUrls;
+    private PublicPlacementDisclosureDTO sponsoredPlacement;
 
     public static PublicHotelDetailDTO from(Hotel hotel) {
         PublicHotelDetailDTO dto = new PublicHotelDetailDTO();

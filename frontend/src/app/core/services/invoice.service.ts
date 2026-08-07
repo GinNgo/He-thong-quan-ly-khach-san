@@ -27,6 +27,9 @@ export interface CustomerInvoiceSummary {
   finalizedAt?: string;
   totalAmount: FinancialAmount;
   status: string;
+  currency?: 'VND';
+  customerSnapshotJson?: string;
+  propertySnapshotJson?: string;
 }
 
 export interface PropertyInvoiceLine {
@@ -97,6 +100,7 @@ export interface InvoiceEmailResult {
   invoiceNumber: string;
   recipient: string;
   sent: boolean;
+  contentSha256: string;
   correlationId: string | null;
 }
 
@@ -115,6 +119,10 @@ export class InvoiceService {
     return this.http.get<CustomerInvoiceSummary[]>(`${this.apiUrl}/finalized/my`);
   }
 
+  getFinalizedInvoices(): Observable<CustomerInvoiceSummary[]> {
+    return this.http.get<CustomerInvoiceSummary[]>(`${environment.apiUrl}/management/invoices/finalized`);
+  }
+
   getInvoice(invoiceId: number): Observable<PropertyInvoiceDetail> {
     return this.http.get<PropertyInvoiceDetail>(`${this.apiUrl}/${invoiceId}`);
   }
@@ -130,10 +138,13 @@ export class InvoiceService {
     return this.http.post<InvoiceEmailResult>(`${this.apiUrl}/${invoiceId}/email`, null);
   }
 
-  getInvoiceByReservation(reservationId: number): Observable<Invoice> {
-    return this.http.get<Invoice>(`${this.apiUrl}/reservation/${reservationId}`);
+  getInvoiceByReservation(reservationId: number): Observable<PropertyInvoiceDetail> {
+    return this.http.get<PropertyInvoiceDetail>(
+      `${environment.apiUrl}/management/reservations/${reservationId}/invoice`,
+    );
   }
 
+  /** @deprecated Checkout finalizes invoices; this route only returns that existing snapshot. */
   generateInvoice(reservationId: number): Observable<Invoice> {
     return this.http.post<Invoice>(`${this.apiUrl}/reservation/${reservationId}`, {});
   }

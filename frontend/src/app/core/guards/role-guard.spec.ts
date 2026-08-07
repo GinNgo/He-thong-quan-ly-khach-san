@@ -45,6 +45,7 @@ describe('roleGuard', () => {
       'PROPERTY_OWNER',
       'HOTEL_ADMIN',
       'HOTEL_MANAGER',
+      'HOUSEKEEPING',
       'SUPER_ADMIN',
       'ADMIN',
     ]);

@@ -16,6 +16,10 @@ jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000}
 
+payment:
+  provider-recovery:
+    enabled: false
+
 server:
   port: 8080
 
@@ -29,5 +33,13 @@ app:
   mail:
     password-reset-enabled: false
     password-reset-url: http://localhost:4200/reset-password
+  location-import:
+    enabled: true
+  e2e-fixtures:
+    enabled: true
+  demo-data:
+    enabled: false
+    legacy-seed: false
+    nationwide-property-seed: false
   accommodation-import:
     enabled: false

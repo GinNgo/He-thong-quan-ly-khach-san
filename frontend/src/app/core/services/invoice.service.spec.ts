@@ -26,10 +26,26 @@ describe('InvoiceService finalized invoice operations', () => {
     request.flush([]);
   });
 
+  it('loads finalized invoices for authorized property staff', () => {
+    service.getFinalizedInvoices().subscribe();
+
+    const request = http.expectOne(`${environment.apiUrl}/management/invoices/finalized`);
+    expect(request.request.method).toBe('GET');
+    request.flush([]);
+  });
+
   it('loads the immutable invoice detail by id', () => {
     service.getInvoice(88).subscribe();
 
     const request = http.expectOne(`${environment.apiUrl}/invoices/88`);
+    expect(request.request.method).toBe('GET');
+    request.flush({});
+  });
+
+  it('loads the finalized invoice by reservation without using legacy generation', () => {
+    service.getInvoiceByReservation(42).subscribe();
+
+    const request = http.expectOne(`${environment.apiUrl}/management/reservations/42/invoice`);
     expect(request.request.method).toBe('GET');
     request.flush({});
   });
@@ -56,6 +72,7 @@ describe('InvoiceService finalized invoice operations', () => {
       invoiceNumber: 'INV-88',
       recipient: 'verified@example.com',
       sent: true,
+      contentSha256: 'abc123',
       correlationId: null,
     });
   });

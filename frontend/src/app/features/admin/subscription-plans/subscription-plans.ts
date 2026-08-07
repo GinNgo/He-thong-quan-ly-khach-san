@@ -48,11 +48,6 @@ export class SubscriptionPlansComponent implements OnInit {
     });
   }
 
-  purchase(plan: SubscriptionPlan) {
-    // Implement purchase logic via Payment API
-    this.messageService.add({ severity: 'info', summary: 'Chức năng', detail: `Đang chuyển hướng thanh toán cho gói ${plan.nameVi}...` });
-  }
-
   isCurrentPlan(plan: SubscriptionPlan): boolean {
     return this.mySubscriptions.some(sub => sub.plan.id === plan.id && sub.status === 'ACTIVE');
   }

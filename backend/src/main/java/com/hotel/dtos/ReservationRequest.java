@@ -16,6 +16,7 @@ public class ReservationRequest {
     private String firstName;
     private String lastName;
     private String phone;
+    private String couponCode;
 
     // Getters and Setters omitted for brevity
     public Long getRoomTypeId() { return roomTypeId; }
@@ -53,4 +54,7 @@ public class ReservationRequest {
 
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
+
+    public String getCouponCode() { return couponCode; }
+    public void setCouponCode(String couponCode) { this.couponCode = couponCode; }
 }

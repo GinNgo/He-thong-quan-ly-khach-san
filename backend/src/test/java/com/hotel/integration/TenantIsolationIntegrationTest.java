@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -101,6 +102,14 @@ public class TenantIsolationIntegrationTest {
             role.setName("Owner");
             return roleRepository.save(role);
         });
+        Role housekeepingRole = roleRepository.findByCode("HOUSEKEEPING").orElseGet(() -> {
+            Role role = new Role();
+            role.setCode("HOUSEKEEPING");
+            role.setName("Housekeeping");
+            role.setStatus("ACTIVE");
+            role.setSystemRole(true);
+            return roleRepository.save(role);
+        });
 
         // Tenant A
         hotelA = new Hotel();
@@ -123,6 +132,7 @@ public class TenantIsolationIntegrationTest {
         staffA.setPasswordHash("pass");
         staffA.setFullName("Staff A");
         staffA.setStatus("ACTIVE");
+        staffA.setRoles(Set.of(ownerRole, housekeepingRole));
         staffA = userRepository.save(staffA);
 
         UserProperty upA = new UserProperty();
@@ -170,6 +180,7 @@ public class TenantIsolationIntegrationTest {
         staffB.setPasswordHash("pass");
         staffB.setFullName("Staff B");
         staffB.setStatus("ACTIVE");
+        staffB.setRoles(Set.of(ownerRole, housekeepingRole));
         staffB = userRepository.save(staffB);
 
         UserProperty upB = new UserProperty();
@@ -200,8 +211,8 @@ public class TenantIsolationIntegrationTest {
         roomB.setHotel(hotelB);
         roomB.setRoomType(typeB);
         roomB.setRoomNumber("101");
-        roomB.setStatus("AVAILABLE");
-        roomB.setHousekeepingStatus("CLEAN");
+        roomB.setStatus("CLEANING");
+        roomB.setHousekeepingStatus("CLEANING");
         roomB.setFloor(1);
         roomB.setMaintenanceStatus("NONE");
         roomB.setMaxGuests(3);
@@ -211,8 +222,8 @@ public class TenantIsolationIntegrationTest {
         roomA.setHotel(hotelA);
         roomA.setRoomType(typeA);
         roomA.setRoomNumber("A101");
-        roomA.setStatus("DIRTY");
-        roomA.setHousekeepingStatus("DIRTY");
+        roomA.setStatus("CLEANING");
+        roomA.setHousekeepingStatus("CLEANING");
         roomA.setFloor(1);
         roomA.setMaintenanceStatus("NONE");
         roomA.setMaxGuests(3);
@@ -234,13 +245,19 @@ public class TenantIsolationIntegrationTest {
         taskA = new HousekeepingTask();
         taskA.setHotel(hotelA);
         taskA.setRoom(roomA);
-        taskA.setStatus("PENDING");
+        taskA.setStatus("IN_PROGRESS");
+        taskA.setAssignedTo(staffA);
+        taskA.setAssignedAt(LocalDateTime.now().minusMinutes(10));
+        taskA.setStartedAt(LocalDateTime.now().minusMinutes(5));
         taskA = housekeepingTaskRepository.save(taskA);
 
         taskB = new HousekeepingTask();
         taskB.setHotel(hotelB);
         taskB.setRoom(roomB);
-        taskB.setStatus("PENDING");
+        taskB.setStatus("IN_PROGRESS");
+        taskB.setAssignedTo(staffB);
+        taskB.setAssignedAt(LocalDateTime.now().minusMinutes(10));
+        taskB.setStartedAt(LocalDateTime.now().minusMinutes(5));
         taskB = housekeepingTaskRepository.save(taskB);
     }
 
@@ -269,16 +286,21 @@ public class TenantIsolationIntegrationTest {
     private CustomUserDetails createUserDetails(User user, Hotel hotel) {
         List<GrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("PROPERTY_OWNER"));
+        authorities.add(new SimpleGrantedAuthority("HOUSEKEEPING"));
 
         Map<String, Integer> limits = new HashMap<>();
         limits.put("MAX_ROOMS", 100);
         limits.put("MAX_ROOM_TYPES", 100);
 
+        Map<FunctionCode, Integer> permissions = new HashMap<>();
+        permissions.put(FunctionCode.HOUSEKEEPING,
+                ActionCode.VIEW | ActionCode.UPDATE | ActionCode.APPROVE);
+
         return new CustomUserDetails(
                 user.getUsername(),
                 user.getPasswordHash(),
                 authorities,
-                new HashMap<>(),
+                permissions,
                 user.getId(),
                 hotel.getId(),
                 limits
@@ -335,8 +357,10 @@ public class TenantIsolationIntegrationTest {
 
     @Test
     void tenantACannotCompleteHousekeepingOfTenantB() throws Exception {
-        mockMvc.perform(post("/api/management/housekeeping/{taskId}/complete", taskB.getId())
-                        .with(user(createUserDetails(staffA, hotelA))))
+        mockMvc.perform(post("/api/housekeeping/tasks/{taskId}/complete", taskB.getId())
+                        .with(user(createUserDetails(staffA, hotelA)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedVersion\":" + taskB.getVersion() + "}"))
                 .andExpect(status().isNotFound());
     }
 
@@ -352,6 +376,26 @@ public class TenantIsolationIntegrationTest {
         mockMvc.perform(post("/api/invoices/reservation/{reservationId}", reservationDWithoutInvoice.getId())
                         .with(user(createCustomerDetails(customerC))))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void customerDReceivesConflictForOwnReservationBeforeInvoiceFinalization() throws Exception {
+        mockMvc.perform(post("/api/invoices/reservation/{reservationId}", reservationDWithoutInvoice.getId())
+                        .with(user(createCustomerDetails(customerD))))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void customerCReceivesNotFoundForNonexistentReservation() throws Exception {
+        mockMvc.perform(post("/api/invoices/reservation/{reservationId}", Long.MAX_VALUE)
+                        .with(user(createCustomerDetails(customerC))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void unauthenticatedInvoiceGenerationReturns401() throws Exception {
+        mockMvc.perform(post("/api/invoices/reservation/{reservationId}", reservationDWithoutInvoice.getId()))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -373,16 +417,27 @@ public class TenantIsolationIntegrationTest {
 
     @Test
     void tenantACanCompleteOwnHousekeepingTask() throws Exception {
-        mockMvc.perform(post("/api/management/housekeeping/{taskId}/complete", taskA.getId())
-                        .with(user(createUserDetails(staffA, hotelA))))
+        String request = "{\"expectedVersion\":" + taskA.getVersion() + "}";
+        mockMvc.perform(post("/api/housekeeping/tasks/{taskId}/complete", taskA.getId())
+                        .with(user(createUserDetails(staffA, hotelA)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/housekeeping/tasks/{taskId}/complete", taskA.getId())
+                        .with(user(createUserDetails(staffA, hotelA)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
                 .andExpect(status().isOk());
     }
 
     @Test
-    void superAdminCanCompleteHousekeepingOfAnyTenant() throws Exception {
-        mockMvc.perform(post("/api/management/housekeeping/{taskId}/complete", taskB.getId())
-                        .with(user(createSuperAdminDetails())))
-                .andExpect(status().isOk());
+    void superAdminCannotBypassHousekeepingTaskOwnership() throws Exception {
+        mockMvc.perform(post("/api/housekeeping/tasks/{taskId}/complete", taskB.getId())
+                        .with(user(createSuperAdminDetails()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedVersion\":" + taskB.getVersion() + "}"))
+                .andExpect(status().isConflict());
     }
 
     @Test

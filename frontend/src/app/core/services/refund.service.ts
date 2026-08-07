@@ -34,6 +34,8 @@ export interface PropertyRefundResult {
   requestedAt: string;
   completedAt?: string | null;
   replayed: boolean;
+  provider?: string | null;
+  environment?: RefundProviderEnvironment | null;
 }
 
 export interface PlatformRefundResult extends PropertyRefundResult {
@@ -83,6 +85,10 @@ export class RefundService {
     );
   }
 
+  listPropertyRefunds(propertyId: number): Observable<PropertyRefundResult[]> {
+    return this.http.get<PropertyRefundResult[]>(this.propertyRefundsUrl, { params: { propertyId } });
+  }
+
   approvePropertyRefund(
     refundPublicId: string,
     options?: RefundMutationOptions,
@@ -103,6 +109,13 @@ export class RefundService {
       `${this.propertyRefundsUrl}/${this.encode(refundPublicId)}/attempts`,
       request,
       { headers: this.mutationHeaders(options) },
+    );
+  }
+
+  confirmPropertySimulatorRefund(refundPublicId: string): Observable<unknown> {
+    return this.http.post(
+      `${environment.apiUrl}/financial-simulator/property-refunds/${this.encode(refundPublicId)}/confirm`,
+      null,
     );
   }
 

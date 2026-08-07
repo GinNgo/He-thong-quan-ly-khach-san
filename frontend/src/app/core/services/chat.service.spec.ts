@@ -18,6 +18,7 @@ describe('ChatService', () => {
         {
           provide: AuthService,
           useValue: {
+            logout$: new Subject<void>(),
             getAccessToken: () => 'test-token',
             getCurrentUserId: () => 42,
             isLoggedIn: () => true,
@@ -38,7 +39,7 @@ describe('ChatService', () => {
   it('uses the principal-scoped history endpoint', () => {
     service.getMyHistory().subscribe();
 
-    const request = http.expectOne('http://localhost:8080/api/chat/me/history');
+    const request = http.expectOne('/api/chat/me/history');
     expect(request.request.method).toBe('GET');
     request.flush([]);
   });

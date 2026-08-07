@@ -24,6 +24,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Boolean existsByUsername(String username);
     Boolean existsByEmail(String email);
 
+    @Query("select distinct user from User user join user.roles role where role.code = 'CUSTOMER'")
+    List<User> findCustomers();
+
     @Query("select count(user) from User user join user.roles role where role.id = :roleId")
     long countByRoleId(@Param("roleId") Long roleId);
 
@@ -50,4 +53,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean isUserAccessible(
             @Param("userId") Long userId,
             @Param("hotelIds") Collection<Long> hotelIds);
+
+    @Query("""
+            select distinct user.username
+            from User user
+            left join UserProperty up
+              on up.user = user
+             and up.status = 'ACTIVE'
+            left join user.roles role
+            where user.status = 'ACTIVE'
+              and (user.hotel.id = :hotelId
+                   or up.hotel.id = :hotelId
+                   or role.code = 'SUPER_ADMIN')
+            """)
+    List<String> findSupportRecipientUsernames(@Param("hotelId") Long hotelId);
 }

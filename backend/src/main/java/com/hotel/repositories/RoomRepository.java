@@ -20,6 +20,7 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     long countByHotelIdIn(java.util.Collection<Long> hotelIds);
     long countByHotelIdAndStatus(Long hotelId, String status);
     long countByHotelIdAndHousekeepingStatus(Long hotelId, String housekeepingStatus);
+    long countByIsDemoTrue();
 
     @Query("""
             select count(room)

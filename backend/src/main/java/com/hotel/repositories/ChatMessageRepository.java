@@ -12,16 +12,5 @@ import java.util.List;
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
     long countByReceiverIdAndIsReadFalse(Long receiverId);
 
-    boolean existsBySenderIdAndReceiverId(Long senderId, Long receiverId);
-
-    @Query("""
-            SELECT m FROM ChatMessage m
-            WHERE (m.senderId = :customerId AND m.receiverId = 0)
-               OR m.receiverId = :customerId
-            ORDER BY m.timestamp ASC
-            """)
-    List<ChatMessage> findCustomerSupportHistory(@Param("customerId") Long customerId);
-
-    @Query("SELECT DISTINCT m.senderId FROM ChatMessage m WHERE m.receiverId = 0")
-    List<Long> findDistinctQueueCustomerIds();
+    List<ChatMessage> findByConversationIdAndLegacyUnscopedFalseOrderByTimestampAsc(Long conversationId);
 }

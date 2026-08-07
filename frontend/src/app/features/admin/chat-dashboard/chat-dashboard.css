@@ -185,6 +185,7 @@
 }
 
 .conversation-copy strong,
+.conversation-copy small,
 .conversation-copy span {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -196,6 +197,7 @@
   font-size: var(--hotel-text-sm);
 }
 
+.conversation-copy small,
 .conversation-copy span,
 .conversation-item time {
   color: var(--hotel-text-muted);

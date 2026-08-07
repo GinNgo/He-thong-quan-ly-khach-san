@@ -52,6 +52,13 @@ public class PropertyRefundController {
         return ResponseEntity.ok(refundService.approve(refundId, correlationId));
     }
 
+    @GetMapping("/api/property-refunds")
+    @Permission(function = FunctionCode.PROPERTY_REFUND, action = ActionCode.VIEW)
+    public ResponseEntity<java.util.List<PropertyRefundService.RefundResult>> list(
+            @org.springframework.web.bind.annotation.RequestParam Long propertyId) {
+        return ResponseEntity.ok(refundService.listForProperty(propertyId));
+    }
+
     @PostMapping("/api/property-refunds/{refundId}/attempts")
     @Permission(function = FunctionCode.PROPERTY_REFUND, action = ActionCode.APPROVE)
     public ResponseEntity<RefundProviderOrchestrator.AttemptResult> createAttempt(

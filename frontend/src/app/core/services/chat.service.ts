@@ -9,6 +9,8 @@ import { ClientObservabilityService } from './client-observability.service';
 
 export interface ChatMessage {
   id?: number;
+  conversationId: number;
+  hotelId: number;
   senderId: number;
   receiverId: number;
   content: string;
@@ -17,8 +19,14 @@ export interface ChatMessage {
 }
 
 export interface ChatConversation {
+  conversationId: number;
   customerId: number;
   customerName: string;
+  hotelId: number;
+  hotelName: string;
+  reservationId?: number;
+  assignedAgentId?: number;
+  status: 'OPEN' | 'ASSIGNED' | 'ESCALATED' | 'CLOSED';
   lastMessage: string;
   lastMessageAt?: string;
 }
@@ -78,7 +86,7 @@ export class ChatService {
         this.setConnectionState('connected', '');
         client.subscribe('/user/queue/messages', (message: Message) => this.publishIncoming(message));
         if (mode === 'support') {
-          client.subscribe('/topic/support/messages', (message: Message) => this.publishIncoming(message));
+          client.subscribe('/user/queue/support/messages', (message: Message) => this.publishIncoming(message));
         }
       },
       onStompError: (frame) => {
@@ -116,12 +124,12 @@ export class ChatService {
     }
   }
 
-  sendCustomerMessage(content: string): boolean {
-    return this.publish('/app/chat.support.send', { content });
+  sendCustomerMessage(content: string, hotelId?: number, reservationId?: number): boolean {
+    return this.publish('/app/chat.support.send', { content, hotelId, reservationId });
   }
 
-  sendSupportReply(customerId: number, content: string): boolean {
-    return this.publish('/app/chat.support.reply', { customerId, content });
+  sendSupportReply(conversationId: number, content: string): boolean {
+    return this.publish('/app/chat.support.reply', { conversationId, content });
   }
 
   getMyHistory(): Observable<ChatMessage[]> {
@@ -132,8 +140,16 @@ export class ChatService {
     return this.http.get<ChatConversation[]>(`${this.apiUrl}/support/conversations`);
   }
 
-  getSupportHistory(customerId: number): Observable<ChatMessage[]> {
-    return this.http.get<ChatMessage[]>(`${this.apiUrl}/support/conversations/${customerId}`);
+  getSupportHistory(conversationId: number): Observable<ChatMessage[]> {
+    return this.http.get<ChatMessage[]>(`${this.apiUrl}/support/conversations/${conversationId}`);
+  }
+
+  assignConversation(conversationId: number): Observable<ChatConversation> {
+    return this.http.post<ChatConversation>(`${this.apiUrl}/support/conversations/${conversationId}/assign`, {});
+  }
+
+  escalateConversation(conversationId: number): Observable<ChatConversation> {
+    return this.http.post<ChatConversation>(`${this.apiUrl}/support/conversations/${conversationId}/escalate`, {});
   }
 
   isConnected(): boolean {
@@ -154,6 +170,7 @@ export class ChatService {
       });
       return true;
     } catch {
+      this.observability.recordStompFailure('chat', 'publish', this.connectionCorrelationId);
       this.setConnectionState('error', 'Không thể gửi tin nhắn. Hãy thử lại.');
       return false;
     }
@@ -164,6 +181,7 @@ export class ChatService {
     try {
       this.messageSubject.next(JSON.parse(message.body) as ChatMessage);
     } catch {
+      this.observability.recordStompFailure('chat', 'payload', this.connectionCorrelationId);
       this.setConnectionState('error', 'Tin nhắn nhận được không hợp lệ.');
     }
   }

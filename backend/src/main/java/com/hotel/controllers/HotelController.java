@@ -29,6 +29,9 @@ public class HotelController {
     @Autowired
     private com.hotel.services.PropertyRegistrationService propertyRegistrationService;
 
+    @Autowired
+    private com.hotel.services.PublicPlacementDisclosureService publicPlacementDisclosureService;
+
     @GetMapping("/public/search")
     public ResponseEntity<List<Hotel>> searchHotels(
             @RequestParam(required = false) String city,
@@ -62,7 +65,11 @@ public class HotelController {
     @GetMapping("/public/{id}")
     public ResponseEntity<PublicHotelDetailDTO> getHotelById(@PathVariable Long id) {
         return hotelService.getHotelById(id)
-                .map(PublicHotelDetailDTO::from)
+                .map(hotel -> {
+                    PublicHotelDetailDTO dto = PublicHotelDetailDTO.from(hotel);
+                    dto.setSponsoredPlacement(publicPlacementDisclosureService.searchDisclosure(hotel.getId()).orElse(null));
+                    return dto;
+                })
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -73,6 +80,14 @@ public class HotelController {
             return ResponseEntity.status(401).build();
         }
         return ResponseEntity.ok(hotelService.getHotelsByOwnerId(userDetails.getUserId()));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/accessible")
+    public ResponseEntity<List<PublicHotelDetailDTO>> getAccessibleHotels() {
+        return ResponseEntity.ok(hotelService.getAccessibleHotels().stream()
+                .map(PublicHotelDetailDTO::from)
+                .toList());
     }
 
     @PreAuthorize("hasAuthority('SUPER_ADMIN')")

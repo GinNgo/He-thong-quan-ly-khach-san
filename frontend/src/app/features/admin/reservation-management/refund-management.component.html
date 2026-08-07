@@ -1,25 +1,43 @@
 <section class="refund-management" aria-labelledby="refund-management-title">
   <div class="management-heading">
     <div>
-      <span class="eyebrow">OPERATIONS / TÀI CHÍNH</span>
+      <span class="eyebrow">VẬN HÀNH TÀI CHÍNH</span>
       <h2 id="refund-management-title">Duyệt hoàn tiền</h2>
-      <p>Kiểm tra yêu cầu trước khi chuyển sang provider. Số dư do backend khóa và tính lại.</p>
+      <p>Kiểm tra yêu cầu trước khi chuyển sang cổng thanh toán. Số dư do máy chủ khóa và tính lại.</p>
     </div>
-    <span class="security-pill"><i class="pi pi-lock"></i> APPROVE permission</span>
+    <span class="security-pill"><i class="pi pi-lock"></i> Cần quyền duyệt hoàn tiền</span>
+  </div>
+  <div class="refund-toolbar">
+    <label>
+      <span>Cơ sở</span>
+      <select [(ngModel)]="selectedPropertyId" (change)="loadRefunds()" [disabled]="loading || !!approvingId || !!dispatchingId">
+        <option [ngValue]="null">Chọn cơ sở</option>
+        <option *ngFor="let property of properties" [ngValue]="property.id">{{ property.nameVi }}</option>
+      </select>
+    </label>
+    <button type="button" class="reload-button" (click)="loadRefunds()" [disabled]="loading || !selectedPropertyId">
+      <i [class]="loading ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'"></i> Tải lại
+    </button>
   </div>
   <div *ngIf="error" class="feedback error" role="alert">{{ error }}</div>
   <div *ngIf="success" class="feedback success" role="status">{{ success }}</div>
-  <div *ngIf="!refunds.length" class="empty-state"><i class="pi pi-inbox"></i><strong>Không có yêu cầu chờ duyệt</strong><span>No pending refund requests.</span></div>
+  <div *ngIf="!loading && !refunds.length" class="empty-state"><i class="pi pi-inbox"></i><strong>Chưa có yêu cầu hoàn tiền</strong><span>Yêu cầu tự động xuất hiện khi khách hủy booking đã thanh toán.</span></div>
   <div *ngIf="refunds.length" class="refund-table" role="table">
-    <div class="refund-row refund-header" role="row"><span>Yêu cầu</span><span>Số tiền</span><span>Trạng thái</span><span></span></div>
+    <div class="refund-row refund-header" role="row"><span>Yêu cầu</span><span>Số tiền</span><span>Trạng thái</span><span>Thao tác</span></div>
     <div class="refund-row" role="row" *ngFor="let refund of refunds" [attr.data-refund-id]="refund.publicId">
       <div><strong>{{ refund.publicId }}</strong><small>{{ refund.originalTransactionPublicId }}</small></div>
       <strong>{{ refund.requestedAmount | number }} {{ refund.currency }}</strong>
       <span class="status-chip" [class]="statusTone(refund.status)">{{ statusLabel(refund.status) }}</span>
-      <button type="button" (click)="approve(refund)" [disabled]="!canApprove(refund.status) || approvingId === refund.publicId">
+      <div class="row-actions">
+      <button *ngIf="canApprove(refund.status)" type="button" (click)="approve(refund)" [disabled]="approvingId === refund.publicId || dispatchingId !== null">
         <i [class]="approvingId === refund.publicId ? 'pi pi-spin pi-spinner' : 'pi pi-check'"></i>
         {{ approvingId === refund.publicId ? 'Đang duyệt' : 'Duyệt' }}
       </button>
+      <button *ngIf="refund.status === 'PENDING_PROVIDER'" type="button" (click)="dispatch(refund)" [disabled]="dispatchingId === refund.publicId || approvingId !== null">
+        <i [class]="dispatchingId === refund.publicId ? 'pi pi-spin pi-spinner' : 'pi pi-send'"></i>
+        {{ dispatchingId === refund.publicId ? 'Đang gửi' : 'Gửi sang cổng' }}
+      </button>
+      </div>
     </div>
   </div>
 </section>

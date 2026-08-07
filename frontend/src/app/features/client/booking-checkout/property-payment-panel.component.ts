@@ -12,7 +12,7 @@ import {
   inject,
 } from '@angular/core';
 import { Subscription, timer } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { finalize, switchMap } from 'rxjs/operators';
 import { LocaleService, SupportedLocale } from '../../../core/i18n/locale.service';
 import {
   PropertyPaymentAttempt,
@@ -45,6 +45,8 @@ interface PaymentPanelCopy {
   simulator: string;
   sandbox: string;
   production: string;
+  confirmSimulator: string;
+  confirmingSimulator: string;
 }
 
 const COPY: Record<SupportedLocale, PaymentPanelCopy> = {
@@ -73,6 +75,8 @@ const COPY: Record<SupportedLocale, PaymentPanelCopy> = {
     simulator: 'Mô phỏng - không dùng tiền thật',
     sandbox: 'Sandbox nhà cung cấp',
     production: 'Sản xuất',
+    confirmSimulator: 'Xác nhận thanh toán mô phỏng',
+    confirmingSimulator: 'Đang xác nhận...',
   },
   en: {
     eyebrow: 'Secure payment',
@@ -99,6 +103,8 @@ const COPY: Record<SupportedLocale, PaymentPanelCopy> = {
     simulator: 'Simulator - no real money',
     sandbox: 'Provider sandbox',
     production: 'Production',
+    confirmSimulator: 'Confirm simulated payment',
+    confirmingSimulator: 'Confirming...',
   },
 };
 
@@ -192,6 +198,10 @@ const COPY: Record<SupportedLocale, PaymentPanelCopy> = {
           <strong>{{ attempt.provider }}</strong>
           <p>{{ copy.onlineNote }}</p>
         </div>
+        <button *ngIf="canConfirmSimulator" type="button" class="simulator-confirm" [disabled]="confirmingSimulator" (click)="confirmSimulator()">
+          <i [class]="confirmingSimulator ? 'pi pi-spin pi-spinner' : 'pi pi-check-circle'" aria-hidden="true"></i>
+          {{ confirmingSimulator ? copy.confirmingSimulator : copy.confirmSimulator }}
+        </button>
       </article>
 
       <div *ngIf="pollError" class="poll-error" role="alert">
@@ -252,7 +262,9 @@ const COPY: Record<SupportedLocale, PaymentPanelCopy> = {
     .qr-data img { width: min(210px, 100%); aspect-ratio: 1; object-fit: contain; }
     .qr-data code { max-width: 100%; overflow-wrap: anywhere; color: #334155; font-size: 11px; }
     .provider-card { display: flex; gap: 16px; align-items: center; }
+    .provider-card > div:nth-child(2) { flex: 1; }
     .provider-card strong { font-size: 18px; }
+    .simulator-confirm { display: inline-flex; align-items: center; justify-content: center; gap: 7px; color: #fff; background: #0f766e; }
     .poll-error { display: flex; align-items: center; gap: 10px; margin-top: 14px; border: 1px solid #fed7aa; border-radius: 14px; padding: 12px; color: #9a3412; background: #fff7ed; }
     .poll-error span { flex: 1; font-size: 13px; }
     .poll-error button { color: #9a3412; background: #ffedd5; }
@@ -278,6 +290,7 @@ export class PropertyPaymentPanelComponent implements OnInit, OnChanges, OnDestr
   polling = false;
   pollError = false;
   copied = false;
+  confirmingSimulator = false;
 
   ngOnInit(): void {
     this.clockSubscription = timer(0, 1000).subscribe(() => {
@@ -351,6 +364,36 @@ export class PropertyPaymentPanelComponent implements OnInit, OnChanges, OnDestr
 
   get canRetryPayment(): boolean {
     return ['FAILED', 'EXPIRED', 'CANCELLED'].includes(this.attempt.status);
+  }
+
+  get canConfirmSimulator(): boolean {
+    return this.attempt.environment === 'SIMULATOR'
+      && this.attempt.provider === 'SIMULATOR'
+      && this.isActive;
+  }
+
+  confirmSimulator(): void {
+    if (!this.canConfirmSimulator || this.confirmingSimulator) return;
+    this.confirmingSimulator = true;
+    this.pollSubscription?.unsubscribe();
+    this.payments.confirmSimulator(this.attempt.attemptId).pipe(
+      switchMap(() => this.payments.getAttempt(this.attempt.attemptId)),
+      finalize(() => {
+        this.confirmingSimulator = false;
+        this.changeDetector.markForCheck();
+      }),
+    ).subscribe({
+      next: (updated) => {
+        this.attempt = updated;
+        this.attemptChange.emit(updated);
+        this.startPolling();
+      },
+      error: () => {
+        this.pollError = true;
+        this.polling = false;
+        this.changeDetector.markForCheck();
+      },
+    });
   }
 
   retryPolling(): void {

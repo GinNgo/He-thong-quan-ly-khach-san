@@ -20,6 +20,18 @@ public interface UserPropertyRepository extends JpaRepository<UserProperty, Long
     List<UserProperty> findByHotelId(Long hotelId);
     java.util.Optional<UserProperty> findByUserIdAndHotelIdAndRelationshipType(Long userId, Long hotelId, String relationshipType);
     List<UserProperty> findByHotelIdAndRelationshipTypeAndStatus(Long hotelId, String relationshipType, String status);
+    boolean existsByUserIdAndHotelIdAndStatus(Long userId, Long hotelId, String status);
+
+    @Query("""
+            select distinct up.user
+            from UserProperty up
+            join up.user.roles role
+            where up.hotel.id = :hotelId
+              and up.status = 'ACTIVE'
+              and role.code = 'HOUSEKEEPING'
+            order by up.user.fullName, up.user.username
+            """)
+    List<com.hotel.entities.User> findActiveHousekeepingUsers(@Param("hotelId") Long hotelId);
     long countByHotelIdAndRelationshipTypeAndStatus(Long hotelId, String relationshipType, String status);
     long countByUserIdAndRelationshipTypeAndStatus(Long userId, String relationshipType, String status);
     long countByUserIdAndStatus(Long userId, String status);

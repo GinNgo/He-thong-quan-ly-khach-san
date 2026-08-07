@@ -35,12 +35,20 @@ public class ChatController {
             @Valid @Payload CustomerChatMessageRequest request,
             Principal principal) {
         CustomUserDetails customer = authorizationService.requireUser(principal);
-        ChatMessageDTO savedMessage = chatService.sendToSupport(customer, request.getContent());
+        ChatMessageDTO savedMessage = chatService.sendToSupport(
+                customer,
+                request.getHotelId(),
+                request.getReservationId(),
+                request.getContent());
         messagingTemplate.convertAndSendToUser(
                 customer.getUsername(),
                 "/queue/messages",
                 savedMessage);
-        messagingTemplate.convertAndSend("/topic/support/messages", savedMessage);
+        chatService.getSupportRecipients(savedMessage.getHotelId()).forEach(username ->
+                messagingTemplate.convertAndSendToUser(
+                        username,
+                        "/queue/support/messages",
+                        savedMessage));
     }
 
     @MessageMapping("/chat.support.reply")
@@ -50,13 +58,16 @@ public class ChatController {
         CustomUserDetails support = authorizationService.requireUser(principal);
         ChatMessageDTO savedMessage = chatService.replyToCustomer(
                 support,
-                request.getCustomerId(),
+                request.getConversationId(),
                 request.getContent());
         messagingTemplate.convertAndSendToUser(
-                chatService.getUsername(request.getCustomerId()),
+                chatService.getUsername(savedMessage.getReceiverId()),
                 "/queue/messages",
                 savedMessage);
-        messagingTemplate.convertAndSend("/topic/support/messages", savedMessage);
+        messagingTemplate.convertAndSendToUser(
+                support.getUsername(),
+                "/queue/support/messages",
+                savedMessage);
     }
 
     @GetMapping("/api/chat/me/history")
@@ -71,13 +82,33 @@ public class ChatController {
         return ResponseEntity.ok(chatService.getSupportConversations(authorizationService.requireUser(principal)));
     }
 
-    @GetMapping("/api/chat/support/conversations/{customerId}")
+    @GetMapping("/api/chat/support/conversations/{conversationId}")
     @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.VIEW)
     public ResponseEntity<List<ChatMessageDTO>> getSupportHistory(
-            @PathVariable Long customerId,
+            @PathVariable Long conversationId,
             Principal principal) {
         return ResponseEntity.ok(chatService.getSupportHistory(
                 authorizationService.requireUser(principal),
-                customerId));
+                conversationId));
+    }
+
+    @PostMapping("/api/chat/support/conversations/{conversationId}/assign")
+    @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.CREATE)
+    public ResponseEntity<ChatConversationDTO> assignConversation(
+            @PathVariable Long conversationId,
+            Principal principal) {
+        return ResponseEntity.ok(chatService.claimConversation(
+                authorizationService.requireUser(principal),
+                conversationId));
+    }
+
+    @PostMapping("/api/chat/support/conversations/{conversationId}/escalate")
+    @Permission(function = FunctionCode.AI_CHAT, action = ActionCode.CREATE)
+    public ResponseEntity<ChatConversationDTO> escalateConversation(
+            @PathVariable Long conversationId,
+            Principal principal) {
+        return ResponseEntity.ok(chatService.escalateConversation(
+                authorizationService.requireUser(principal),
+                conversationId));
     }
 }

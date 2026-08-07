@@ -8,5 +8,6 @@ import java.util.List;
 public interface RoomTypeImageRepository extends JpaRepository<RoomTypeImage, Long> {
     List<RoomTypeImage> findByRoomTypeIdOrderBySortOrderAsc(Long roomTypeId);
     long countByRoomTypeHotelId(Long hotelId);
+    long countByIsDemoTrue();
     void deleteByRoomTypeId(Long roomTypeId);
 }

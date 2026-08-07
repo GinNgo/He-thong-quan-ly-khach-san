@@ -18,12 +18,16 @@ import { SelectModule } from 'primeng/select';
 import {
   CheckoutPreview,
   CheckoutResult,
+  FolioLine,
   NegativeAdjustmentType,
   PropertyCheckoutService,
   ServiceChargeType,
   SurchargeType,
 } from '../../../core/services/property-checkout.service';
-import { HotelServiceDTO } from '../../../core/services/hotel-service.service';
+import {
+  HotelServiceDTO,
+  HotelServiceService,
+} from '../../../core/services/hotel-service.service';
 
 type AdjustmentMode = 'SURCHARGE' | 'NEGATIVE_ADJUSTMENT';
 type BusyAction = 'PREVIEW' | 'SERVICE' | 'ADJUSTMENT' | 'OVERRIDE' | 'CHECKOUT' | null;
@@ -38,13 +42,13 @@ type BusyAction = 'PREVIEW' | 'SERVICE' | 'ADJUSTMENT' | 'OVERRIDE' | 'CHECKOUT'
 })
 export class ReservationCheckoutComponent implements OnChanges {
   private readonly checkoutService = inject(PropertyCheckoutService);
+  private readonly hotelService = inject(HotelServiceService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly servicesState = signal<HotelServiceDTO[]>([]);
+  private serviceMutation: { fingerprint: string; idempotencyKey: string } | null = null;
+  private adjustmentMutation: { fingerprint: string; idempotencyKey: string } | null = null;
 
   @Input({ required: true }) reservationId!: number;
-  @Input() set services(value: HotelServiceDTO[]) {
-    this.servicesState.set(value ?? []);
-  }
   @Output() completed = new EventEmitter<CheckoutResult>();
   @Output() closed = new EventEmitter<void>();
 
@@ -53,6 +57,14 @@ export class ReservationCheckoutComponent implements OnChanges {
   readonly errorMessage = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
   readonly checkoutOverrideId = signal<number | null>(null);
+  readonly catalogHotelId = signal<number | null>(null);
+  readonly catalogLoading = signal(false);
+  readonly catalogError = signal<string | null>(null);
+  readonly adjustmentHistory = computed<FolioLine[]>(() =>
+    (this.preview()?.folio.lines ?? []).filter((line) =>
+      ['SURCHARGE', 'DISCOUNT', 'ADJUSTMENT'].includes(line.category),
+    ),
+  );
 
   readonly serviceForm = this.formBuilder.nonNullable.group({
     serviceId: [0, [Validators.required, Validators.min(1)]],
@@ -74,7 +86,7 @@ export class ReservationCheckoutComponent implements OnChanges {
 
   readonly serviceOptions = computed(() =>
     this.servicesState()
-      .filter((service) => service.id && service.status !== 'INACTIVE')
+      .filter((service) => service.id && service.status === 'ACTIVE')
       .map((service) => ({
         label: `${service.nameVi} - ${this.formatVnd(service.price)}`,
         value: service.id as number,
@@ -91,11 +103,6 @@ export class ReservationCheckoutComponent implements OnChanges {
   );
 
   readonly isOverpaid = computed(() => this.preview()?.settlementState === 'OVERPAID');
-
-  readonly serviceChargeTypes: Array<{ label: string; value: ServiceChargeType }> = [
-    { label: 'Dịch vụ', value: 'SERVICE' },
-    { label: 'Minibar', value: 'MINIBAR' },
-  ];
 
   readonly surchargeTypes: Array<{ label: string; value: SurchargeType }> = [
     { label: 'Nhận phòng sớm', value: 'EARLY_CHECK_IN' },
@@ -123,6 +130,11 @@ export class ReservationCheckoutComponent implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['reservationId'] && this.reservationId > 0) {
       this.checkoutOverrideId.set(null);
+      this.servicesState.set([]);
+      this.catalogHotelId.set(null);
+      this.catalogError.set(null);
+      this.serviceMutation = null;
+      this.adjustmentMutation = null;
       this.loadPreview();
     }
   }
@@ -134,6 +146,7 @@ export class ReservationCheckoutComponent implements OnChanges {
       next: (preview) => {
         this.preview.set(preview);
         this.finishAction();
+        this.loadCatalogForProperty(preview.hotelId);
       },
       error: (error: unknown) => this.failAction(error, 'Không thể tải quyết toán hiện tại.'),
     });
@@ -144,15 +157,31 @@ export class ReservationCheckoutComponent implements OnChanges {
       this.serviceForm.markAllAsTouched();
       return;
     }
+    const request = this.serviceForm.getRawValue();
+    const mutation = this.serviceMutationFor(request);
     this.beginAction('SERVICE');
-    this.checkoutService.addServiceCharge(this.reservationId, this.serviceForm.getRawValue()).subscribe({
+    this.checkoutService.addServiceCharge(
+      this.reservationId,
+      request,
+      { idempotencyKey: mutation.idempotencyKey },
+    ).subscribe({
       next: () => {
+        this.serviceMutation = null;
         this.successMessage.set('Đã thêm dịch vụ theo giá cấu hình của hệ thống.');
         this.serviceForm.patchValue({ serviceId: 0, quantity: 1 });
         this.refreshAfterMutation();
       },
       error: (error: unknown) => this.failAction(error, 'Không thể thêm dịch vụ.'),
     });
+  }
+
+  selectChargeType(chargeType: ServiceChargeType): void {
+    this.serviceForm.controls.chargeType.setValue(chargeType);
+  }
+
+  retryCatalog(): void {
+    const hotelId = this.catalogHotelId();
+    if (hotelId) this.loadCatalogForProperty(hotelId, true);
   }
 
   addAdjustment(): void {
@@ -162,20 +191,22 @@ export class ReservationCheckoutComponent implements OnChanges {
     }
     const value = this.adjustmentForm.getRawValue();
     this.beginAction('ADJUSTMENT');
+    const mutation = this.adjustmentMutationFor(value);
     const request$ = value.mode === 'NEGATIVE_ADJUSTMENT'
       ? this.checkoutService.addNegativeAdjustment(this.reservationId, {
           type: value.negativeType,
           description: value.description,
           amount: value.amount,
-        })
+        }, mutation)
       : this.checkoutService.addSurcharge(this.reservationId, {
           type: value.surchargeType,
           description: value.description,
           amount: value.amount,
-        });
+        }, mutation);
 
     request$.subscribe({
       next: () => {
+        this.adjustmentMutation = null;
         this.successMessage.set(
           value.mode === 'NEGATIVE_ADJUSTMENT'
             ? 'Đã ghi nhận điều chỉnh giảm có kiểm soát.'
@@ -250,6 +281,60 @@ export class ReservationCheckoutComponent implements OnChanges {
   private refreshAfterMutation(): void {
     this.busyAction.set(null);
     this.loadPreview();
+  }
+
+  private loadCatalogForProperty(hotelId: number, force = false): void {
+    if (!force && this.catalogHotelId() === hotelId && this.servicesState().length > 0) return;
+    this.catalogHotelId.set(hotelId);
+    this.catalogLoading.set(true);
+    this.catalogError.set(null);
+    this.servicesState.set([]);
+    this.hotelService.getServicesForHotel(hotelId).subscribe({
+      next: (services) => {
+        this.servicesState.set(services);
+        this.catalogLoading.set(false);
+      },
+      error: (error: unknown) => {
+        this.catalogError.set(
+          this.extractErrorMessage(error) || 'Không thể tải danh mục dịch vụ của khách sạn này.',
+        );
+        this.catalogLoading.set(false);
+      },
+    });
+  }
+
+  private serviceMutationFor(request: {
+    serviceId: number;
+    chargeType: ServiceChargeType;
+    quantity: number;
+  }): { fingerprint: string; idempotencyKey: string } {
+    const fingerprint = JSON.stringify(request);
+    if (this.serviceMutation?.fingerprint === fingerprint) return this.serviceMutation;
+    const randomId = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    this.serviceMutation = {
+      fingerprint,
+      idempotencyKey: `reservation-${this.reservationId}-service-${randomId}`,
+    };
+    return this.serviceMutation;
+  }
+
+  private adjustmentMutationFor(request: {
+    mode: AdjustmentMode;
+    surchargeType: SurchargeType;
+    negativeType: NegativeAdjustmentType;
+    description: string;
+    amount: number;
+  }): { fingerprint: string; idempotencyKey: string } {
+    const fingerprint = JSON.stringify(request);
+    if (this.adjustmentMutation?.fingerprint === fingerprint) return this.adjustmentMutation;
+    const randomId = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    this.adjustmentMutation = {
+      fingerprint,
+      idempotencyKey: `reservation-${this.reservationId}-adjustment-${randomId}`,
+    };
+    return this.adjustmentMutation;
   }
 
   private beginAction(action: Exclude<BusyAction, null>): void {

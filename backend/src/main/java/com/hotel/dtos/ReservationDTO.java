@@ -17,6 +17,9 @@ public class ReservationDTO {
     private String paymentMethod;
     private String specialRequests;
     private List<ReservationDetailDTO> details;
+    private PaymentLifecycleSummaryDTO payment;
+    private List<RefundSummaryDTO> refunds;
+    private PromotionQuoteDTO quote;
 
     public Long getId() {
         return id;
@@ -112,5 +115,29 @@ public class ReservationDTO {
 
     public void setDetails(List<ReservationDetailDTO> details) {
         this.details = details;
+    }
+
+    public PaymentLifecycleSummaryDTO getPayment() {
+        return payment;
+    }
+
+    public void setPayment(PaymentLifecycleSummaryDTO payment) {
+        this.payment = payment;
+    }
+
+    public List<RefundSummaryDTO> getRefunds() {
+        return refunds;
+    }
+
+    public void setRefunds(List<RefundSummaryDTO> refunds) {
+        this.refunds = refunds;
+    }
+
+    public PromotionQuoteDTO getQuote() {
+        return quote;
+    }
+
+    public void setQuote(PromotionQuoteDTO quote) {
+        this.quote = quote;
     }
 }

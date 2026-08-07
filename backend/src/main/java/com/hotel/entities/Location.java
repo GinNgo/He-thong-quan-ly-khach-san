@@ -7,6 +7,8 @@ import lombok.Setter;
 
 import jakarta.persistence.*;
 
+import java.time.LocalDateTime;
+
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -14,7 +16,8 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "locations", indexes = {
         @Index(name = "IX_locations_type_parent_status", columnList = "location_type,parent_id,status"),
-        @Index(name = "IX_locations_normalized_name", columnList = "normalized_name")
+        @Index(name = "IX_locations_normalized_name", columnList = "normalized_name"),
+        @Index(name = "IX_locations_landmark_discovery", columnList = "location_type,status,parent_id,popularity_score")
 })
 public class Location extends AuditableEntity {
 
@@ -55,6 +58,42 @@ public class Location extends AuditableEntity {
 
     @Column(name = "longitude")
     private Double longitude;
+
+    @Column(name = "category", length = 50)
+    private String category;
+
+    @Column(name = "default_radius_km")
+    private Double defaultRadiusKm;
+
+    @Column(name = "popularity_score", nullable = false)
+    private Integer popularityScore = 0;
+
+    @Column(name = "description_vi", columnDefinition = "nvarchar(1000)")
+    private String descriptionVi;
+
+    @Column(name = "description_en", columnDefinition = "nvarchar(1000)")
+    private String descriptionEn;
+
+    @Column(name = "source_provider", length = 50)
+    private String sourceProvider;
+
+    @Column(name = "source_object_type", length = 50)
+    private String sourceObjectType;
+
+    @Column(name = "source_object_id", length = 255)
+    private String sourceObjectId;
+
+    @Column(name = "source_updated_at")
+    private LocalDateTime sourceUpdatedAt;
+
+    @Column(name = "last_seen_at")
+    private LocalDateTime lastSeenAt;
+
+    @Column(name = "data_quality_status", length = 30)
+    private String dataQualityStatus;
+
+    @Column(name = "manual_override", nullable = false)
+    private Boolean manualOverride = false;
 
     @Column(name = "status")
     private String status = "ACTIVE";

@@ -1,8 +1,8 @@
 package com.hotel.services.impl;
 
-import com.hotel.domain.lifecycle.BookingLifecyclePolicy;
 import com.hotel.domain.lifecycle.PaymentStatus;
 import com.hotel.domain.lifecycle.ReservationStatus;
+import com.hotel.domain.lifecycle.BookingLifecyclePolicy;
 import com.hotel.domain.lifecycle.TransitionDecision;
 import com.hotel.domain.payment.PaymentCompletionResult;
 import com.hotel.dtos.PaymentDTO;
@@ -19,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.UUID;
 
 @Service
 public class PaymentServiceImpl implements PaymentService {
@@ -48,43 +47,6 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public void refundSuccessfulPayments(Long reservationId) {
-        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
-                .orElseThrow(() -> new RuntimeException("Reservation not found"));
-
-        List<Payment> successfulPayments = paymentRepository.findByReservationId(reservationId).stream()
-                .filter(payment -> "SUCCESS".equals(payment.getStatus()))
-                .toList();
-
-        for (Payment originalPayment : successfulPayments) {
-            String refundTransactionId = "REFUND-" + originalPayment.getId();
-            if (paymentRepository.findByTransactionId(refundTransactionId).isPresent()) {
-                continue;
-            }
-
-            Payment refund = new Payment();
-            refund.setReservation(reservation);
-            refund.setAmount(originalPayment.getAmount().negate());
-            refund.setPaymentMethod(originalPayment.getPaymentMethod());
-            refund.setStatus("REFUNDED");
-            refund.setTransactionId(refundTransactionId);
-            refund.setPaymentDate(LocalDateTime.now());
-            paymentRepository.save(refund);
-
-            if (reservation.getUser() != null) {
-                User user = reservation.getUser();
-                int earnedPoints = originalPayment.getAmount()
-                        .divide(new java.math.BigDecimal(100000), java.math.RoundingMode.DOWN)
-                        .intValue();
-                int currentPoints = user.getPoints() == null ? 0 : user.getPoints();
-                user.setPoints(Math.max(0, currentPoints - earnedPoints));
-                userRepository.save(user);
-            }
-        }
-    }
-
-    @Override
-    @Transactional
     public PaymentCompletionResult handleSuccessfulPayment(Long reservationId, String method, String transactionId) {
         return handleSuccessfulPayment(reservationId, method, transactionId, PaymentStatus.PENDING);
     }
@@ -109,15 +71,14 @@ public class PaymentServiceImpl implements PaymentService {
 
         var existing = paymentRepository.findByTransactionId(normalizedTransactionId);
         if (existing.isPresent()) {
-                if (!existing.get().getReservation().getId().equals(reservationId)) {
-                    throw new IllegalArgumentException("Transaction ID belongs to another reservation.");
-                }
+            if (!existing.get().getReservation().getId().equals(reservationId)) {
+                throw new IllegalArgumentException("Transaction ID belongs to another reservation.");
+            }
             return PaymentCompletionResult.IDEMPOTENT;
         }
 
         ReservationStatus reservationStatus = ReservationStatus.fromStorage(reservation.getStatus());
-        TransitionDecision decision = BookingLifecyclePolicy.paymentSuccess(
-                reservationStatus, currentPaymentStatus);
+        TransitionDecision decision = BookingLifecyclePolicy.paymentSuccess(reservationStatus, currentPaymentStatus);
         if (decision == TransitionDecision.REJECT) {
             throw new IllegalStateException("Payment success is not valid for the current booking lifecycle.");
         }
@@ -133,7 +94,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setReservation(reservation);
         payment.setAmount(reservation.getTotalAmount());
         payment.setPaymentMethod(method.trim().toUpperCase(java.util.Locale.ROOT));
-        payment.setStatus("SUCCESS");
+        payment.setStatus(PaymentStatus.SUCCEEDED.name());
         payment.setTransactionId(normalizedTransactionId);
         payment.setPaymentDate(LocalDateTime.now());
         paymentRepository.save(payment);

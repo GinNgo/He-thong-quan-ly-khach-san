@@ -17,6 +17,12 @@ public interface PropertyRefundRequestRepository extends JpaRepository<PropertyR
 
     List<PropertyRefundRequest> findByOriginalTransactionIdOrderByRequestedAtAsc(Long transactionId);
 
+    @Query("select r from PropertyRefundRequest r where r.hotel.id = :hotelId order by r.requestedAt desc")
+    List<PropertyRefundRequest> findByHotelIdOrderByRequestedAtDesc(@Param("hotelId") Long hotelId);
+
+    @Query("select r from PropertyRefundRequest r where r.originalTransaction.reservation.id = :reservationId order by r.requestedAt asc")
+    List<PropertyRefundRequest> findByReservationIdOrderByRequestedAtAsc(@Param("reservationId") Long reservationId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from PropertyRefundRequest r where r.id = :id")
     Optional<PropertyRefundRequest> findByIdForUpdate(@Param("id") Long id);

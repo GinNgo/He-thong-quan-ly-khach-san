@@ -21,6 +21,7 @@ import {
   ChatService
 } from '../../../core/services/chat.service';
 import { AuthService } from '../../../core/services/auth';
+import { PublicI18nService } from '../../../core/i18n/public-i18n.service';
 
 const SEND_ACK_TIMEOUT_MS = 10_000;
 
@@ -35,6 +36,7 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
   private readonly chatService = inject(ChatService);
   private readonly authService = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+  readonly i18n = inject(PublicI18nService);
 
   @ViewChild('scrollMe') private scrollContainer?: ElementRef<HTMLElement>;
   @ViewChild('triggerButton') private triggerButton?: ElementRef<HTMLButtonElement>;
@@ -107,7 +109,7 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
       },
       error: () => {
         this.historyState.set('error');
-        this.historyError.set('Không thể tải lịch sử hỗ trợ.');
+        this.historyError.set(this.i18n.text('PUBLIC.SUPPORT.LOADING_HISTORY'));
       }
     });
   }
@@ -139,7 +141,7 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
     if (!content || this.isSending()) return;
 
     if (!this.chatService.isConnected()) {
-      this.sendError.set('Chat đang offline. Hãy kết nối lại trước khi gửi.');
+      this.sendError.set(this.i18n.text('PUBLIC.SUPPORT.OFFLINE'));
       return;
     }
 
@@ -147,7 +149,7 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
     this.isSending.set(true);
     if (!this.chatService.sendCustomerMessage(content)) {
       this.isSending.set(false);
-      this.sendError.set('Không thể gửi tin nhắn. Hãy thử lại.');
+      this.sendError.set(this.i18n.text('PUBLIC.SUPPORT.SEND_ERROR'));
       return;
     }
 
@@ -156,17 +158,17 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
     this.sendTimeoutId = setTimeout(() => {
       if (!this.isSending()) return;
       this.isSending.set(false);
-      this.sendError.set('Chưa nhận được xác nhận gửi. Bạn có thể thử lại.');
+      this.sendError.set(this.i18n.text('PUBLIC.SUPPORT.ACK_TIMEOUT'));
     }, SEND_ACK_TIMEOUT_MS);
   }
 
   connectionLabel(): string {
     switch (this.connectionState()) {
-      case 'connected': return 'Đã kết nối';
-      case 'connecting': return 'Đang kết nối…';
-      case 'reconnecting': return 'Đang kết nối lại…';
-      case 'error': return 'Mất kết nối';
-      default: return 'Chưa kết nối';
+      case 'connected': return this.i18n.text('PUBLIC.SUPPORT.CONNECTED');
+      case 'connecting': return this.i18n.text('PUBLIC.SUPPORT.CONNECTING');
+      case 'reconnecting': return this.i18n.text('PUBLIC.SUPPORT.RECONNECTING');
+      case 'error': return this.i18n.text('PUBLIC.SUPPORT.DISCONNECTED');
+      default: return this.i18n.text('PUBLIC.SUPPORT.NOT_CONNECTED');
     }
   }
 

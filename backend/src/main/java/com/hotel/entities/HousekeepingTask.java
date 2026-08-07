@@ -41,6 +41,9 @@ public class HousekeepingTask extends AuditableEntity {
     @Column(name = "assigned_at")
     private LocalDateTime assignedAt;
 
+    @Column(name = "started_at")
+    private LocalDateTime startedAt;
+
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
@@ -49,4 +52,8 @@ public class HousekeepingTask extends AuditableEntity {
 
     @Column(name = "checkout_effect_key", length = 120)
     private String checkoutEffectKey;
+
+    @Version
+    @Column(nullable = false)
+    private Long version;
 }

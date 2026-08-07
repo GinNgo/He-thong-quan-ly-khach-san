@@ -103,5 +103,6 @@ describe('ReservationManagement lifecycle permissions', () => {
     expect(component.showCheckoutDialog).toBe(true);
     expect('openAddServiceDialog' in component).toBe(false);
     expect('submitAddService' in component).toBe(false);
+    expect('processPayment' in component).toBe(false);
   });
 });

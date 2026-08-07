@@ -19,6 +19,7 @@ public interface RoomTypeRepository extends JpaRepository<RoomType, Long> {
     Optional<RoomType> findByCodeAndHotelId(String code, Long hotelId);
     long countByHotelId(Long hotelId);
     long countByHotelIdIn(java.util.Collection<Long> hotelIds);
+    long countByIsDemoTrue();
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select roomType from RoomType roomType where roomType.id = :id")

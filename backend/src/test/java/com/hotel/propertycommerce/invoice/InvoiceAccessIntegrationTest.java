@@ -5,6 +5,8 @@ import com.hotel.entities.Hotel;
 import com.hotel.entities.Reservation;
 import com.hotel.entities.User;
 import com.hotel.security.CustomUserDetails;
+import com.hotel.security.ActionCode;
+import com.hotel.security.FunctionCode;
 import com.hotel.security.JwtAccessDeniedHandler;
 import com.hotel.security.JwtAuthFilter;
 import com.hotel.security.JwtAuthenticationEntryPoint;
@@ -13,6 +15,7 @@ import com.hotel.security.TenantFilterInterceptor;
 import com.hotel.services.EmailService;
 import com.hotel.services.PropertyAccessService;
 import com.hotel.controllers.GlobalExceptionHandler;
+import com.hotel.observability.OperationalMetrics;
 import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -83,6 +86,8 @@ class InvoiceAccessIntegrationTest {
     private EntityManagerFactory entityManagerFactory;
     @MockBean
     private TenantFilterInterceptor tenantFilterInterceptor;
+    @MockBean
+    private OperationalMetrics operationalMetrics;
 
     private PropertyInvoice invoice;
     private User customer;
@@ -117,9 +122,9 @@ class InvoiceAccessIntegrationTest {
                 LocalDateTime.of(2026, 8, 1, 0, 0));
         ReflectionTestUtils.setField(invoice, "id", 88L);
         when(invoiceRepository.findById(88L)).thenReturn(Optional.of(invoice));
-        when(lineRepository.findByInvoiceIdOrderByIdAsc(88L)).thenReturn(List.of());
-        when(allocationRepository.findByInvoiceIdOrderByIdAsc(88L)).thenReturn(List.of());
-        when(creditNoteRepository.findByInvoiceIdOrderByIssuedAtAscIdAsc(88L)).thenReturn(List.of());
+        when(lineRepository.findByHotelIdAndInvoiceIdOrderByIdAsc(3L, 88L)).thenReturn(List.of());
+        when(allocationRepository.findByHotelIdAndInvoiceIdOrderByIdAsc(3L, 88L)).thenReturn(List.of());
+        when(creditNoteRepository.findByHotelIdAndInvoiceIdOrderByIssuedAtAscIdAsc(3L, 88L)).thenReturn(List.of());
         when(creditNoteLineRepository.findByHotelIdAndInvoiceIdOrderByIdAsc(3L, 88L)).thenReturn(List.of());
         when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
         when(propertyAccessService.accessibleHotelIds()).thenReturn(Set.of());
@@ -161,17 +166,20 @@ class InvoiceAccessIntegrationTest {
 
     @Test
     void customerCanDownloadFinalizedSnapshotPdf() throws Exception {
-        when(documentService.renderPdf(any(), any(), any())).thenReturn("%PDF-1.4\n%%EOF".getBytes());
+        when(documentService.renderPdf(any(), any(), any(), any(), any()))
+                .thenReturn("%PDF-1.4\n%%EOF".getBytes());
 
         mockMvc.perform(get("/api/invoices/88/pdf").with(user(customerDetails(customer))))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("application/pdf"))
-                .andExpect(header().string("Content-Disposition", "attachment; filename=\"INV-3-42.pdf\""));
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"INV-3-42.pdf\""))
+                .andExpect(header().exists("X-Content-SHA256"))
+                .andExpect(header().exists("ETag"));
     }
 
     @Test
     void invoiceEmailUsesOwnerRecipientAndRejectsUnverifiedAddress() throws Exception {
-        when(documentService.renderPdf(any(), any(), any())).thenReturn("%PDF-1.4".getBytes());
+        when(documentService.renderPdf(any(), any(), any(), any(), any())).thenReturn("%PDF-1.4".getBytes());
         when(emailService.sendInvoiceEmail(any(), any(), any(byte[].class))).thenReturn(true);
 
         mockMvc.perform(post("/api/invoices/88/email")
@@ -194,10 +202,32 @@ class InvoiceAccessIntegrationTest {
         when(propertyAccessService.currentUser()).thenReturn(staff);
         when(propertyAccessService.accessibleHotelIds()).thenReturn(Set.of(3L));
 
-        mockMvc.perform(get("/api/invoices/88").with(user(customerDetails(staff))))
+        mockMvc.perform(get("/api/invoices/88").with(user(staffDetails(staff, true))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reservationId").value(42));
         verify(invoiceRepository).findById(88L);
+    }
+
+    @Test
+    void propertyStaffWithoutInvoicePermissionCannotReadInvoice() throws Exception {
+        when(propertyAccessService.currentUser()).thenReturn(staff);
+        when(propertyAccessService.accessibleHotelIds()).thenReturn(Set.of(3L));
+
+        mockMvc.perform(get("/api/invoices/88").with(user(staffDetails(staff, false))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void authorizedStaffListsFinalizedInvoicesForAccessibleProperties() throws Exception {
+        when(propertyAccessService.currentUser()).thenReturn(staff);
+        when(propertyAccessService.accessibleHotelIds()).thenReturn(Set.of(3L));
+        when(invoiceRepository.findByHotelIdInAndStatusOrderByFinalizedAtDesc(
+                List.of(3L), PropertyInvoice.Status.FINALIZED)).thenReturn(List.of(invoice));
+
+        mockMvc.perform(get("/api/management/invoices/finalized").with(user(staffDetails(staff, true))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].invoiceNumber").value("INV-3-42"))
+                .andExpect(jsonPath("$[0].customerSnapshotJson").value("{\"email\":\"customer@example.com\"}"));
     }
 
     private CustomUserDetails customerDetails(User user) {
@@ -208,6 +238,21 @@ class InvoiceAccessIntegrationTest {
                 new HashMap<>(),
                 user.getId(),
                 null,
+                new HashMap<>());
+    }
+
+    private CustomUserDetails staffDetails(User user, boolean invoiceView) {
+        HashMap<FunctionCode, Integer> permissions = new HashMap<>();
+        if (invoiceView) {
+            permissions.put(FunctionCode.INVOICE, ActionCode.VIEW);
+        }
+        return new CustomUserDetails(
+                user.getUsername(),
+                "password",
+                List.of(new SimpleGrantedAuthority("ROLE_STAFF")),
+                permissions,
+                user.getId(),
+                3L,
                 new HashMap<>());
     }
 

@@ -1,15 +1,16 @@
 package com.hotel.controllers;
 
-import com.hotel.entities.Notification;
+import com.hotel.security.ActionCode;
+import com.hotel.security.CustomUserDetails;
+import com.hotel.security.FunctionCode;
+import com.hotel.security.Permission;
 import com.hotel.services.NotificationService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/notifications")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class NotificationController {
 
     private final NotificationService notificationService;
@@ -20,14 +21,21 @@ public class NotificationController {
 
     // Lấy thông báo hệ thống (cho admin)
     @GetMapping
-    public ResponseEntity<List<Notification>> getAdminNotifications() {
-        return ResponseEntity.ok(notificationService.getAdminNotifications());
+    @Permission(function = FunctionCode.REPORT, action = ActionCode.VIEW)
+    public ResponseEntity<NotificationService.NotificationHistoryPage> getAdminNotifications(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(notificationService.getNotificationHistory(currentUser.getUserId(), page, size));
     }
 
     // Đánh dấu đã đọc
     @PostMapping("/{id}/read")
-    public ResponseEntity<?> markAsRead(@PathVariable Long id) {
-        notificationService.markAsRead(id);
+    @Permission(function = FunctionCode.REPORT, action = ActionCode.VIEW)
+    public ResponseEntity<?> markAsRead(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        notificationService.markAsRead(id, currentUser.getUserId());
         return ResponseEntity.ok().build();
     }
 }

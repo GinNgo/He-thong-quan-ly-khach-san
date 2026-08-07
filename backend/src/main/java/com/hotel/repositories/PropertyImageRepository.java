@@ -11,4 +11,5 @@ public interface PropertyImageRepository extends JpaRepository<PropertyImage, Lo
     List<PropertyImage> findByHotelId(Long hotelId);
     List<PropertyImage> findByHotelIdOrderBySortOrderAsc(Long hotelId);
     long countByHotelId(Long hotelId);
+    long countByIsDemoTrue();
 }

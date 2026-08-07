@@ -6,6 +6,7 @@ import com.hotel.paymentprovider.audit.FinancialAuditService;
 import com.hotel.paymentprovider.domain.VndMoney;
 import com.hotel.paymentprovider.error.FinancialErrorCode;
 import com.hotel.paymentprovider.error.FinancialException;
+import com.hotel.paymentprovider.idempotency.FinancialIdempotencyService;
 import com.hotel.repositories.ReservationRepository;
 import com.hotel.security.ActionCode;
 import com.hotel.security.CustomUserDetails;
@@ -17,6 +18,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.text.Normalizer;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -28,25 +33,63 @@ public class SurchargeService {
     private final ReservationChargeLineRepository chargeLineRepository;
     private final PropertyAccessService propertyAccessService;
     private final FinancialAuditService auditService;
+    private final FinancialIdempotencyService idempotencyService;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public SurchargeService(
             ReservationRepository reservationRepository,
             ReservationChargeLineRepository chargeLineRepository,
             PropertyAccessService propertyAccessService,
-            FinancialAuditService auditService) {
+            FinancialAuditService auditService,
+            FinancialIdempotencyService idempotencyService) {
         this.reservationRepository = reservationRepository;
         this.chargeLineRepository = chargeLineRepository;
         this.propertyAccessService = propertyAccessService;
         this.auditService = auditService;
+        this.idempotencyService = idempotencyService;
+    }
+
+    /** Compatibility constructor for focused unit tests that do not exercise persistence idempotency. */
+    SurchargeService(
+            ReservationRepository reservationRepository,
+            ReservationChargeLineRepository chargeLineRepository,
+            PropertyAccessService propertyAccessService,
+            FinancialAuditService auditService) {
+        this(reservationRepository, chargeLineRepository, propertyAccessService, auditService, null);
     }
 
     @Transactional
-    public ReservationChargeLine addSurcharge(AddSurchargeCommand command) {
+    public AddSurchargeResult addSurcharge(AddSurchargeCommand command) {
         validate(command);
         requirePermissions(false);
         User actor = propertyAccessService.currentUser();
         Reservation reservation = lockAuthorizedCheckedInReservation(command.reservationId());
         VndMoney amount = requirePositiveVnd(command.amount());
+        FinancialIdempotencyService.BeginResult begin = begin(
+                "ADD_RESERVATION_SURCHARGE", reservation, actor, command.idempotencyKey(),
+                new SurchargeIdentity(reservation.getId(), command.type(), command.description().trim(), amount.amount()),
+                command.correlationId());
+        if (begin == null) {
+            return new AddSurchargeResult(saveSurcharge(reservation, actor, command, amount), false);
+        }
+        if (begin instanceof FinancialIdempotencyService.Replay replay) {
+            return new AddSurchargeResult(findReplay(replay.responseBody(), reservation), true);
+        }
+        if (begin instanceof FinancialIdempotencyService.InProgress
+                || begin instanceof FinancialIdempotencyService.RetryableFailure) {
+            throw new FinancialException(FinancialErrorCode.CONCURRENT_MODIFICATION);
+        }
+        FinancialIdempotencyService.Acquired acquired = (FinancialIdempotencyService.Acquired) begin;
+        ReservationChargeLine line = saveSurcharge(reservation, actor, command, amount);
+        idempotencyService.complete(acquired.recordId(), 201, line.getId().toString());
+        return new AddSurchargeResult(line, false);
+    }
+
+    private ReservationChargeLine saveSurcharge(
+            Reservation reservation,
+            User actor,
+            AddSurchargeCommand command,
+            VndMoney amount) {
 
         ReservationChargeLine line = ReservationChargeLine.create(
                 reservation.getHotel(),
@@ -67,17 +110,42 @@ public class SurchargeService {
                 null);
         line = chargeLineRepository.saveAndFlush(line);
         audit(line, actor, "SURCHARGE_CREATED", command.type().name(), command.description(),
-                amount, command.correlationId());
+                amount, command.correlationId(), command.idempotencyKey());
         return line;
     }
 
     @Transactional
-    public ReservationChargeLine addNegativeAdjustment(AddNegativeAdjustmentCommand command) {
+    public AddSurchargeResult addNegativeAdjustment(AddNegativeAdjustmentCommand command) {
         validate(command);
         requirePermissions(true);
         User actor = propertyAccessService.currentUser();
         Reservation reservation = lockAuthorizedCheckedInReservation(command.reservationId());
         VndMoney amount = requirePositiveVnd(command.amount());
+        FinancialIdempotencyService.BeginResult begin = begin(
+                "ADD_RESERVATION_NEGATIVE_ADJUSTMENT", reservation, actor, command.idempotencyKey(),
+                new AdjustmentIdentity(reservation.getId(), command.type(), command.description().trim(), amount.amount()),
+                command.correlationId());
+        if (begin == null) {
+            return new AddSurchargeResult(saveNegativeAdjustment(reservation, actor, command, amount), false);
+        }
+        if (begin instanceof FinancialIdempotencyService.Replay replay) {
+            return new AddSurchargeResult(findReplay(replay.responseBody(), reservation), true);
+        }
+        if (begin instanceof FinancialIdempotencyService.InProgress
+                || begin instanceof FinancialIdempotencyService.RetryableFailure) {
+            throw new FinancialException(FinancialErrorCode.CONCURRENT_MODIFICATION);
+        }
+        FinancialIdempotencyService.Acquired acquired = (FinancialIdempotencyService.Acquired) begin;
+        ReservationChargeLine line = saveNegativeAdjustment(reservation, actor, command, amount);
+        idempotencyService.complete(acquired.recordId(), 201, line.getId().toString());
+        return new AddSurchargeResult(line, false);
+    }
+
+    private ReservationChargeLine saveNegativeAdjustment(
+            Reservation reservation,
+            User actor,
+            AddNegativeAdjustmentCommand command,
+            VndMoney amount) {
 
         ReservationChargeLine line = ReservationChargeLine.create(
                 reservation.getHotel(),
@@ -98,18 +166,67 @@ public class SurchargeService {
                 null);
         line = chargeLineRepository.saveAndFlush(line);
         audit(line, actor, "NEGATIVE_ADJUSTMENT_CREATED", command.type().name(), command.description(),
-                amount, command.correlationId());
+                amount, command.correlationId(), command.idempotencyKey());
         return line;
     }
 
-    private Reservation lockAuthorizedCheckedInReservation(Long reservationId) {
-        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
-                .orElseThrow(() -> new FinancialException(FinancialErrorCode.RESOURCE_NOT_FOUND));
-        Long hotelId = reservation.getHotel() == null ? null : reservation.getHotel().getId();
-        if (hotelId == null || (!propertyAccessService.isSystemAdministrator()
-                && !propertyAccessService.accessibleHotelIds().contains(hotelId))) {
+    @Transactional(readOnly = true)
+    public List<AdjustmentHistoryEntry> adjustmentHistory(Long reservationId) {
+        if (reservationId == null) {
             throw new FinancialException(FinancialErrorCode.RESOURCE_NOT_FOUND);
         }
+        Reservation reservation = lockAuthorizedReservation(reservationId);
+        return chargeLineRepository.findByHotelIdAndReservationIdOrderByCreatedAtAscIdAsc(
+                        reservation.getHotel().getId(), reservation.getId()).stream()
+                .filter(line -> line.getChargeType() == ReservationChargeLine.ChargeType.SURCHARGE
+                        || line.getChargeType() == ReservationChargeLine.ChargeType.DISCOUNT
+                        || line.getChargeType() == ReservationChargeLine.ChargeType.ADJUSTMENT)
+                .map(line -> new AdjustmentHistoryEntry(
+                        line.getId(), line.getReservation().getId(), line.getChargeType().name(),
+                        reasonType(line.getCode()), line.getName(), line.getDescription(),
+                        line.getTotalAmount(), line.getCreatedAt(),
+                        line.getActor() == null ? null : line.getActor().getId(),
+                        line.getChargeType() == ReservationChargeLine.ChargeType.DISCOUNT))
+                .toList();
+    }
+
+    private FinancialIdempotencyService.BeginResult begin(
+            String operation,
+            Reservation reservation,
+            User actor,
+            String key,
+            Object payload,
+            String correlationId) {
+        if (idempotencyService == null) {
+            return null;
+        }
+        FinancialIdempotencyService.BeginResult result = idempotencyService.begin(
+                new FinancialIdempotencyService.BeginCommand(
+                        "PROPERTY_COMMERCE", operation, "RESERVATION:" + reservation.getId(),
+                        key, payload, reservation.getHotel().getId(), actor.getId(), correlationId));
+        return result;
+    }
+
+    private ReservationChargeLine findReplay(String responseBody, Reservation reservation) {
+        try {
+            Long lineId = Long.valueOf(responseBody);
+            return chargeLineRepository.findByIdAndHotelIdAndReservationId(
+                            lineId, reservation.getHotel().getId(), reservation.getId())
+                    .orElseThrow(() -> new FinancialException(FinancialErrorCode.CONCURRENT_MODIFICATION));
+        } catch (RuntimeException exception) {
+            if (exception instanceof FinancialException financialException) throw financialException;
+            throw new FinancialException(FinancialErrorCode.CONCURRENT_MODIFICATION);
+        }
+    }
+
+    private String reasonType(String code) {
+        if (code == null || code.isBlank()) return "OTHER";
+        int separator = code.indexOf(':');
+        return separator < 0 ? code : code.substring(separator + 1);
+    }
+
+    private Reservation lockAuthorizedCheckedInReservation(Long reservationId) {
+        Reservation reservation = lockAuthorizedReservation(reservationId);
         if (!CHECKED_IN.equals(reservation.getStatus())) {
             throw new FinancialException(
                     FinancialErrorCode.INVALID_STATE_TRANSITION,
@@ -117,6 +234,17 @@ public class SurchargeService {
                     null,
                     reservation.getStatus(),
                     null);
+        }
+        return reservation;
+    }
+
+    private Reservation lockAuthorizedReservation(Long reservationId) {
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
+                .orElseThrow(() -> new FinancialException(FinancialErrorCode.RESOURCE_NOT_FOUND));
+        Long hotelId = reservation.getHotel() == null ? null : reservation.getHotel().getId();
+        if (hotelId == null || (!propertyAccessService.isSystemAdministrator()
+                && !propertyAccessService.accessibleHotelIds().contains(hotelId))) {
+            throw new FinancialException(FinancialErrorCode.RESOURCE_NOT_FOUND);
         }
         return reservation;
     }
@@ -149,7 +277,8 @@ public class SurchargeService {
             String type,
             String reason,
             VndMoney amount,
-            String correlationId) {
+            String correlationId,
+            String idempotencyKey) {
         auditService.append(new FinancialAuditService.AuditCommand(
                 "PROPERTY_COMMERCE",
                 line.getHotel().getId(),
@@ -161,7 +290,7 @@ public class SurchargeService {
                 null,
                 "CREATED",
                 reason.trim(),
-                null,
+                idempotencyKey,
                 null,
                 correlationId,
                 Map.of(
@@ -186,7 +315,8 @@ public class SurchargeService {
 
     private void validate(AddSurchargeCommand command) {
         if (command == null || command.reservationId() == null || command.type() == null
-                || command.description() == null || command.description().isBlank() || command.amount() == null) {
+                || command.description() == null || command.description().isBlank() || command.amount() == null
+                || (idempotencyService != null && (command.idempotencyKey() == null || command.idempotencyKey().isBlank()))) {
             throw new IllegalArgumentException("Reservation, surcharge type, description and amount are required.");
         }
         requireDescriptionLength(command.description());
@@ -194,7 +324,8 @@ public class SurchargeService {
 
     private void validate(AddNegativeAdjustmentCommand command) {
         if (command == null || command.reservationId() == null || command.type() == null
-                || command.description() == null || command.description().isBlank() || command.amount() == null) {
+                || command.description() == null || command.description().isBlank() || command.amount() == null
+                || (idempotencyService != null && (command.idempotencyKey() == null || command.idempotencyKey().isBlank()))) {
             throw new IllegalArgumentException("Reservation, adjustment type, description and amount are required.");
         }
         requireDescriptionLength(command.description());
@@ -209,6 +340,58 @@ public class SurchargeService {
     private String display(String enumValue) {
         String value = enumValue.toLowerCase(java.util.Locale.ROOT).replace('_', ' ');
         return Character.toUpperCase(value.charAt(0)) + value.substring(1);
+    }
+
+    public static SurchargeType parseSurchargeType(String value) {
+        return parseType(value, SurchargeType.class);
+    }
+
+    public static NegativeAdjustmentType parseNegativeAdjustmentType(String value) {
+        return parseType(value, NegativeAdjustmentType.class);
+    }
+
+    private static <T extends Enum<T>> T parseType(String value, Class<T> type) {
+        String normalized = normalizeType(value);
+        if (normalized == null) return null;
+        for (T candidate : type.getEnumConstants()) {
+            if (candidate.name().equals(normalized)) return candidate;
+        }
+        if (type == SurchargeType.class) {
+            return type.cast(surchargeAlias(normalized));
+        }
+        return type.cast(negativeAlias(normalized));
+    }
+
+    private static SurchargeType surchargeAlias(String value) {
+        return switch (value) {
+            case "NHAN_PHONG_SOM", "CHECKIN_SOM", "EARLY_CHECKIN" -> SurchargeType.EARLY_CHECK_IN;
+            case "TRA_PHONG_MUON", "CHECKOUT_MUON", "LATE_CHECKOUT" -> SurchargeType.LATE_CHECK_OUT;
+            case "THEM_KHACH" -> SurchargeType.EXTRA_GUEST;
+            case "HU_HONG" -> SurchargeType.DAMAGE;
+            case "VE_SINH", "VE_SINH_DAC_BIET" -> SurchargeType.CLEANING;
+            case "MAT_CHIA_KHOA" -> SurchargeType.LOST_KEY;
+            case "KHAC" -> SurchargeType.OTHER;
+            default -> throw new IllegalArgumentException("Unsupported surcharge type: " + value + ".");
+        };
+    }
+
+    private static NegativeAdjustmentType negativeAlias(String value) {
+        return switch (value) {
+            case "BOI_HOAN_DICH_VU" -> NegativeAdjustmentType.SERVICE_RECOVERY;
+            case "THIEN_CHI", "HO_TRO_THIEN_CHI" -> NegativeAdjustmentType.GOODWILL;
+            case "DIEU_CHINH_GIA" -> NegativeAdjustmentType.PRICE_CORRECTION;
+            case "GIAM_GIA_THU_CONG" -> NegativeAdjustmentType.MANUAL_DISCOUNT;
+            case "KHAC" -> NegativeAdjustmentType.OTHER;
+            default -> throw new IllegalArgumentException("Unsupported negative adjustment type: " + value + ".");
+        };
+    }
+
+    private static String normalizeType(String value) {
+        if (value == null || value.isBlank()) return null;
+        String withoutMarks = Normalizer.normalize(value.trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        return withoutMarks.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]+", "_")
+                .replaceAll("^_+|_+$", "");
     }
 
     private String bounded(String value, int maxLength) {
@@ -238,7 +421,12 @@ public class SurchargeService {
             SurchargeType type,
             String description,
             BigDecimal amount,
+            String idempotencyKey,
             String correlationId) {
+        public AddSurchargeCommand(Long reservationId, SurchargeType type, String description,
+                                    BigDecimal amount, String correlationId) {
+            this(reservationId, type, description, amount, null, correlationId);
+        }
     }
 
     public record AddNegativeAdjustmentCommand(
@@ -246,6 +434,34 @@ public class SurchargeService {
             NegativeAdjustmentType type,
             String description,
             BigDecimal amount,
+            String idempotencyKey,
             String correlationId) {
+        public AddNegativeAdjustmentCommand(Long reservationId, NegativeAdjustmentType type, String description,
+                                             BigDecimal amount, String correlationId) {
+            this(reservationId, type, description, amount, null, correlationId);
+        }
     }
+
+    public record AddSurchargeResult(ReservationChargeLine line, boolean replayed) {
+    }
+
+    public record AdjustmentHistoryEntry(
+            Long id,
+            Long reservationId,
+            String chargeType,
+            String reasonType,
+            String name,
+            String description,
+            BigDecimal amount,
+            LocalDateTime createdAt,
+            Long actorId,
+            boolean approved) {
+    }
+
+    private record SurchargeIdentity(Long reservationId, SurchargeType type, String description, BigDecimal amount) {
+    }
+
+    private record AdjustmentIdentity(Long reservationId, NegativeAdjustmentType type, String description, BigDecimal amount) {
+    }
+
 }

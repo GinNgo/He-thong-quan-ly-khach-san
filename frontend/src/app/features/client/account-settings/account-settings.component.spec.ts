@@ -19,7 +19,7 @@ describe('Authenticated password change', () => {
       imports: [AccountSettingsComponent],
       providers: [
         { provide: UserService, useValue: { changePassword } },
-        { provide: AuthService, useValue: { logout } },
+        { provide: AuthService, useValue: { logout, listSocialIdentities: () => of([]) } },
         { provide: Router, useValue: { navigate } },
         { provide: ActivatedRoute, useValue: { snapshot: {} } },
         { provide: PublicI18nService, useValue: { text: (key: string) => key } },

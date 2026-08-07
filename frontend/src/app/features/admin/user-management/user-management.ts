@@ -49,11 +49,17 @@ export class UserManagement implements OnInit {
       if (nextUserType !== this.userType) {
         this.userType = nextUserType;
         this.loadUsers();
+        if (this.userType === 'STAFF') {
+          this.loadRoles();
+          this.loadHotels();
+        }
       }
     });
 
-    this.loadRoles();
-    this.loadHotels();
+    if (this.userType === 'STAFF') {
+      this.loadRoles();
+      this.loadHotels();
+    }
   }
 
   loadUsers(): void {
@@ -61,7 +67,11 @@ export class UserManagement implements OnInit {
     this.errorMessage = '';
     this.users = [];
 
-    this.userService.getUsers().pipe(
+    const usersRequest = this.userType === 'CUSTOMER'
+      ? this.userService.getCustomers()
+      : this.userService.getUsers();
+
+    usersRequest.pipe(
       timeout(10000),
       finalize(() => {
         this.loading = false;
@@ -69,11 +79,9 @@ export class UserManagement implements OnInit {
       })
     ).subscribe({
       next: (data) => {
-        if (this.userType === 'CUSTOMER') {
-          this.users = data.filter(u => u.roles && u.roles.some((r: any) => r.code === 'CUSTOMER'));
-        } else {
-          this.users = data.filter(u => !u.roles || !u.roles.some((r: any) => r.code === 'CUSTOMER'));
-        }
+        this.users = this.userType === 'CUSTOMER'
+          ? data
+          : data.filter(u => !u.roles || !u.roles.some((r: any) => r.code === 'CUSTOMER'));
       },
       error: (error) => {
         this.errorMessage = error?.error?.message || 'Không thể tải danh sách người dùng.';
@@ -140,9 +148,13 @@ export class UserManagement implements OnInit {
       }
     }
 
-    const request = this.userDialogMode === 'create'
-      ? this.userService.createUser(payload)
-      : this.userService.updateUser(this.userForm.id, payload);
+    const request = this.userType === 'CUSTOMER'
+      ? (this.userDialogMode === 'create'
+        ? this.userService.createCustomer(payload)
+        : this.userService.updateCustomer(this.userForm.id, payload))
+      : (this.userDialogMode === 'create'
+        ? this.userService.createUser(payload)
+        : this.userService.updateUser(this.userForm.id, payload));
 
     this.saving = true;
     request.pipe(

@@ -13,6 +13,7 @@ import com.hotel.security.Permission;
 import com.hotel.services.ReservationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -21,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -56,57 +56,64 @@ public class PropertyCheckoutController {
     @Permission(function = FunctionCode.RESERVATION_SERVICE, action = ActionCode.CREATE)
     public ResponseEntity<ChargeResponse> addService(
             @PathVariable Long reservationId,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId,
             @RequestBody ServiceChargeRequest request) {
         ReservationChargeLine.ChargeType chargeType = enumValue(
                 request == null ? null : request.chargeType(),
                 ReservationChargeLine.ChargeType.class);
-        LocalDateTime serviceUsedAt = request == null || request.serviceUsedAt() == null
-                ? LocalDateTime.now(ZoneOffset.UTC)
-                : request.serviceUsedAt();
-        ReservationChargeLine line = chargeService.addServiceCharge(
+        ReservationChargeService.AddServiceChargeResult result = chargeService.addServiceCharge(
                 new ReservationChargeService.AddServiceChargeCommand(
                         reservationId,
                         request == null ? null : request.serviceId(),
                         chargeType,
                         request == null ? null : request.quantity(),
-                        serviceUsedAt));
-        return ResponseEntity.status(201).body(ChargeResponse.from(line, correlationId));
+                        request == null ? null : request.serviceUsedAt(),
+                        idempotencyKey,
+                        correlationId));
+        return ResponseEntity.status(201).body(ChargeResponse.from(result, correlationId));
     }
 
     @PostMapping("/charges/surcharges")
     @Permission(function = FunctionCode.RESERVATION_SURCHARGE, action = ActionCode.CREATE)
     public ResponseEntity<ChargeResponse> addSurcharge(
             @PathVariable Long reservationId,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId,
             @RequestBody SurchargeRequest request) {
         if (request != null && Boolean.TRUE.equals(request.negativeAdjustment())) {
-            SurchargeService.NegativeAdjustmentType type = enumValue(
-                    request.negativeType() == null ? request.type() : request.negativeType(),
-                    SurchargeService.NegativeAdjustmentType.class);
-            ReservationChargeLine line = surchargeService.addNegativeAdjustment(
+            SurchargeService.NegativeAdjustmentType type = SurchargeService.parseNegativeAdjustmentType(
+                    request.negativeType() == null ? request.type() : request.negativeType());
+            SurchargeService.AddSurchargeResult result = surchargeService.addNegativeAdjustment(
                     new SurchargeService.AddNegativeAdjustmentCommand(
                             reservationId,
                             type,
                             request.description(),
                             request.amount(),
+                            idempotencyKey,
                             request.correlationId() == null ? correlationId : request.correlationId()));
-            return ResponseEntity.status(201).body(ChargeResponse.from(line, correlationId));
+            return ResponseEntity.status(201).body(ChargeResponse.from(result, correlationId));
         }
 
-        SurchargeService.SurchargeType type = enumValue(
-                request == null ? null : request.type(),
-                SurchargeService.SurchargeType.class);
-        ReservationChargeLine line = surchargeService.addSurcharge(
+        SurchargeService.SurchargeType type = SurchargeService.parseSurchargeType(
+                request == null ? null : request.type());
+        SurchargeService.AddSurchargeResult result = surchargeService.addSurcharge(
                 new SurchargeService.AddSurchargeCommand(
                         reservationId,
                         type,
                         request == null ? null : request.description(),
                         request == null ? null : request.amount(),
+                        idempotencyKey,
                         request == null || request.correlationId() == null
                                 ? correlationId
                                 : request.correlationId()));
-        return ResponseEntity.status(201).body(ChargeResponse.from(line, correlationId));
+        return ResponseEntity.status(201).body(ChargeResponse.from(result, correlationId));
+    }
+
+    @GetMapping("/charges/adjustments")
+    @Permission(function = FunctionCode.RESERVATION_SURCHARGE, action = ActionCode.VIEW)
+    public List<SurchargeService.AdjustmentHistoryEntry> adjustmentHistory(@PathVariable Long reservationId) {
+        return surchargeService.adjustmentHistory(reservationId);
     }
 
     @PostMapping("/checkout-preview")
@@ -216,9 +223,11 @@ public class PropertyCheckoutController {
             BigDecimal discountAmount,
             BigDecimal totalAmount,
             LocalDateTime serviceUsedAt,
-            String correlationId) {
+            String correlationId,
+            boolean replayed) {
 
-        static ChargeResponse from(ReservationChargeLine line, String correlationId) {
+        static ChargeResponse from(ReservationChargeService.AddServiceChargeResult result, String correlationId) {
+            ReservationChargeLine line = result.line();
             return new ChargeResponse(
                     line.getId(),
                     line.getReservation().getId(),
@@ -232,7 +241,31 @@ public class PropertyCheckoutController {
                     line.getDiscountAmount(),
                     line.getTotalAmount(),
                     line.getServiceUsedAt(),
-                    correlationId);
+                    correlationId,
+                    result.replayed());
+        }
+
+        static ChargeResponse from(SurchargeService.AddSurchargeResult result, String correlationId) {
+            ReservationChargeLine line = result.line();
+            return new ChargeResponse(
+                    line.getId(),
+                    line.getReservation().getId(),
+                    line.getChargeType().name(),
+                    line.getCode(),
+                    line.getName(),
+                    line.getDescription(),
+                    line.getQuantity(),
+                    line.getUnitPrice(),
+                    line.getTaxAmount(),
+                    line.getDiscountAmount(),
+                    line.getTotalAmount(),
+                    line.getServiceUsedAt(),
+                    correlationId,
+                    result.replayed());
+        }
+
+        static ChargeResponse from(ReservationChargeLine line, String correlationId) {
+            return from(new ReservationChargeService.AddServiceChargeResult(line, false), correlationId);
         }
     }
 

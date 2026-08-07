@@ -1,19 +1,30 @@
-﻿import { CommonModule } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { finalize, map, of, switchMap } from 'rxjs';
+import { PublicI18nService } from '@app/core/i18n/public-i18n.service';
 import { AuthService } from '@app/core/services/auth';
-import { ClientApiService, ReservationSummary, UserContext } from '@app/core/services/client-api.service';
-import { ReservationService } from '@app/core/services/reservation.service';
+import {
+  ClientApiService,
+  ReservationSummary,
+  UserContext,
+} from '@app/core/services/client-api.service';
+import {
+  PaymentLifecycleSummary,
+  RefundSummary,
+  ReservationService,
+} from '@app/core/services/reservation.service';
 import { AsyncActionCoordinatorService } from '@app/core/services/async-action-coordinator.service';
 import { UserService } from '@app/core/services/user';
 import { EmailVerificationService } from '@app/core/services/email-verification.service';
 
 @Component({
-  selector: 'app-profile', standalone: true,
+  selector: 'app-profile',
+  standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
-  templateUrl: './profile.component.html', styleUrls: ['./profile.component.css']
+  templateUrl: './profile.component.html',
+  styleUrls: ['./profile.component.css'],
 })
 export class ProfileComponent implements OnInit {
   private readonly authService = inject(AuthService);
@@ -26,16 +37,22 @@ export class ProfileComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
   private readonly changeDetector = inject(ChangeDetectorRef);
+  readonly i18n = inject(PublicI18nService);
 
   user: UserContext | null = null;
   activeTab: 'profile' | 'bookings' = 'profile';
   bookings: ReservationSummary[] = [];
-  loading = true; bookingsLoading = false; saving = false; uploading = false;
+  loading = true;
   profileEmpty = false;
   profileLoadFailed = false;
+  bookingsLoading = false;
+  saving = false;
+  uploading = false;
   emailActionBusy = false;
   cancellingId: number | null = null;
-  error = ''; bookingsError = ''; success = '';
+  error = '';
+  bookingsError = '';
+  success = '';
   readonly emailVerificationText = {
     verified: 'Email đã xác minh / Email verified',
     unverified: 'Email chưa xác minh / Email not verified',
@@ -56,22 +73,29 @@ export class ProfileComponent implements OnInit {
   readonly profileForm = this.fb.nonNullable.group({
     fullName: ['', [Validators.required, Validators.maxLength(150)]],
     email: ['', [Validators.required, Validators.email]],
-    phone: ['', [Validators.maxLength(30), Validators.pattern(/^[0-9+().\\-\\s]*$/)]],
-    avatarUrl: ['']
+    phone: ['', [Validators.maxLength(30), Validators.pattern(/^[0-9+().\-\s]*$/)]],
+    avatarUrl: [''],
   });
 
   ngOnInit(): void {
     const routeTab = this.route.snapshot.data['tab'];
     this.activeTab = routeTab === 'bookings' ? 'bookings' : 'profile';
-    this.route.queryParams.subscribe(params => {
-      if (params['tab'] === 'bookings' || params['tab'] === 'profile') this.activeTab = params['tab'];
+    this.route.queryParams.subscribe((params) => {
+      if (params['tab'] === 'bookings' || params['tab'] === 'profile')
+        this.activeTab = params['tab'];
       if (this.activeTab === 'bookings') this.loadBookings();
     });
     this.loadProfile();
   }
 
   get initials(): string {
-    return (this.user?.fullName || this.user?.username || 'U').trim().split(/\s+/).slice(-2).map(part => part[0]).join('').toUpperCase();
+    return (this.user?.fullName || this.user?.username || 'U')
+      .trim()
+      .split(/\s+/)
+      .slice(-2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase();
   }
 
   setActiveTab(tab: 'profile' | 'bookings'): void {
@@ -80,42 +104,57 @@ export class ProfileComponent implements OnInit {
   }
 
   saveProfile(): void {
-    if (this.profileForm.invalid) { this.profileForm.markAllAsTouched(); return; }
+    if (this.profileForm.invalid) {
+      this.profileForm.markAllAsTouched();
+      return;
+    }
     const value = this.profileForm.getRawValue();
     const currentEmail = this.user?.email || value.email;
     const requestedEmail = value.email.trim().toLowerCase();
     const emailChanged = requestedEmail !== currentEmail.toLowerCase();
-    this.saving = true; this.error = ''; this.success = '';
-    this.userService.updateProfile({ ...value, email: currentEmail }).pipe(
-      switchMap(profile => {
-        if (!emailChanged) return of({ profile, pendingEmail: this.user?.pendingEmail });
-        return this.emailVerification.requestEmailChange(requestedEmail).pipe(
-          map(dispatch => ({ profile, pendingEmail: dispatch.pendingEmail || requestedEmail }))
-        );
-      }),
-      finalize(() => this.saving = false)
-    ).subscribe({
-      next: ({ profile, pendingEmail }) => {
-        this.user = { ...this.user!, ...profile, pendingEmail };
-        this.profileForm.patchValue({ email: profile.email });
-        this.authService.updateCurrentUser(profile);
-        this.success = emailChanged
-          ? this.emailVerificationText.changePending
-          : 'Thông tin cá nhân đã được cập nhật.';
-        this.changeDetector.detectChanges();
-      },
-      error: () => { this.error = 'Không thể cập nhật thông tin. Vui lòng thử lại.'; this.changeDetector.detectChanges(); }
-    });
+    this.saving = true;
+    this.error = '';
+    this.success = '';
+    this.userService
+      .updateProfile({ ...value, email: currentEmail })
+      .pipe(
+        switchMap((profile) => {
+          if (!emailChanged) return of({ profile, pendingEmail: this.user?.pendingEmail });
+          return this.emailVerification.requestEmailChange(requestedEmail).pipe(
+            map((dispatch) => ({ profile, pendingEmail: dispatch.pendingEmail || requestedEmail })),
+          );
+        }),
+        finalize(() => (this.saving = false)),
+      )
+      .subscribe({
+        next: ({ profile, pendingEmail }) => {
+          this.user = { ...this.user!, ...profile, pendingEmail };
+          this.profileForm.patchValue({ email: profile.email });
+          this.authService.updateCurrentUser(profile);
+          this.success = emailChanged
+            ? this.emailVerificationText.changePending
+            : this.i18n.text('PUBLIC.ACCOUNT.PROFILE_SAVE_SUCCESS');
+          this.changeDetector.detectChanges();
+        },
+        error: () => {
+          this.error = this.i18n.text('PUBLIC.ACCOUNT.PROFILE_SAVE_ERROR');
+          this.changeDetector.detectChanges();
+        },
+      });
   }
 
   resendEmailVerification(): void {
     if (this.emailActionBusy) return;
-    this.emailActionBusy = true; this.error = ''; this.success = '';
-    this.emailVerification.resend().pipe(finalize(() => {
-      this.emailActionBusy = false;
-      this.changeDetector.detectChanges();
-    })).subscribe({
-      next: dispatch => {
+    this.emailActionBusy = true;
+    this.error = '';
+    this.success = '';
+    this.emailVerification.resend().pipe(
+      finalize(() => {
+        this.emailActionBusy = false;
+        this.changeDetector.detectChanges();
+      }),
+    ).subscribe({
+      next: (dispatch) => {
         if (this.user && dispatch.pendingEmail) {
           this.user = { ...this.user, pendingEmail: dispatch.pendingEmail };
         }
@@ -123,7 +162,9 @@ export class ProfileComponent implements OnInit {
           ? this.emailVerificationText.alreadyVerified
           : this.emailVerificationText.sent;
       },
-      error: () => { this.error = this.emailVerificationText.sendError; }
+      error: () => {
+        this.error = this.emailVerificationText.sendError;
+      },
     });
   }
 
@@ -132,54 +173,94 @@ export class ProfileComponent implements OnInit {
     const file = input.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/') || file.size > 5 * 1024 * 1024) {
-      this.error = 'Chỉ chấp nhận ảnh nhỏ hơn 5 MB.'; input.value = ''; return;
+      this.error = this.i18n.text('PUBLIC.ACCOUNT.AVATAR_FILE_ERROR');
+      input.value = '';
+      return;
     }
-    this.uploading = true; this.error = '';
-    this.userService.uploadAvatar(file).pipe(finalize(() => this.uploading = false)).subscribe({
-      next: response => { this.profileForm.patchValue({ avatarUrl: response.url }); this.saveProfile(); },
-      error: () => { this.error = 'Không thể tải ảnh đại diện.'; this.changeDetector.detectChanges(); }
-    });
+    this.uploading = true;
+    this.error = '';
+    this.userService
+      .uploadAvatar(file)
+      .pipe(finalize(() => (this.uploading = false)))
+      .subscribe({
+        next: (response) => {
+          this.profileForm.patchValue({ avatarUrl: response.url });
+          this.saveProfile();
+        },
+        error: () => {
+          this.error = this.i18n.text('PUBLIC.ACCOUNT.AVATAR_UPLOAD_ERROR');
+          this.changeDetector.detectChanges();
+        },
+      });
   }
 
   loadBookings(): void {
     if (this.bookingsLoading) return;
-    this.bookingsLoading = true; this.bookingsError = '';
-    this.clientApi.getMyBookings().pipe(finalize(() => {
-      this.bookingsLoading = false;
-      this.changeDetector.detectChanges();
-    })).subscribe({
-      next: data => { this.bookings = data; this.changeDetector.detectChanges(); },
-      error: () => { this.bookingsError = 'Không thể tải danh sách chuyến đi.'; this.changeDetector.detectChanges(); }
-    });
+    this.bookingsLoading = true;
+    this.bookingsError = '';
+    this.clientApi
+      .getMyBookings()
+      .pipe(
+        finalize(() => {
+          this.bookingsLoading = false;
+          this.changeDetector.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: (data) => {
+          this.bookings = data;
+          this.changeDetector.detectChanges();
+        },
+        error: () => {
+          this.bookingsError = this.i18n.text('PUBLIC.ACCOUNT.BOOKINGS_LOAD_ERROR');
+          this.changeDetector.detectChanges();
+        },
+      });
   }
 
   cancelBooking(id: number): void {
     if (this.cancellingId !== null) return;
-    if (!confirm('Bạn có chắc chắn muốn hủy đặt phòng này? Khoản đã thanh toán sẽ được hoàn 100% và điểm thưởng từ đặt phòng sẽ bị thu hồi.')) return;
+    if (
+      !confirm(
+        this.i18n.text('PUBLIC.ACCOUNT.CANCEL_CONFIRM'),
+      )
+    )
+      return;
 
     this.cancellingId = id;
     this.bookingsError = '';
     this.success = '';
     const idempotencyKey = this.getCancellationKey(id);
     this.actionCoordinator
-      .run(`reservation:cancel:${id}`, () => this.reservationService.cancelMyReservation(id, idempotencyKey)).pipe(
-      finalize(() => {
-        this.cancellingId = null;
-        this.changeDetector.detectChanges();
-      })
-    ).subscribe({
-      next: updated => {
-        this.bookings = this.bookings.map(booking =>
-          booking.id === id ? { ...booking, status: updated.status || 'CANCELLED' } : booking
-        );
-        this.success = 'Đã hủy đặt phòng và xử lý hoàn tiền.';
-        sessionStorage.removeItem(`hotel:reservation-cancel:${id}`);
-        this.loadProfile();
-      },
-      error: err => {
-        this.bookingsError = err.error?.message || 'Không thể hủy đặt phòng. Vui lòng thử lại.';
-      }
-    });
+      .run(`reservation:cancel:${id}`, () => this.reservationService.cancelMyReservation(id, idempotencyKey))
+      .pipe(
+        finalize(() => {
+          this.cancellingId = null;
+          this.changeDetector.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: (updated) => {
+          this.bookings = this.bookings.map((booking) =>
+            booking.id === id
+              ? {
+                  ...booking,
+                  status: updated.status || 'CANCELLED',
+                  payment: updated.payment,
+                  refunds: updated.refunds,
+                }
+              : booking,
+          );
+          this.success = updated.refunds?.length
+            ? this.i18n.text('PUBLIC.ACCOUNT.CANCEL_SUCCESS_REFUND')
+            : this.i18n.text('PUBLIC.ACCOUNT.CANCEL_SUCCESS_NO_REFUND');
+          sessionStorage.removeItem(`hotel:reservation-cancel:${id}`);
+          this.loadProfile();
+        },
+        error: (err) => {
+          this.bookingsError = err.error?.message || this.i18n.text('PUBLIC.ACCOUNT.CANCEL_ERROR');
+        },
+      });
   }
 
   private getCancellationKey(id: number): string {
@@ -192,36 +273,190 @@ export class ProfileComponent implements OnInit {
     return generated;
   }
 
-  logout(): void { this.authService.logout(); this.router.navigate(['/']); }
-  avatarError(): void { this.profileForm.patchValue({ avatarUrl: '' }); }
-  getStatusLabel(status: string): string { return ({PENDING:'Chờ xác nhận',PENDING_PAYMENT:'Chờ thanh toán',CONFIRMED:'Đã xác nhận',CHECKED_IN:'Đã nhận phòng',CHECKED_OUT:'Đã trả phòng',CANCELLED:'Đã hủy'} as Record<string,string>)[status] || status; }
+  logout(): void {
+    this.authService.logout();
+    this.router.navigate(['/']);
+  }
+  avatarError(): void {
+    this.profileForm.patchValue({ avatarUrl: '' });
+  }
+  getStatusLabel(status: string): string {
+    return (
+      (
+        {
+          PENDING: 'PUBLIC.ACCOUNT.STATUS_PENDING',
+          PENDING_PAYMENT: 'PUBLIC.ACCOUNT.STATUS_PENDING_PAYMENT',
+          CONFIRMED: 'PUBLIC.ACCOUNT.STATUS_CONFIRMED',
+          CHECKED_IN: 'PUBLIC.ACCOUNT.STATUS_CHECKED_IN',
+          CHECKED_OUT: 'PUBLIC.ACCOUNT.STATUS_CHECKED_OUT',
+          CANCELLED: 'PUBLIC.ACCOUNT.STATUS_CANCELLED',
+          EXPIRED: 'PUBLIC.ACCOUNT.STATUS_EXPIRED',
+          REJECTED: 'PUBLIC.ACCOUNT.STATUS_REJECTED',
+          NO_SHOW: 'PUBLIC.ACCOUNT.STATUS_NO_SHOW',
+          COMPLETED: 'PUBLIC.ACCOUNT.STATUS_COMPLETED',
+        } as Record<string, string>
+      )[status] ? this.i18n.text(({
+        PENDING: 'PUBLIC.ACCOUNT.STATUS_PENDING', PENDING_PAYMENT: 'PUBLIC.ACCOUNT.STATUS_PENDING_PAYMENT', CONFIRMED: 'PUBLIC.ACCOUNT.STATUS_CONFIRMED', CHECKED_IN: 'PUBLIC.ACCOUNT.STATUS_CHECKED_IN', CHECKED_OUT: 'PUBLIC.ACCOUNT.STATUS_CHECKED_OUT', CANCELLED: 'PUBLIC.ACCOUNT.STATUS_CANCELLED', EXPIRED: 'PUBLIC.ACCOUNT.STATUS_EXPIRED', REJECTED: 'PUBLIC.ACCOUNT.STATUS_REJECTED', NO_SHOW: 'PUBLIC.ACCOUNT.STATUS_NO_SHOW', COMPLETED: 'PUBLIC.ACCOUNT.STATUS_COMPLETED'
+      } as Record<string, string>)[status]) : status
+    );
+  }
+
+  getPaymentLabel(payment?: PaymentLifecycleSummary): string {
+    if (!payment) return this.i18n.text('PUBLIC.ACCOUNT.NO_ONLINE_PAYMENT');
+    if (payment.reconciliationRequired) return this.i18n.text('PUBLIC.ACCOUNT.RECONCILIATION');
+    return (
+      (
+        {
+          CREATED: 'PUBLIC.ACCOUNT.PAYMENT_CREATED',
+          PENDING: 'PUBLIC.ACCOUNT.PAYMENT_PENDING',
+          SUCCEEDED: 'PUBLIC.ACCOUNT.PAYMENT_SUCCEEDED',
+          FAILED: 'PUBLIC.ACCOUNT.PAYMENT_FAILED',
+          EXPIRED: 'PUBLIC.ACCOUNT.PAYMENT_EXPIRED',
+        } as Record<string, string>
+      )[payment.status] ? this.i18n.text(({
+        CREATED: 'PUBLIC.ACCOUNT.PAYMENT_CREATED', PENDING: 'PUBLIC.ACCOUNT.PAYMENT_PENDING', SUCCEEDED: 'PUBLIC.ACCOUNT.PAYMENT_SUCCEEDED', FAILED: 'PUBLIC.ACCOUNT.PAYMENT_FAILED', EXPIRED: 'PUBLIC.ACCOUNT.PAYMENT_EXPIRED'
+      } as Record<string, string>)[payment.status]) : payment.status
+    );
+  }
+
+  getPaymentTone(payment?: PaymentLifecycleSummary): string {
+    if (!payment) return 'neutral';
+    if (payment.reconciliationRequired) return 'warning';
+    const tones: Record<string, string> = {
+      SUCCEEDED: 'success',
+      FAILED: 'danger',
+      EXPIRED: 'neutral',
+      PENDING: 'warning',
+      CREATED: 'info',
+    };
+    return tones[payment.status] || 'neutral';
+  }
+
+  getPaymentIcon(payment?: PaymentLifecycleSummary): string {
+    if (!payment) return 'pi pi-wallet';
+    if (payment.reconciliationRequired) return 'pi pi-sync';
+    return (
+      (
+        {
+          SUCCEEDED: 'pi pi-check-circle',
+          FAILED: 'pi pi-times-circle',
+          EXPIRED: 'pi pi-clock',
+          PENDING: 'pi pi-hourglass',
+          CREATED: 'pi pi-wallet',
+        } as Record<string, string>
+      )[payment.status] || 'pi pi-wallet'
+    );
+  }
+
+  getPaymentDescription(payment?: PaymentLifecycleSummary): string {
+    if (!payment) return this.i18n.text('PUBLIC.ACCOUNT.PAYMENT_ON_SITE');
+    if (payment.reconciliationRequired) {
+      return this.i18n.text('PUBLIC.ACCOUNT.PAYMENT_RECONCILIATION');
+    }
+    if (payment.status === 'PENDING' || payment.status === 'CREATED') {
+      return this.i18n.text('PUBLIC.ACCOUNT.PAYMENT_WAITING_CALLBACK');
+    }
+    if (payment.status === 'FAILED')
+      return this.i18n.text('PUBLIC.ACCOUNT.PAYMENT_RETRY');
+    if (payment.status === 'EXPIRED')
+      return this.i18n.text('PUBLIC.ACCOUNT.PAYMENT_SESSION_EXPIRED');
+    return this.i18n.text('PUBLIC.ACCOUNT.PAYMENT_PROVIDER_CONFIRMED', { provider: this.getProviderLabel(payment.provider) });
+  }
+
+  getRefundLabel(refund: RefundSummary): string {
+    return (
+      (
+        {
+          REQUESTED: 'PUBLIC.ACCOUNT.REFUND_REQUESTED',
+          PENDING_PROVIDER: 'PUBLIC.ACCOUNT.REFUND_PENDING',
+          SUCCEEDED: 'PUBLIC.ACCOUNT.REFUND_SUCCEEDED',
+          FAILED: 'PUBLIC.ACCOUNT.REFUND_FAILED',
+        } as Record<string, string>
+      )[refund.status] ? this.i18n.text(({
+        REQUESTED: 'PUBLIC.ACCOUNT.REFUND_REQUESTED', PENDING_PROVIDER: 'PUBLIC.ACCOUNT.REFUND_PENDING', SUCCEEDED: 'PUBLIC.ACCOUNT.REFUND_SUCCEEDED', FAILED: 'PUBLIC.ACCOUNT.REFUND_FAILED'
+      } as Record<string, string>)[refund.status]) : refund.status
+    );
+  }
+
+  getRefundTone(refund: RefundSummary): string {
+    const tones: Record<string, string> = {
+      REQUESTED: 'info',
+      PENDING_PROVIDER: 'warning',
+      SUCCEEDED: 'success',
+      FAILED: 'danger',
+    };
+    return tones[refund.status] || 'neutral';
+  }
+
+  getRefundIcon(refund: RefundSummary): string {
+    return (
+      (
+        {
+          REQUESTED: 'pi pi-file-plus',
+          PENDING_PROVIDER: 'pi pi-hourglass',
+          SUCCEEDED: 'pi pi-check-circle',
+          FAILED: 'pi pi-exclamation-circle',
+        } as Record<string, string>
+      )[refund.status] || 'pi pi-replay'
+    );
+  }
+
+  getRefundDescription(refund: RefundSummary): string {
+    if (refund.status === 'REQUESTED')
+      return this.i18n.text('PUBLIC.ACCOUNT.REFUND_REQUESTED_DESC');
+    if (refund.status === 'PENDING_PROVIDER')
+      return this.i18n.text('PUBLIC.ACCOUNT.REFUND_PENDING_DESC');
+    if (refund.status === 'FAILED') return this.i18n.text('PUBLIC.ACCOUNT.REFUND_FAILED_DESC');
+    return this.i18n.text('PUBLIC.ACCOUNT.REFUND_SUCCEEDED_DESC');
+  }
+
+  getProviderLabel(provider?: string): string {
+    const providers: Record<string, string> = {
+      VNPAY: 'VNPay',
+      MOMO: 'MoMo',
+      ZALOPAY: 'ZaloPay',
+      CASH: 'PUBLIC.ACCOUNT.PROVIDER_CASH',
+    };
+    const key = providers[provider || ''];
+    return key ? (key.startsWith('PUBLIC.') ? this.i18n.text(key) : key) : provider || this.i18n.text('PUBLIC.ACCOUNT.PROVIDER_SYSTEM');
+  }
 
   loadProfile(): void {
     this.loading = true;
     this.profileEmpty = false;
     this.profileLoadFailed = false;
     this.error = '';
-    this.clientApi.getProfile().pipe(finalize(() => {
-      this.loading = false;
-      this.changeDetector.detectChanges();
-    })).subscribe({
-      next: profile => {
-        if (!profile) {
-          this.user = null;
-          this.profileEmpty = true;
-          this.profileForm.reset();
+    this.clientApi
+      .getProfile()
+      .pipe(
+        finalize(() => {
+          this.loading = false;
           this.changeDetector.detectChanges();
-          return;
-        }
-        this.user = profile;
-        this.profileForm.setValue({ fullName: profile.fullName || '', email: profile.email || '', phone: profile.phone || '', avatarUrl: profile.avatarUrl || '' });
-        this.changeDetector.detectChanges();
-      },
-      error: () => {
-        this.profileLoadFailed = true;
-        this.error = 'Không thể tải thông tin tài khoản.';
-        this.changeDetector.detectChanges();
-      }
-    });
+        }),
+      )
+      .subscribe({
+        next: (profile) => {
+          if (!profile) {
+            this.user = null;
+            this.profileEmpty = true;
+            this.profileForm.reset();
+            this.changeDetector.detectChanges();
+            return;
+          }
+          this.user = profile;
+          this.profileForm.setValue({
+            fullName: profile.fullName || '',
+            email: profile.email || '',
+            phone: profile.phone || '',
+            avatarUrl: profile.avatarUrl || '',
+          });
+          this.changeDetector.detectChanges();
+        },
+        error: () => {
+          this.profileLoadFailed = true;
+          this.error = this.i18n.text('PUBLIC.ACCOUNT.PROFILE_LOAD_ERROR');
+          this.changeDetector.detectChanges();
+        },
+      });
   }
 }

@@ -1,5 +1,6 @@
 package com.hotel.services;
 
+import com.hotel.dtos.PromotionQuoteDTO;
 import com.hotel.dtos.RoomTypeDTO;
 import com.hotel.entities.RoomType;
 import com.hotel.repositories.PropertyImageRepository;
@@ -7,6 +8,7 @@ import com.hotel.repositories.RoomImageRepository;
 import com.hotel.repositories.RoomTypeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -27,6 +29,9 @@ public class RoomTypeServiceImpl implements RoomTypeService {
     private final PropertyAccessService propertyAccessService;
     private final SubscriptionFeatureService subscriptionFeatureService;
     private final PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
+
+    @Autowired(required = false)
+    private PromotionQuoteService promotionQuoteService;
 
     @Override
     @Transactional(readOnly = true)
@@ -56,6 +61,19 @@ public class RoomTypeServiceImpl implements RoomTypeService {
                 .map(roomType -> {
                     RoomTypeDTO dto = mapToDTO(roomType);
                     roomAvailabilityService.enrich(dto, roomType, checkIn, checkOut);
+                    if (promotionQuoteService != null && hasStayDates) {
+                        PromotionQuoteDTO quote = promotionQuoteService.quoteForRoom(
+                                roomType,
+                                checkIn,
+                                checkOut,
+                                1,
+                                Math.max(1, guests == null ? 1 : guests),
+                                0,
+                                null,
+                                null);
+                        dto.setQuote(quote);
+                        dto.setTotalPrice(quote.finalTotal());
+                    }
                     return dto;
                 })
                 .filter(dto -> !hasStayDates || (dto.getAvailableRooms() != null && dto.getAvailableRooms() > 0))

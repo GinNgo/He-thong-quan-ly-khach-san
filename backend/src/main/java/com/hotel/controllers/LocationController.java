@@ -2,7 +2,7 @@ package com.hotel.controllers;
 
 import com.hotel.dtos.LocationSuggestionDTO;
 import com.hotel.entities.Location;
-import com.hotel.repositories.LocationRepository;
+import com.hotel.services.ProvinceCompatibilityService;
 import com.hotel.services.PublicSearchSuggestionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,17 +19,17 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LocationController {
 
-    private final LocationRepository locationRepository;
+    private final ProvinceCompatibilityService provinceCompatibilityService;
     private final PublicSearchSuggestionService suggestionService;
 
     @GetMapping("/provinces")
     public ResponseEntity<List<Location>> getProvinces() {
-        return ResponseEntity.ok(locationRepository.findByLocationTypeAndStatusOrderBySortOrderAscNameViAsc("PROVINCE", "ACTIVE"));
+        return ResponseEntity.ok(provinceCompatibilityService.currentProvinces());
     }
 
     @GetMapping("/provinces/{provinceId}/wards")
     public ResponseEntity<List<Location>> getWards(@PathVariable Long provinceId) {
-        return ResponseEntity.ok(locationRepository.findByParentIdAndLocationTypeAndStatusOrderByNameViAsc(provinceId, "WARD", "ACTIVE"));
+        return ResponseEntity.ok(provinceCompatibilityService.wardsFor(provinceId));
     }
 
     @GetMapping("/search")

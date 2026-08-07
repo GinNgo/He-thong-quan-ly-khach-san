@@ -38,7 +38,7 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
   @ViewChild('scrollMe') private scrollContainer?: ElementRef<HTMLElement>;
 
   readonly conversations = signal<ChatConversation[]>([]);
-  readonly selectedCustomerId = signal<number | null>(null);
+  readonly selectedConversationId = signal<number | null>(null);
   readonly messages = signal<ChatMessage[]>([]);
   readonly currentUserId = signal<number | null>(null);
   readonly connectionState = signal<ChatConnectionState>('idle');
@@ -109,11 +109,11 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   selectConversation(conversation: ChatConversation): void {
-    this.selectedCustomerId.set(conversation.customerId);
+    this.selectedConversationId.set(conversation.conversationId);
     this.messages.set([]);
     this.messagesState.set('loading');
     this.messagesError.set('');
-    this.chatService.getSupportHistory(conversation.customerId).subscribe({
+    this.chatService.getSupportHistory(conversation.conversationId).subscribe({
       next: (messages) => {
         this.messages.set(messages);
         this.messagesState.set('ready');
@@ -126,9 +126,9 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   sendMessage(): void {
-    const customerId = this.selectedCustomerId();
+    const conversationId = this.selectedConversationId();
     const content = this.newMessage.trim();
-    if (!customerId || !content || this.isSending()) return;
+    if (!conversationId || !content || this.isSending()) return;
 
     if (!this.chatService.isConnected()) {
       this.sendError.set('Chat đang offline. Hãy kết nối lại trước khi gửi.');
@@ -137,7 +137,7 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
 
     this.sendError.set('');
     this.isSending.set(true);
-    if (!this.chatService.sendSupportReply(customerId, content)) {
+    if (!this.chatService.sendSupportReply(conversationId, content)) {
       this.isSending.set(false);
       this.sendError.set('Không thể gửi phản hồi. Hãy thử lại.');
       return;
@@ -175,18 +175,18 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
       .join('') || '?';
   }
 
-  getConversation(customerId: number): ChatConversation | undefined {
-    return this.conversations().find((conversation) => conversation.customerId === customerId);
+  getConversation(conversationId: number): ChatConversation | undefined {
+    return this.conversations().find((conversation) => conversation.conversationId === conversationId);
   }
 
   private handleIncomingMessage(message: ChatMessage | null): void {
     if (!message) return;
-    const selectedCustomerId = this.selectedCustomerId();
-    if (message.receiverId === 0 && !this.conversations().some((item) => item.customerId === message.senderId)) {
+    const selectedConversationId = this.selectedConversationId();
+    if (!this.conversations().some((item) => item.conversationId === message.conversationId)) {
       this.loadConversations();
     }
 
-    if (message.senderId !== selectedCustomerId && message.receiverId !== selectedCustomerId) return;
+    if (message.conversationId !== selectedConversationId) return;
     this.messages.update((messages) => {
       if (message.id && messages.some((item) => item.id === message.id)) return messages;
       return [...messages, message];

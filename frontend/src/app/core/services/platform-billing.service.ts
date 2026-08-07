@@ -211,6 +211,13 @@ export class PlatformBillingService {
     );
   }
 
+  confirmSimulatorPayment(orderPublicId: string, attemptPublicId: string): Observable<unknown> {
+    return this.http.post(
+      `${environment.apiUrl}/financial-simulator/platform-orders/${this.encode(orderPublicId)}/attempts/${this.encode(attemptPublicId)}/confirm`,
+      null,
+    );
+  }
+
   cancelOrder(
     orderPublicId: string,
     options?: PlatformBillingMutationOptions,

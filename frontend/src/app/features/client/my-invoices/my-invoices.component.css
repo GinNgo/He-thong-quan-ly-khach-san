@@ -321,6 +321,28 @@
   border-bottom: 1px solid var(--hotel-border);
 }
 
+.snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-bottom: 1px solid var(--hotel-border);
+}
+
+.snapshot-grid > div {
+  display: grid;
+  gap: 0.2rem;
+  padding: var(--hotel-space-4) var(--hotel-space-5);
+}
+
+.snapshot-grid > div + div {
+  border-left: 1px solid var(--hotel-border);
+}
+
+.snapshot-grid span,
+.snapshot-grid small {
+  color: var(--hotel-text-muted);
+  font-size: 0.72rem;
+}
+
 .amount-grid div {
   display: grid;
   gap: 0.2rem;
@@ -383,6 +405,16 @@
   gap: 0.15rem;
 }
 
+.line-type {
+  justify-self: start;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--hotel-radius-pill);
+  background: var(--hotel-primary-light);
+  color: var(--hotel-primary);
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
 .detail-line small,
 .credit-note small,
 .empty-inline {
@@ -410,7 +442,7 @@
   position: sticky;
   bottom: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--hotel-space-3);
   padding: var(--hotel-space-5);
   background: rgb(255 255 255 / 0.97);
@@ -469,8 +501,14 @@ button:disabled {
   }
 
   .amount-grid,
+  .snapshot-grid,
   .detail-actions {
     grid-template-columns: 1fr;
+  }
+
+  .snapshot-grid > div + div {
+    border-top: 1px solid var(--hotel-border);
+    border-left: 0;
   }
 
   .detail-header,
@@ -480,5 +518,41 @@ button:disabled {
   .detail-actions {
     padding-right: 1rem;
     padding-left: 1rem;
+  }
+}
+
+@media print {
+  .page-hero,
+  .invoice-list,
+  .detail-actions,
+  .action-feedback,
+  .icon-button,
+  .detail-placeholder {
+    display: none !important;
+  }
+
+  .invoice-page {
+    max-width: none;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .invoice-shell {
+    display: block;
+  }
+
+  .detail-panel {
+    position: static;
+    min-height: 0;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .amount-hero,
+  .line-type {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 }

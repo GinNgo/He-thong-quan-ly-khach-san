@@ -11,6 +11,7 @@ import com.hotel.entities.User;
 import com.hotel.propertycommerce.checkout.CheckoutOperationsService;
 import com.hotel.propertycommerce.config.PropertyPaymentConfigurationRepository;
 import com.hotel.propertycommerce.invoice.InvoiceFinalizationService;
+import com.hotel.propertycommerce.refund.PropertyRefundRequestRepository;
 import com.hotel.repositories.HotelServiceRepository;
 import com.hotel.repositories.HousekeepingTaskRepository;
 import com.hotel.repositories.InvoiceRepository;
@@ -66,6 +67,7 @@ class ReservationLifecycleLockingTest {
     @Mock private PaymentSessionRepository paymentSessionRepository;
     @Mock private RefundRequestRepository refundRequestRepository;
     @Mock private RefundService refundService;
+    @Mock private PropertyRefundRequestRepository propertyRefundRequestRepository;
     @Mock private HousekeepingTaskRepository housekeepingTaskRepository;
     @Mock private PropertyAccessService propertyAccessService;
     @Mock private ReservationHoldService reservationHoldService;
@@ -119,6 +121,8 @@ class ReservationLifecycleLockingTest {
         when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
         lenient().when(reservationRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(reservation));
         when(reservationDetailRepository.findByReservationId(42L)).thenReturn(List.of(detail));
+        lenient().when(propertyRefundRequestRepository.findByReservationIdOrderByRequestedAtAsc(42L))
+                .thenReturn(List.of());
     }
 
     @Test

@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewChecked, Component, ElementRef, HostListener, ViewChild } from '@angular/core';
+import { AfterViewChecked, ChangeDetectorRef, Component, ElementRef, HostListener, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { timeout } from 'rxjs';
+import { finalize, timeout } from 'rxjs';
 
 import { AiService } from '../../core/services/ai';
 
@@ -30,7 +30,10 @@ export class AiAssistant implements AfterViewChecked {
   newMessage = '';
   isTyping = false;
 
-  constructor(private aiService: AiService) {}
+  constructor(
+    private aiService: AiService,
+    private changeDetector: ChangeDetectorRef,
+  ) {}
 
   ngAfterViewChecked(): void {
     this.scrollToBottom();
@@ -93,9 +96,14 @@ export class AiAssistant implements AfterViewChecked {
     }
     this.isTyping = true;
 
-    this.aiService.chat(userText).pipe(timeout(AI_REQUEST_TIMEOUT_MS)).subscribe({
-      next: (res) => {
+    this.aiService.chat(userText).pipe(
+      timeout(AI_REQUEST_TIMEOUT_MS),
+      finalize(() => {
         this.isTyping = false;
+        this.changeDetector.markForCheck();
+      }),
+    ).subscribe({
+      next: (res) => {
         const reply = res.reply?.trim();
         if (!reply) {
           this.addFailureMessage(userText);
@@ -105,7 +113,6 @@ export class AiAssistant implements AfterViewChecked {
         this.messages.push({ text: reply, sender: 'ai', time: new Date() });
       },
       error: () => {
-        this.isTyping = false;
         this.addFailureMessage(userText);
       }
     });

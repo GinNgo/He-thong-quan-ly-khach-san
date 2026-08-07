@@ -76,4 +76,12 @@ public class HotelManagementServiceImpl implements HotelManagementService {
     public List<Hotel> getHotelsByOwnerId(Long ownerId) {
         return hotelRepository.findByOwnerId(ownerId);
     }
+
+    @Override
+    public List<Hotel> getAccessibleHotels() {
+        if (propertyAccessService.isSystemAdministrator()) {
+            return hotelRepository.findAll();
+        }
+        return hotelRepository.findAllById(propertyAccessService.assignedHotelIds());
+    }
 }

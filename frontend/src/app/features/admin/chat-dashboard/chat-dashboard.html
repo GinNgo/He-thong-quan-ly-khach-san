@@ -38,12 +38,13 @@
         *ngFor="let conversation of conversations()"
         type="button"
         class="conversation-item"
-        [class.is-selected]="selectedCustomerId() === conversation.customerId"
-        [attr.aria-current]="selectedCustomerId() === conversation.customerId ? 'true' : null"
+        [class.is-selected]="selectedConversationId() === conversation.conversationId"
+        [attr.aria-current]="selectedConversationId() === conversation.conversationId ? 'true' : null"
         (click)="selectConversation(conversation)">
         <span class="conversation-avatar" aria-hidden="true">{{ conversationInitials(conversation) }}</span>
         <span class="conversation-copy">
           <strong>{{ conversation.customerName }}</strong>
+          <small>{{ conversation.hotelName }} · {{ conversation.status }}</small>
           <span>{{ conversation.lastMessage || 'Cuộc hội thoại mới' }}</span>
         </span>
         <time *ngIf="conversation.lastMessageAt" [attr.datetime]="conversation.lastMessageAt">
@@ -54,7 +55,7 @@
   </aside>
 
   <main class="message-panel" aria-live="polite">
-    <ng-container *ngIf="selectedCustomerId() as selectedId; else noSelection">
+    <ng-container *ngIf="selectedConversationId() as selectedId; else noSelection">
       <header class="message-header">
         <div class="selected-avatar" aria-hidden="true">
           {{ (getConversation(selectedId)?.customerName || '?').charAt(0) | uppercase }}
@@ -62,7 +63,7 @@
         <div>
           <p class="eyebrow">CUSTOMER CONVERSATION</p>
           <h2>{{ getConversation(selectedId)?.customerName || ('Khách hàng #' + selectedId) }}</h2>
-          <p>Hội thoại trong hàng đợi CSKH trung tâm</p>
+          <p>{{ getConversation(selectedId)?.hotelName }} · {{ getConversation(selectedId)?.status }}</p>
         </div>
       </header>
 

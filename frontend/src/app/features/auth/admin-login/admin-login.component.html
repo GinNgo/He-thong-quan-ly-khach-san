@@ -49,7 +49,7 @@
         <!-- Username Field -->
         <div class="mb-4">
           <label for="username" class="form-label fw-bold small text-dark d-flex align-items-center mb-2">
-            <i class="pi pi-envelope me-2 text-primary"></i> Tài khoản
+            <i class="pi pi-user me-2 text-primary"></i> Email hoặc tên đăng nhập
           </label>
           <input 
             id="username" 
@@ -58,7 +58,8 @@
             [(ngModel)]="loginObj.username" 
             name="username" 
             class="w-100 custom-input" 
-            placeholder="support"
+            placeholder="support hoặc support@luxestay.vn"
+            autocomplete="username"
             required 
             autofocus 
           />
@@ -117,9 +118,9 @@
     <div class="login-footer position-absolute bottom-0 w-100 p-4 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3">
       <span class="text-muted fw-medium" style="font-size: 0.75rem;">&copy; 2026 LuxeStay Hospitality Group</span>
       <div class="d-flex gap-4">
-        <span class="text-muted fw-medium" style="font-size: 0.75rem;" title="Trang trạng thái chưa được tích hợp">Trạng thái chưa tích hợp</span>
-        <span class="text-muted fw-medium" style="font-size: 0.75rem;" title="Trung tâm hỗ trợ chưa được tích hợp">Hỗ trợ chưa tích hợp</span>
-        <span class="text-muted fw-medium" style="font-size: 0.75rem;" title="Trang chính sách bảo mật chưa được tích hợp">Bảo mật chưa tích hợp</span>
+        <a class="text-muted fw-medium" style="font-size: 0.75rem;" routerLink="/contact">{{ i18n.text('AUTH_LEGAL.NAV.CONTACT') }}</a>
+        <a class="text-muted fw-medium" style="font-size: 0.75rem;" routerLink="/support">{{ i18n.text('AUTH_LEGAL.NAV.SUPPORT') }}</a>
+        <a class="text-muted fw-medium" style="font-size: 0.75rem;" routerLink="/privacy">{{ i18n.text('AUTH_LEGAL.NAV.PRIVACY') }}</a>
       </div>
     </div>
   </div>

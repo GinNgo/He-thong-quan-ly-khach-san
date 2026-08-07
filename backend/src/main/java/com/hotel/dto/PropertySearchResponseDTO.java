@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.List;
+import com.hotel.dtos.PromotionQuoteDTO;
+import com.hotel.dtos.PublicPlacementDisclosureDTO;
 
 @Data
 @NoArgsConstructor
@@ -38,6 +40,8 @@ public class PropertySearchResponseDTO {
 
     private RoomTypeSummary lowestRoomType;
     private PricingSummary pricing;
+    private PromotionQuoteDTO quote;
+    private PublicPlacementDisclosureDTO sponsoredPlacement;
     private List<String> badges;
     
     private Boolean freeCancellation;

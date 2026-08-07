@@ -2,6 +2,7 @@ package com.hotel.services.impl;
 
 import com.hotel.entities.*;
 import com.hotel.repositories.*;
+import com.hotel.services.ProvinceCompatibilityService;
 import com.hotel.util.VietnameseTextNormalizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,7 +46,9 @@ public class NationwideDemoDataInitializer {
 
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
+    private final ProvinceCompatibilityService provinceCompatibilityService;
     private final HotelRepository hotelRepository;
+    private final LocationRepository locationRepository;
     private final PropertyImageRepository propertyImageRepository;
     private final RoomTypeRepository roomTypeRepository;
     private final RoomTypeImageRepository roomTypeImageRepository;
@@ -156,13 +159,13 @@ public class NationwideDemoDataInitializer {
         roleRepository.save(ownerRole);
 
         seedPlan("FREE", "Gói Miễn phí", "Free Plan", "MONTHLY", BigDecimal.ZERO, false,
-                Map.of("MAX_PROPERTIES", 1, "MAX_ROOM_TYPES", 3, "MAX_ROOMS", 10, "MAX_IMAGES", 15, "MAX_STAFF", 0));
+                Map.of("MAX_PROPERTIES", 1, "MAX_ROOM_TYPES", 3, "MAX_ROOMS", 10, "MAX_IMAGES", 15, "MAX_STAFF", 0, "PROMOTION_CAMPAIGNS", 0, "SPONSORED_PLACEMENTS", 0));
         seedPlan("STANDARD", "Gói Tiêu chuẩn", "Standard Plan", "YEARLY", new BigDecimal("6000000"), false,
-                Map.of("MAX_PROPERTIES", 3, "MAX_ROOM_TYPES", 20, "MAX_ROOMS", 100, "MAX_IMAGES", 300, "MAX_STAFF", 10));
+                Map.of("MAX_PROPERTIES", 3, "MAX_ROOM_TYPES", 20, "MAX_ROOMS", 100, "MAX_IMAGES", 300, "MAX_STAFF", 10, "PROMOTION_CAMPAIGNS", 5, "SPONSORED_PLACEMENTS", 2));
         seedPlan("BUSINESS", "Gói Doanh nghiệp", "Business Plan", "YEARLY", new BigDecimal("15000000"), false,
-                Map.of("MAX_PROPERTIES", 10, "MAX_ROOM_TYPES", 100, "MAX_ROOMS", 1000, "MAX_IMAGES", 3000, "MAX_STAFF", 100));
+                Map.of("MAX_PROPERTIES", 10, "MAX_ROOM_TYPES", 100, "MAX_ROOMS", 1000, "MAX_IMAGES", 3000, "MAX_STAFF", 100, "PROMOTION_CAMPAIGNS", 20, "SPONSORED_PLACEMENTS", 10));
         seedPlan("LIFETIME", "Gói Vĩnh viễn", "Lifetime Plan", "ONCE", new BigDecimal("50000000"), true,
-                Map.of("MAX_PROPERTIES", -1, "MAX_ROOM_TYPES", -1, "MAX_ROOMS", -1, "MAX_IMAGES", -1, "MAX_STAFF", -1));
+                Map.of("MAX_PROPERTIES", -1, "MAX_ROOM_TYPES", -1, "MAX_ROOMS", -1, "MAX_IMAGES", -1, "MAX_STAFF", -1, "PROMOTION_CAMPAIGNS", -1, "SPONSORED_PLACEMENTS", -1));
     }
 
     private void seedPlan(String code, String nameVi, String nameEn, String billingType, BigDecimal price,
@@ -208,8 +211,9 @@ public class NationwideDemoDataInitializer {
         hotel.setCountry("Việt Nam");
         hotel.setProvinceId(target.location().provinceId());
         hotel.setWardId(target.location().wardId());
-        hotel.setLatitude(8.5 + (sequence % 145) / 10.0);
-        hotel.setLongitude(102.0 + (sequence % 70) / 10.0);
+        GeoPoint coordinates = demoCoordinates(target, sequence);
+        hotel.setLatitude(coordinates.latitude());
+        hotel.setLongitude(coordinates.longitude());
         hotel.setPropertyType(PROPERTY_TYPES.get(style));
         hotel.setStarRating(2 + sequence % 4);
         hotel.setMainImage(IMAGE_URLS.get(style % IMAGE_URLS.size()));
@@ -502,11 +506,31 @@ public class NationwideDemoDataInitializer {
     private void logReport(String mode, int requested, int success, int failed) {
         long hotels = hotelRepository.countByIsDemoTrue();
         long owners = jdbcTemplate.queryForObject("SELECT COUNT(DISTINCT user_id) FROM user_properties WHERE relationship_type='OWNER' AND status='ACTIVE'", Long.class);
-        long roomTypes = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM room_types WHERE is_demo=1", Long.class);
-        long rooms = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM rooms WHERE is_demo=1", Long.class);
-        long images = jdbcTemplate.queryForObject("SELECT (SELECT COUNT(*) FROM property_images WHERE is_demo=1)+(SELECT COUNT(*) FROM room_type_images WHERE is_demo=1)", Long.class);
+        long roomTypes = roomTypeRepository.countByIsDemoTrue();
+        long rooms = roomRepository.countByIsDemoTrue();
+        long images = propertyImageRepository.countByIsDemoTrue() + roomTypeImageRepository.countByIsDemoTrue();
         log.info("Demo seed report mode={}, requested={}, success={}, failed={}, hotels={}, owners={}, roomTypes={}, rooms={}, images={}",
                 mode, requested, success, failed, hotels, owners, roomTypes, rooms, images);
+    }
+
+    private GeoPoint demoCoordinates(SeedTarget target, int sequence) {
+        Location currentProvince = provinceCompatibilityService.currentProvinceForId(target.location().provinceId());
+        if (currentProvince != null && currentProvince.getId() != null) {
+            List<Location> landmarks = locationRepository
+                    .findByParentIdAndLocationTypeAndStatusOrderByNameViAsc(
+                            currentProvince.getId(), "LANDMARK", "ACTIVE")
+                    .stream()
+                    .filter(location -> location.getLatitude() != null && location.getLongitude() != null)
+                    .toList();
+            if (!landmarks.isEmpty()) {
+                Location anchor = landmarks.get(Math.floorMod(target.ordinal() - 1, landmarks.size()));
+                double offset = 0.004 * (1 + Math.floorMod(sequence, 3));
+                return new GeoPoint(anchor.getLatitude() + offset, anchor.getLongitude() - offset);
+            }
+        }
+
+        // Retain deterministic coordinates if a future province fixture has no usable landmark.
+        return new GeoPoint(8.5 + (sequence % 145) / 10.0, 102.0 + (sequence % 70) / 10.0);
     }
 
     private String safeCode(String value) {
@@ -516,6 +540,7 @@ public class NationwideDemoDataInitializer {
     private record SeedLocation(Long provinceId, String provinceCode, String provinceName,
                                 Long wardId, String wardCode, String wardName) { }
     private record SeedTarget(String seedKey, SeedLocation location, int ordinal) { }
+    private record GeoPoint(double latitude, double longitude) { }
     private record RoomTemplate(String code, String nameVi, String nameEn, String bedType, int bedCount,
                                 int maxAdults, int maxChildren, int maxGuests, String area, String price,
                                 List<String> roomNumbers) { }

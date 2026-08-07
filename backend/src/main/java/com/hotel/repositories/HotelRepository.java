@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Collection;
 import org.springframework.data.domain.Pageable;
 
 @Repository
@@ -16,8 +17,10 @@ public interface HotelRepository extends JpaRepository<Hotel, Long> {
     List<Hotel> findByAddressLineContainingIgnoreCaseAndStatus(String addressLine, String status);
     List<Hotel> findByStatus(String status);
     long countByProvinceIdAndApprovalStatusAndOperationStatus(Long provinceId, String approvalStatus, String operationStatus);
+    long countByProvinceIdInAndApprovalStatusAndOperationStatus(Collection<Long> provinceIds, String approvalStatus, String operationStatus);
     long countByWardIdAndApprovalStatusAndOperationStatus(Long wardId, String approvalStatus, String operationStatus);
     long countByProvinceIdAndApprovalStatusAndOperationStatusAndIsDemoFalse(Long provinceId, String approvalStatus, String operationStatus);
+    long countByProvinceIdInAndApprovalStatusAndOperationStatusAndIsDemoFalse(Collection<Long> provinceIds, String approvalStatus, String operationStatus);
     long countByWardIdAndApprovalStatusAndOperationStatusAndIsDemoFalse(Long wardId, String approvalStatus, String operationStatus);
     @org.springframework.data.jpa.repository.Query("""
             SELECT h FROM Hotel h

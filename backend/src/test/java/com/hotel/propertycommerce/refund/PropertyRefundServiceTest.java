@@ -96,6 +96,21 @@ class PropertyRefundServiceTest {
     }
 
     @Test
+    void cancellationCreatesARequestForTheRemainingCanonicalPaymentBalance() {
+        arrangeEmptyBalance();
+        when(transactionRepository.findByReservationIdOrderByOccurredAtAsc(20L)).thenReturn(List.of(original));
+        when(requestRepository.saveAndFlush(any(PropertyRefundRequest.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<PropertyRefundService.RefundResult> results = service.requestCancellationRefunds(
+                20L, "Guest cancelled reservation", "reservation-cancellation:20");
+
+        assertEquals(1, results.size());
+        assertEquals(0, results.getFirst().requestedAmount().compareTo(BigDecimal.valueOf(1_000_000)));
+        assertEquals(RefundState.REQUESTED, results.getFirst().status());
+    }
+
+    @Test
     void successfulProviderEffectCreatesOneCreditLedgerAndEquivalentReplayReturnsIt() {
         PropertyRefundRequest refund = PropertyRefundRequest.request(
                 original.getHotel(), original, VndMoney.of(400_000), "Partial refund", actor,

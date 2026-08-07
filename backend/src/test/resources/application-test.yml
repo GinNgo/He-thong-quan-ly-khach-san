@@ -21,6 +21,11 @@ jwt:
   refresh-expiration: 604800000
 
 payment:
+  provider-recovery:
+    enabled: false
+  demo:
+    enabled: true
+    signing-secret: test_demo_payment_signing_secret_at_least_32_chars
   vnpay:
     tmn-code: test_code
     hash-secret: test_hash
@@ -33,6 +38,7 @@ app:
   auth:
     refresh-cookie-secure: false
   mail:
+    registration-enabled: false
     email-verification-enabled: false
   location-import:
     enabled: false

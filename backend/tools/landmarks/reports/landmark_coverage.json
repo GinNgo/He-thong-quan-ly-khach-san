@@ -1,0 +1,426 @@
+{
+  "sourceRows": 315,
+  "generatedLandmarks": 122,
+  "quarantined": 207,
+  "administrativeBaseline": "CURRENT_34",
+  "currentProvinceSourceSha256": "4182eae7588d3c90778454ef0b499e92e497d3eeb543f0cc8f494d342f810647",
+  "supportedProvinceCount": 34,
+  "coveredProvinceCount": 34,
+  "minimumPerProvince": 3,
+  "editorialTargetPerProvince": 3,
+  "provinces": [
+    {
+      "code": "VN34-01",
+      "officialCode": "01",
+      "name": "Thành phố Hà Nội",
+      "legacyProvinceCodes": [
+        "1"
+      ],
+      "landmarkCount": 4,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-04",
+      "officialCode": "04",
+      "name": "Tỉnh Cao Bằng",
+      "legacyProvinceCodes": [
+        "4"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-08",
+      "officialCode": "08",
+      "name": "Tỉnh Tuyên Quang",
+      "legacyProvinceCodes": [
+        "2",
+        "8"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-11",
+      "officialCode": "11",
+      "name": "Tỉnh Điện Biên",
+      "legacyProvinceCodes": [
+        "11"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-12",
+      "officialCode": "12",
+      "name": "Tỉnh Lai Châu",
+      "legacyProvinceCodes": [
+        "12"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-14",
+      "officialCode": "14",
+      "name": "Tỉnh Sơn La",
+      "legacyProvinceCodes": [
+        "14"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-15",
+      "officialCode": "15",
+      "name": "Tỉnh Lào Cai",
+      "legacyProvinceCodes": [
+        "10",
+        "15"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-19",
+      "officialCode": "19",
+      "name": "Tỉnh Thái Nguyên",
+      "legacyProvinceCodes": [
+        "6",
+        "19"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-20",
+      "officialCode": "20",
+      "name": "Tỉnh Lạng Sơn",
+      "legacyProvinceCodes": [
+        "20"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-22",
+      "officialCode": "22",
+      "name": "Tỉnh Quảng Ninh",
+      "legacyProvinceCodes": [
+        "22"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-24",
+      "officialCode": "24",
+      "name": "Tỉnh Bắc Ninh",
+      "legacyProvinceCodes": [
+        "24",
+        "27"
+      ],
+      "landmarkCount": 4,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-25",
+      "officialCode": "25",
+      "name": "Tỉnh Phú Thọ",
+      "legacyProvinceCodes": [
+        "17",
+        "25",
+        "26"
+      ],
+      "landmarkCount": 4,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-31",
+      "officialCode": "31",
+      "name": "Thành phố Hải Phòng",
+      "legacyProvinceCodes": [
+        "30",
+        "31"
+      ],
+      "landmarkCount": 5,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-33",
+      "officialCode": "33",
+      "name": "Tỉnh Hưng Yên",
+      "legacyProvinceCodes": [
+        "33",
+        "34"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-37",
+      "officialCode": "37",
+      "name": "Tỉnh Ninh Bình",
+      "legacyProvinceCodes": [
+        "35",
+        "36",
+        "37"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-38",
+      "officialCode": "38",
+      "name": "Tỉnh Thanh Hóa",
+      "legacyProvinceCodes": [
+        "38"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-40",
+      "officialCode": "40",
+      "name": "Tỉnh Nghệ An",
+      "legacyProvinceCodes": [
+        "40"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-42",
+      "officialCode": "42",
+      "name": "Tỉnh Hà Tĩnh",
+      "legacyProvinceCodes": [
+        "42"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-44",
+      "officialCode": "44",
+      "name": "Tỉnh Quảng Trị",
+      "legacyProvinceCodes": [
+        "44",
+        "45"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-46",
+      "officialCode": "46",
+      "name": "Thành phố Huế",
+      "legacyProvinceCodes": [
+        "46"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-48",
+      "officialCode": "48",
+      "name": "Thành phố Đà Nẵng",
+      "legacyProvinceCodes": [
+        "48",
+        "49"
+      ],
+      "landmarkCount": 5,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-51",
+      "officialCode": "51",
+      "name": "Tỉnh Quảng Ngãi",
+      "legacyProvinceCodes": [
+        "51",
+        "62"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-52",
+      "officialCode": "52",
+      "name": "Tỉnh Gia Lai",
+      "legacyProvinceCodes": [
+        "52",
+        "64"
+      ],
+      "landmarkCount": 4,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-56",
+      "officialCode": "56",
+      "name": "Tỉnh Khánh Hòa",
+      "legacyProvinceCodes": [
+        "56",
+        "58"
+      ],
+      "landmarkCount": 4,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-66",
+      "officialCode": "66",
+      "name": "Tỉnh Đắk Lắk",
+      "legacyProvinceCodes": [
+        "54",
+        "66"
+      ],
+      "landmarkCount": 4,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-68",
+      "officialCode": "68",
+      "name": "Tỉnh Lâm Đồng",
+      "legacyProvinceCodes": [
+        "60",
+        "67",
+        "68"
+      ],
+      "landmarkCount": 7,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-75",
+      "officialCode": "75",
+      "name": "Tỉnh Đồng Nai",
+      "legacyProvinceCodes": [
+        "70",
+        "75"
+      ],
+      "landmarkCount": 4,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-79",
+      "officialCode": "79",
+      "name": "Thành phố Hồ Chí Minh",
+      "legacyProvinceCodes": [
+        "74",
+        "77",
+        "79"
+      ],
+      "landmarkCount": 5,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-80",
+      "officialCode": "80",
+      "name": "Tỉnh Tây Ninh",
+      "legacyProvinceCodes": [
+        "72",
+        "80"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-82",
+      "officialCode": "82",
+      "name": "Tỉnh Đồng Tháp",
+      "legacyProvinceCodes": [
+        "82",
+        "87"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-86",
+      "officialCode": "86",
+      "name": "Tỉnh Vĩnh Long",
+      "legacyProvinceCodes": [
+        "83",
+        "84",
+        "86"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-91",
+      "officialCode": "91",
+      "name": "Tỉnh An Giang",
+      "legacyProvinceCodes": [
+        "89",
+        "91"
+      ],
+      "landmarkCount": 4,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-92",
+      "officialCode": "92",
+      "name": "Thành phố Cần Thơ",
+      "legacyProvinceCodes": [
+        "92",
+        "93",
+        "94"
+      ],
+      "landmarkCount": 3,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    },
+    {
+      "code": "VN34-96",
+      "officialCode": "96",
+      "name": "Tỉnh Cà Mau",
+      "legacyProvinceCodes": [
+        "95",
+        "96"
+      ],
+      "landmarkCount": 4,
+      "meetsMinimum": true,
+      "meetsEditorialTarget": true
+    }
+  ],
+  "qualityStatusCounts": {
+    "MATCHED": 9,
+    "VERIFIED": 113
+  },
+  "coordinateProviderCounts": {
+    "GEONAMES": 56,
+    "MANUAL_CURATED": 7,
+    "OPENSTREETMAP": 27,
+    "WIKIDATA": 32
+  }
+}

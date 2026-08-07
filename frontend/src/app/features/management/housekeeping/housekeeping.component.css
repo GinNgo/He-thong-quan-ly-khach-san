@@ -1,0 +1,33 @@
+.housekeeping-page { display: grid; gap: 1.5rem; padding: clamp(1rem, 2vw, 2rem); }
+.page-header { display: flex; align-items: end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.eyebrow { color: var(--hotel-primary); font-size: .72rem; font-weight: 800; letter-spacing: .12em; margin: 0; }
+h2 { margin: .3rem 0; color: var(--hotel-heading); }
+.subtitle { color: var(--hotel-text-muted); margin: 0; }
+.toolbar { align-items: end; display: flex; gap: .75rem; flex-wrap: wrap; }
+label { color: var(--hotel-text); display: grid; font-size: .78rem; font-weight: 700; gap: .3rem; }
+select, button { border: 1px solid var(--hotel-border); border-radius: .65rem; min-height: 2.75rem; padding: .5rem .75rem; }
+button { background: var(--hotel-primary); border-color: var(--hotel-primary); color: var(--hotel-card-bg); cursor: pointer; font-weight: 700; }
+button:hover:not(:disabled) { background: var(--hotel-primary-hover); border-color: var(--hotel-primary-hover); }
+button.secondary { background: var(--hotel-card-bg); color: var(--hotel-primary); }
+button.complete { background: var(--hotel-success); border-color: var(--hotel-success); }
+button:disabled { cursor: not-allowed; opacity: .55; }
+.task-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); }
+.task-card { background: var(--hotel-card-bg); border: 1px solid var(--hotel-border); border-radius: 1rem; box-shadow: 0 12px 30px color-mix(in srgb, var(--hotel-heading) 8%, transparent); display: grid; gap: 1rem; padding: 1rem; }
+.task-card.stale { border-color: var(--hotel-warning); }
+.task-heading { align-items: start; display: flex; justify-content: space-between; gap: .75rem; }
+.room-label { color: var(--hotel-heading); display: block; font-size: 1.15rem; font-weight: 800; }
+small { color: var(--hotel-text-muted); }
+.status { background: var(--hotel-info-light); border-radius: 999px; color: var(--hotel-info); font-size: .75rem; font-weight: 800; padding: .35rem .55rem; white-space: nowrap; }
+.status[data-status="IN_PROGRESS"] { background: var(--hotel-success-light); color: var(--hotel-success); }
+.status[data-status="COMPLETED"] { background: var(--hotel-surface-muted); color: var(--hotel-text-muted); }
+dl { display: grid; gap: .6rem; margin: 0; }
+dl div { display: flex; justify-content: space-between; gap: .75rem; }
+dt { color: var(--hotel-text-muted); font-size: .8rem; }
+dd { color: var(--hotel-text); margin: 0; text-align: right; }
+.warning, .completion-notice.blocked, .release-state.blocked { background: var(--hotel-warning-light); color: var(--hotel-warning); }
+.warning, .completion-notice, .release-state { border-radius: .5rem; font-size: .85rem; margin: 0; padding: .6rem; }
+.completion-notice, .release-state { background: var(--hotel-success-light); color: var(--hotel-success); }
+.task-actions { align-items: end; display: flex; flex-wrap: wrap; gap: .5rem; }
+.assign-control { flex: 1 1 10rem; }
+button:focus-visible, select:focus-visible { outline: 3px solid var(--hotel-primary-light); outline-offset: 2px; }
+@media (max-width: 640px) { .toolbar, .toolbar > label, .toolbar button { width: 100%; } .task-actions > button { flex: 1 1 100%; } }

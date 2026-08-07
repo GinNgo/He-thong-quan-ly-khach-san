@@ -44,7 +44,16 @@ public class PropertyRevenueRepository {
 
     private List<TransactionSource> transactions(QueryScope scope) {
         StringBuilder jpql = new StringBuilder("""
-                select transaction
+                select transaction.publicId,
+                       transaction.occurredAt,
+                       transaction.transactionType,
+                       transaction.direction,
+                       transaction.amount,
+                       transaction.method,
+                       transaction.provider,
+                       transaction.reservation.id,
+                       transaction.invoiceId,
+                       transaction.originalTransaction.publicId
                 from PropertyFinancialTransaction transaction
                 where transaction.hotel.id = :propertyId
                   and transaction.occurredAt >= :fromInclusive
@@ -55,24 +64,22 @@ public class PropertyRevenueRepository {
         appendRoomTypeFilter(jpql, "transaction.reservation", scope);
         jpql.append(" order by transaction.occurredAt, transaction.id");
 
-        TypedQuery<PropertyFinancialTransaction> query = entityManager.createQuery(
-                jpql.toString(), PropertyFinancialTransaction.class);
+        TypedQuery<Object[]> query = entityManager.createQuery(jpql.toString(), Object[].class);
         bindBase(query, scope);
         bindPaymentFilters(query, scope);
         bindRoomType(query, scope);
-        return query.getResultList().stream().map(transaction -> new TransactionSource(
-                transaction.getPublicId(),
-                transaction.getOccurredAt(),
-                transaction.getTransactionType(),
-                transaction.getDirection(),
-                transaction.getAmount(),
-                transaction.getMethod(),
-                transaction.getProvider(),
-                transaction.getReservation() == null ? null : transaction.getReservation().getId(),
-                transaction.getInvoiceId(),
-                transaction.getOriginalTransaction() == null
-                        ? null
-                        : transaction.getOriginalTransaction().getPublicId())).toList();
+        // Project the immutable ledger values directly: reports can contain many rows and do not need entities.
+        return query.getResultList().stream().map(row -> new TransactionSource(
+                (String) row[0],
+                (LocalDateTime) row[1],
+                (PropertyFinancialTransaction.TransactionType) row[2],
+                (PropertyFinancialTransaction.Direction) row[3],
+                (BigDecimal) row[4],
+                (String) row[5],
+                (String) row[6],
+                (Long) row[7],
+                (Long) row[8],
+                (String) row[9])).toList();
     }
 
     private List<InvoiceSource> invoices(QueryScope scope) {

@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const e2eWebUrl = process.env.LUXESTAY_E2E_WEB_URL || 'http://localhost:4200';
+const e2eWebPort = new URL(e2eWebUrl).port || '4200';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -9,7 +12,7 @@ export default defineConfig({
   reporter: [['html', { open: 'never' }]],
   timeout: 30000,
   use: {
-    baseURL: 'http://localhost:4200',
+    baseURL: e2eWebUrl,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -21,8 +24,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run start',
-    url: 'http://localhost:4200',
+    command: `npm run start -- --port ${e2eWebPort}`,
+    url: e2eWebUrl,
     reuseExistingServer: true,
     timeout: 120 * 1000,
   },

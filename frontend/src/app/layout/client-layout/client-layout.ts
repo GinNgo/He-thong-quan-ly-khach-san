@@ -6,11 +6,15 @@ import { AuthService } from '../../core/services/auth';
 import { ClientApiService, UserContext } from '../../core/services/client-api.service';
 import { LayoutStateService } from '../../core/services/layout-state.service';
 import { ChatWidgetComponent } from '../../features/client/chat-widget/chat-widget';
+import { TranslatePipe } from '@ngx-translate/core';
+import { LocaleService } from '../../core/i18n/locale.service';
+import { PublicI18nService } from '../../core/i18n/public-i18n.service';
 
 @Component({
   selector: 'app-client-layout', standalone: true,
-  imports: [CommonModule, RouterModule, ChatWidgetComponent],
-  templateUrl: './client-layout.html', styleUrls: ['./client-layout.css']
+  imports: [CommonModule, RouterModule, ChatWidgetComponent, TranslatePipe],
+  templateUrl: './client-layout.html',
+  styleUrls: ['./client-layout.css', './client-layout.mobile.css']
 })
 export class ClientLayout implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
@@ -20,6 +24,8 @@ export class ClientLayout implements OnInit, OnDestroy {
   private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly destroy$ = new Subject<void>();
   readonly layoutState = inject(LayoutStateService);
+  readonly localeService = inject(LocaleService);
+  private readonly publicI18n = inject(PublicI18nService);
 
   isLoggedIn = false;
   isMobileMenuOpen = false;
@@ -59,17 +65,18 @@ export class ClientLayout implements OnInit, OnDestroy {
   }
 
   get partnerLabel(): string {
-    if (this.userContext?.status && ['LOCKED', 'BLOCKED', 'INACTIVE'].includes(this.userContext.status)) return 'Tài khoản bị khóa';
-    if (!this.isLoggedIn) return 'Đăng chỗ nghỉ của bạn';
-    if (this.isPropertyOwner || this.userContext?.partnerRegistrationStatus === 'APPROVED') return 'Quản lý cơ sở';
-    if (this.userContext?.partnerRegistrationStatus === 'PENDING') return 'Hồ sơ đang duyệt';
-    return 'Đăng chỗ nghỉ của bạn';
+    if (this.userContext?.status && ['LOCKED', 'BLOCKED', 'INACTIVE'].includes(this.userContext.status)) return this.publicI18n.text('LAYOUT.ACCOUNT_LOCKED');
+    if (!this.isLoggedIn) return this.publicI18n.text('LAYOUT.LIST_PROPERTY');
+    if (this.isPropertyOwner || this.userContext?.partnerRegistrationStatus === 'APPROVED') return this.publicI18n.text('LAYOUT.MANAGE_PROPERTY');
+    if (this.userContext?.partnerRegistrationStatus === 'PENDING') return this.publicI18n.text('LAYOUT.APPLICATION_PENDING');
+    return this.publicI18n.text('LAYOUT.LIST_PROPERTY');
   }
 
   toggleAccountMenu(event: Event): void { event.stopPropagation(); this.accountMenuOpen = !this.accountMenuOpen; }
   closeAccountMenu(): void { this.accountMenuOpen = false; }
   toggleMobileMenu(): void { this.isMobileMenuOpen = !this.isMobileMenuOpen; }
   closeMobileMenu(): void { this.isMobileMenuOpen = false; }
+  toggleLocale(): void { this.localeService.toggle(); }
   handleAvatarError(): void { this.avatarUrl = ''; }
 
   navigatePartner(): void {

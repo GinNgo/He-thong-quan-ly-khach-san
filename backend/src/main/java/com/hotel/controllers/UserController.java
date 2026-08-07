@@ -1,4 +1,4 @@
-﻿package com.hotel.controllers;
+package com.hotel.controllers;
 
 import com.hotel.entities.User;
 import com.hotel.dtos.ProfileUpdateRequest;
@@ -28,6 +28,39 @@ public class UserController {
     @Permission(function = FunctionCode.USER, action = ActionCode.VIEW)
     public ResponseEntity<List<UserDto>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
+    }
+
+    @GetMapping("/customers")
+    @Permission(function = FunctionCode.CUSTOMER, action = ActionCode.VIEW)
+    public ResponseEntity<List<UserDto>> getCustomers() {
+        return ResponseEntity.ok(userService.getCustomers());
+    }
+
+    @PostMapping("/customers")
+    @Permission(function = FunctionCode.CUSTOMER, action = ActionCode.CREATE)
+    public ResponseEntity<UserDto> createCustomer(@RequestBody com.hotel.dtos.UserRequest request) {
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setPasswordHash(request.getPassword());
+        user.setFullName(request.getFullName());
+        user.setPhone(request.getPhone());
+        user.setStatus(request.getStatus());
+        return ResponseEntity.ok(userService.createCustomer(user));
+    }
+
+    @PutMapping("/customers/{id}")
+    @Permission(function = FunctionCode.CUSTOMER, action = ActionCode.UPDATE)
+    public ResponseEntity<UserDto> updateCustomer(
+            @PathVariable Long id,
+            @RequestBody com.hotel.dtos.UserRequest request) {
+        User user = new User();
+        user.setEmail(request.getEmail());
+        user.setFullName(request.getFullName());
+        user.setPhone(request.getPhone());
+        user.setStatus(request.getStatus());
+        user.setPasswordHash(request.getPassword());
+        return ResponseEntity.ok(userService.updateCustomer(id, user));
     }
 
     @GetMapping("/{id}")

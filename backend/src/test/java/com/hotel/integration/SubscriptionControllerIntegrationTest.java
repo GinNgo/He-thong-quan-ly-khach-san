@@ -9,6 +9,7 @@ import com.hotel.dtos.SubscriptionFeatureDTO;
 import com.hotel.dtos.SubscriptionPlanDTO;
 import com.hotel.dtos.SubscriptionUsageDTO;
 import com.hotel.entities.User;
+import com.hotel.observability.OperationalMetrics;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.repositories.AccountSubscriptionRepository;
 import com.hotel.repositories.SubscriptionPlanRepository;
@@ -69,6 +70,9 @@ class SubscriptionControllerIntegrationTest {
 
     @MockBean
     private TenantFilterInterceptor tenantFilterInterceptor;
+
+    @MockBean
+    private OperationalMetrics operationalMetrics;
 
     @BeforeEach
     void allowMvcRequestsThroughTenantFilter() {

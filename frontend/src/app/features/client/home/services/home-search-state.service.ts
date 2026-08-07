@@ -11,6 +11,8 @@ export interface HomeSearchState {
   provinceId: number | null;
   wardId: number | null;
   propertyId: number | null;
+  landmarkId: number | null;
+  radiusKm: number | null;
   propertyTypes: string[];
   stayType: StayType;
   checkInDate: Date | null;
@@ -28,12 +30,17 @@ export interface RecentSearch {
   provinceId: number | null;
   wardId: number | null;
   propertyId: number | null;
+  landmarkId?: number | null;
   selectedSuggestionType: SuggestionType | null;
+  stayType?: StayType;
   checkInDate: string | null;
   checkOutDate: string | null;
   adultCount: number;
   childCount: number;
   roomCount: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  radiusKm?: number | null;
   createdAt: string;
 }
 
@@ -43,7 +50,25 @@ export interface SearchSelection {
   displayName: string;
   name?: string;
   provinceId?: number;
+  provinceName?: string;
   wardId?: number;
+  latitude?: number;
+  longitude?: number;
+  defaultRadiusKm?: number;
+  category?: string;
+}
+
+export interface RestoredLocationContext {
+  keyword: string;
+  displayName: string;
+  selectedSuggestionType: SuggestionType | null;
+  provinceId: number | null;
+  wardId: number | null;
+  propertyId?: number | null;
+  landmarkId?: number | null;
+  radiusKm?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -60,6 +85,18 @@ export class HomeSearchStateService {
 
   readonly isDayUse = computed(() => this.state().stayType === 'DAY_USE');
 
+  readonly dateValidationError = computed(() => {
+    const state = this.state();
+    const checkIn = state.checkInDate ? this.startOfDay(state.checkInDate) : null;
+    const checkOut = state.checkOutDate ? this.startOfDay(state.checkOutDate) : null;
+    if (!checkIn) return 'Vui lòng chọn ngày nhận phòng.';
+    if (checkIn < this.startOfToday()) return 'Ngày nhận phòng không thể ở trong quá khứ.';
+    if (state.stayType === 'DAY_USE') return '';
+    if (!checkOut) return 'Vui lòng chọn ngày trả phòng.';
+    if (checkOut <= checkIn) return 'Ngày trả phòng phải sau ngày nhận phòng.';
+    return '';
+  });
+
   constructor(private router: Router) {}
 
   updateKeyword(value: string): void {
@@ -70,7 +107,11 @@ export class HomeSearchStateService {
       selectedSuggestionType: null,
       provinceId: null,
       wardId: null,
-      propertyId: null
+      propertyId: null,
+      landmarkId: null,
+      radiusKm: null,
+      latitude: null,
+      longitude: null
     }));
   }
 
@@ -82,13 +123,34 @@ export class HomeSearchStateService {
       selectedSuggestionType: wardId ? 'WARD' : provinceId ? 'PROVINCE' : null,
       provinceId,
       wardId,
-      propertyId: null
+      propertyId: null,
+      landmarkId: null,
+      radiusKm: null,
+      latitude: null,
+      longitude: null
+    }));
+  }
+
+  restoreLocation(context: RestoredLocationContext): void {
+    this.state.update(state => ({
+      ...state,
+      keyword: context.keyword,
+      locationDisplayName: context.displayName,
+      selectedSuggestionType: context.selectedSuggestionType,
+      provinceId: context.provinceId,
+      wardId: context.wardId,
+      propertyId: context.propertyId ?? null,
+      landmarkId: context.landmarkId ?? null,
+      radiusKm: context.radiusKm ?? null,
+      latitude: context.latitude ?? null,
+      longitude: context.longitude ?? null
     }));
   }
 
   selectSuggestion(selection: SearchSelection): void {
     const provinceId = selection.type === 'PROVINCE' ? selection.id : selection.provinceId ?? null;
     const wardId = selection.type === 'WARD' ? selection.id : selection.wardId ?? null;
+    const landmarkId = selection.type === 'LANDMARK' ? selection.id : null;
     this.state.update(state => ({
       ...state,
       keyword: selection.type === 'PROPERTY' ? selection.name || selection.displayName : '',
@@ -96,7 +158,11 @@ export class HomeSearchStateService {
       selectedSuggestionType: selection.type,
       provinceId,
       wardId: selection.type === 'PROVINCE' ? null : wardId,
-      propertyId: selection.type === 'PROPERTY' ? selection.id : null
+      propertyId: selection.type === 'PROPERTY' ? selection.id : null,
+      landmarkId,
+      radiusKm: landmarkId ? selection.defaultRadiusKm ?? 5 : null,
+      latitude: landmarkId ? selection.latitude ?? null : null,
+      longitude: landmarkId ? selection.longitude ?? null : null
     }));
 
     if (selection.type === 'PROPERTY') {
@@ -113,14 +179,20 @@ export class HomeSearchStateService {
       selectedSuggestionType: null,
       provinceId: null,
       wardId: null,
-      propertyId: null
+      propertyId: null,
+      landmarkId: null,
+      radiusKm: null,
+      latitude: null,
+      longitude: null
     }));
   }
 
   updateStayType(stayType: StayType): void {
     this.state.update(state => {
       const next = { ...state, stayType };
-      if (stayType === 'OVERNIGHT' && next.checkInDate &&
+      if (stayType === 'DAY_USE') {
+        next.checkOutDate = null;
+      } else if (next.checkInDate &&
           (!next.checkOutDate || next.checkOutDate <= next.checkInDate)) {
         next.checkOutDate = this.addDays(next.checkInDate, 1);
       }
@@ -133,13 +205,13 @@ export class HomeSearchStateService {
   }
 
   updateDates(checkInDate: Date | null, checkOutDate: Date | null): void {
-    this.state.update(state => {
-      const next = { ...state, checkInDate, checkOutDate };
-      if (checkInDate && checkOutDate && checkOutDate <= checkInDate && state.stayType === 'OVERNIGHT') {
-        next.checkOutDate = this.addDays(checkInDate, 1);
-      }
-      return next;
-    });
+    this.state.update(state => ({
+      ...state,
+      checkInDate: checkInDate ? this.startOfDay(checkInDate) : null,
+      checkOutDate: state.stayType === 'DAY_USE'
+        ? null
+        : checkOutDate ? this.startOfDay(checkOutDate) : null
+    }));
   }
 
   updateGuests(adultCount: number, childCount: number, roomCount: number): void {
@@ -153,12 +225,15 @@ export class HomeSearchStateService {
 
   applyRecentSearch(recent: RecentSearch): void {
     const today = this.startOfToday();
+    const stayType = recent.stayType || 'OVERNIGHT';
     let checkIn = recent.checkInDate ? new Date(`${recent.checkInDate}T00:00:00`) : today;
-    let checkOut = recent.checkOutDate ? new Date(`${recent.checkOutDate}T00:00:00`) : this.addDays(today, 1);
+    let checkOut = stayType === 'DAY_USE'
+      ? null
+      : recent.checkOutDate ? new Date(`${recent.checkOutDate}T00:00:00`) : this.addDays(today, 1);
     if (checkIn < today) {
       checkIn = today;
-      checkOut = this.addDays(today, 1);
-    } else if (checkOut <= checkIn) {
+      checkOut = stayType === 'DAY_USE' ? null : this.addDays(today, 1);
+    } else if (stayType === 'OVERNIGHT' && checkOut && checkOut <= checkIn) {
       checkOut = this.addDays(checkIn, 1);
     }
     this.state.update(state => ({
@@ -169,6 +244,11 @@ export class HomeSearchStateService {
       provinceId: recent.provinceId,
       wardId: recent.wardId,
       propertyId: recent.propertyId,
+      landmarkId: recent.landmarkId ?? null,
+      radiusKm: recent.radiusKm ?? null,
+      latitude: recent.latitude ?? null,
+      longitude: recent.longitude ?? null,
+      stayType,
       checkInDate: checkIn,
       checkOutDate: checkOut,
       adultCount: recent.adultCount || 1,
@@ -188,7 +268,7 @@ export class HomeSearchStateService {
 
   submitSearch(): boolean {
     const state = this.state();
-    if (!state.checkInDate || (state.stayType === 'OVERNIGHT' && !state.checkOutDate)) return false;
+    if (this.dateValidationError() || !state.checkInDate) return false;
     if (state.propertyId) {
       this.saveRecentSearch(state);
       this.router.navigate(['/hotel', state.propertyId], { queryParams: this.bookingQueryParams() });
@@ -207,6 +287,9 @@ export class HomeSearchStateService {
     if (state.locationDisplayName) queryParams['displayLocation'] = state.locationDisplayName;
     if (state.provinceId) queryParams['provinceId'] = state.provinceId;
     if (state.wardId) queryParams['wardId'] = state.wardId;
+    if (state.landmarkId) queryParams['landmarkId'] = state.landmarkId;
+    if (state.radiusKm !== null) queryParams['radiusKm'] = state.radiusKm;
+    if (state.landmarkId) queryParams['sortBy'] = 'NEAREST';
     if (state.propertyTypes.length) queryParams['propertyTypes'] = state.propertyTypes.join(',');
     if (state.latitude !== null) queryParams['latitude'] = state.latitude;
     if (state.longitude !== null) queryParams['longitude'] = state.longitude;
@@ -233,6 +316,7 @@ export class HomeSearchStateService {
     return {
       keyword: '', locationDisplayName: '', selectedSuggestionType: null,
       provinceId: null, wardId: null, propertyId: null, propertyTypes: [],
+      landmarkId: null, radiusKm: null,
       stayType: 'OVERNIGHT', checkInDate, checkOutDate: this.addDays(checkInDate, 1),
       adultCount: 2, childCount: 0, roomCount: 1, latitude: null, longitude: null
     };
@@ -246,12 +330,17 @@ export class HomeSearchStateService {
       provinceId: state.provinceId,
       wardId: state.wardId,
       propertyId: state.propertyId,
+      landmarkId: state.landmarkId,
       selectedSuggestionType: state.selectedSuggestionType,
+      stayType: state.stayType,
       checkInDate: state.checkInDate ? this.formatDate(state.checkInDate) : null,
       checkOutDate: state.checkOutDate ? this.formatDate(state.checkOutDate) : null,
       adultCount: state.adultCount,
       childCount: state.childCount,
       roomCount: state.roomCount,
+      latitude: state.latitude,
+      longitude: state.longitude,
+      radiusKm: state.radiusKm,
       createdAt: new Date().toISOString()
     };
     const unique = this.recentSearches().filter(item => this.recentKey(item) !== this.recentKey(entry));
@@ -278,11 +367,15 @@ export class HomeSearchStateService {
   }
 
   private recentKey(item: RecentSearch): string {
-    return `${item.selectedSuggestionType || ''}:${item.propertyId || item.wardId || item.provinceId || item.displayLocation}`;
+    return `${item.selectedSuggestionType || ''}:${item.propertyId || item.landmarkId || item.wardId || item.provinceId || item.displayLocation}`;
   }
 
   private startOfToday(): Date {
-    const date = new Date();
+    return this.startOfDay(new Date());
+  }
+
+  private startOfDay(value: Date): Date {
+    const date = new Date(value);
     date.setHours(0, 0, 0, 0);
     return date;
   }

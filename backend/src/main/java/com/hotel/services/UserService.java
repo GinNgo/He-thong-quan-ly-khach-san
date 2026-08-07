@@ -1,4 +1,4 @@
-﻿package com.hotel.services;
+package com.hotel.services;
 
 import com.hotel.entities.User;
 import com.hotel.dtos.StaffLifecycleRequest;
@@ -67,6 +67,58 @@ public class UserService {
         return users.stream()
                 .map(user -> convertToDto(user, assignmentScope))
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserDto> getCustomers() {
+        return userRepository.findCustomers().stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public UserDto createCustomer(User user) {
+        if (userRepository.existsByUsername(user.getUsername())) {
+            throw new RuntimeException("Username is already taken!");
+        }
+        if (userRepository.existsByEmail(user.getEmail())) {
+            throw new RuntimeException("Email is already taken!");
+        }
+
+        com.hotel.entities.Role customerRole = roleRepository.findByCode("CUSTOMER")
+                .orElseThrow(() -> new IllegalArgumentException("Customer role is not configured."));
+        user.setPasswordHash(passwordEncoder.encode(
+                user.getPasswordHash() == null || user.getPasswordHash().isBlank()
+                        ? "123456" : user.getPasswordHash()));
+        user.setCreatedAt(java.time.LocalDateTime.now());
+        user.setStatus(user.getStatus() == null ? "ACTIVE" : user.getStatus());
+        user.setRoles(java.util.Set.of(customerRole));
+        user.setHotel(null);
+        return convertToDto(userRepository.save(user));
+    }
+
+    @Transactional
+    public UserDto updateCustomer(Long id, User userDetails) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        boolean isCustomer = user.getRoles() != null && user.getRoles().stream()
+                .anyMatch(role -> "CUSTOMER".equals(role.getCode()));
+        if (!isCustomer) {
+            throw new SecurityException("The selected account is not a customer.");
+        }
+        if (userDetails.getEmail() != null && !userDetails.getEmail().equalsIgnoreCase(user.getEmail())) {
+            if (userRepository.existsByEmail(userDetails.getEmail())) {
+                throw new RuntimeException("Email is already taken!");
+            }
+            user.setEmail(userDetails.getEmail());
+        }
+        user.setFullName(userDetails.getFullName());
+        user.setPhone(userDetails.getPhone());
+        if (userDetails.getStatus() != null) user.setStatus(userDetails.getStatus());
+        if (userDetails.getPasswordHash() != null && !userDetails.getPasswordHash().isBlank()) {
+            user.setPasswordHash(passwordEncoder.encode(userDetails.getPasswordHash()));
+        }
+        return convertToDto(userRepository.save(user));
     }
 
     public Optional<UserDto> getUserById(Long id) {

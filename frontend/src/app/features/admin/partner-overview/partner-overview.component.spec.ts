@@ -9,9 +9,11 @@ import { PartnerOverviewComponent } from './partner-overview.component';
 describe('PartnerOverviewComponent', () => {
   let http: HttpTestingController;
   let routeData: Record<string, string>;
+  let roles: string[];
 
   beforeEach(async () => {
     routeData = { title: 'Chủ cơ sở', endpoint: 'property-owners' };
+    roles = [];
     await TestBed.configureTestingModule({
       imports: [PartnerOverviewComponent],
       providers: [
@@ -19,6 +21,7 @@ describe('PartnerOverviewComponent', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: ActivatedRoute, useFactory: () => ({ snapshot: { data: routeData } }) },
+        { provide: AuthService, useValue: { getRoles: () => roles } },
       ],
     }).compileComponents();
 
@@ -61,8 +64,7 @@ describe('PartnerOverviewComponent', () => {
 
   it('uses the real property approval endpoint for the approve action', async () => {
     routeData = { title: 'Duyệt cơ sở', endpoint: 'property-approvals' };
-    const auth = TestBed.inject(AuthService);
-    auth.setSession('test-token', { roles: ['ADMIN'], permissions: [] });
+    roles = ['ADMIN'];
 
     const fixture = TestBed.createComponent(PartnerOverviewComponent);
     fixture.detectChanges();

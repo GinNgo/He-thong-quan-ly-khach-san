@@ -8,6 +8,7 @@ import {
   LocationSuggestion,
   SearchSuggestionGroups
 } from '../../../../../core/services/client-api.service';
+import { PublicI18nService } from '../../../../../core/i18n/public-i18n.service';
 import { SafeHighlightComponent } from '../../../../../shared/components/safe-highlight/safe-highlight.component';
 import { HomeSearchStateService, RecentSearch } from '../../services/home-search-state.service';
 import { ImageFallbackService } from '../../../../../core/services/image-fallback.service';
@@ -36,6 +37,7 @@ export class LocationAutocompleteComponent implements OnDestroy {
   private readonly destroy$ = new Subject<void>();
   private readonly retry$ = new Subject<string>();
   private readonly imageFallback = inject(ImageFallbackService);
+  readonly i18n = inject(PublicI18nService);
 
   readonly searchControl = new FormControl('', { nonNullable: true });
   readonly skeletonRows = [1, 2, 3, 4];
@@ -80,7 +82,8 @@ export class LocationAutocompleteComponent implements OnDestroy {
           keyword,
           10,
           state.latitude ?? undefined,
-          state.longitude ?? undefined
+          state.longitude ?? undefined,
+          state.provinceId ?? undefined
         ).pipe(
           map(response => ({ response, failed: false })),
           catchError(() => of({ response: this.emptyResults(), failed: true }))
@@ -106,10 +109,10 @@ export class LocationAutocompleteComponent implements OnDestroy {
 
   get groupedResults(): SuggestionGroup[] {
     const groups: SuggestionGroup[] = [
-      { type: 'PROVINCE', label: 'Tỉnh/Thành phố', icon: 'pi pi-map-marker', items: this.resultGroups.provinces || [] },
-      { type: 'WARD', label: 'Phường/Xã', icon: 'pi pi-map', items: this.resultGroups.wards || [] },
-      { type: 'PROPERTY', label: 'Cơ sở lưu trú', icon: 'pi pi-building', items: this.resultGroups.properties || [] },
-      { type: 'LANDMARK', label: 'Địa danh', icon: 'pi pi-compass', items: this.resultGroups.landmarks || [] }
+      { type: 'PROVINCE', label: this.i18n.text('PUBLIC.SEARCH.GROUP_PROVINCES'), icon: 'pi pi-map-marker', items: this.resultGroups.provinces || [] },
+      { type: 'WARD', label: this.i18n.text('PUBLIC.SEARCH.GROUP_WARDS'), icon: 'pi pi-map', items: this.resultGroups.wards || [] },
+      { type: 'PROPERTY', label: this.i18n.text('PUBLIC.SEARCH.GROUP_PROPERTIES'), icon: 'pi pi-building', items: this.resultGroups.properties || [] },
+      { type: 'LANDMARK', label: this.i18n.text('PUBLIC.SEARCH.GROUP_LANDMARKS'), icon: 'pi pi-compass', items: this.resultGroups.landmarks || [] }
     ];
     return groups.filter(group => group.items.length > 0);
   }
@@ -186,7 +189,11 @@ export class LocationAutocompleteComponent implements OnDestroy {
       name: result.name,
       displayName: result.displayName || result.name,
       provinceId: result.provinceId,
-      wardId: result.wardId
+      wardId: result.wardId,
+      latitude: result.latitude,
+      longitude: result.longitude,
+      defaultRadiusKm: result.defaultRadiusKm,
+      category: result.category
     });
     this.closePopup();
   }
@@ -212,10 +219,12 @@ export class LocationAutocompleteComponent implements OnDestroy {
 
   propertyTypeLabel(type?: string): string {
     const labels: Record<string, string> = {
-      HOTEL: 'Khách sạn', MOTEL: 'Nhà nghỉ', HOMESTAY: 'Homestay', HOSTEL: 'Hostel',
-      APARTMENT: 'Căn hộ', VILLA: 'Villa', RESORT: 'Khu nghỉ dưỡng', GUEST_HOUSE: 'Nhà khách'
+      HOTEL: 'PUBLIC.HOME_CARDS.TYPE_HOTEL', MOTEL: 'PUBLIC.HOME_CARDS.TYPE_MOTEL',
+      HOMESTAY: 'PUBLIC.HOME_CARDS.TYPE_HOMESTAY', HOSTEL: 'PUBLIC.HOME_CARDS.TYPE_HOSTEL',
+      APARTMENT: 'PUBLIC.HOME_CARDS.TYPE_APARTMENT', VILLA: 'PUBLIC.HOME_CARDS.TYPE_VILLA',
+      RESORT: 'PUBLIC.HOME_CARDS.TYPE_RESORT', GUEST_HOUSE: 'PUBLIC.HOME_CARDS.TYPE_GUEST_HOUSE'
     };
-    return type ? labels[type] || 'Cơ sở lưu trú' : 'Cơ sở lưu trú';
+    return this.i18n.text(type ? labels[type] || 'PUBLIC.HOME_CARDS.TYPE_DEFAULT' : 'PUBLIC.HOME_CARDS.TYPE_DEFAULT');
   }
 
   displayImage(imageUrl?: string, propertyType?: string): string {

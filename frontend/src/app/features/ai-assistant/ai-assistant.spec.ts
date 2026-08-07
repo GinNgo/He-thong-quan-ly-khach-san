@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { NEVER, of, throwError } from 'rxjs';
+import { NEVER, of, Subject, throwError } from 'rxjs';
 
 import { AiService } from '../../core/services/ai';
 import { AiAssistant } from './ai-assistant';
@@ -83,6 +83,25 @@ describe('AiAssistant', () => {
 
     expect(component.messages.filter((message) => message.sender === 'user')).toHaveLength(1);
     expect(component.messages.at(-1)?.text).toBe('Đã kết nối lại');
+  });
+
+  it('renders an asynchronous reply after the HTTP observable completes', async () => {
+    const response$ = new Subject<{ reply: string }>();
+    chat.mockReturnValueOnce(response$);
+    const floatingButton = fixture.nativeElement.querySelector('.ai-fab') as HTMLButtonElement;
+    floatingButton.click();
+    await fixture.whenStable();
+    component.newMessage = 'async response';
+    fixture.detectChanges();
+
+    component.sendMessage();
+    response$.next({ reply: 'async reply rendered' });
+    response$.complete();
+    await fixture.whenStable();
+
+    const chatBody = fixture.nativeElement.querySelector('.ai-body') as HTMLElement;
+    expect(chatBody.textContent).toContain('async reply rendered');
+    expect(chatBody.querySelector('[role="status"]')).toBeNull();
   });
 
   it('recovers from a request that never completes', async () => {

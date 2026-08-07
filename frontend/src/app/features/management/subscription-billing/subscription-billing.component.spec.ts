@@ -41,8 +41,8 @@ describe('SubscriptionBillingComponent', () => {
     fixture.detectChanges();
 
     const element: HTMLElement = fixture.nativeElement;
-    expect(element.textContent).toContain('Downgrade is blocked');
-    expect(element.textContent).toContain('Order SUB-1');
+    expect(element.textContent).toContain('Chưa cấu hình chính sách hạ gói');
+    expect(element.textContent).toContain('Đơn SUB-1');
     expect(element.textContent).toContain('01/08/2026 18:30');
   });
 

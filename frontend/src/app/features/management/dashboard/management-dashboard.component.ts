@@ -28,7 +28,29 @@ export class ManagementDashboardComponent implements OnInit {
   }
   selectProperty(): void { this.load(this.selectedPropertyId); }
   get activeProperty(): ManagedProperty | undefined { return this.context?.properties.find(property => property.id === this.selectedPropertyId); }
-  get activePropertyOperational(): boolean { return this.context?.activePropertyOperational ?? this.activeProperty?.operational ?? false; }
+  get activePropertyOperational(): boolean {
+    return this.context?.activePropertyOperational
+      ?? this.activeProperty?.operational
+      ?? (this.activeProperty?.approvalStatus === 'APPROVED' && this.activeProperty?.operationStatus === 'ACTIVE');
+  }
   value(name: string): number { return this.context?.dashboard?.[name] || 0; }
   limit(name: string): string { const value = this.context?.limits?.[name]; return value === -1 ? 'Không giới hạn' : String(value ?? 0); }
+  statusLabel(status?: string): string {
+    return ({
+      ACTIVE: 'Đang hoạt động',
+      INACTIVE: 'Không hoạt động',
+      EXPIRED: 'Đã hết hạn',
+      SUSPENDED: 'Tạm ngưng',
+      PENDING: 'Chờ xử lý',
+      PENDING_PAYMENT: 'Chờ thanh toán',
+      DRAFT: 'Bản nháp',
+      PENDING_APPROVAL: 'Chờ duyệt',
+      APPROVED: 'Đã duyệt',
+      REJECTED: 'Bị từ chối',
+      NONE: 'Chưa có',
+    } as Record<string, string>)[status || 'NONE'] || status || 'Chưa có';
+  }
+  sourceLabel(source?: string): string {
+    return ({ PLATFORM: 'Hệ thống thanh toán gói', LEGACY: 'Dữ liệu thuê bao cũ', NONE: 'Chưa có' } as Record<string, string>)[source || 'NONE'] || source || 'Chưa có';
+  }
 }

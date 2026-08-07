@@ -58,7 +58,7 @@ export class SubscriptionBillingComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: (err) => {
-        this.plansError = err?.error?.message || 'Unable to load the backend subscription catalog.';
+        this.plansError = err?.error?.message || 'Không thể tải danh mục gói phần mềm từ máy chủ.';
         this.loadingPlans = false;
         this.updateLoadingState();
         this.cdr.markForCheck();
@@ -72,7 +72,7 @@ export class SubscriptionBillingComponent implements OnInit {
     this.updateLoadingState();
     if (!this.activePropertyId) {
       this.currentEntitlement = null;
-      this.subscriptionError = 'Select a managed property to view its entitlement.';
+      this.subscriptionError = 'Hãy chọn cơ sở đang quản lý để xem gói hiện tại.';
       this.loadingSubscription = false;
       this.updateLoadingState();
       return;
@@ -85,7 +85,7 @@ export class SubscriptionBillingComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: (err) => {
-        this.subscriptionError = err?.error?.message || 'Unable to load the selected property entitlement.';
+        this.subscriptionError = err?.error?.message || 'Không thể tải quyền lợi gói của cơ sở đã chọn.';
         this.loadingSubscription = false;
         this.updateLoadingState();
         this.cdr.markForCheck();
@@ -105,7 +105,7 @@ export class SubscriptionBillingComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: (err) => {
-        this.policyError = err?.error?.message || 'Unable to load subscription policy status.';
+        this.policyError = err?.error?.message || 'Không thể tải trạng thái chính sách gói.';
         this.loadingPolicy = false;
         this.updateLoadingState();
         this.cdr.markForCheck();
@@ -115,7 +115,7 @@ export class SubscriptionBillingComponent implements OnInit {
 
   createOrder(plan: PlatformCatalogPlan): void {
     if (!this.activePropertyId || this.creatingOrderFor) {
-      this.orderError = 'Select a managed property before creating a platform order.';
+      this.orderError = 'Hãy chọn cơ sở trước khi tạo đơn mua gói.';
       return;
     }
     this.orderError = '';
@@ -134,7 +134,7 @@ export class SubscriptionBillingComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: (err) => {
-        this.orderError = err?.error?.message || 'The platform order could not be created.';
+        this.orderError = err?.error?.message || 'Không thể tạo đơn mua gói phần mềm.';
         this.creatingOrderFor = undefined;
         this.cdr.markForCheck();
       },
@@ -146,13 +146,26 @@ export class SubscriptionBillingComponent implements OnInit {
   }
 
   featureLimit(limit: number): string {
-    return limit === -1 ? 'Unlimited' : String(limit);
+    return limit === -1 ? 'Không giới hạn' : String(limit);
   }
 
   orderActionLabel(plan: PlatformCatalogPlan): string {
-    if (this.creatingOrderFor === plan.id) return 'Creating secure order...';
-    if (this.currentEntitlement?.planId === plan.id) return 'Create renewal order';
-    return this.currentEntitlement?.planId ? 'Create upgrade order' : 'Create purchase order';
+    if (this.creatingOrderFor === plan.id) return 'Đang tạo đơn an toàn...';
+    if (this.currentEntitlement?.planId === plan.id) return 'Gia hạn gói này';
+    return this.currentEntitlement?.planId ? 'Nâng cấp lên gói này' : 'Mua gói này';
+  }
+
+  statusLabel(status: string): string {
+    return ({ ACTIVE: 'Đang hoạt động', NONE: 'Chưa có gói', CREATED: 'Mới tạo', PENDING_PAYMENT: 'Chờ thanh toán', PAID: 'Đã thanh toán', APPLIED: 'Đã kích hoạt', FAILED: 'Thất bại', CANCELLED: 'Đã hủy', EXPIRED: 'Hết hạn' } as Record<string, string>)[status] || status;
+  }
+
+  billingPeriodLabel(plan: PlatformCatalogPlan): string {
+    if (plan.isLifetime) return 'trọn đời';
+    return ({ MONTHLY: 'tháng', QUARTERLY: 'quý', YEARLY: 'năm' } as Record<string, string>)[plan.billingType] || plan.billingType;
+  }
+
+  sourceLabel(source: string): string {
+    return ({ PLATFORM: 'Hệ thống thanh toán', LEGACY_PROJECTION: 'Dữ liệu chuyển đổi', NONE: 'Chưa có' } as Record<string, string>)[source] || source;
   }
 
   updateLatestOrder(order: PlatformOrder): void {

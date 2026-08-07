@@ -12,4 +12,5 @@ public interface HotelManagementService {
     Hotel updateHotel(Long id, Hotel hotel);
     void deleteHotel(Long id);
     List<Hotel> getHotelsByOwnerId(Long ownerId);
+    List<Hotel> getAccessibleHotels();
 }

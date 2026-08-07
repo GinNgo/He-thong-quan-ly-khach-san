@@ -6,6 +6,8 @@ import com.hotel.entities.Reservation;
 import com.hotel.entities.User;
 import com.hotel.paymentprovider.error.FinancialErrorCode;
 import com.hotel.paymentprovider.error.FinancialException;
+import com.hotel.paymentprovider.idempotency.FinancialIdempotencyRecord;
+import com.hotel.paymentprovider.idempotency.FinancialIdempotencyService;
 import com.hotel.repositories.HotelServiceRepository;
 import com.hotel.repositories.ReservationRepository;
 import com.hotel.security.ActionCode;
@@ -37,6 +39,8 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -56,6 +60,8 @@ class ReservationChargeServiceTest {
     private ReservationChargeLineRepository chargeLineRepository;
     @Mock
     private PropertyAccessService propertyAccessService;
+    @Mock
+    private FinancialIdempotencyService idempotencyService;
 
     private ReservationChargeService service;
 
@@ -66,6 +72,7 @@ class ReservationChargeServiceTest {
                 hotelServiceRepository,
                 chargeLineRepository,
                 propertyAccessService,
+                idempotencyService,
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
@@ -80,15 +87,25 @@ class ReservationChargeServiceTest {
         authorize(fixture);
         when(reservationRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(fixture.reservation()));
         when(hotelServiceRepository.findById(15L)).thenReturn(Optional.of(fixture.catalogService()));
-        when(chargeLineRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        acquireIdempotency(501L);
+        when(chargeLineRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+            ReservationChargeLine line = invocation.getArgument(0);
+            ReflectionTestUtils.setField(line, "id", 71L);
+            return line;
+        });
 
-        ReservationChargeLine line = service.addServiceCharge(new ReservationChargeService.AddServiceChargeCommand(
+        ReservationChargeService.AddServiceChargeResult result = service.addServiceCharge(
+                new ReservationChargeService.AddServiceChargeCommand(
                 42L,
                 15L,
                 ReservationChargeLine.ChargeType.SERVICE,
                 new BigDecimal("2.000"),
-                USED_AT));
+                USED_AT,
+                "service-charge-42",
+                "corr-42"));
+        ReservationChargeLine line = result.line();
 
+        assertThat(result.replayed()).isFalse();
         assertThat(line.getUnitPrice()).isEqualByComparingTo("150000");
         assertThat(line.getQuantity()).isEqualByComparingTo("2.000");
         assertThat(line.getTaxAmount()).isEqualByComparingTo("0");
@@ -98,6 +115,35 @@ class ReservationChargeServiceTest {
         assertThat(line.getName()).isEqualTo("Breakfast / Breakfast buffet");
         assertThat(line.getActor()).isSameAs(fixture.actor());
         assertThat(line.getServiceUsedAt()).isEqualTo(USED_AT);
+        verify(idempotencyService).complete(501L, 201, "71");
+    }
+
+    @Test
+    void assignsServerTimeAfterAcquiringIdempotencyWhenUsageTimeIsOmitted() {
+        Fixture fixture = fixture();
+        authorize(fixture);
+        when(reservationRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(fixture.reservation()));
+        when(hotelServiceRepository.findById(15L)).thenReturn(Optional.of(fixture.catalogService()));
+        acquireIdempotency(502L);
+        when(chargeLineRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+            ReservationChargeLine line = invocation.getArgument(0);
+            ReflectionTestUtils.setField(line, "id", 72L);
+            return line;
+        });
+
+        ReservationChargeService.AddServiceChargeResult result = service.addServiceCharge(
+                new ReservationChargeService.AddServiceChargeCommand(
+                        42L,
+                        15L,
+                        ReservationChargeLine.ChargeType.MINIBAR,
+                        BigDecimal.ONE,
+                        null,
+                        "minibar-charge-42",
+                        "corr-minibar"));
+
+        assertThat(result.line().getServiceUsedAt())
+                .isEqualTo(LocalDateTime.ofInstant(NOW, ZoneOffset.UTC));
+        assertThat(result.line().getChargeType()).isEqualTo(ReservationChargeLine.ChargeType.MINIBAR);
     }
 
     @Test
@@ -184,14 +230,50 @@ class ReservationChargeServiceTest {
                 15L,
                 ReservationChargeLine.ChargeType.MINIBAR,
                 BigDecimal.ONE,
-                LocalDateTime.ofInstant(NOW.plusSeconds(1), ZoneOffset.UTC))))
+                LocalDateTime.ofInstant(NOW.plusSeconds(1), ZoneOffset.UTC),
+                "future-minibar-42",
+                "corr-future")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("future");
     }
 
+    @Test
+    void returnsPersistedReplayWithoutAppendingAnotherChargeLine() {
+        Fixture fixture = fixture();
+        authorize(fixture);
+        ReservationChargeLine original = originalLine(fixture);
+        ReflectionTestUtils.setField(original, "id", 71L);
+        when(reservationRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(fixture.reservation()));
+        when(hotelServiceRepository.findById(15L)).thenReturn(Optional.of(fixture.catalogService()));
+        when(idempotencyService.begin(any()))
+                .thenReturn(new FinancialIdempotencyService.Replay(501L, 201, "71"));
+        when(chargeLineRepository.findByIdAndHotelIdAndReservationId(71L, 3L, 42L))
+                .thenReturn(Optional.of(original));
+
+        ReservationChargeService.AddServiceChargeResult result = service.addServiceCharge(command());
+
+        assertThat(result.replayed()).isTrue();
+        assertThat(result.line()).isSameAs(original);
+        verify(chargeLineRepository, never()).saveAndFlush(any());
+        verify(idempotencyService, never()).complete(anyLong(), anyInt(), any());
+    }
+
     private ReservationChargeService.AddServiceChargeCommand command() {
         return new ReservationChargeService.AddServiceChargeCommand(
-                42L, 15L, ReservationChargeLine.ChargeType.SERVICE, BigDecimal.ONE, USED_AT);
+                42L,
+                15L,
+                ReservationChargeLine.ChargeType.SERVICE,
+                BigDecimal.ONE,
+                USED_AT,
+                "service-charge-42",
+                "corr-42");
+    }
+
+    private void acquireIdempotency(long recordId) {
+        FinancialIdempotencyRecord record = org.mockito.Mockito.mock(FinancialIdempotencyRecord.class);
+        when(record.getId()).thenReturn(recordId);
+        when(idempotencyService.begin(any()))
+                .thenReturn(new FinancialIdempotencyService.Acquired(record));
     }
 
     private ReservationChargeLine originalLine(Fixture fixture) {

@@ -1,4 +1,4 @@
-﻿import { Injectable, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -62,6 +62,10 @@ export class UserService {
     return this.http.get<User[]>(this.apiUrl);
   }
 
+  getCustomers(): Observable<User[]> {
+    return this.http.get<User[]>(`${this.apiUrl}/customers`);
+  }
+
   getUserById(id: number): Observable<User> {
     return this.http.get<User>(`${this.apiUrl}/${id}`);
   }
@@ -70,8 +74,16 @@ export class UserService {
     return this.http.post<User>(this.apiUrl, user);
   }
 
+  createCustomer(user: any): Observable<User> {
+    return this.http.post<User>(`${this.apiUrl}/customers`, user);
+  }
+
   updateUser(id: number, user: any): Observable<User> {
     return this.http.put<User>(`${this.apiUrl}/${id}`, user);
+  }
+
+  updateCustomer(id: number, user: any): Observable<User> {
+    return this.http.put<User>(`${this.apiUrl}/customers/${id}`, user);
   }
 
   deactivateStaff(id: number, request: StaffLifecycleRequest): Observable<User> {

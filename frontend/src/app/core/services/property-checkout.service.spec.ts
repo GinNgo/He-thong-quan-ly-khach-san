@@ -22,7 +22,7 @@ describe('PropertyCheckoutService', () => {
     service.addServiceCharge(
       42,
       { serviceId: 7, chargeType: 'MINIBAR', quantity: 2 },
-      { correlationId: 'service-42' },
+      { idempotencyKey: 'service-charge-42', correlationId: 'service-42' },
     ).subscribe();
 
     const request = http.expectOne(
@@ -31,6 +31,7 @@ describe('PropertyCheckoutService', () => {
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toEqual({ serviceId: 7, chargeType: 'MINIBAR', quantity: 2 });
     expect(request.request.body.unitPrice).toBeUndefined();
+    expect(request.request.headers.get('Idempotency-Key')).toBe('service-charge-42');
     expect(request.request.headers.get('X-Correlation-ID')).toBe('service-42');
     request.flush({});
   });
@@ -40,7 +41,7 @@ describe('PropertyCheckoutService', () => {
       type: 'SERVICE_RECOVERY',
       description: 'Service recovery',
       amount: 50000,
-    }).subscribe();
+    }, { idempotencyKey: 'adjustment-42', correlationId: 'adjustment-correlation' }).subscribe();
 
     const request = http.expectOne(
       `${environment.apiUrl}/management/reservations/42/charges/surcharges`,
@@ -52,6 +53,8 @@ describe('PropertyCheckoutService', () => {
       amount: 50000,
       negativeAdjustment: true,
     });
+    expect(request.request.headers.get('Idempotency-Key')).toBe('adjustment-42');
+    expect(request.request.headers.get('X-Correlation-ID')).toBe('adjustment-correlation');
     request.flush({});
   });
 

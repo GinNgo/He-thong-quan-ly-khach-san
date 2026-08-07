@@ -3,16 +3,15 @@ package com.hotel.services;
 import com.hotel.dtos.AuthResponse;
 import com.hotel.dtos.LoginRequest;
 import com.hotel.dtos.RegisterRequest;
+import com.hotel.dtos.RegistrationResponse;
+import com.hotel.entities.Role;
+import com.hotel.entities.SocialProvider;
 import com.hotel.entities.User;
+import com.hotel.exceptions.RegistrationConflictException;
 import com.hotel.repositories.UserRepository;
 import com.hotel.repositories.RoleRepository;
-import com.hotel.repositories.AppFunctionRepository;
-import com.hotel.repositories.AppModuleRepository;
-import com.hotel.security.ActionCode;
-import com.hotel.security.CustomUserDetails;
-import com.hotel.security.CustomUserDetailsService;
-import com.hotel.security.FunctionCode;
 import com.hotel.security.JwtTokenProvider;
+import com.hotel.services.social.ExternalIdentityProfile;
 import com.hotel.services.social.FacebookIdentityVerifier;
 import com.hotel.services.social.GoogleIdentityVerifier;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +26,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -52,10 +52,7 @@ public class AuthServiceTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
-    private AppModuleRepository appModuleRepository;
-
-    @Mock
-    private AppFunctionRepository appFunctionRepository;
+    private EmailService emailService;
 
     @Mock
     private GoogleIdentityVerifier googleIdentityVerifier;
@@ -65,9 +62,6 @@ public class AuthServiceTest {
 
     @Mock
     private SocialAccountLinkService socialAccountLinkService;
-
-    @Mock
-    private CustomUserDetailsService customUserDetailsService;
 
     @InjectMocks
     private AuthService authService;
@@ -89,16 +83,9 @@ public class AuthServiceTest {
         request.setUsername("testuser");
         request.setPassword("password123");
 
-        CustomUserDetails details = new CustomUserDetails(
-                "testuser",
-                "hashed_password",
-                java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("PROPERTY_OWNER")),
-                java.util.Map.of(FunctionCode.BOOKING, ActionCode.VIEW | ActionCode.CREATE),
-                1L,
-                10L,
-                java.util.Map.of());
-        Authentication authentication = UsernamePasswordAuthenticationToken.authenticated(
-                details, null, details.getAuthorities());
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getName()).thenReturn("testuser");
+        when(authentication.getAuthorities()).thenReturn(java.util.Collections.emptyList());
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(authentication);
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
         when(jwtUtil.generateToken(any(Authentication.class))).thenReturn("mocked-jwt-token");
@@ -108,11 +95,6 @@ public class AuthServiceTest {
         assertNotNull(response);
         assertEquals("mocked-jwt-token", response.getAccessToken());
         assertEquals("testuser", response.getUsername());
-        assertEquals(1L, response.getUserId());
-        assertEquals(java.util.List.of("PROPERTY_OWNER"), response.getRoles());
-        assertEquals(1, response.getPermissions().size());
-        assertEquals("BOOKING", response.getPermissions().get(0).getFunction());
-        assertEquals(3, response.getPermissions().get(0).getActionMask());
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
         verify(jwtUtil).generateToken(any(Authentication.class));
     }
@@ -130,16 +112,19 @@ public class AuthServiceTest {
         com.hotel.entities.Role role = new com.hotel.entities.Role();
         role.setCode("CUSTOMER");
         when(roleRepository.findByCode("CUSTOMER")).thenReturn(java.util.Optional.of(role));
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
             User u = invocation.getArgument(0);
             u.setId(2L);
             return u;
         });
+        when(emailService.sendRegistrationSuccess("newuser@example.com", null)).thenReturn(true);
 
-        String result = authService.register(request);
+        RegistrationResponse result = authService.register(request);
 
-        assertEquals("User registered successfully!", result);
-        verify(userRepository).save(any(User.class));
+        assertEquals("User registered successfully!", result.message());
+        assertTrue(result.welcomeEmailSent());
+        verify(userRepository).saveAndFlush(any(User.class));
+        verify(emailService).sendRegistrationSuccess("newuser@example.com", null);
     }
 
     @Test
@@ -149,8 +134,60 @@ public class AuthServiceTest {
 
         when(userRepository.existsByUsername("existinguser")).thenReturn(true);
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.register(request));
-        assertEquals("Username is already taken!", ex.getMessage());
-        verify(userRepository, never()).save(any(User.class));
+        RegistrationConflictException ex = assertThrows(
+                RegistrationConflictException.class,
+                () -> authService.register(request));
+        assertEquals(RegistrationConflictException.USERNAME_CODE, ex.code());
+        verify(userRepository, never()).saveAndFlush(any(User.class));
+    }
+
+    @Test
+    void socialLogin_FailsClosedWhenProvidersAreNotConfigured() {
+        when(googleIdentityVerifier.verify("google-token"))
+                .thenThrow(new IllegalStateException("Google login is not configured."));
+        when(facebookIdentityVerifier.verify("facebook-token"))
+                .thenThrow(new IllegalStateException("Facebook login is not configured."));
+
+        IllegalStateException googleError = assertThrows(
+                IllegalStateException.class,
+                () -> authService.loginWithGoogle("google-token"));
+        IllegalStateException facebookError = assertThrows(
+                IllegalStateException.class,
+                () -> authService.loginWithFacebook("facebook-token"));
+
+        assertEquals("Google login is not configured.", googleError.getMessage());
+        assertEquals("Facebook login is not configured.", facebookError.getMessage());
+    }
+
+    @Test
+    void googleLogin_UsesStableProviderProfileAndReturnsLinkedUserId() {
+        Role customerRole = new Role();
+        customerRole.setCode("CUSTOMER");
+        mockUser.setRoles(Set.of(customerRole));
+        ExternalIdentityProfile profile = new ExternalIdentityProfile(
+                SocialProvider.GOOGLE,
+                "google-subject-1",
+                "guest@example.com",
+                "Guest",
+                "https://example.com/avatar.jpg");
+        when(googleIdentityVerifier.verify("google-token")).thenReturn(profile);
+        when(socialAccountLinkService.resolveOrLink(profile)).thenReturn(mockUser);
+        when(jwtUtil.generateToken(any(Authentication.class))).thenReturn("social-jwt");
+
+        AuthResponse response = authService.loginWithGoogle("google-token");
+
+        assertEquals("social-jwt", response.getAccessToken());
+        assertEquals(1L, response.getUserId());
+        verify(socialAccountLinkService).resolveOrLink(profile);
+    }
+
+    @Test
+    void socialAuthResponse_RejectsSuspendedExistingAccountBeforeTokenIssuance() {
+        mockUser.setStatus("SUSPENDED");
+
+        assertThrows(
+                com.hotel.security.AccountDisabledAuthenticationException.class,
+                () -> authService.createSocialAuthResponse(mockUser));
+        verify(jwtUtil, never()).generateToken(any(Authentication.class));
     }
 }

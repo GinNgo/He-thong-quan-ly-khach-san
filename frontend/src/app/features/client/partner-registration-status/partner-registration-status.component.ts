@@ -13,7 +13,7 @@ import { environment } from '../../../../environments/environment';
         <div class="status-icon" [class.approved]="status === 'APPROVED'"><i class="pi" [ngClass]="status === 'APPROVED' ? 'pi-check' : 'pi-clock'"></i></div>
         <ng-container *ngIf="loading"><h1>Đang kiểm tra hồ sơ</h1><p>Vui lòng chờ trong giây lát.</p></ng-container>
         <ng-container *ngIf="!loading && !error && status === 'PENDING'"><h1>Hồ sơ đang được xét duyệt</h1><p>Thông tin cơ sở của bạn đã được ghi nhận. Dữ liệu đã nhập sẽ được giữ nguyên trong thời gian chờ duyệt.</p></ng-container>
-        <ng-container *ngIf="!loading && !error && status === 'APPROVED'"><h1>Hồ sơ đã được duyệt</h1><p>Bạn có thể tiếp tục cấu hình cơ sở, loại phòng và phòng vật lý.</p><a routerLink="/management/dashboard">Đi đến trang quản lý</a></ng-container>
+        <ng-container *ngIf="!loading && !error && status === 'APPROVED'"><h1>Hồ sơ đã được duyệt</h1><p>Bạn có thể tiếp tục cấu hình cơ sở, loại phòng và danh sách phòng cụ thể.</p><a routerLink="/management/dashboard">Đi đến trang quản lý</a></ng-container>
         <ng-container *ngIf="!loading && !error && status === 'NONE'"><h1>Chưa có hồ sơ đối tác</h1><p>Hãy gửi thông tin cơ sở để bắt đầu quy trình xét duyệt.</p><a routerLink="/partner/register">Đăng chỗ nghỉ</a></ng-container>
         <ng-container *ngIf="error"><h1>Không thể tải trạng thái</h1><p>{{ error }}</p><button type="button" (click)="load()">Thử lại</button></ng-container>
       </section>

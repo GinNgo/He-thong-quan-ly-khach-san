@@ -8,6 +8,7 @@ import com.hotel.security.FunctionCode;
 import com.hotel.services.HotelManagementService;
 import com.hotel.services.PropertyAccessService;
 import com.hotel.services.PropertyRegistrationService;
+import com.hotel.services.PublicPlacementDisclosureService;
 import com.hotel.observability.OperationalMetrics;
 import com.hotel.services.RoomTypeService;
 import org.junit.jupiter.api.Test;
@@ -53,6 +54,9 @@ class HotelControllerIntegrationTest {
 
     @MockBean
     private PropertyRegistrationService propertyRegistrationService;
+
+    @MockBean
+    private PublicPlacementDisclosureService publicPlacementDisclosureService;
 
     @MockBean
     private OperationalMetrics operationalMetrics;

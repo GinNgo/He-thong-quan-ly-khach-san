@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hotel.BackendApplication;
 import com.hotel.dtos.LoginRequest;
 import com.hotel.entities.User;
+import com.hotel.repositories.RefreshTokenSessionRepository;
 import com.hotel.repositories.UserRepository;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,6 +59,7 @@ class AvatarUploadIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
+    @Autowired private RefreshTokenSessionRepository refreshTokenRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private PasswordEncoder passwordEncoder;
 
@@ -71,6 +73,7 @@ class AvatarUploadIntegrationTest {
 
     @BeforeEach
     void cleanFixtures() throws IOException {
+        refreshTokenRepository.deleteAll();
         userRepository.deleteAll(userRepository.findAll().stream()
                 .filter(user -> user.getEmail() != null && user.getEmail().startsWith("t225-"))
                 .toList());

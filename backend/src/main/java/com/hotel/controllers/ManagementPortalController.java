@@ -1,6 +1,10 @@
 package com.hotel.controllers;
 
 import com.hotel.dtos.*;
+import com.hotel.housekeeping.HousekeepingQueueService;
+import com.hotel.security.ActionCode;
+import com.hotel.security.FunctionCode;
+import com.hotel.security.Permission;
 import com.hotel.services.ManagementPortalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -13,9 +17,10 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/management")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyAuthority('PROPERTY_OWNER','HOTEL_ADMIN','HOTEL_MANAGER','SUPER_ADMIN','ADMIN')")
+@PreAuthorize("hasAnyAuthority('PROPERTY_OWNER','HOTEL_ADMIN','HOTEL_MANAGER','HOUSEKEEPING','SUPER_ADMIN','ADMIN')")
 public class ManagementPortalController {
     private final ManagementPortalService service;
+    private final HousekeepingQueueService housekeepingQueueService;
 
     @GetMapping("/context")
     public ResponseEntity<Map<String, Object>> context(@RequestParam(required = false) Long activePropertyId) {
@@ -76,7 +81,18 @@ public class ManagementPortalController {
     }
 
     @PostMapping("/housekeeping/{taskId}/complete")
-    public ResponseEntity<Map<String, Object>> completeHousekeeping(@PathVariable Long taskId) {
-        return ResponseEntity.ok(service.completeHousekeeping(taskId));
+    @Permission(function = FunctionCode.HOUSEKEEPING, action = ActionCode.APPROVE)
+    public ResponseEntity<Map<String, Object>> completeHousekeeping(
+            @PathVariable Long taskId,
+            @RequestBody(required = false) HousekeepingCommandRequest request) {
+        HousekeepingTaskDTO task = housekeepingQueueService.complete(taskId, request);
+        return ResponseEntity.ok(Map.of(
+                "taskId", task.id(),
+                "status", task.status(),
+                "roomId", task.roomId(),
+                "roomStatus", task.roomStatus(),
+                "housekeepingStatus", task.roomHousekeepingStatus(),
+                "maintenanceStatus", task.roomMaintenanceStatus(),
+                "roomReleased", task.roomReleased()));
     }
 }
