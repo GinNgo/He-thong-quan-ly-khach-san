@@ -1,4 +1,4 @@
-<header class="public-header" [class.account-menu-open]="accountMenuOpen" [style.visibility]="layoutState.hideMainHeader() ? 'hidden' : 'visible'">
+<header class="public-header" [class.account-menu-open]="accountMenuOpen" [class.header-hidden]="layoutState.hideMainHeader()" [attr.aria-hidden]="layoutState.hideMainHeader() ? 'true' : null">
   <div class="header-inner">
     <a routerLink="/" class="brand" [attr.aria-label]="'LAYOUT.HOME_LABEL' | translate">
       <img class="brand-mark" src="/assets/brand/luxestay-mark.svg" alt="" aria-hidden="true">

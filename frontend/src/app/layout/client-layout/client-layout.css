@@ -1,5 +1,5 @@
 :host{--public-header-height:72px;display:block;color:var(--hotel-text)}
-.public-header{position:sticky;top:0;z-index:60;background:rgb(255 255 255 / .96);border-bottom:1px solid #e2e8f0;box-shadow:0 2px 14px rgb(15 23 42 / .06);backdrop-filter:blur(14px)}
+.public-header{position:sticky;top:0;z-index:60;background:rgb(255 255 255 / .96);border-bottom:1px solid #e2e8f0;box-shadow:0 2px 14px rgb(15 23 42 / .06);backdrop-filter:blur(14px);transform:translateY(0);opacity:1;transition:transform 320ms cubic-bezier(.22,.61,.36,1),opacity 220ms ease;will-change:transform,opacity}.public-header.header-hidden{transform:translateY(-105%);opacity:0;pointer-events:none}
 .header-inner{height:72px;max-width:1280px;margin:auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;gap:24px}
 .brand,.footer-brand{display:flex;align-items:center;gap:11px;color:#111827;text-decoration:none;flex:0 0 auto}
 .brand>span:last-child,.footer-brand>span:last-child{display:flex;flex-direction:column;line-height:1}
