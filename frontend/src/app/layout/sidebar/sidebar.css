@@ -26,15 +26,11 @@
 }
 
 .brand-logo {
-  display: grid;
   flex: 0 0 2.25rem;
   width: 2.25rem;
   height: 2.25rem;
-  place-items: center;
-  color: #172033;
-  font-weight: 800;
-  border-radius: var(--hotel-radius-md, 0.5rem);
-  background: var(--hotel-accent, #f3b765);
+  object-fit: contain;
+  filter: drop-shadow(0 0.35rem 0.55rem rgb(0 0 0 / 24%));
 }
 
 .brand-copy {

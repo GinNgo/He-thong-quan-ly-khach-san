@@ -26,7 +26,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       const accountDisabled = errorCode === ACCOUNT_DISABLED_CODE;
       const isAuthRequest = req.url.includes('/api/auth/');
 
-      if (error.status === 403) {
+      if (error.status === 403 && !isAuthRequest) {
         const errCode = isApiError(error.error) ? error.error.code : 'ACCESS_DENIED';
         if (!currentUrl.includes('/403')) {
           router.navigate(['/403'], { queryParams: { reason: errCode } });

@@ -1,7 +1,7 @@
 <header class="public-header" [class.account-menu-open]="accountMenuOpen" [style.visibility]="layoutState.hideMainHeader() ? 'hidden' : 'visible'">
   <div class="header-inner">
     <a routerLink="/" class="brand" [attr.aria-label]="'LAYOUT.HOME_LABEL' | translate">
-      <span class="brand-mark"><i></i><i></i><i></i></span>
+      <img class="brand-mark" src="/assets/brand/luxestay-mark.svg" alt="" aria-hidden="true">
       <span><strong>LuxeStay</strong><small>Hotels</small></span>
     </a>
     <nav class="desktop-nav" [attr.aria-label]="'LAYOUT.PRIMARY_NAV' | translate">
@@ -72,7 +72,7 @@
   <div class="footer-inner">
     <div class="footer-brand-panel">
       <a routerLink="/" class="footer-brand" [attr.aria-label]="'LAYOUT.HOME_LABEL' | translate">
-        <span class="brand-mark footer-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <img class="brand-mark footer-mark" src="/assets/brand/luxestay-mark.svg" alt="" aria-hidden="true">
         <span><strong id="footer-brand-title">LuxeStay</strong><small>Hotels</small></span>
       </a>
       <p>{{ 'LAYOUT.FOOTER_DESCRIPTION' | translate }}</p>
@@ -98,9 +98,9 @@
       <div class="footer-column">
         <strong>{{ 'LAYOUT.SUPPORT' | translate }}</strong>
         <a routerLink="/profile" [queryParams]="{tab: 'bookings'}">{{ 'LAYOUT.TRIP_MANAGEMENT' | translate }}</a>
-        <a href="mailto:support@luxestay.vn?subject=Yeu%20cau%20ho%20tro%20LuxeStay">{{ 'LAYOUT.SUPPORT_CENTER' | translate }}</a>
-        <a href="mailto:legal@luxestay.vn?subject=Chinh%20sach%20bao%20mat">{{ 'LAYOUT.PRIVACY' | translate }}</a>
-        <a href="mailto:legal@luxestay.vn?subject=Dieu%20khoan%20su%20dung">{{ 'LAYOUT.TERMS' | translate }}</a>
+        <a routerLink="/support">{{ 'LAYOUT.SUPPORT_CENTER' | translate }}</a>
+        <a routerLink="/privacy">{{ 'LAYOUT.PRIVACY' | translate }}</a>
+        <a routerLink="/terms">{{ 'LAYOUT.TERMS' | translate }}</a>
       </div>
     </nav>
   </div>

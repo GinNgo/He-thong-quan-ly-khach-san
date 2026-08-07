@@ -13,6 +13,11 @@
       <div class="glass-panel border border-outline-variant rounded-xl shadow-2xl p-6 md:p-8 relative">
         <!-- Decorative Top Border -->
         <div class="absolute top-0 left-0 w-full h-1 bg-secondary"></div>
+
+        <a class="auth-back-link" routerLink="/" [attr.aria-label]="'AUTH.BACK_HOME' | translate">
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+          <span>{{ 'AUTH.BACK_HOME' | translate }}</span>
+        </a>
         
         <!-- Branding -->
         <div class="flex flex-col items-center mb-6 shrink-0">
@@ -51,7 +56,7 @@
 
           <!-- Utilities Row -->
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-0.5">
-            <a class="font-body-sm text-[12px] text-primary font-bold sm:text-right hover:underline" routerLink="/forgot-password">Forgot password?</a>
+            <a class="font-body-sm text-[12px] text-primary font-bold sm:text-right hover:underline" routerLink="/forgot-password">{{ 'AUTH.FORGOT_PASSWORD' | translate }}</a>
           </div>
 
           <!-- Login Button -->

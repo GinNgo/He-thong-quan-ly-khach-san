@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter, Router } from '@angular/router';
+import { provideTranslateService } from '@ngx-translate/core';
 import { of } from 'rxjs';
 
 import { AuthService } from '@app/core/services/auth';
@@ -36,6 +37,7 @@ describe('LoginComponent', () => {
           useValue: authServiceMock,
         },
         provideRouter([]),
+        provideTranslateService(),
         { provide: ActivatedRoute, useValue: { snapshot: { queryParams: {} } } },
       ],
     }).compileComponents();
@@ -130,6 +132,24 @@ describe('LoginComponent', () => {
     }));
     expect(router.navigate).toHaveBeenCalledWith(['/admin/dashboard']);
     expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('sends a customer home instead of reusing an admin or management return URL', () => {
+    component.returnUrl = '/management/dashboard';
+    authServiceMock.login.mockReturnValue(of({
+      accessToken: 'access-token',
+      userId: 42,
+      username: 'ngovotuananh@gmail.com',
+      roles: ['CUSTOMER'],
+      permissions: [],
+    }));
+    component.loginObj.username = 'ngovotuananh@gmail.com';
+    component.loginObj.password = 'password';
+
+    component.onSubmit();
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/');
+    expect(router.navigate).not.toHaveBeenCalledWith(['/admin/dashboard']);
   });
 
 });

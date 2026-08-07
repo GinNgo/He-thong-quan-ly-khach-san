@@ -17,7 +17,8 @@
     "PASSWORD": "Password",
     "PASSWORD_PLACEHOLDER": "Password",
     "REMEMBER_ME": "Remember me",
-    "FORGOT_PASSWORD": "Forgot Password?",
+    "FORGOT_PASSWORD": "Forgot password?",
+    "BACK_HOME": "Back to home",
     "LOGIN_BTN": "Log In"
   },
   "ROOM_MANAGEMENT": {

@@ -10,7 +10,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { LocaleService } from '@app/core/i18n/locale.service';
 import { AuthLegalCopyService } from './auth-legal-copy.service';
 
 export type PublicInformationPageKind = 'TERMS' | 'PRIVACY' | 'COOKIES' | 'CONTACT' | 'SUPPORT';
@@ -42,7 +41,6 @@ export class PublicInformationPageComponent implements AfterViewInit {
   @ViewChild('pageHeading') private pageHeading?: ElementRef<HTMLHeadingElement>;
 
   readonly i18n = inject(AuthLegalCopyService);
-  readonly localeService = inject(LocaleService);
   readonly navigationItems: readonly PublicInformationNavigationItem[] = [
     { kind: 'TERMS', route: '/terms' },
     { kind: 'PRIVACY', route: '/privacy' },
@@ -71,10 +69,6 @@ export class PublicInformationPageComponent implements AfterViewInit {
 
   navigationText(kind: PublicInformationPageKind): string {
     return this.i18n.text(`AUTH_LEGAL.NAV.${kind}`);
-  }
-
-  toggleLocale(): void {
-    this.localeService.toggle();
   }
 
   saveCookiePreferences(): void {

@@ -87,3 +87,72 @@
     background: #c4c6ce;
     border-radius: 10px;
 }
+
+:host {
+    --register-ink: #10263b;
+    --register-teal: #0f766e;
+    --register-gold: #c8923d;
+    display: block;
+    min-height: 100dvh;
+    color: var(--register-ink);
+    background: #eaf2f5;
+}
+
+:host > div {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 13% 18%, rgb(67 196 177 / .18), transparent 23rem),
+        radial-gradient(circle at 90% 8%, rgb(200 146 61 / .13), transparent 20rem),
+        linear-gradient(135deg, #edf5f6 0%, #f8fafc 48%, #e7eff4 100%) !important;
+}
+
+:host > div::before,
+:host > div::after {
+    position: absolute;
+    z-index: 0;
+    content: '';
+    border: 1px solid rgb(15 118 110 / .12);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+:host > div::before {
+    top: 8rem;
+    left: -11rem;
+    width: 30rem;
+    height: 30rem;
+    box-shadow: 0 0 0 2.5rem rgb(15 118 110 / .035), 0 0 0 5.5rem rgb(15 118 110 / .025);
+}
+
+:host > div::after {
+    right: -12rem;
+    bottom: 5rem;
+    width: 34rem;
+    height: 34rem;
+    border-color: rgb(200 146 61 / .14);
+    box-shadow: 0 0 0 3rem rgb(200 146 61 / .035);
+}
+
+:host nav,
+:host main,
+:host footer { position: relative; z-index: 1; }
+
+:host main > div {
+    box-shadow: 0 2rem 5rem rgb(16 38 59 / .16) !important;
+}
+
+.register-brand-mark { width: 38px; height: 38px; filter: drop-shadow(0 4px 8px rgb(7 27 45 / .16)); }
+.register-brand-copy { display: flex; flex-direction: column; line-height: 1; }
+.register-brand-copy strong { color: var(--register-ink); font-size: 20px; letter-spacing: -.04em; }
+.register-brand-copy small { margin-top: 4px; color: #64748b; font-size: 9px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+.register-alert { margin-bottom: .75rem; padding: .75rem .9rem; border-radius: .75rem; font-size: .78rem; line-height: 1.45; }
+.register-alert--error { color: #a33a32; background: #fff5f3; border: 1px solid #f4c7c1; }
+.register-alert--success { color: #17634e; background: #effaf5; border: 1px solid #b9e5d2; }
+.auth-input, select { min-height: 44px; border-color: #cbd5e1; border-radius: .65rem; font-size: .82rem; }
+.auth-input:focus { border-color: var(--register-teal); box-shadow: 0 0 0 3px rgb(15 118 110 / .14); }
+.password-toggle:focus-visible { outline-color: rgb(15 118 110 / .3); }
+@media (max-width: 767px) {
+    .register-brand-copy strong { font-size: 18px; }
+}

@@ -112,9 +112,9 @@ app:
       max-backoff-seconds: ${MAIL_OUTBOX_MAX_BACKOFF_SECONDS:3600}
       max-attempts: ${MAIL_OUTBOX_MAX_ATTEMPTS:5}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:4201}
   websocket:
-    allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:4200}
+    allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:4201}
   observability:
     scheduler:
       pool-size: ${OBSERVABILITY_SCHEDULER_POOL_SIZE:2}
@@ -130,15 +130,15 @@ app:
     ttl-minutes: ${RESERVATION_HOLD_TTL_MINUTES:15}
     expiry-scan-ms: ${RESERVATION_HOLD_EXPIRY_SCAN_MS:60000}
   demo-data:
-    enabled: false
+    enabled: true
     legacy-seed: false
-    nationwide-property-seed: false
+    nationwide-property-seed: true
     coverage-mode: STANDARD
     properties-per-province: 5
     properties-per-ward: 1
     max-total-properties: 5000
     batch-size: 50
-    allow-public-demo: false
+    allow-public-demo: true
   accommodation-import:
     enabled: true
     provider: NOMINATIM

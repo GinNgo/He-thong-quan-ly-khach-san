@@ -3,21 +3,6 @@
 </a>
 
 <div class="information-shell">
-  <header class="information-header">
-    <a class="brand-link" routerLink="/" [attr.aria-label]="i18n.text('AUTH_LEGAL.A11Y.HOME')">
-      <span class="brand-mark" aria-hidden="true">LS</span>
-      <span>LuxeStay</span>
-    </a>
-    <button
-      type="button"
-      class="locale-button"
-      (click)="toggleLocale()"
-      [attr.aria-label]="i18n.text(localeService.locale() === 'vi' ? 'AUTH_LEGAL.A11Y.SWITCH_TO_ENGLISH' : 'AUTH_LEGAL.A11Y.SWITCH_TO_VIETNAMESE')"
-    >
-      <span aria-hidden="true">{{ localeService.locale() === 'vi' ? 'EN' : 'VI' }}</span>
-    </button>
-  </header>
-
   <main id="public-information-content" class="information-main" tabindex="-1">
     <section class="information-hero" aria-labelledby="public-information-title">
       <p class="eyebrow">{{ i18n.text('AUTH_LEGAL.COMMON.EYEBROW') }}</p>
@@ -88,8 +73,4 @@
     </article>
   </main>
 
-  <footer class="information-footer">
-    <span>&copy; 2026 LuxeStay Hospitality Group</span>
-    <a routerLink="/login">{{ i18n.text('AUTH_LEGAL.COMMON.BACK_TO_LOGIN') }}</a>
-  </footer>
 </div>

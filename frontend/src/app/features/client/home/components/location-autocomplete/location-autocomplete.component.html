@@ -1,4 +1,4 @@
-<div class="location-shell" (click)="focusInput()">
+<div class="location-shell" (click)="onShellClick($event)">
   <i class="pi pi-search location-icon" aria-hidden="true"></i>
   <input
     #searchInput
@@ -17,6 +17,9 @@
   </button>
 
   <section *ngIf="popupOpen" class="location-popup" [class.search-mode]="keyword.length >= 2"
+    (pointerdown)="$event.stopPropagation()"
+    (mousedown)="$event.stopPropagation()"
+    (click)="$event.stopPropagation()"
     role="dialog" [attr.aria-label]="i18n.text('PUBLIC.SEARCH.SUGGESTIONS_ARIA')">
     <header class="mobile-popup-header">
       <strong>{{ i18n.text('PUBLIC.SEARCH.CHOOSE_DESTINATION') }}</strong>
@@ -58,6 +61,7 @@
         </div>
         <div *ngIf="!popularLoading" class="popular-list">
           <button *ngFor="let destination of popularDestinations" type="button" class="popular-item"
+            (mousedown)="selectResultFromMouse($event, destination)"
             (click)="selectResult(destination)">
             <img [src]="displayImage(destination.imageUrl)" [alt]="destination.name" loading="lazy"
               (error)="handleImageError($event)">
@@ -91,7 +95,9 @@
             [class.active]="activeResult === result"
             [attr.aria-selected]="activeResult === result"
             [attr.data-suggestion-type]="result.type"
-            role="option" (click)="selectResult(result)">
+            role="option"
+            (mousedown)="selectResultFromMouse($event, result)"
+            (click)="selectResult(result)">
             <img *ngIf="result.type === 'PROPERTY'" [src]="displayImage(result.thumbnailUrl, result.propertyType)"
               [alt]="result.name" loading="lazy" (error)="handleImageError($event, result.propertyType)">
             <span *ngIf="result.type !== 'PROPERTY'" class="result-symbol"><i [class]="group.icon"></i></span>
