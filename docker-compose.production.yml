@@ -23,6 +23,14 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-demo}
+      # The bundled Flyway scripts upgrade an existing legacy schema; Hibernate
+      # initializes a new deployment schema before this service accepts traffic.
+      SPRING_FLYWAY_ENABLED: ${SPRING_FLYWAY_ENABLED:-false}
+      RESERVATION_AMENDMENT_DEFAULT_ARRIVAL_TIME: "14:00"
+      JAVA_TOOL_OPTIONS: -Dapp.reservation-amendment.default-arrival-time=14:00
+      # Retained image versions write to /app as a non-root user; use /tmp until
+      # the Dockerfile permission fix is deployed with the next image build.
+      UPLOAD_PATH: /tmp/uploads
       SERVER_PORT: 8080
       DB_URL: jdbc:sqlserver://sqlserver:1433;databaseName=HotelDB;encrypt=true;trustServerCertificate=true
       DB_USERNAME: sa
