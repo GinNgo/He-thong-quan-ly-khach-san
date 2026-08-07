@@ -2,8 +2,9 @@
   <!-- Top Navigation Bar (Simplified for Auth) -->
   <nav class="w-full bg-white/80 backdrop-blur-md border-b border-outline-variant z-50 shrink-0">
     <div class="max-w-[1440px] mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
-      <a class="flex items-center gap-2 text-primary no-underline" routerLink="/">
-        <h1 class="font-headline-md text-[20px] font-bold tracking-tight m-0">LuxeStay Portal</h1>
+      <a class="flex items-center gap-2 text-primary no-underline" routerLink="/" aria-label="LuxeStay - Trang chủ">
+        <img class="register-brand-mark" src="/assets/brand/luxestay-mark.svg" alt="" aria-hidden="true">
+        <span class="register-brand-copy"><strong>LuxeStay</strong><small>Hotels</small></span>
       </a>
       <div class="flex items-center gap-4">
         <a class="font-body-sm text-[13px] text-on-surface-variant font-bold" routerLink="/support">{{ i18n.text('AUTH_LEGAL.NAV.SUPPORT') }}</a>
@@ -36,10 +37,10 @@
           <form class="space-y-2.5 shrink-0" (ngSubmit)="onSubmit()" #registerForm="ngForm">
             
             <!-- Messages -->
-            <div *ngIf="errorMessage" class="bg-red-50 text-red-600 p-3 rounded-md text-sm border border-red-200 mb-2" role="alert" aria-live="assertive">
+            <div *ngIf="errorMessage" class="register-alert register-alert--error" role="alert" aria-live="assertive">
               {{ errorMessage }}
             </div>
-            <div *ngIf="successMessage" class="bg-green-50 text-green-700 p-3 rounded-md text-sm border border-green-200 mb-2" role="status" aria-live="polite">
+            <div *ngIf="successMessage" class="register-alert register-alert--success" role="status" aria-live="polite">
               {{ successMessage }}
             </div>
             <!-- Full Name Field -->

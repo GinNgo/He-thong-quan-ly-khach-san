@@ -66,6 +66,17 @@ describe('errorInterceptor', () => {
     expect(routerSpy.navigate).not.toHaveBeenCalled();
   });
 
+  it('keeps an authentication failure on the login page for inline error handling', () => {
+    routerSpy.url = '/login';
+    httpClient.post('/api/auth/login', { username: 'customer@example.com', password: 'wrong' })
+      .subscribe({ error: () => undefined });
+
+    const req = httpMock.expectOne('/api/auth/login');
+    req.flush({ code: 'INVALID_CREDENTIALS' }, { status: 403, statusText: 'Forbidden' });
+
+    expect(routerSpy.navigate).not.toHaveBeenCalled();
+  });
+
   it('uses the stable API error code as the forbidden-route reason', () => {
     httpClient.get('/api/test').subscribe({ error: () => undefined });
 

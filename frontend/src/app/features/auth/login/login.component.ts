@@ -291,11 +291,20 @@ export class LoginComponent implements OnInit, OnDestroy {
       return;
     }
 
-    void this.router.navigateByUrl(this.returnUrl);
+    void this.router.navigateByUrl(this.resolveClientReturnUrl(this.returnUrl));
   }
 
   private isAdminPortalAccount(username: string, roles: string[]): boolean {
     return username === 'admin' || roles.some(role => adminPortalRoles.has(role));
 >>>>>>> codex/ui-functional-audit-polish
+  }
+
+  private resolveClientReturnUrl(returnUrl: string): string {
+    if (!returnUrl.startsWith('/') || returnUrl.startsWith('//')) return '/';
+
+    const clientBlockedRoutes = ['/admin', '/management', '/403', '/login'];
+    return clientBlockedRoutes.some(route => returnUrl === route || returnUrl.startsWith(`${route}/`) || returnUrl.startsWith(`${route}?`))
+      ? '/'
+      : returnUrl;
   }
 }

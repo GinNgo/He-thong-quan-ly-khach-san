@@ -1,6 +1,5 @@
 :host {
   display: block;
-  min-height: 100dvh;
   color: var(--hotel-text);
   background:
     radial-gradient(circle at 8% 4%, var(--hotel-primary-light), transparent 28rem),
@@ -24,60 +23,7 @@
 }
 
 .information-shell {
-  min-height: 100dvh;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-}
-
-.information-header,
-.information-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--hotel-space-4);
-  width: min(100% - 2rem, 72rem);
-  margin-inline: auto;
-  padding-block: var(--hotel-space-4);
-}
-
-.information-header {
-  border-bottom: 1px solid var(--hotel-border);
-}
-
-.brand-link {
-  display: inline-flex;
-  min-height: 2.75rem;
-  align-items: center;
-  gap: var(--hotel-space-3);
-  color: var(--hotel-heading);
-  font-family: var(--hotel-font-heading);
-  font-size: 1.5rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.brand-mark {
-  display: grid;
-  width: 2.75rem;
-  height: 2.75rem;
-  place-items: center;
-  color: #fff;
-  background: var(--hotel-primary);
-  border-radius: var(--hotel-radius-md);
-  font-family: var(--hotel-font-body);
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-}
-
-.locale-button {
-  min-width: 2.75rem;
-  min-height: 2.75rem;
-  color: var(--hotel-primary);
-  background: var(--hotel-card-bg);
-  border: 1px solid var(--hotel-border-strong);
-  border-radius: var(--hotel-radius-pill);
-  font: 700 var(--hotel-text-sm) var(--hotel-font-body);
-  cursor: pointer;
+  min-height: 40rem;
 }
 
 .information-main {
@@ -272,21 +218,6 @@ h2 {
   gap: var(--hotel-space-3);
 }
 
-.information-footer {
-  flex-wrap: wrap;
-  color: var(--hotel-text-muted);
-  border-top: 1px solid var(--hotel-border);
-  font-size: var(--hotel-text-sm);
-}
-
-.information-footer a {
-  display: inline-flex;
-  min-height: 2.75rem;
-  align-items: center;
-  color: var(--hotel-primary-hover);
-  font-weight: 700;
-}
-
 @media (max-width: 40rem) {
   .information-nav {
     display: grid;
@@ -310,7 +241,6 @@ h2 {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .locale-button,
   .information-nav a,
   .cookie-form button,
   .contact-actions a {

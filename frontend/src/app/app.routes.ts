@@ -19,16 +19,16 @@ export const routes: Routes = [
       { path: 'refunds', loadComponent: () => import('./features/client/profile/refund-history.component').then(m => m.RefundHistoryComponent), canActivate: [clientAuthGuard] },
       { path: 'booking-history', loadComponent: () => import('./features/client/profile/profile.component').then(m => m.ProfileComponent), canActivate: [clientAuthGuard], data: { tab: 'bookings' } },
       { path: 'my-invoices', loadComponent: () => import('./features/client/my-invoices/my-invoices.component').then(m => m.MyInvoicesComponent), canActivate: [clientAuthGuard] },
-      { path: 'settings', loadComponent: () => import('./features/client/account-settings/account-settings.component').then(m => m.AccountSettingsComponent), canActivate: [clientAuthGuard] }
+      { path: 'settings', loadComponent: () => import('./features/client/account-settings/account-settings.component').then(m => m.AccountSettingsComponent), canActivate: [clientAuthGuard] },
+      { path: 'terms', loadComponent: () => import('./features/auth/legal-support/public-information-page.component').then(m => m.PublicInformationPageComponent), data: { page: 'TERMS' } },
+      { path: 'privacy', loadComponent: () => import('./features/auth/legal-support/public-information-page.component').then(m => m.PublicInformationPageComponent), data: { page: 'PRIVACY' } },
+      { path: 'cookies', loadComponent: () => import('./features/auth/legal-support/public-information-page.component').then(m => m.PublicInformationPageComponent), data: { page: 'COOKIES' } },
+      { path: 'contact', loadComponent: () => import('./features/auth/legal-support/public-information-page.component').then(m => m.PublicInformationPageComponent), data: { page: 'CONTACT' } },
+      { path: 'support', loadComponent: () => import('./features/auth/legal-support/public-information-page.component').then(m => m.PublicInformationPageComponent), data: { page: 'SUPPORT' } }
     ]
   },
   { path: 'payment-simulator', loadComponent: () => import('./features/client/payment-simulator/payment-simulator').then(m => m.PaymentSimulatorComponent) },
   { path: 'payment-result', loadComponent: () => import('./features/client/payment-result/payment-result').then(m => m.PaymentResultComponent) },
-  { path: 'terms', loadComponent: () => import('./features/auth/legal-support/public-information-page.component').then(m => m.PublicInformationPageComponent), data: { page: 'TERMS' } },
-  { path: 'privacy', loadComponent: () => import('./features/auth/legal-support/public-information-page.component').then(m => m.PublicInformationPageComponent), data: { page: 'PRIVACY' } },
-  { path: 'cookies', loadComponent: () => import('./features/auth/legal-support/public-information-page.component').then(m => m.PublicInformationPageComponent), data: { page: 'COOKIES' } },
-  { path: 'contact', loadComponent: () => import('./features/auth/legal-support/public-information-page.component').then(m => m.PublicInformationPageComponent), data: { page: 'CONTACT' } },
-  { path: 'support', loadComponent: () => import('./features/auth/legal-support/public-information-page.component').then(m => m.PublicInformationPageComponent), data: { page: 'SUPPORT' } },
   { path: 'forgot-password', loadComponent: () => import('./features/auth/forgot-password/forgot-password.component').then(m => m.ForgotPasswordComponent) },
   { path: 'reset-password', loadComponent: () => import('./features/auth/reset-password/reset-password.component').then(m => m.ResetPasswordComponent) },
   { path: 'verify-email', loadComponent: () => import('./features/auth/verify-email/verify-email.component').then(m => m.VerifyEmailComponent) },

@@ -149,6 +149,12 @@ export class LocationAutocompleteComponent implements OnDestroy {
     this.openPopup();
   }
 
+  onShellClick(event: MouseEvent): void {
+    // Only clicks on the shell itself should focus the input; popup controls
+    // handle their own selection and must not reopen the popup.
+    if (event.target === event.currentTarget) this.focusInput();
+  }
+
   clearInput(event: MouseEvent): void {
     event.stopPropagation();
     this.searchControl.setValue('');
@@ -196,6 +202,12 @@ export class LocationAutocompleteComponent implements OnDestroy {
       category: result.category
     });
     this.closePopup();
+  }
+
+  selectResultFromMouse(event: MouseEvent, result: LocationSuggestion): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.selectResult(result);
   }
 
   selectRecent(recent: RecentSearch): void {

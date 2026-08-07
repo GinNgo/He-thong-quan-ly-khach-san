@@ -156,6 +156,15 @@ public class RoomAvailabilityService {
         return guests == null || guests <= 0 || capacity == null || capacity >= guests;
     }
 
+    public boolean canHost(RoomType roomType, int quantity, int adults, int children) {
+        int maxAdults = firstPositive(roomType.getMaxAdults(), roomType.getMaxGuests(), roomType.getMaxGuest());
+        int maxChildren = firstNonNegative(roomType.getMaxChildren(), roomType.getMaxGuests(), roomType.getMaxGuest());
+        int maxGuests = firstPositive(roomType.getMaxGuests(), roomType.getMaxGuest());
+        return adults <= maxAdults * quantity
+                && children <= maxChildren * quantity
+                && adults + children <= maxGuests * quantity;
+    }
+
     public void validateCapacity(RoomType roomType, int quantity, int adults, int children) {
         int maxAdults = firstPositive(roomType.getMaxAdults(), roomType.getMaxGuests(), roomType.getMaxGuest());
         int maxChildren = firstNonNegative(roomType.getMaxChildren(), roomType.getMaxGuests(), roomType.getMaxGuest());

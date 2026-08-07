@@ -60,7 +60,8 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 
         return roomTypeRepository.findByHotelId(hotelId).stream()
                 .filter(publicInventoryEligibilityPolicy::isPubliclySellable)
-                .filter(roomType -> roomAvailabilityService.canHost(roomType, guests))
+                .filter(roomType -> guests == null || guests <= 0
+                        || roomAvailabilityService.canHost(roomType, 1, guests, 0))
                 .map(roomType -> {
                     RoomTypeDTO dto = mapToDTO(roomType);
                     roomAvailabilityService.enrich(dto, roomType, checkIn, checkOut);

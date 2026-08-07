@@ -144,6 +144,9 @@ export class FeaturedPropertiesComponent {
   }
 
   viewAll(): void {
+    // "Xem tất cả" must not inherit the previous location or stay-type tab.
+    this.stateService.clearLocation();
+    this.stateService.updatePropertyTypes([]);
     this.stateService.submitSearch();
   }
 

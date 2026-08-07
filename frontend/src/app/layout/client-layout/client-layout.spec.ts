@@ -127,7 +127,9 @@ describe('ClientLayout', () => {
     const element: HTMLElement = fixture.nativeElement;
     expect(element.querySelector('.public-footer')).not.toBeNull();
     expect(element.querySelectorAll('.footer-column')).toHaveLength(3);
-    expect(element.querySelector('a[href^="mailto:support@luxestay.vn"]')).not.toBeNull();
+    expect(element.querySelector('.footer-column a[href="/support"]')).not.toBeNull();
+    expect(element.querySelector('.footer-column a[href="/privacy"]')).not.toBeNull();
+    expect(element.querySelector('.footer-column a[href="/terms"]')).not.toBeNull();
     expect(element.querySelector('a[href^="tel:"]')).not.toBeNull();
   });
 

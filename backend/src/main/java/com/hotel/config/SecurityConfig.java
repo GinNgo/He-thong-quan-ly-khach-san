@@ -34,7 +34,7 @@ public class SecurityConfig {
 
     public SecurityConfig(
             JwtAuthFilter jwtAuthFilter,
-            @Value("${app.cors.allowed-origins:http://localhost:4200}") String[] corsAllowedOrigins,
+            @Value("${app.cors.allowed-origins:http://localhost:4200,http://localhost:4201}") String[] corsAllowedOrigins,
             @Value("${app.security.payment-abuse.callback-max-body-bytes:1048576}") int callbackMaxBodyBytes,
             @Value("${app.security.payment-abuse.callback-requests-per-minute:60}") int callbackRequestsPerMinute,
             @Value("${app.security.payment-abuse.polling-requests-per-minute:30}") int pollingRequestsPerMinute,

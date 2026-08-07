@@ -90,53 +90,19 @@ jwt:
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
 
 app:
-  staff-booking:
-    quote-ttl-minutes: ${STAFF_BOOKING_QUOTE_TTL_MINUTES:2}
   auth:
     # Must be true behind HTTPS in production; false supports local HTTP development only.
     refresh-cookie-secure: ${AUTH_REFRESH_COOKIE_SECURE:false}
-    login:
-      audit-secret: ${LOGIN_AUDIT_SECRET:${JWT_SECRET}}
-      window-minutes: ${LOGIN_RATE_WINDOW_MINUTES:15}
-      lock-minutes: ${LOGIN_LOCK_MINUTES:15}
-      max-account-failures: ${LOGIN_MAX_ACCOUNT_FAILURES:5}
-      max-ip-failures: ${LOGIN_MAX_IP_FAILURES:20}
     password-reset:
       ttl-minutes: ${PASSWORD_RESET_TTL_MINUTES:30}
       rate-window-minutes: ${PASSWORD_RESET_RATE_WINDOW_MINUTES:15}
       max-ip-requests: ${PASSWORD_RESET_MAX_IP_REQUESTS:5}
       max-email-requests: ${PASSWORD_RESET_MAX_EMAIL_REQUESTS:3}
-    email-verification:
-      ttl-minutes: ${EMAIL_VERIFICATION_TTL_MINUTES:60}
-      rate-window-minutes: ${EMAIL_VERIFICATION_RATE_WINDOW_MINUTES:15}
-      max-ip-requests: ${EMAIL_VERIFICATION_MAX_IP_REQUESTS:8}
-      max-user-requests: ${EMAIL_VERIFICATION_MAX_USER_REQUESTS:3}
   mail:
     sender-name: ${MAIL_SENDER_NAME:LuxeStay}
     registration-enabled: ${REGISTRATION_EMAIL_ENABLED:true}
     password-reset-enabled: ${PASSWORD_RESET_EMAIL_ENABLED:true}
     password-reset-url: ${PASSWORD_RESET_URL:http://localhost:4200/reset-password}
-<<<<<<< HEAD
-    email-verification-enabled: ${EMAIL_VERIFICATION_ENABLED:true}
-    email-verification-url: ${EMAIL_VERIFICATION_URL:http://localhost:4200/verify-email}
-    payment-receipt-enabled: ${PAYMENT_RECEIPT_EMAIL_ENABLED:true}
-  cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
-  reservation-hold:
-    ttl-minutes: ${RESERVATION_HOLD_TTL_MINUTES:15}
-    expiry-scan-ms: ${RESERVATION_HOLD_EXPIRY_SCAN_MS:60000}
-  reservation-amendment:
-    cutoff-minutes: ${RESERVATION_AMENDMENT_CUTOFF_MINUTES:1440}
-    quote-ttl-minutes: ${RESERVATION_AMENDMENT_QUOTE_TTL_MINUTES:15}
-    default-arrival-time: ${RESERVATION_AMENDMENT_DEFAULT_ARRIVAL_TIME:14:00}
-    property-zone-id: ${RESERVATION_AMENDMENT_PROPERTY_ZONE_ID:Asia/Ho_Chi_Minh}
-  stay-check-in:
-    property-zone-id: ${STAY_CHECK_IN_PROPERTY_ZONE_ID:Asia/Ho_Chi_Minh}
-    default-arrival-time: ${STAY_CHECK_IN_DEFAULT_ARRIVAL_TIME:14:00}
-    default-departure-time: ${STAY_CHECK_IN_DEFAULT_DEPARTURE_TIME:12:00}
-    early-window-minutes: ${STAY_CHECK_IN_EARLY_WINDOW_MINUTES:0}
-    demo-early-window-minutes: ${STAY_CHECK_IN_DEMO_EARLY_WINDOW_MINUTES:5}
-=======
     login-url: ${REGISTRATION_LOGIN_URL:http://localhost:4200/login}
     outbox:
       enabled: ${MAIL_OUTBOX_ENABLED:true}
@@ -146,19 +112,14 @@ app:
       max-backoff-seconds: ${MAIL_OUTBOX_MAX_BACKOFF_SECONDS:3600}
       max-attempts: ${MAIL_OUTBOX_MAX_ATTEMPTS:5}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
->>>>>>> codex/ui-functional-audit-polish
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:4201}
   websocket:
-    allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:4200}
+    allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:4201}
   observability:
     scheduler:
       pool-size: ${OBSERVABILITY_SCHEDULER_POOL_SIZE:2}
   location-import:
     enabled: true
-<<<<<<< HEAD
-    file-path: ${LOCATION_IMPORT_FILE_PATH:}
-=======
->>>>>>> codex/ui-functional-audit-polish
     resource: ${LOCATION_IMPORT_RESOURCE:classpath:data/locations.json}
     current-province-resource: ${CURRENT_PROVINCE_IMPORT_RESOURCE:classpath:data/provinces-current-34.json}
     landmark-resource: ${LANDMARK_IMPORT_RESOURCE:classpath:data/landmarks.json}
@@ -169,15 +130,15 @@ app:
     ttl-minutes: ${RESERVATION_HOLD_TTL_MINUTES:15}
     expiry-scan-ms: ${RESERVATION_HOLD_EXPIRY_SCAN_MS:60000}
   demo-data:
-    enabled: false
+    enabled: true
     legacy-seed: false
-    nationwide-property-seed: false
+    nationwide-property-seed: true
     coverage-mode: STANDARD
     properties-per-province: 5
     properties-per-ward: 1
     max-total-properties: 5000
     batch-size: 50
-    allow-public-demo: false
+    allow-public-demo: true
   accommodation-import:
     enabled: true
     provider: NOMINATIM

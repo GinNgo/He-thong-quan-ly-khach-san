@@ -51,7 +51,7 @@ describe('PublicInformationPageComponent', () => {
     ]);
 
     for (const [path, page] of expected) {
-      const route = routes.find(candidate => candidate.path === path);
+      const route = routes.find(candidate => candidate.path === '')?.children?.find(candidate => candidate.path === path);
       expect(route?.loadComponent).toBeTypeOf('function');
       expect(route?.canActivate).toBeUndefined();
       expect(route?.data?.['page']).toBe(page);
@@ -83,15 +83,12 @@ describe('PublicInformationPageComponent', () => {
   it('switches the page copy between Vietnamese and English', async () => {
     const { fixture, locale } = await createFixture('TERMS');
     const root = fixture.nativeElement as HTMLElement;
-    const localeButton = root.querySelector('.locale-button') as HTMLButtonElement;
-
     expect(root.querySelector('h1')?.textContent?.trim()).toBe('Điều khoản dịch vụ');
-    localeButton.click();
+    locale.set('en');
     fixture.detectChanges();
 
     expect(locale()).toBe('en');
     expect(root.querySelector('h1')?.textContent?.trim()).toBe('Terms of service');
-    expect(localeButton.getAttribute('aria-label')).toBe('Switch to Vietnamese');
   });
 
   it('stores cookie choices and announces the result without moving focus', async () => {
