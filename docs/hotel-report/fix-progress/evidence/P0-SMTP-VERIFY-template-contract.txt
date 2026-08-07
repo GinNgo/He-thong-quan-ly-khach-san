@@ -1,0 +1,21 @@
+P0-SMTP-VERIFY TEMPLATE CONTRACT
+Date: 2026-08-06 Asia/Saigon
+
+Production templates checked:
+- Registration welcome: Vietnamese subject, UTF-8 HTML, inline CSS, login CTA.
+- Initial email verification: Vietnamese subject/body, one-time URL, expiry copy.
+- Email change verification: Vietnamese subject/body, one-time URL, expiry copy.
+- Password reset: Vietnamese subject/body, one-time URL, expiry copy, no password disclosure.
+- Booking confirmation: Vietnamese default, text fallback plus HTML alternative, multipart MIME.
+- Invoice: Vietnamese HTML body plus non-empty application/pdf attachment.
+
+Preview-only content:
+- Payment E2E and tenant/system E2E messages are clearly labelled test content.
+- They are not production payment lifecycle templates and were not sent again in this verification run.
+
+Encoding/layout checks:
+- HTML lang is vi for Vietnamese templates.
+- Table layout and inline CSS are used for email client compatibility.
+- No mojibake marker remains in EmailService or EmailVerificationMailer.
+- No unreplaced template placeholder remains on paths covered by tests.
+- Localhost URLs are local-profile values only; public URLs remain a staging responsibility.

@@ -1,0 +1,9 @@
+P0-02D full backend regression result
+Date: 2026-08-06 Asia/Saigon
+Before: total 833, PASS 815, FAIL 9, ERROR 9, SKIPPED 0
+After: total 833, PASS 817, FAIL 9, ERROR 7, SKIPPED 0
+Delta: PASS +2, FAIL 0, ERROR -2, SKIPPED 0
+HotelControllerIntegrationTest after: 2 PASS, 0 FAIL, 0 ERROR
+New failures/errors attributable to P0-02D: none
+Package: PASS
+Production code changed: no

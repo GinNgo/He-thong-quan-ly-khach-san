@@ -1,0 +1,9 @@
+P0-02C full backend regression result
+Date: 2026-08-06 Asia/Saigon
+Before: total 833, PASS 812, FAIL 9, ERROR 12, SKIPPED 0
+After: total 833, PASS 815, FAIL 9, ERROR 9, SKIPPED 0
+Delta: PASS +3, FAIL 0, ERROR -3, SKIPPED 0
+ReservationLifecycleLockingTest after: 4 PASS, 0 FAIL, 0 ERROR
+New failures/errors attributable to P0-02C: none
+Package: PASS
+Production code changed: no

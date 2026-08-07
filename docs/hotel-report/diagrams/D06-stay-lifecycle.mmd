@@ -1,0 +1,19 @@
+stateDiagram-v2
+    [*] --> Hold: Chọn phòng / giữ chỗ
+    Hold --> PendingPayment: Tạo booking
+    Hold --> Expired: Hết TTL
+    PendingPayment --> Confirmed: Thanh toán/xác nhận hợp lệ
+    PendingPayment --> Cancelled: Hủy hoặc thanh toán thất bại
+    Confirmed --> Cancelled: Hủy theo policy
+    Confirmed --> CheckedIn: Nhân viên check-in + gán phòng
+    CheckedIn --> InHouse: Stay đang hoạt động
+    InHouse --> CheckedOut: Tổng hợp charge + check-out
+    CheckedOut --> Cleaning: Phòng cần dọn
+    Cleaning --> Available: Housekeeping hoàn tất
+    Cancelled --> RefundPending: Có tiền cần hoàn
+    RefundPending --> Refunded: Provider xác nhận
+    RefundPending --> RefundFailed: Provider từ chối/recovery thất bại
+    Expired --> [*]
+    Available --> [*]
+    Refunded --> [*]
+    RefundFailed --> [*]

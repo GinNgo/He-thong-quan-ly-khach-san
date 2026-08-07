@@ -6,7 +6,13 @@ Thư mục chứa tài liệu của hệ thống quản lý khách sạn và đ�
 
 - [THESIS.md](THESIS.md): Báo cáo tiểu luận chính, tổ chức theo năm chương.
 - [THESIS_FORMAT_RULES.md](THESIS_FORMAT_RULES.md): Quy định ngôn ngữ, định dạng, bảng, hình, UML và cấu trúc tiểu luận.
+- [THESIS_REPORT_PLAN.md](THESIS_REPORT_PLAN.md): Kế hoạch Spec Kit để hoàn thiện, kiểm chứng và duy trì toàn văn khóa luận.
+- [RUBRIC_RESPONSE_GUIDE.md](RUBRIC_RESPONSE_GUIDE.md): Khung mapping bằng chứng và luyện trả lời rubric môn học/khóa luận.
 - [FEATURE_SUMMARY.md](FEATURE_SUMMARY.md): Trạng thái chức năng, giới hạn và kết quả kiểm thử gần nhất.
+- [audit/THESIS_DIAGRAM_QA.md](audit/THESIS_DIAGRAM_QA.md): Kết quả render và layout QA cho 24 sơ đồ.
+- [audit/THESIS_TEMPLATE_EVIDENCE.md](audit/THESIS_TEMPLATE_EVIDENCE.md): Yêu cầu trích từ D01-D08 và quyết định áp dụng vào toàn văn.
+- [audit/RUBRIC_GAP_REPORT.md](audit/RUBRIC_GAP_REPORT.md): Gap rubric và điều kiện mở khóa evidence.
+- [audit/THESIS_PRIVACY_QA.md](audit/THESIS_PRIVACY_QA.md): Privacy scan sơ bộ cho tài liệu và screenshot.
 - [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md): Bối cảnh và yêu cầu ban đầu; có thể chứa chức năng dự kiến chưa được triển khai.
 - [LOGBOOK.md](LOGBOOK.md): Nhật ký tiến độ khóa luận.
 - [CHANGELOG.md](CHANGELOG.md): Lịch sử thay đổi dự án.
@@ -44,6 +50,11 @@ Các tài liệu trong nhóm này phản ánh trạng thái tại thời điểm
 
 - [ASSET_LICENSES.md](ASSET_LICENSES.md): Nguồn và giấy phép ảnh demo.
 - [screenshots/](screenshots/): Ảnh minh họa dùng trong báo cáo.
+- [thesis-assets/](thesis-assets/): Mẫu, front matter, rubric, diagram SVG và manifest toàn văn.
+- [thesis-assets/OFFICIAL_TEMPLATE_SOURCES.md](thesis-assets/OFFICIAL_TEMPLATE_SOURCES.md): Registry, checksum và nguồn Drive D01-D08.
+- [thesis-assets/RUBRIC_MATRIX.md](thesis-assets/RUBRIC_MATRIX.md): Mapping 14/14 tiêu chí D03/D04 tới câu trả lời và evidence.
+- [thesis-assets/diagrams/](thesis-assets/diagrams/): 24 SVG sơ đồ đã render, mã khớp UML/ERD.
+- [export/RELEASE_MANIFEST.md](export/RELEASE_MANIFEST.md): Manifest bản draft/release gate.
 
 ## 6. Thứ tự ưu tiên khi đối chiếu
 

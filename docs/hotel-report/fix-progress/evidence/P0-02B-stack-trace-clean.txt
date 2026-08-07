@@ -1,0 +1,34 @@
+P0-02B focused reproduction - cleaned stack trace
+Date: 2026-08-06 Asia/Saigon
+
+Test suite: com.hotel.integration.SubscriptionControllerIntegrationTest
+Result: Tests run: 6, Failures: 0, Errors: 6, Skipped: 0
+
+Root failure:
+org.springframework.beans.factory.UnsatisfiedDependencyException:
+Error creating bean with name 'correlationIdFilter':
+Unsatisfied dependency expressed through constructor parameter 0:
+No qualifying bean of type 'com.hotel.observability.OperationalMetrics' available.
+
+Caused by:
+org.springframework.beans.factory.NoSuchBeanDefinitionException:
+No qualifying bean of type 'com.hotel.observability.OperationalMetrics' available:
+expected at least 1 bean which qualifies as autowire candidate.
+
+Spring diagnostic:
+Parameter 0 of constructor in com.hotel.observability.CorrelationIdFilter
+required a bean of type 'com.hotel.observability.OperationalMetrics'
+that could not be found.
+
+Repeated cases:
+java.lang.IllegalStateException:
+ApplicationContext failure threshold (1) exceeded; skipping repeated attempt
+to load the same WebMvc test context.
+
+Dependency chain:
+@WebMvcTest(SubscriptionController.class)
+  -> imported SecurityConfig / MVC filter infrastructure
+  -> CorrelationIdFilter constructor
+  -> OperationalMetrics missing from the WebMvc slice
+
+Full raw output: P0-02B-focused-before.log

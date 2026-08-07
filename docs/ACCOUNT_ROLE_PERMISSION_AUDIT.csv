@@ -1,180 +1,180 @@
-﻿User ID,Username,Email,Full Name,User Status,Legacy Hotel ID,Role Code,Property Hotel ID,Relationship Type,Property Status,Is Primary Owner
-1,admin,admin@hotel.com,System Admin,ACTIVE,,SUPER_ADMIN,,,,
-2,manager1,manager1@hotel.com,Manager One,ACTIVE,1,HOTEL_MANAGER,,,,
-3,receptionist1,receptionist1@hotel.com,Receptionist One,ACTIVE,1,RECEPTIONIST,,,,
-4,customer1,nva@hotel.com,Nguyen Van A,ACTIVE,,CUSTOMER,,,,
-5,customer2,ltb@hotel.com,Le Thi B,ACTIVE,,CUSTOMER,,,,
-9,owner.free0001@example.com,owner.free0001@example.com,Chủ cơ sở demo 0001,ACTIVE,12,PROPERTY_OWNER,12,OWNER,ACTIVE,1
-10,owner.no.plan0002@example.com,owner.no.plan0002@example.com,Chủ cơ sở demo 0002,ACTIVE,13,PROPERTY_OWNER,13,OWNER,ACTIVE,1
-11,owner.standard0003@example.com,owner.standard0003@example.com,Chủ cơ sở demo 0003,ACTIVE,14,PROPERTY_OWNER,14,OWNER,ACTIVE,1
-12,owner.business0004@example.com,owner.business0004@example.com,Chủ cơ sở demo 0004,ACTIVE,15,PROPERTY_OWNER,15,OWNER,ACTIVE,1
-13,owner.lifetime0005@example.com,owner.lifetime0005@example.com,Chủ cơ sở demo 0005,ACTIVE,16,PROPERTY_OWNER,16,OWNER,ACTIVE,1
-14,owner.expired0006@example.com,owner.expired0006@example.com,Chủ cơ sở demo 0006,ACTIVE,17,PROPERTY_OWNER,17,OWNER,ACTIVE,1
-15,owner.free0007@example.com,owner.free0007@example.com,Chủ cơ sở demo 0007,ACTIVE,18,PROPERTY_OWNER,18,OWNER,ACTIVE,1
-16,owner.no.plan0008@example.com,owner.no.plan0008@example.com,Chủ cơ sở demo 0008,ACTIVE,19,PROPERTY_OWNER,19,OWNER,ACTIVE,1
-17,owner.standard0009@example.com,owner.standard0009@example.com,Chủ cơ sở demo 0009,ACTIVE,20,PROPERTY_OWNER,20,OWNER,ACTIVE,1
-18,owner.business0010@example.com,owner.business0010@example.com,Chủ cơ sở demo 0010,ACTIVE,21,PROPERTY_OWNER,21,OWNER,ACTIVE,1
-19,owner.lifetime0011@example.com,owner.lifetime0011@example.com,Chủ cơ sở demo 0011,ACTIVE,22,PROPERTY_OWNER,22,OWNER,ACTIVE,1
-20,owner.expired0012@example.com,owner.expired0012@example.com,Chủ cơ sở demo 0012,ACTIVE,23,PROPERTY_OWNER,23,OWNER,ACTIVE,1
-21,owner.free0013@example.com,owner.free0013@example.com,Chủ cơ sở demo 0013,ACTIVE,24,PROPERTY_OWNER,24,OWNER,ACTIVE,1
-22,owner.no.plan0014@example.com,owner.no.plan0014@example.com,Chủ cơ sở demo 0014,ACTIVE,25,PROPERTY_OWNER,25,OWNER,ACTIVE,1
-23,owner.standard0015@example.com,owner.standard0015@example.com,Chủ cơ sở demo 0015,ACTIVE,26,PROPERTY_OWNER,26,OWNER,ACTIVE,1
-24,owner.business0016@example.com,owner.business0016@example.com,Chủ cơ sở demo 0016,ACTIVE,27,PROPERTY_OWNER,27,OWNER,ACTIVE,1
-25,owner.lifetime0017@example.com,owner.lifetime0017@example.com,Chủ cơ sở demo 0017,ACTIVE,28,PROPERTY_OWNER,28,OWNER,ACTIVE,1
-26,owner.expired0018@example.com,owner.expired0018@example.com,Chủ cơ sở demo 0018,ACTIVE,29,PROPERTY_OWNER,29,OWNER,ACTIVE,1
-27,owner.free0019@example.com,owner.free0019@example.com,Chủ cơ sở demo 0019,ACTIVE,30,PROPERTY_OWNER,30,OWNER,ACTIVE,1
-28,owner.no.plan0020@example.com,owner.no.plan0020@example.com,Chủ cơ sở demo 0020,ACTIVE,31,PROPERTY_OWNER,31,OWNER,ACTIVE,1
-29,owner.standard0021@example.com,owner.standard0021@example.com,Chủ cơ sở demo 0021,ACTIVE,32,PROPERTY_OWNER,32,OWNER,ACTIVE,1
-30,owner.business0022@example.com,owner.business0022@example.com,Chủ cơ sở demo 0022,ACTIVE,33,PROPERTY_OWNER,33,OWNER,ACTIVE,1
-31,owner.lifetime0023@example.com,owner.lifetime0023@example.com,Chủ cơ sở demo 0023,ACTIVE,34,PROPERTY_OWNER,34,OWNER,ACTIVE,1
-32,owner.expired0024@example.com,owner.expired0024@example.com,Chủ cơ sở demo 0024,ACTIVE,35,PROPERTY_OWNER,35,OWNER,ACTIVE,1
-33,owner.free0025@example.com,owner.free0025@example.com,Chủ cơ sở demo 0025,ACTIVE,36,PROPERTY_OWNER,36,OWNER,ACTIVE,1
-34,owner.no.plan0026@example.com,owner.no.plan0026@example.com,Chủ cơ sở demo 0026,ACTIVE,37,PROPERTY_OWNER,37,OWNER,ACTIVE,1
-35,owner.standard0027@example.com,owner.standard0027@example.com,Chủ cơ sở demo 0027,ACTIVE,38,PROPERTY_OWNER,38,OWNER,ACTIVE,1
-36,owner.business0028@example.com,owner.business0028@example.com,Chủ cơ sở demo 0028,ACTIVE,39,PROPERTY_OWNER,39,OWNER,ACTIVE,1
-37,owner.lifetime0029@example.com,owner.lifetime0029@example.com,Chủ cơ sở demo 0029,ACTIVE,40,PROPERTY_OWNER,40,OWNER,ACTIVE,1
-38,owner.expired0030@example.com,owner.expired0030@example.com,Chủ cơ sở demo 0030,ACTIVE,41,PROPERTY_OWNER,41,OWNER,ACTIVE,1
-39,owner.free0031@example.com,owner.free0031@example.com,Chủ cơ sở demo 0031,ACTIVE,42,PROPERTY_OWNER,42,OWNER,ACTIVE,1
-40,owner.no.plan0032@example.com,owner.no.plan0032@example.com,Chủ cơ sở demo 0032,ACTIVE,43,PROPERTY_OWNER,43,OWNER,ACTIVE,1
-41,owner.standard0033@example.com,owner.standard0033@example.com,Chủ cơ sở demo 0033,ACTIVE,44,PROPERTY_OWNER,44,OWNER,ACTIVE,1
-42,owner.business0034@example.com,owner.business0034@example.com,Chủ cơ sở demo 0034,ACTIVE,45,PROPERTY_OWNER,45,OWNER,ACTIVE,1
-43,owner.lifetime0035@example.com,owner.lifetime0035@example.com,Chủ cơ sở demo 0035,ACTIVE,46,PROPERTY_OWNER,46,OWNER,ACTIVE,1
-44,owner.expired0036@example.com,owner.expired0036@example.com,Chủ cơ sở demo 0036,ACTIVE,47,PROPERTY_OWNER,47,OWNER,ACTIVE,1
-45,owner.free0037@example.com,owner.free0037@example.com,Chủ cơ sở demo 0037,ACTIVE,48,PROPERTY_OWNER,48,OWNER,ACTIVE,1
-46,owner.no.plan0038@example.com,owner.no.plan0038@example.com,Chủ cơ sở demo 0038,ACTIVE,49,PROPERTY_OWNER,49,OWNER,ACTIVE,1
-47,owner.standard0039@example.com,owner.standard0039@example.com,Chủ cơ sở demo 0039,ACTIVE,50,PROPERTY_OWNER,50,OWNER,ACTIVE,1
-48,owner.business0040@example.com,owner.business0040@example.com,Chủ cơ sở demo 0040,ACTIVE,51,PROPERTY_OWNER,51,OWNER,ACTIVE,1
-49,owner.lifetime0041@example.com,owner.lifetime0041@example.com,Chủ cơ sở demo 0041,ACTIVE,52,PROPERTY_OWNER,52,OWNER,ACTIVE,1
-50,owner.expired0042@example.com,owner.expired0042@example.com,Chủ cơ sở demo 0042,ACTIVE,53,PROPERTY_OWNER,53,OWNER,ACTIVE,1
-51,owner.free0043@example.com,owner.free0043@example.com,Chủ cơ sở demo 0043,ACTIVE,54,PROPERTY_OWNER,54,OWNER,ACTIVE,1
-52,owner.no.plan0044@example.com,owner.no.plan0044@example.com,Chủ cơ sở demo 0044,ACTIVE,55,PROPERTY_OWNER,55,OWNER,ACTIVE,1
-53,owner.standard0045@example.com,owner.standard0045@example.com,Chủ cơ sở demo 0045,ACTIVE,56,PROPERTY_OWNER,56,OWNER,ACTIVE,1
-54,owner.business0046@example.com,owner.business0046@example.com,Chủ cơ sở demo 0046,ACTIVE,57,PROPERTY_OWNER,57,OWNER,ACTIVE,1
-55,owner.lifetime0047@example.com,owner.lifetime0047@example.com,Chủ cơ sở demo 0047,ACTIVE,58,PROPERTY_OWNER,58,OWNER,ACTIVE,1
-56,owner.expired0048@example.com,owner.expired0048@example.com,Chủ cơ sở demo 0048,ACTIVE,59,PROPERTY_OWNER,59,OWNER,ACTIVE,1
-57,owner.free0049@example.com,owner.free0049@example.com,Chủ cơ sở demo 0049,ACTIVE,60,PROPERTY_OWNER,60,OWNER,ACTIVE,1
-58,owner.no.plan0050@example.com,owner.no.plan0050@example.com,Chủ cơ sở demo 0050,ACTIVE,61,PROPERTY_OWNER,61,OWNER,ACTIVE,1
-59,owner.standard0051@example.com,owner.standard0051@example.com,Chủ cơ sở demo 0051,ACTIVE,62,PROPERTY_OWNER,62,OWNER,ACTIVE,1
-60,owner.business0052@example.com,owner.business0052@example.com,Chủ cơ sở demo 0052,ACTIVE,63,PROPERTY_OWNER,63,OWNER,ACTIVE,1
-61,owner.lifetime0053@example.com,owner.lifetime0053@example.com,Chủ cơ sở demo 0053,ACTIVE,64,PROPERTY_OWNER,64,OWNER,ACTIVE,1
-62,owner.expired0054@example.com,owner.expired0054@example.com,Chủ cơ sở demo 0054,ACTIVE,65,PROPERTY_OWNER,65,OWNER,ACTIVE,1
-63,owner.free0055@example.com,owner.free0055@example.com,Chủ cơ sở demo 0055,ACTIVE,66,PROPERTY_OWNER,66,OWNER,ACTIVE,1
-64,owner.no.plan0056@example.com,owner.no.plan0056@example.com,Chủ cơ sở demo 0056,ACTIVE,67,PROPERTY_OWNER,67,OWNER,ACTIVE,1
-65,owner.standard0057@example.com,owner.standard0057@example.com,Chủ cơ sở demo 0057,ACTIVE,68,PROPERTY_OWNER,68,OWNER,ACTIVE,1
-66,owner.business0058@example.com,owner.business0058@example.com,Chủ cơ sở demo 0058,ACTIVE,69,PROPERTY_OWNER,69,OWNER,ACTIVE,1
-67,owner.lifetime0059@example.com,owner.lifetime0059@example.com,Chủ cơ sở demo 0059,ACTIVE,70,PROPERTY_OWNER,70,OWNER,ACTIVE,1
-68,owner.expired0060@example.com,owner.expired0060@example.com,Chủ cơ sở demo 0060,ACTIVE,71,PROPERTY_OWNER,71,OWNER,ACTIVE,1
-69,owner.free0061@example.com,owner.free0061@example.com,Chủ cơ sở demo 0061,ACTIVE,72,PROPERTY_OWNER,72,OWNER,ACTIVE,1
-70,owner.no.plan0062@example.com,owner.no.plan0062@example.com,Chủ cơ sở demo 0062,ACTIVE,73,PROPERTY_OWNER,73,OWNER,ACTIVE,1
-71,owner.standard0063@example.com,owner.standard0063@example.com,Chủ cơ sở demo 0063,ACTIVE,74,PROPERTY_OWNER,74,OWNER,ACTIVE,1
-72,owner.business0064@example.com,owner.business0064@example.com,Chủ cơ sở demo 0064,ACTIVE,75,PROPERTY_OWNER,75,OWNER,ACTIVE,1
-73,owner.lifetime0065@example.com,owner.lifetime0065@example.com,Chủ cơ sở demo 0065,ACTIVE,76,PROPERTY_OWNER,76,OWNER,ACTIVE,1
-74,owner.expired0066@example.com,owner.expired0066@example.com,Chủ cơ sở demo 0066,ACTIVE,77,PROPERTY_OWNER,77,OWNER,ACTIVE,1
-75,owner.free0067@example.com,owner.free0067@example.com,Chủ cơ sở demo 0067,ACTIVE,78,PROPERTY_OWNER,78,OWNER,ACTIVE,1
-76,owner.no.plan0068@example.com,owner.no.plan0068@example.com,Chủ cơ sở demo 0068,ACTIVE,79,PROPERTY_OWNER,79,OWNER,ACTIVE,1
-77,owner.standard0069@example.com,owner.standard0069@example.com,Chủ cơ sở demo 0069,ACTIVE,80,PROPERTY_OWNER,80,OWNER,ACTIVE,1
-78,owner.business0070@example.com,owner.business0070@example.com,Chủ cơ sở demo 0070,ACTIVE,81,PROPERTY_OWNER,81,OWNER,ACTIVE,1
-79,owner.lifetime0071@example.com,owner.lifetime0071@example.com,Chủ cơ sở demo 0071,ACTIVE,82,PROPERTY_OWNER,82,OWNER,ACTIVE,1
-80,owner.expired0072@example.com,owner.expired0072@example.com,Chủ cơ sở demo 0072,ACTIVE,83,PROPERTY_OWNER,83,OWNER,ACTIVE,1
-81,owner.free0073@example.com,owner.free0073@example.com,Chủ cơ sở demo 0073,ACTIVE,84,PROPERTY_OWNER,84,OWNER,ACTIVE,1
-82,owner.no.plan0074@example.com,owner.no.plan0074@example.com,Chủ cơ sở demo 0074,ACTIVE,85,PROPERTY_OWNER,85,OWNER,ACTIVE,1
-83,owner.standard0075@example.com,owner.standard0075@example.com,Chủ cơ sở demo 0075,ACTIVE,86,PROPERTY_OWNER,86,OWNER,ACTIVE,1
-84,owner.business0076@example.com,owner.business0076@example.com,Chủ cơ sở demo 0076,ACTIVE,87,PROPERTY_OWNER,87,OWNER,ACTIVE,1
-85,owner.lifetime0077@example.com,owner.lifetime0077@example.com,Chủ cơ sở demo 0077,ACTIVE,88,PROPERTY_OWNER,88,OWNER,ACTIVE,1
-86,owner.expired0078@example.com,owner.expired0078@example.com,Chủ cơ sở demo 0078,ACTIVE,89,PROPERTY_OWNER,89,OWNER,ACTIVE,1
-87,owner.free0079@example.com,owner.free0079@example.com,Chủ cơ sở demo 0079,ACTIVE,90,PROPERTY_OWNER,90,OWNER,ACTIVE,1
-88,owner.no.plan0080@example.com,owner.no.plan0080@example.com,Chủ cơ sở demo 0080,ACTIVE,91,PROPERTY_OWNER,91,OWNER,ACTIVE,1
-89,owner.standard0081@example.com,owner.standard0081@example.com,Chủ cơ sở demo 0081,ACTIVE,92,PROPERTY_OWNER,92,OWNER,ACTIVE,1
-90,owner.business0082@example.com,owner.business0082@example.com,Chủ cơ sở demo 0082,ACTIVE,93,PROPERTY_OWNER,93,OWNER,ACTIVE,1
-91,owner.lifetime0083@example.com,owner.lifetime0083@example.com,Chủ cơ sở demo 0083,ACTIVE,94,PROPERTY_OWNER,94,OWNER,ACTIVE,1
-92,owner.expired0084@example.com,owner.expired0084@example.com,Chủ cơ sở demo 0084,ACTIVE,95,PROPERTY_OWNER,95,OWNER,ACTIVE,1
-93,owner.free0085@example.com,owner.free0085@example.com,Chủ cơ sở demo 0085,ACTIVE,96,PROPERTY_OWNER,96,OWNER,ACTIVE,1
-94,owner.no.plan0086@example.com,owner.no.plan0086@example.com,Chủ cơ sở demo 0086,ACTIVE,97,PROPERTY_OWNER,97,OWNER,ACTIVE,1
-95,owner.standard0087@example.com,owner.standard0087@example.com,Chủ cơ sở demo 0087,ACTIVE,98,PROPERTY_OWNER,98,OWNER,ACTIVE,1
-96,owner.business0088@example.com,owner.business0088@example.com,Chủ cơ sở demo 0088,ACTIVE,99,PROPERTY_OWNER,99,OWNER,ACTIVE,1
-97,owner.lifetime0089@example.com,owner.lifetime0089@example.com,Chủ cơ sở demo 0089,ACTIVE,100,PROPERTY_OWNER,100,OWNER,ACTIVE,1
-98,owner.expired0090@example.com,owner.expired0090@example.com,Chủ cơ sở demo 0090,ACTIVE,101,PROPERTY_OWNER,101,OWNER,ACTIVE,1
-99,owner.free0091@example.com,owner.free0091@example.com,Chủ cơ sở demo 0091,ACTIVE,102,PROPERTY_OWNER,102,OWNER,ACTIVE,1
-100,owner.no.plan0092@example.com,owner.no.plan0092@example.com,Chủ cơ sở demo 0092,ACTIVE,103,PROPERTY_OWNER,103,OWNER,ACTIVE,1
-101,owner.standard0093@example.com,owner.standard0093@example.com,Chủ cơ sở demo 0093,ACTIVE,104,PROPERTY_OWNER,104,OWNER,ACTIVE,1
-102,owner.business0094@example.com,owner.business0094@example.com,Chủ cơ sở demo 0094,ACTIVE,105,PROPERTY_OWNER,105,OWNER,ACTIVE,1
-103,owner.lifetime0095@example.com,owner.lifetime0095@example.com,Chủ cơ sở demo 0095,ACTIVE,106,PROPERTY_OWNER,106,OWNER,ACTIVE,1
-104,owner.expired0096@example.com,owner.expired0096@example.com,Chủ cơ sở demo 0096,ACTIVE,107,PROPERTY_OWNER,107,OWNER,ACTIVE,1
-105,owner.free0097@example.com,owner.free0097@example.com,Chủ cơ sở demo 0097,ACTIVE,108,PROPERTY_OWNER,108,OWNER,ACTIVE,1
-106,owner.no.plan0098@example.com,owner.no.plan0098@example.com,Chủ cơ sở demo 0098,ACTIVE,109,PROPERTY_OWNER,109,OWNER,ACTIVE,1
-107,owner.standard0099@example.com,owner.standard0099@example.com,Chủ cơ sở demo 0099,ACTIVE,110,PROPERTY_OWNER,110,OWNER,ACTIVE,1
-108,owner.business0100@example.com,owner.business0100@example.com,Chủ cơ sở demo 0100,ACTIVE,111,PROPERTY_OWNER,111,OWNER,ACTIVE,1
-109,owner.lifetime0101@example.com,owner.lifetime0101@example.com,Chủ cơ sở demo 0101,ACTIVE,112,PROPERTY_OWNER,112,OWNER,ACTIVE,1
-110,owner.expired0102@example.com,owner.expired0102@example.com,Chủ cơ sở demo 0102,ACTIVE,113,PROPERTY_OWNER,113,OWNER,ACTIVE,1
-111,owner.free0103@example.com,owner.free0103@example.com,Chủ cơ sở demo 0103,ACTIVE,114,PROPERTY_OWNER,114,OWNER,ACTIVE,1
-112,owner.no.plan0104@example.com,owner.no.plan0104@example.com,Chủ cơ sở demo 0104,ACTIVE,115,PROPERTY_OWNER,115,OWNER,ACTIVE,1
-113,owner.standard0105@example.com,owner.standard0105@example.com,Chủ cơ sở demo 0105,ACTIVE,116,PROPERTY_OWNER,116,OWNER,ACTIVE,1
-114,owner.business0106@example.com,owner.business0106@example.com,Chủ cơ sở demo 0106,ACTIVE,117,PROPERTY_OWNER,117,OWNER,ACTIVE,1
-115,owner.lifetime0107@example.com,owner.lifetime0107@example.com,Chủ cơ sở demo 0107,ACTIVE,118,PROPERTY_OWNER,118,OWNER,ACTIVE,1
-116,owner.expired0108@example.com,owner.expired0108@example.com,Chủ cơ sở demo 0108,ACTIVE,119,PROPERTY_OWNER,119,OWNER,ACTIVE,1
-117,owner.free0109@example.com,owner.free0109@example.com,Chủ cơ sở demo 0109,ACTIVE,120,PROPERTY_OWNER,120,OWNER,ACTIVE,1
-118,owner.no.plan0110@example.com,owner.no.plan0110@example.com,Chủ cơ sở demo 0110,ACTIVE,121,PROPERTY_OWNER,121,OWNER,ACTIVE,1
-119,owner.standard0111@example.com,owner.standard0111@example.com,Chủ cơ sở demo 0111,ACTIVE,122,PROPERTY_OWNER,122,OWNER,ACTIVE,1
-120,owner.business0112@example.com,owner.business0112@example.com,Chủ cơ sở demo 0112,ACTIVE,123,PROPERTY_OWNER,123,OWNER,ACTIVE,1
-121,owner.lifetime0113@example.com,owner.lifetime0113@example.com,Chủ cơ sở demo 0113,ACTIVE,124,PROPERTY_OWNER,124,OWNER,ACTIVE,1
-122,owner.expired0114@example.com,owner.expired0114@example.com,Chủ cơ sở demo 0114,ACTIVE,125,PROPERTY_OWNER,125,OWNER,ACTIVE,1
-123,owner.free0115@example.com,owner.free0115@example.com,Chủ cơ sở demo 0115,ACTIVE,126,PROPERTY_OWNER,126,OWNER,ACTIVE,1
-124,owner.no.plan0116@example.com,owner.no.plan0116@example.com,Chủ cơ sở demo 0116,ACTIVE,127,PROPERTY_OWNER,127,OWNER,ACTIVE,1
-125,owner.standard0117@example.com,owner.standard0117@example.com,Chủ cơ sở demo 0117,ACTIVE,128,PROPERTY_OWNER,128,OWNER,ACTIVE,1
-126,owner.business0118@example.com,owner.business0118@example.com,Chủ cơ sở demo 0118,ACTIVE,129,PROPERTY_OWNER,129,OWNER,ACTIVE,1
-127,owner.lifetime0119@example.com,owner.lifetime0119@example.com,Chủ cơ sở demo 0119,ACTIVE,130,PROPERTY_OWNER,130,OWNER,ACTIVE,1
-128,owner.expired0120@example.com,owner.expired0120@example.com,Chủ cơ sở demo 0120,ACTIVE,131,PROPERTY_OWNER,131,OWNER,ACTIVE,1
-129,owner.free0121@example.com,owner.free0121@example.com,Chủ cơ sở demo 0121,ACTIVE,132,PROPERTY_OWNER,132,OWNER,ACTIVE,1
-130,owner.no.plan0122@example.com,owner.no.plan0122@example.com,Chủ cơ sở demo 0122,ACTIVE,133,PROPERTY_OWNER,133,OWNER,ACTIVE,1
-131,owner.standard0123@example.com,owner.standard0123@example.com,Chủ cơ sở demo 0123,ACTIVE,134,PROPERTY_OWNER,134,OWNER,ACTIVE,1
-132,owner.business0124@example.com,owner.business0124@example.com,Chủ cơ sở demo 0124,ACTIVE,135,PROPERTY_OWNER,135,OWNER,ACTIVE,1
-133,owner.lifetime0125@example.com,owner.lifetime0125@example.com,Chủ cơ sở demo 0125,ACTIVE,136,PROPERTY_OWNER,136,OWNER,ACTIVE,1
-134,owner.expired0126@example.com,owner.expired0126@example.com,Chủ cơ sở demo 0126,ACTIVE,137,PROPERTY_OWNER,137,OWNER,ACTIVE,1
-135,owner.free0127@example.com,owner.free0127@example.com,Chủ cơ sở demo 0127,ACTIVE,138,PROPERTY_OWNER,138,OWNER,ACTIVE,1
-136,owner.no.plan0128@example.com,owner.no.plan0128@example.com,Chủ cơ sở demo 0128,ACTIVE,139,PROPERTY_OWNER,139,OWNER,ACTIVE,1
-137,owner.standard0129@example.com,owner.standard0129@example.com,Chủ cơ sở demo 0129,ACTIVE,140,PROPERTY_OWNER,140,OWNER,ACTIVE,1
-138,owner.business0130@example.com,owner.business0130@example.com,Chủ cơ sở demo 0130,ACTIVE,141,PROPERTY_OWNER,141,OWNER,ACTIVE,1
-139,owner.lifetime0131@example.com,owner.lifetime0131@example.com,Chủ cơ sở demo 0131,ACTIVE,142,PROPERTY_OWNER,142,OWNER,ACTIVE,1
-140,owner.expired0132@example.com,owner.expired0132@example.com,Chủ cơ sở demo 0132,ACTIVE,143,PROPERTY_OWNER,143,OWNER,ACTIVE,1
-141,owner.free0133@example.com,owner.free0133@example.com,Chủ cơ sở demo 0133,ACTIVE,144,PROPERTY_OWNER,144,OWNER,ACTIVE,1
-142,owner.no.plan0134@example.com,owner.no.plan0134@example.com,Chủ cơ sở demo 0134,ACTIVE,145,PROPERTY_OWNER,145,OWNER,ACTIVE,1
-143,owner.standard0135@example.com,owner.standard0135@example.com,Chủ cơ sở demo 0135,ACTIVE,146,PROPERTY_OWNER,146,OWNER,ACTIVE,1
-144,owner.business0136@example.com,owner.business0136@example.com,Chủ cơ sở demo 0136,ACTIVE,147,PROPERTY_OWNER,147,OWNER,ACTIVE,1
-145,owner.lifetime0137@example.com,owner.lifetime0137@example.com,Chủ cơ sở demo 0137,ACTIVE,148,PROPERTY_OWNER,148,OWNER,ACTIVE,1
-146,owner.expired0138@example.com,owner.expired0138@example.com,Chủ cơ sở demo 0138,ACTIVE,149,PROPERTY_OWNER,149,OWNER,ACTIVE,1
-147,owner.free0139@example.com,owner.free0139@example.com,Chủ cơ sở demo 0139,ACTIVE,150,PROPERTY_OWNER,150,OWNER,ACTIVE,1
-148,owner.no.plan0140@example.com,owner.no.plan0140@example.com,Chủ cơ sở demo 0140,ACTIVE,151,PROPERTY_OWNER,151,OWNER,ACTIVE,1
-149,owner.standard0141@example.com,owner.standard0141@example.com,Chủ cơ sở demo 0141,ACTIVE,152,PROPERTY_OWNER,152,OWNER,ACTIVE,1
-150,owner.business0142@example.com,owner.business0142@example.com,Chủ cơ sở demo 0142,ACTIVE,153,PROPERTY_OWNER,153,OWNER,ACTIVE,1
-151,owner.lifetime0143@example.com,owner.lifetime0143@example.com,Chủ cơ sở demo 0143,ACTIVE,154,PROPERTY_OWNER,154,OWNER,ACTIVE,1
-152,owner.expired0144@example.com,owner.expired0144@example.com,Chủ cơ sở demo 0144,ACTIVE,155,PROPERTY_OWNER,155,OWNER,ACTIVE,1
-153,owner.free0145@example.com,owner.free0145@example.com,Chủ cơ sở demo 0145,ACTIVE,156,PROPERTY_OWNER,156,OWNER,ACTIVE,1
-154,owner.no.plan0146@example.com,owner.no.plan0146@example.com,Chủ cơ sở demo 0146,ACTIVE,157,PROPERTY_OWNER,157,OWNER,ACTIVE,1
-155,owner.standard0147@example.com,owner.standard0147@example.com,Chủ cơ sở demo 0147,ACTIVE,158,PROPERTY_OWNER,158,OWNER,ACTIVE,1
-156,owner.business0148@example.com,owner.business0148@example.com,Chủ cơ sở demo 0148,ACTIVE,159,PROPERTY_OWNER,159,OWNER,ACTIVE,1
-157,owner.lifetime0149@example.com,owner.lifetime0149@example.com,Chủ cơ sở demo 0149,ACTIVE,160,PROPERTY_OWNER,160,OWNER,ACTIVE,1
-158,owner.expired0150@example.com,owner.expired0150@example.com,Chủ cơ sở demo 0150,ACTIVE,161,PROPERTY_OWNER,161,OWNER,ACTIVE,1
-159,owner.free0151@example.com,owner.free0151@example.com,Chủ cơ sở demo 0151,ACTIVE,162,PROPERTY_OWNER,162,OWNER,ACTIVE,1
-160,owner.no.plan0152@example.com,owner.no.plan0152@example.com,Chủ cơ sở demo 0152,ACTIVE,163,PROPERTY_OWNER,163,OWNER,ACTIVE,1
-161,owner.standard0153@example.com,owner.standard0153@example.com,Chủ cơ sở demo 0153,ACTIVE,164,PROPERTY_OWNER,164,OWNER,ACTIVE,1
-162,owner.business0154@example.com,owner.business0154@example.com,Chủ cơ sở demo 0154,ACTIVE,165,PROPERTY_OWNER,165,OWNER,ACTIVE,1
-163,owner.lifetime0155@example.com,owner.lifetime0155@example.com,Chủ cơ sở demo 0155,ACTIVE,166,PROPERTY_OWNER,166,OWNER,ACTIVE,1
-164,owner.expired0156@example.com,owner.expired0156@example.com,Chủ cơ sở demo 0156,ACTIVE,167,PROPERTY_OWNER,167,OWNER,ACTIVE,1
-165,owner.free0157@example.com,owner.free0157@example.com,Chủ cơ sở demo 0157,ACTIVE,168,PROPERTY_OWNER,168,OWNER,ACTIVE,1
-166,owner.no.plan0158@example.com,owner.no.plan0158@example.com,Chủ cơ sở demo 0158,ACTIVE,169,PROPERTY_OWNER,169,OWNER,ACTIVE,1
-167,owner.standard0159@example.com,owner.standard0159@example.com,Chủ cơ sở demo 0159,ACTIVE,170,PROPERTY_OWNER,170,OWNER,ACTIVE,1
-168,owner.business0160@example.com,owner.business0160@example.com,Chủ cơ sở demo 0160,ACTIVE,171,PROPERTY_OWNER,171,OWNER,ACTIVE,1
-169,owner.lifetime0161@example.com,owner.lifetime0161@example.com,Chủ cơ sở demo 0161,ACTIVE,172,PROPERTY_OWNER,172,OWNER,ACTIVE,1
-170,owner.expired0162@example.com,owner.expired0162@example.com,Chủ cơ sở demo 0162,ACTIVE,173,PROPERTY_OWNER,173,OWNER,ACTIVE,1
-171,owner.free0163@example.com,owner.free0163@example.com,Chủ cơ sở demo 0163,ACTIVE,174,PROPERTY_OWNER,174,OWNER,ACTIVE,1
-172,owner.no.plan0164@example.com,owner.no.plan0164@example.com,Chủ cơ sở demo 0164,ACTIVE,175,PROPERTY_OWNER,175,OWNER,ACTIVE,1
-173,owner.standard0165@example.com,owner.standard0165@example.com,Chủ cơ sở demo 0165,ACTIVE,176,PROPERTY_OWNER,176,OWNER,ACTIVE,1
-174,owner.business0166@example.com,owner.business0166@example.com,Chủ cơ sở demo 0166,ACTIVE,177,PROPERTY_OWNER,177,OWNER,ACTIVE,1
-175,owner.lifetime0167@example.com,owner.lifetime0167@example.com,Chủ cơ sở demo 0167,ACTIVE,178,PROPERTY_OWNER,178,OWNER,ACTIVE,1
-176,owner.expired0168@example.com,owner.expired0168@example.com,Chủ cơ sở demo 0168,ACTIVE,179,PROPERTY_OWNER,179,OWNER,ACTIVE,1
-177,owner.free0169@example.com,owner.free0169@example.com,Chủ cơ sở demo 0169,ACTIVE,180,PROPERTY_OWNER,180,OWNER,ACTIVE,1
-178,owner.no.plan0170@example.com,owner.no.plan0170@example.com,Chủ cơ sở demo 0170,ACTIVE,181,PROPERTY_OWNER,181,OWNER,ACTIVE,1
-179,guest_1784055625458,guest_1784055625458@guest.local,Khách Kiểm thử,GUEST,,,,,,
-180,guest_1784055807958,guest_1784055807958@guest.local,Khách E2E,GUEST,,,,,,
-181,guest_1784055857475,guest_1784055857475@guest.local,Cross Scope,GUEST,,,,,,
-183,guest_1784069973183,guest_1784069973183@guest.local,Khach E2E,GUEST,,,,,,
+﻿"User ID","Username","Email","Full Name","User Status","Legacy Hotel ID","Role Code","Property Hotel ID","Relationship Type","Property Status","Is Primary Owner"
+"USER-0001","account-0001","masked-email-0001","Masked User 0001","ACTIVE","","SUPER_ADMIN","","","",""
+"USER-0002","account-0002","masked-email-0002","Masked User 0002","ACTIVE","PROPERTY-0001","HOTEL_MANAGER","","","",""
+"USER-0003","account-0003","masked-email-0003","Masked User 0003","ACTIVE","PROPERTY-0001","RECEPTIONIST","","","",""
+"USER-0004","account-0004","masked-email-0004","Masked User 0004","ACTIVE","","CUSTOMER","","","",""
+"USER-0005","account-0005","masked-email-0005","Masked User 0005","ACTIVE","","CUSTOMER","","","",""
+"USER-0006","account-0006","masked-email-0006","Masked User 0006","ACTIVE","PROPERTY-0002","PROPERTY_OWNER","PROPERTY-0002","OWNER","ACTIVE","1"
+"USER-0007","account-0007","masked-email-0007","Masked User 0007","ACTIVE","PROPERTY-0003","PROPERTY_OWNER","PROPERTY-0003","OWNER","ACTIVE","1"
+"USER-0008","account-0008","masked-email-0008","Masked User 0008","ACTIVE","PROPERTY-0004","PROPERTY_OWNER","PROPERTY-0004","OWNER","ACTIVE","1"
+"USER-0009","account-0009","masked-email-0009","Masked User 0009","ACTIVE","PROPERTY-0005","PROPERTY_OWNER","PROPERTY-0005","OWNER","ACTIVE","1"
+"USER-0010","account-0010","masked-email-0010","Masked User 0010","ACTIVE","PROPERTY-0006","PROPERTY_OWNER","PROPERTY-0006","OWNER","ACTIVE","1"
+"USER-0011","account-0011","masked-email-0011","Masked User 0011","ACTIVE","PROPERTY-0007","PROPERTY_OWNER","PROPERTY-0007","OWNER","ACTIVE","1"
+"USER-0012","account-0012","masked-email-0012","Masked User 0012","ACTIVE","PROPERTY-0008","PROPERTY_OWNER","PROPERTY-0008","OWNER","ACTIVE","1"
+"USER-0013","account-0013","masked-email-0013","Masked User 0013","ACTIVE","PROPERTY-0009","PROPERTY_OWNER","PROPERTY-0009","OWNER","ACTIVE","1"
+"USER-0014","account-0014","masked-email-0014","Masked User 0014","ACTIVE","PROPERTY-0010","PROPERTY_OWNER","PROPERTY-0010","OWNER","ACTIVE","1"
+"USER-0015","account-0015","masked-email-0015","Masked User 0015","ACTIVE","PROPERTY-0011","PROPERTY_OWNER","PROPERTY-0011","OWNER","ACTIVE","1"
+"USER-0016","account-0016","masked-email-0016","Masked User 0016","ACTIVE","PROPERTY-0012","PROPERTY_OWNER","PROPERTY-0012","OWNER","ACTIVE","1"
+"USER-0017","account-0017","masked-email-0017","Masked User 0017","ACTIVE","PROPERTY-0013","PROPERTY_OWNER","PROPERTY-0013","OWNER","ACTIVE","1"
+"USER-0018","account-0018","masked-email-0018","Masked User 0018","ACTIVE","PROPERTY-0014","PROPERTY_OWNER","PROPERTY-0014","OWNER","ACTIVE","1"
+"USER-0019","account-0019","masked-email-0019","Masked User 0019","ACTIVE","PROPERTY-0015","PROPERTY_OWNER","PROPERTY-0015","OWNER","ACTIVE","1"
+"USER-0020","account-0020","masked-email-0020","Masked User 0020","ACTIVE","PROPERTY-0016","PROPERTY_OWNER","PROPERTY-0016","OWNER","ACTIVE","1"
+"USER-0021","account-0021","masked-email-0021","Masked User 0021","ACTIVE","PROPERTY-0017","PROPERTY_OWNER","PROPERTY-0017","OWNER","ACTIVE","1"
+"USER-0022","account-0022","masked-email-0022","Masked User 0022","ACTIVE","PROPERTY-0018","PROPERTY_OWNER","PROPERTY-0018","OWNER","ACTIVE","1"
+"USER-0023","account-0023","masked-email-0023","Masked User 0023","ACTIVE","PROPERTY-0019","PROPERTY_OWNER","PROPERTY-0019","OWNER","ACTIVE","1"
+"USER-0024","account-0024","masked-email-0024","Masked User 0024","ACTIVE","PROPERTY-0020","PROPERTY_OWNER","PROPERTY-0020","OWNER","ACTIVE","1"
+"USER-0025","account-0025","masked-email-0025","Masked User 0025","ACTIVE","PROPERTY-0021","PROPERTY_OWNER","PROPERTY-0021","OWNER","ACTIVE","1"
+"USER-0026","account-0026","masked-email-0026","Masked User 0026","ACTIVE","PROPERTY-0022","PROPERTY_OWNER","PROPERTY-0022","OWNER","ACTIVE","1"
+"USER-0027","account-0027","masked-email-0027","Masked User 0027","ACTIVE","PROPERTY-0023","PROPERTY_OWNER","PROPERTY-0023","OWNER","ACTIVE","1"
+"USER-0028","account-0028","masked-email-0028","Masked User 0028","ACTIVE","PROPERTY-0024","PROPERTY_OWNER","PROPERTY-0024","OWNER","ACTIVE","1"
+"USER-0029","account-0029","masked-email-0029","Masked User 0029","ACTIVE","PROPERTY-0025","PROPERTY_OWNER","PROPERTY-0025","OWNER","ACTIVE","1"
+"USER-0030","account-0030","masked-email-0030","Masked User 0030","ACTIVE","PROPERTY-0026","PROPERTY_OWNER","PROPERTY-0026","OWNER","ACTIVE","1"
+"USER-0031","account-0031","masked-email-0031","Masked User 0031","ACTIVE","PROPERTY-0027","PROPERTY_OWNER","PROPERTY-0027","OWNER","ACTIVE","1"
+"USER-0032","account-0032","masked-email-0032","Masked User 0032","ACTIVE","PROPERTY-0028","PROPERTY_OWNER","PROPERTY-0028","OWNER","ACTIVE","1"
+"USER-0033","account-0033","masked-email-0033","Masked User 0033","ACTIVE","PROPERTY-0029","PROPERTY_OWNER","PROPERTY-0029","OWNER","ACTIVE","1"
+"USER-0034","account-0034","masked-email-0034","Masked User 0034","ACTIVE","PROPERTY-0030","PROPERTY_OWNER","PROPERTY-0030","OWNER","ACTIVE","1"
+"USER-0035","account-0035","masked-email-0035","Masked User 0035","ACTIVE","PROPERTY-0031","PROPERTY_OWNER","PROPERTY-0031","OWNER","ACTIVE","1"
+"USER-0036","account-0036","masked-email-0036","Masked User 0036","ACTIVE","PROPERTY-0032","PROPERTY_OWNER","PROPERTY-0032","OWNER","ACTIVE","1"
+"USER-0037","account-0037","masked-email-0037","Masked User 0037","ACTIVE","PROPERTY-0033","PROPERTY_OWNER","PROPERTY-0033","OWNER","ACTIVE","1"
+"USER-0038","account-0038","masked-email-0038","Masked User 0038","ACTIVE","PROPERTY-0034","PROPERTY_OWNER","PROPERTY-0034","OWNER","ACTIVE","1"
+"USER-0039","account-0039","masked-email-0039","Masked User 0039","ACTIVE","PROPERTY-0035","PROPERTY_OWNER","PROPERTY-0035","OWNER","ACTIVE","1"
+"USER-0040","account-0040","masked-email-0040","Masked User 0040","ACTIVE","PROPERTY-0036","PROPERTY_OWNER","PROPERTY-0036","OWNER","ACTIVE","1"
+"USER-0041","account-0041","masked-email-0041","Masked User 0041","ACTIVE","PROPERTY-0037","PROPERTY_OWNER","PROPERTY-0037","OWNER","ACTIVE","1"
+"USER-0042","account-0042","masked-email-0042","Masked User 0042","ACTIVE","PROPERTY-0038","PROPERTY_OWNER","PROPERTY-0038","OWNER","ACTIVE","1"
+"USER-0043","account-0043","masked-email-0043","Masked User 0043","ACTIVE","PROPERTY-0039","PROPERTY_OWNER","PROPERTY-0039","OWNER","ACTIVE","1"
+"USER-0044","account-0044","masked-email-0044","Masked User 0044","ACTIVE","PROPERTY-0040","PROPERTY_OWNER","PROPERTY-0040","OWNER","ACTIVE","1"
+"USER-0045","account-0045","masked-email-0045","Masked User 0045","ACTIVE","PROPERTY-0041","PROPERTY_OWNER","PROPERTY-0041","OWNER","ACTIVE","1"
+"USER-0046","account-0046","masked-email-0046","Masked User 0046","ACTIVE","PROPERTY-0042","PROPERTY_OWNER","PROPERTY-0042","OWNER","ACTIVE","1"
+"USER-0047","account-0047","masked-email-0047","Masked User 0047","ACTIVE","PROPERTY-0043","PROPERTY_OWNER","PROPERTY-0043","OWNER","ACTIVE","1"
+"USER-0048","account-0048","masked-email-0048","Masked User 0048","ACTIVE","PROPERTY-0044","PROPERTY_OWNER","PROPERTY-0044","OWNER","ACTIVE","1"
+"USER-0049","account-0049","masked-email-0049","Masked User 0049","ACTIVE","PROPERTY-0045","PROPERTY_OWNER","PROPERTY-0045","OWNER","ACTIVE","1"
+"USER-0050","account-0050","masked-email-0050","Masked User 0050","ACTIVE","PROPERTY-0046","PROPERTY_OWNER","PROPERTY-0046","OWNER","ACTIVE","1"
+"USER-0051","account-0051","masked-email-0051","Masked User 0051","ACTIVE","PROPERTY-0047","PROPERTY_OWNER","PROPERTY-0047","OWNER","ACTIVE","1"
+"USER-0052","account-0052","masked-email-0052","Masked User 0052","ACTIVE","PROPERTY-0048","PROPERTY_OWNER","PROPERTY-0048","OWNER","ACTIVE","1"
+"USER-0053","account-0053","masked-email-0053","Masked User 0053","ACTIVE","PROPERTY-0049","PROPERTY_OWNER","PROPERTY-0049","OWNER","ACTIVE","1"
+"USER-0054","account-0054","masked-email-0054","Masked User 0054","ACTIVE","PROPERTY-0050","PROPERTY_OWNER","PROPERTY-0050","OWNER","ACTIVE","1"
+"USER-0055","account-0055","masked-email-0055","Masked User 0055","ACTIVE","PROPERTY-0051","PROPERTY_OWNER","PROPERTY-0051","OWNER","ACTIVE","1"
+"USER-0056","account-0056","masked-email-0056","Masked User 0056","ACTIVE","PROPERTY-0052","PROPERTY_OWNER","PROPERTY-0052","OWNER","ACTIVE","1"
+"USER-0057","account-0057","masked-email-0057","Masked User 0057","ACTIVE","PROPERTY-0053","PROPERTY_OWNER","PROPERTY-0053","OWNER","ACTIVE","1"
+"USER-0058","account-0058","masked-email-0058","Masked User 0058","ACTIVE","PROPERTY-0054","PROPERTY_OWNER","PROPERTY-0054","OWNER","ACTIVE","1"
+"USER-0059","account-0059","masked-email-0059","Masked User 0059","ACTIVE","PROPERTY-0055","PROPERTY_OWNER","PROPERTY-0055","OWNER","ACTIVE","1"
+"USER-0060","account-0060","masked-email-0060","Masked User 0060","ACTIVE","PROPERTY-0056","PROPERTY_OWNER","PROPERTY-0056","OWNER","ACTIVE","1"
+"USER-0061","account-0061","masked-email-0061","Masked User 0061","ACTIVE","PROPERTY-0057","PROPERTY_OWNER","PROPERTY-0057","OWNER","ACTIVE","1"
+"USER-0062","account-0062","masked-email-0062","Masked User 0062","ACTIVE","PROPERTY-0058","PROPERTY_OWNER","PROPERTY-0058","OWNER","ACTIVE","1"
+"USER-0063","account-0063","masked-email-0063","Masked User 0063","ACTIVE","PROPERTY-0059","PROPERTY_OWNER","PROPERTY-0059","OWNER","ACTIVE","1"
+"USER-0064","account-0064","masked-email-0064","Masked User 0064","ACTIVE","PROPERTY-0060","PROPERTY_OWNER","PROPERTY-0060","OWNER","ACTIVE","1"
+"USER-0065","account-0065","masked-email-0065","Masked User 0065","ACTIVE","PROPERTY-0061","PROPERTY_OWNER","PROPERTY-0061","OWNER","ACTIVE","1"
+"USER-0066","account-0066","masked-email-0066","Masked User 0066","ACTIVE","PROPERTY-0062","PROPERTY_OWNER","PROPERTY-0062","OWNER","ACTIVE","1"
+"USER-0067","account-0067","masked-email-0067","Masked User 0067","ACTIVE","PROPERTY-0063","PROPERTY_OWNER","PROPERTY-0063","OWNER","ACTIVE","1"
+"USER-0068","account-0068","masked-email-0068","Masked User 0068","ACTIVE","PROPERTY-0064","PROPERTY_OWNER","PROPERTY-0064","OWNER","ACTIVE","1"
+"USER-0069","account-0069","masked-email-0069","Masked User 0069","ACTIVE","PROPERTY-0065","PROPERTY_OWNER","PROPERTY-0065","OWNER","ACTIVE","1"
+"USER-0070","account-0070","masked-email-0070","Masked User 0070","ACTIVE","PROPERTY-0066","PROPERTY_OWNER","PROPERTY-0066","OWNER","ACTIVE","1"
+"USER-0071","account-0071","masked-email-0071","Masked User 0071","ACTIVE","PROPERTY-0067","PROPERTY_OWNER","PROPERTY-0067","OWNER","ACTIVE","1"
+"USER-0072","account-0072","masked-email-0072","Masked User 0072","ACTIVE","PROPERTY-0068","PROPERTY_OWNER","PROPERTY-0068","OWNER","ACTIVE","1"
+"USER-0073","account-0073","masked-email-0073","Masked User 0073","ACTIVE","PROPERTY-0069","PROPERTY_OWNER","PROPERTY-0069","OWNER","ACTIVE","1"
+"USER-0074","account-0074","masked-email-0074","Masked User 0074","ACTIVE","PROPERTY-0070","PROPERTY_OWNER","PROPERTY-0070","OWNER","ACTIVE","1"
+"USER-0075","account-0075","masked-email-0075","Masked User 0075","ACTIVE","PROPERTY-0071","PROPERTY_OWNER","PROPERTY-0071","OWNER","ACTIVE","1"
+"USER-0076","account-0076","masked-email-0076","Masked User 0076","ACTIVE","PROPERTY-0072","PROPERTY_OWNER","PROPERTY-0072","OWNER","ACTIVE","1"
+"USER-0077","account-0077","masked-email-0077","Masked User 0077","ACTIVE","PROPERTY-0073","PROPERTY_OWNER","PROPERTY-0073","OWNER","ACTIVE","1"
+"USER-0078","account-0078","masked-email-0078","Masked User 0078","ACTIVE","PROPERTY-0074","PROPERTY_OWNER","PROPERTY-0074","OWNER","ACTIVE","1"
+"USER-0079","account-0079","masked-email-0079","Masked User 0079","ACTIVE","PROPERTY-0075","PROPERTY_OWNER","PROPERTY-0075","OWNER","ACTIVE","1"
+"USER-0080","account-0080","masked-email-0080","Masked User 0080","ACTIVE","PROPERTY-0076","PROPERTY_OWNER","PROPERTY-0076","OWNER","ACTIVE","1"
+"USER-0081","account-0081","masked-email-0081","Masked User 0081","ACTIVE","PROPERTY-0077","PROPERTY_OWNER","PROPERTY-0077","OWNER","ACTIVE","1"
+"USER-0082","account-0082","masked-email-0082","Masked User 0082","ACTIVE","PROPERTY-0078","PROPERTY_OWNER","PROPERTY-0078","OWNER","ACTIVE","1"
+"USER-0083","account-0083","masked-email-0083","Masked User 0083","ACTIVE","PROPERTY-0079","PROPERTY_OWNER","PROPERTY-0079","OWNER","ACTIVE","1"
+"USER-0084","account-0084","masked-email-0084","Masked User 0084","ACTIVE","PROPERTY-0080","PROPERTY_OWNER","PROPERTY-0080","OWNER","ACTIVE","1"
+"USER-0085","account-0085","masked-email-0085","Masked User 0085","ACTIVE","PROPERTY-0081","PROPERTY_OWNER","PROPERTY-0081","OWNER","ACTIVE","1"
+"USER-0086","account-0086","masked-email-0086","Masked User 0086","ACTIVE","PROPERTY-0082","PROPERTY_OWNER","PROPERTY-0082","OWNER","ACTIVE","1"
+"USER-0087","account-0087","masked-email-0087","Masked User 0087","ACTIVE","PROPERTY-0083","PROPERTY_OWNER","PROPERTY-0083","OWNER","ACTIVE","1"
+"USER-0088","account-0088","masked-email-0088","Masked User 0088","ACTIVE","PROPERTY-0084","PROPERTY_OWNER","PROPERTY-0084","OWNER","ACTIVE","1"
+"USER-0089","account-0089","masked-email-0089","Masked User 0089","ACTIVE","PROPERTY-0085","PROPERTY_OWNER","PROPERTY-0085","OWNER","ACTIVE","1"
+"USER-0090","account-0090","masked-email-0090","Masked User 0090","ACTIVE","PROPERTY-0086","PROPERTY_OWNER","PROPERTY-0086","OWNER","ACTIVE","1"
+"USER-0091","account-0091","masked-email-0091","Masked User 0091","ACTIVE","PROPERTY-0087","PROPERTY_OWNER","PROPERTY-0087","OWNER","ACTIVE","1"
+"USER-0092","account-0092","masked-email-0092","Masked User 0092","ACTIVE","PROPERTY-0088","PROPERTY_OWNER","PROPERTY-0088","OWNER","ACTIVE","1"
+"USER-0093","account-0093","masked-email-0093","Masked User 0093","ACTIVE","PROPERTY-0089","PROPERTY_OWNER","PROPERTY-0089","OWNER","ACTIVE","1"
+"USER-0094","account-0094","masked-email-0094","Masked User 0094","ACTIVE","PROPERTY-0090","PROPERTY_OWNER","PROPERTY-0090","OWNER","ACTIVE","1"
+"USER-0095","account-0095","masked-email-0095","Masked User 0095","ACTIVE","PROPERTY-0091","PROPERTY_OWNER","PROPERTY-0091","OWNER","ACTIVE","1"
+"USER-0096","account-0096","masked-email-0096","Masked User 0096","ACTIVE","PROPERTY-0092","PROPERTY_OWNER","PROPERTY-0092","OWNER","ACTIVE","1"
+"USER-0097","account-0097","masked-email-0097","Masked User 0097","ACTIVE","PROPERTY-0093","PROPERTY_OWNER","PROPERTY-0093","OWNER","ACTIVE","1"
+"USER-0098","account-0098","masked-email-0098","Masked User 0098","ACTIVE","PROPERTY-0094","PROPERTY_OWNER","PROPERTY-0094","OWNER","ACTIVE","1"
+"USER-0099","account-0099","masked-email-0099","Masked User 0099","ACTIVE","PROPERTY-0095","PROPERTY_OWNER","PROPERTY-0095","OWNER","ACTIVE","1"
+"USER-0100","account-0100","masked-email-0100","Masked User 0100","ACTIVE","PROPERTY-0096","PROPERTY_OWNER","PROPERTY-0096","OWNER","ACTIVE","1"
+"USER-0101","account-0101","masked-email-0101","Masked User 0101","ACTIVE","PROPERTY-0097","PROPERTY_OWNER","PROPERTY-0097","OWNER","ACTIVE","1"
+"USER-0102","account-0102","masked-email-0102","Masked User 0102","ACTIVE","PROPERTY-0098","PROPERTY_OWNER","PROPERTY-0098","OWNER","ACTIVE","1"
+"USER-0103","account-0103","masked-email-0103","Masked User 0103","ACTIVE","PROPERTY-0099","PROPERTY_OWNER","PROPERTY-0099","OWNER","ACTIVE","1"
+"USER-0104","account-0104","masked-email-0104","Masked User 0104","ACTIVE","PROPERTY-0100","PROPERTY_OWNER","PROPERTY-0100","OWNER","ACTIVE","1"
+"USER-0105","account-0105","masked-email-0105","Masked User 0105","ACTIVE","PROPERTY-0101","PROPERTY_OWNER","PROPERTY-0101","OWNER","ACTIVE","1"
+"USER-0106","account-0106","masked-email-0106","Masked User 0106","ACTIVE","PROPERTY-0102","PROPERTY_OWNER","PROPERTY-0102","OWNER","ACTIVE","1"
+"USER-0107","account-0107","masked-email-0107","Masked User 0107","ACTIVE","PROPERTY-0103","PROPERTY_OWNER","PROPERTY-0103","OWNER","ACTIVE","1"
+"USER-0108","account-0108","masked-email-0108","Masked User 0108","ACTIVE","PROPERTY-0104","PROPERTY_OWNER","PROPERTY-0104","OWNER","ACTIVE","1"
+"USER-0109","account-0109","masked-email-0109","Masked User 0109","ACTIVE","PROPERTY-0105","PROPERTY_OWNER","PROPERTY-0105","OWNER","ACTIVE","1"
+"USER-0110","account-0110","masked-email-0110","Masked User 0110","ACTIVE","PROPERTY-0106","PROPERTY_OWNER","PROPERTY-0106","OWNER","ACTIVE","1"
+"USER-0111","account-0111","masked-email-0111","Masked User 0111","ACTIVE","PROPERTY-0107","PROPERTY_OWNER","PROPERTY-0107","OWNER","ACTIVE","1"
+"USER-0112","account-0112","masked-email-0112","Masked User 0112","ACTIVE","PROPERTY-0108","PROPERTY_OWNER","PROPERTY-0108","OWNER","ACTIVE","1"
+"USER-0113","account-0113","masked-email-0113","Masked User 0113","ACTIVE","PROPERTY-0109","PROPERTY_OWNER","PROPERTY-0109","OWNER","ACTIVE","1"
+"USER-0114","account-0114","masked-email-0114","Masked User 0114","ACTIVE","PROPERTY-0110","PROPERTY_OWNER","PROPERTY-0110","OWNER","ACTIVE","1"
+"USER-0115","account-0115","masked-email-0115","Masked User 0115","ACTIVE","PROPERTY-0111","PROPERTY_OWNER","PROPERTY-0111","OWNER","ACTIVE","1"
+"USER-0116","account-0116","masked-email-0116","Masked User 0116","ACTIVE","PROPERTY-0112","PROPERTY_OWNER","PROPERTY-0112","OWNER","ACTIVE","1"
+"USER-0117","account-0117","masked-email-0117","Masked User 0117","ACTIVE","PROPERTY-0113","PROPERTY_OWNER","PROPERTY-0113","OWNER","ACTIVE","1"
+"USER-0118","account-0118","masked-email-0118","Masked User 0118","ACTIVE","PROPERTY-0114","PROPERTY_OWNER","PROPERTY-0114","OWNER","ACTIVE","1"
+"USER-0119","account-0119","masked-email-0119","Masked User 0119","ACTIVE","PROPERTY-0115","PROPERTY_OWNER","PROPERTY-0115","OWNER","ACTIVE","1"
+"USER-0120","account-0120","masked-email-0120","Masked User 0120","ACTIVE","PROPERTY-0116","PROPERTY_OWNER","PROPERTY-0116","OWNER","ACTIVE","1"
+"USER-0121","account-0121","masked-email-0121","Masked User 0121","ACTIVE","PROPERTY-0117","PROPERTY_OWNER","PROPERTY-0117","OWNER","ACTIVE","1"
+"USER-0122","account-0122","masked-email-0122","Masked User 0122","ACTIVE","PROPERTY-0118","PROPERTY_OWNER","PROPERTY-0118","OWNER","ACTIVE","1"
+"USER-0123","account-0123","masked-email-0123","Masked User 0123","ACTIVE","PROPERTY-0119","PROPERTY_OWNER","PROPERTY-0119","OWNER","ACTIVE","1"
+"USER-0124","account-0124","masked-email-0124","Masked User 0124","ACTIVE","PROPERTY-0120","PROPERTY_OWNER","PROPERTY-0120","OWNER","ACTIVE","1"
+"USER-0125","account-0125","masked-email-0125","Masked User 0125","ACTIVE","PROPERTY-0121","PROPERTY_OWNER","PROPERTY-0121","OWNER","ACTIVE","1"
+"USER-0126","account-0126","masked-email-0126","Masked User 0126","ACTIVE","PROPERTY-0122","PROPERTY_OWNER","PROPERTY-0122","OWNER","ACTIVE","1"
+"USER-0127","account-0127","masked-email-0127","Masked User 0127","ACTIVE","PROPERTY-0123","PROPERTY_OWNER","PROPERTY-0123","OWNER","ACTIVE","1"
+"USER-0128","account-0128","masked-email-0128","Masked User 0128","ACTIVE","PROPERTY-0124","PROPERTY_OWNER","PROPERTY-0124","OWNER","ACTIVE","1"
+"USER-0129","account-0129","masked-email-0129","Masked User 0129","ACTIVE","PROPERTY-0125","PROPERTY_OWNER","PROPERTY-0125","OWNER","ACTIVE","1"
+"USER-0130","account-0130","masked-email-0130","Masked User 0130","ACTIVE","PROPERTY-0126","PROPERTY_OWNER","PROPERTY-0126","OWNER","ACTIVE","1"
+"USER-0131","account-0131","masked-email-0131","Masked User 0131","ACTIVE","PROPERTY-0127","PROPERTY_OWNER","PROPERTY-0127","OWNER","ACTIVE","1"
+"USER-0132","account-0132","masked-email-0132","Masked User 0132","ACTIVE","PROPERTY-0128","PROPERTY_OWNER","PROPERTY-0128","OWNER","ACTIVE","1"
+"USER-0133","account-0133","masked-email-0133","Masked User 0133","ACTIVE","PROPERTY-0129","PROPERTY_OWNER","PROPERTY-0129","OWNER","ACTIVE","1"
+"USER-0134","account-0134","masked-email-0134","Masked User 0134","ACTIVE","PROPERTY-0130","PROPERTY_OWNER","PROPERTY-0130","OWNER","ACTIVE","1"
+"USER-0135","account-0135","masked-email-0135","Masked User 0135","ACTIVE","PROPERTY-0131","PROPERTY_OWNER","PROPERTY-0131","OWNER","ACTIVE","1"
+"USER-0136","account-0136","masked-email-0136","Masked User 0136","ACTIVE","PROPERTY-0132","PROPERTY_OWNER","PROPERTY-0132","OWNER","ACTIVE","1"
+"USER-0137","account-0137","masked-email-0137","Masked User 0137","ACTIVE","PROPERTY-0133","PROPERTY_OWNER","PROPERTY-0133","OWNER","ACTIVE","1"
+"USER-0138","account-0138","masked-email-0138","Masked User 0138","ACTIVE","PROPERTY-0134","PROPERTY_OWNER","PROPERTY-0134","OWNER","ACTIVE","1"
+"USER-0139","account-0139","masked-email-0139","Masked User 0139","ACTIVE","PROPERTY-0135","PROPERTY_OWNER","PROPERTY-0135","OWNER","ACTIVE","1"
+"USER-0140","account-0140","masked-email-0140","Masked User 0140","ACTIVE","PROPERTY-0136","PROPERTY_OWNER","PROPERTY-0136","OWNER","ACTIVE","1"
+"USER-0141","account-0141","masked-email-0141","Masked User 0141","ACTIVE","PROPERTY-0137","PROPERTY_OWNER","PROPERTY-0137","OWNER","ACTIVE","1"
+"USER-0142","account-0142","masked-email-0142","Masked User 0142","ACTIVE","PROPERTY-0138","PROPERTY_OWNER","PROPERTY-0138","OWNER","ACTIVE","1"
+"USER-0143","account-0143","masked-email-0143","Masked User 0143","ACTIVE","PROPERTY-0139","PROPERTY_OWNER","PROPERTY-0139","OWNER","ACTIVE","1"
+"USER-0144","account-0144","masked-email-0144","Masked User 0144","ACTIVE","PROPERTY-0140","PROPERTY_OWNER","PROPERTY-0140","OWNER","ACTIVE","1"
+"USER-0145","account-0145","masked-email-0145","Masked User 0145","ACTIVE","PROPERTY-0141","PROPERTY_OWNER","PROPERTY-0141","OWNER","ACTIVE","1"
+"USER-0146","account-0146","masked-email-0146","Masked User 0146","ACTIVE","PROPERTY-0142","PROPERTY_OWNER","PROPERTY-0142","OWNER","ACTIVE","1"
+"USER-0147","account-0147","masked-email-0147","Masked User 0147","ACTIVE","PROPERTY-0143","PROPERTY_OWNER","PROPERTY-0143","OWNER","ACTIVE","1"
+"USER-0148","account-0148","masked-email-0148","Masked User 0148","ACTIVE","PROPERTY-0144","PROPERTY_OWNER","PROPERTY-0144","OWNER","ACTIVE","1"
+"USER-0149","account-0149","masked-email-0149","Masked User 0149","ACTIVE","PROPERTY-0145","PROPERTY_OWNER","PROPERTY-0145","OWNER","ACTIVE","1"
+"USER-0150","account-0150","masked-email-0150","Masked User 0150","ACTIVE","PROPERTY-0146","PROPERTY_OWNER","PROPERTY-0146","OWNER","ACTIVE","1"
+"USER-0151","account-0151","masked-email-0151","Masked User 0151","ACTIVE","PROPERTY-0147","PROPERTY_OWNER","PROPERTY-0147","OWNER","ACTIVE","1"
+"USER-0152","account-0152","masked-email-0152","Masked User 0152","ACTIVE","PROPERTY-0148","PROPERTY_OWNER","PROPERTY-0148","OWNER","ACTIVE","1"
+"USER-0153","account-0153","masked-email-0153","Masked User 0153","ACTIVE","PROPERTY-0149","PROPERTY_OWNER","PROPERTY-0149","OWNER","ACTIVE","1"
+"USER-0154","account-0154","masked-email-0154","Masked User 0154","ACTIVE","PROPERTY-0150","PROPERTY_OWNER","PROPERTY-0150","OWNER","ACTIVE","1"
+"USER-0155","account-0155","masked-email-0155","Masked User 0155","ACTIVE","PROPERTY-0151","PROPERTY_OWNER","PROPERTY-0151","OWNER","ACTIVE","1"
+"USER-0156","account-0156","masked-email-0156","Masked User 0156","ACTIVE","PROPERTY-0152","PROPERTY_OWNER","PROPERTY-0152","OWNER","ACTIVE","1"
+"USER-0157","account-0157","masked-email-0157","Masked User 0157","ACTIVE","PROPERTY-0153","PROPERTY_OWNER","PROPERTY-0153","OWNER","ACTIVE","1"
+"USER-0158","account-0158","masked-email-0158","Masked User 0158","ACTIVE","PROPERTY-0154","PROPERTY_OWNER","PROPERTY-0154","OWNER","ACTIVE","1"
+"USER-0159","account-0159","masked-email-0159","Masked User 0159","ACTIVE","PROPERTY-0155","PROPERTY_OWNER","PROPERTY-0155","OWNER","ACTIVE","1"
+"USER-0160","account-0160","masked-email-0160","Masked User 0160","ACTIVE","PROPERTY-0156","PROPERTY_OWNER","PROPERTY-0156","OWNER","ACTIVE","1"
+"USER-0161","account-0161","masked-email-0161","Masked User 0161","ACTIVE","PROPERTY-0157","PROPERTY_OWNER","PROPERTY-0157","OWNER","ACTIVE","1"
+"USER-0162","account-0162","masked-email-0162","Masked User 0162","ACTIVE","PROPERTY-0158","PROPERTY_OWNER","PROPERTY-0158","OWNER","ACTIVE","1"
+"USER-0163","account-0163","masked-email-0163","Masked User 0163","ACTIVE","PROPERTY-0159","PROPERTY_OWNER","PROPERTY-0159","OWNER","ACTIVE","1"
+"USER-0164","account-0164","masked-email-0164","Masked User 0164","ACTIVE","PROPERTY-0160","PROPERTY_OWNER","PROPERTY-0160","OWNER","ACTIVE","1"
+"USER-0165","account-0165","masked-email-0165","Masked User 0165","ACTIVE","PROPERTY-0161","PROPERTY_OWNER","PROPERTY-0161","OWNER","ACTIVE","1"
+"USER-0166","account-0166","masked-email-0166","Masked User 0166","ACTIVE","PROPERTY-0162","PROPERTY_OWNER","PROPERTY-0162","OWNER","ACTIVE","1"
+"USER-0167","account-0167","masked-email-0167","Masked User 0167","ACTIVE","PROPERTY-0163","PROPERTY_OWNER","PROPERTY-0163","OWNER","ACTIVE","1"
+"USER-0168","account-0168","masked-email-0168","Masked User 0168","ACTIVE","PROPERTY-0164","PROPERTY_OWNER","PROPERTY-0164","OWNER","ACTIVE","1"
+"USER-0169","account-0169","masked-email-0169","Masked User 0169","ACTIVE","PROPERTY-0165","PROPERTY_OWNER","PROPERTY-0165","OWNER","ACTIVE","1"
+"USER-0170","account-0170","masked-email-0170","Masked User 0170","ACTIVE","PROPERTY-0166","PROPERTY_OWNER","PROPERTY-0166","OWNER","ACTIVE","1"
+"USER-0171","account-0171","masked-email-0171","Masked User 0171","ACTIVE","PROPERTY-0167","PROPERTY_OWNER","PROPERTY-0167","OWNER","ACTIVE","1"
+"USER-0172","account-0172","masked-email-0172","Masked User 0172","ACTIVE","PROPERTY-0168","PROPERTY_OWNER","PROPERTY-0168","OWNER","ACTIVE","1"
+"USER-0173","account-0173","masked-email-0173","Masked User 0173","ACTIVE","PROPERTY-0169","PROPERTY_OWNER","PROPERTY-0169","OWNER","ACTIVE","1"
+"USER-0174","account-0174","masked-email-0174","Masked User 0174","ACTIVE","PROPERTY-0170","PROPERTY_OWNER","PROPERTY-0170","OWNER","ACTIVE","1"
+"USER-0175","account-0175","masked-email-0175","Masked User 0175","ACTIVE","PROPERTY-0171","PROPERTY_OWNER","PROPERTY-0171","OWNER","ACTIVE","1"
+"USER-0176","account-0176","masked-email-0176","Masked User 0176","GUEST","","","","","",""
+"USER-0177","account-0177","masked-email-0177","Masked User 0177","GUEST","","","","","",""
+"USER-0178","account-0178","masked-email-0178","Masked User 0178","GUEST","","","","","",""
+"USER-0179","account-0179","masked-email-0179","Masked User 0179","GUEST","","","","","",""

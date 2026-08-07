@@ -1,0 +1,38 @@
+P0-02F clean failure
+
+Suite: com.hotel.integration.AvatarUploadIntegrationTest
+Lifecycle phase: @BeforeEach cleanFixtures(), line 74, before the next test body
+
+Result before fix:
+Tests run: 3, Failures: 0, Errors: 1, Skipped: 0
+
+Root exception:
+org.springframework.dao.DataIntegrityViolationException
+caused by org.hibernate.exception.ConstraintViolationException
+caused by org.h2.jdbc.JdbcSQLIntegrityConstraintViolationException
+
+SQL:
+delete from users where id=? and version=?
+
+H2 constraint:
+FKACNL9V8IEQ0GT9HY7B6XA42JL
+
+Dependency:
+PUBLIC.AUTH_REFRESH_TOKENS.USER_ID -> PUBLIC.USERS.ID
+
+Production migration name:
+FK_auth_refresh_user
+
+Token source:
+AvatarUploadIntegrationTest.login() calls POST /api/auth/login.
+AuthController.login() calls RefreshTokenService.issueForUser().
+RefreshTokenService saves and flushes a RefreshTokenSession row.
+
+Old cleanup order:
+1. delete matching t225 users
+2. flush users
+
+Correct cleanup order:
+1. delete auth_refresh_tokens child rows
+2. delete matching t225 users
+3. flush users

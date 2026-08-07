@@ -44,7 +44,7 @@ Callback responses acknowledge equivalent replays without repeating domain chang
 
 | Method | Path | Permission | Contract |
 |---|---|---|---|
-| POST | `/api/management/reservations/{reservationId}/charges/services` | `RESERVATION_SERVICE_ADD` | Add a server-priced service snapshot with positive quantity and usage time |
+| POST | `/api/management/reservations/{reservationId}/charges/services` | `RESERVATION_SERVICE_ADD` | Add a server-priced service/minibar snapshot with positive quantity and usage time; reservation property is authoritative and `Idempotency-Key` makes replay return the original line |
 | POST | `/api/management/reservations/{reservationId}/charges/surcharges` | `RESERVATION_SURCHARGE_ADD` | Add a typed, reasoned surcharge; negative adjustment requires separate permission |
 | POST | `/api/management/reservations/{reservationId}/checkout-preview` | `RESERVATION_CHECKOUT` | Recompute full authoritative folio without mutation |
 | POST | `/api/management/reservations/{reservationId}/checkout` | `RESERVATION_CHECKOUT`; debt override additionally requires `RESERVATION_DEBT_OVERRIDE` | Lock and atomically settle/finalize/update room and housekeeping state; request may reference payment methods/attempts but not authoritative totals |
@@ -56,12 +56,14 @@ Checkout returns the finalized invoice ID/number, financial summary and resultin
 | Method | Path | Permission | Contract |
 |---|---|---|---|
 | GET | `/api/invoices/{invoiceId}` | Customer owner or authorized property role | Return immutable invoice snapshot and payment allocations |
-| GET | `/api/invoices/{invoiceId}/pdf` | Same as invoice view | Render finalized snapshot only |
+| GET | `/api/invoices/{invoiceId}/pdf` | Same as invoice view | Render finalized snapshot only; PDF must contain itemized room/service/minibar lines, quantity, unit price, tax/discount, payments/refunds and total/paid/balance |
 | POST | `/api/invoices/{invoiceId}/email` | Same as invoice view plus verified recipient policy | Queue/send the finalized invoice and record notification evidence |
 | POST | `/api/management/invoices/{invoiceId}/credit-notes` | `INVOICE_ADJUST` | Append an authorized post-finalization correction |
 | POST | `/api/property-payments/{transactionId}/refunds` | `PROPERTY_REFUND_REQUEST` | Request full/partial refund against remaining refundable balance |
 | POST | `/api/property-refunds/{refundId}/approve` | `PROPERTY_REFUND_APPROVE` | Separate approval where policy requires |
 | GET | `/api/property-refunds/{refundId}` | Authorized resource owner | Return refund/request attempt status and remaining refundable amount |
+
+Legacy invoice-generation endpoints may remain temporarily for compatibility, but they are not a print source, must not create duplicate finalized invoices, and must be marked deprecated until every active UI path uses the finalized invoice ID returned by checkout.
 
 ## Platform Billing API
 

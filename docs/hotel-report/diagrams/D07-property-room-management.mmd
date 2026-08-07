@@ -1,0 +1,19 @@
+flowchart TD
+    A([Owner/Staff mở Management]) --> B[Backend xác định user + property context]
+    B --> C{Có permission và tenant scope?}
+    C -- Không --> D[403 / route denied]
+    C -- Có --> E[Chọn property]
+    E --> F[Quản lý thông tin, ảnh, tiện ích, dịch vụ]
+    F --> G[Quản lý loại phòng và capacity]
+    G --> H[Quản lý phòng vật lý và trạng thái]
+    H --> I[Quản lý giá, tồn và policy theo ngày]
+    I --> J{Validation/overlap hợp lệ?}
+    J -- Không --> K[Hiển thị lỗi, không lưu một phần]
+    K --> F
+    J -- Có --> L[Lưu transaction + audit]
+    L --> M{Property/catalog được publish?}
+    M -- Không --> N[Chỉ thấy trong management]
+    M -- Có --> O[Public search/detail nhận dữ liệu]
+    D --> P([Kết thúc])
+    N --> P
+    O --> P

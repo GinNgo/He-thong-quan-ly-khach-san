@@ -71,6 +71,17 @@ Negative checks: wrong signature, amount, merchant, currency, booking, expired a
 7. Verify invoice finalization, allocations, room `DIRTY` state and exactly one housekeeping task.
 8. Inject a failure at each persistence boundary and verify complete rollback.
 
+### 5.1 Audit-gap acceptance: tenant services and printed invoice
+
+1. Use two properties with distinct food/drink/minibar catalogs and one checked-in reservation in each property.
+2. Add a service to reservation A, replay the same `Idempotency-Key`, and verify one `reservation_charge_lines` row with reservation A's `hotel_id`.
+3. Attempt to use property B's service ID for reservation A and verify a denial with no new charge line.
+4. Generate the finalized invoice, download the PDF as customer and authorized staff, and extract text to verify service/minibar name, quantity, unit price, tax/discount, payments/refunds and total/paid/balance.
+5. Print from the admin invoice screen and verify the browser print view contains the same itemized lines as the PDF; verify no legacy `generateInvoice()` request is made.
+6. Change the catalog price/name after finalization and verify both documents remain unchanged.
+
+Expected evidence: HTTP authorization/IDOR results, idempotency replay result, SQL Server rows, PDF text/checksum and browser screenshots are recorded under `docs/testing/evidence/007/final/`.
+
 ## 6. Property refund journey
 
 Request partial, repeated, excessive and concurrent refunds against one original successful transaction. Successful cumulative refunds must never exceed the charge; the original transaction stays immutable; gross/refund/net reconciliation updates exactly once.

@@ -1,0 +1,50 @@
+flowchart LR
+    Guest["Khách vãng lai"]
+    Customer["Khách hàng"]
+    Staff["Nhân viên khách sạn"]
+    Owner["Chủ/đối tác khách sạn"]
+    Admin["Quản trị hệ thống"]
+    Provider["Cổng thanh toán"]
+
+    subgraph Public["Public & Customer"]
+      UC1["Đăng ký / đăng nhập"]
+      UC2["Tìm kiếm khách sạn"]
+      UC3["Xem chi tiết / phòng trống"]
+      UC4["Đặt phòng / checkout"]
+      UC5["Thanh toán"]
+      UC6["Booking / hóa đơn / hoàn tiền"]
+      UC7["Hồ sơ cá nhân"]
+    end
+
+    subgraph Property["Property Management"]
+      UC8["Quản lý property / loại phòng / phòng"]
+      UC9["Booking / check-in / check-out"]
+      UC10["Housekeeping / dịch vụ"]
+      UC11["Doanh thu / subscription / payment config"]
+    end
+
+    subgraph Platform["System Administration"]
+      UC12["User / role / permission"]
+      UC13["Phê duyệt property / plan"]
+      UC14["Payment / doanh thu / audit / chat"]
+    end
+
+    Guest --> UC1
+    Guest --> UC2
+    Guest --> UC3
+    Customer --> UC2
+    Customer --> UC3
+    Customer --> UC4
+    Customer --> UC5
+    Customer --> UC6
+    Customer --> UC7
+    Staff --> UC9
+    Staff --> UC10
+    Owner --> UC8
+    Owner --> UC9
+    Owner --> UC11
+    Admin --> UC12
+    Admin --> UC13
+    Admin --> UC14
+    UC5 <--> Provider
+    UC6 <--> Provider

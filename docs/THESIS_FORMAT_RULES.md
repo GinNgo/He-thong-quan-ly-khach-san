@@ -23,7 +23,7 @@ Paper Size:
 A4
 
 Print:
-Single-sided
+Single-sided for the printed submission; the electronic whole-document order is defined in `docs/thesis-assets/WHOLE_DOCUMENT_MANIFEST.md` and follows the user's 13-slot requirement.
 
 Margins:
 
@@ -58,6 +58,22 @@ Justified
 First Line Indent:
 
 1.0 cm
+
+The official D07 template also defines these role-specific sizes:
+
+| Role | Size | Formatting/alignment |
+| --- | ---: | --- |
+| Chapter title | 14 pt | Uppercase, bold, centered |
+| Level-1 heading | 13 pt | Uppercase, bold, left |
+| Level-2 heading | 13 pt | Sentence case, bold, left |
+| Level-3 heading | 13 pt | Sentence case, italic, left |
+| Body text | 13 pt | Normal, justified |
+| Scientific name | 13 pt | Italic, justified |
+| Table body | 12 pt | Normal, centered where numeric |
+| Table title | 11 pt | Bold, centered, above table |
+| Table note/caption | 10 pt | Italic, centered, below table |
+| Figure title/caption | 11 pt | Bold, centered, below figure |
+| References | 11 pt | Normal, left |
 
 ---
 
@@ -213,6 +229,15 @@ Excluding:
 Cover
 
 Appendix
+
+The official D07 template states that the main content should normally be 50-100 A4 pages, excluding cover, acknowledgements, table of contents and references. The user-requested electronic manifest controls front matter ordering and keeps optional slots explicit; any missing signed forms remain `BLOCKED` rather than being silently removed.
+
+## Official source constraints extracted from D02/D05/D07
+
+- The workflow includes topic assignment, detailed outline approval within two weeks, periodic supervisor progress reporting, final supervisor review, reviewer feedback, defense, correction and resubmission.
+- A submission package includes the report file, PDF, presentation, source/program and reference material; the D07 CD tree uses `SETUP`, `SOURCE`, `THESIS/DOC`, `THESIS/PDF`, `REF` and `SOFT`.
+- D07 includes supervisor and reviewer comment pages and a pre-submission checklist. Signed or post-defense forms are not invented in the current draft; they are placeholders until the institution supplies the actual signed records.
+- D07 does not require an English Abstract. `Abstracts` therefore remains optional and is not created unless a newer institutional template requires it.
 
 ---
 

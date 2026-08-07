@@ -1,0 +1,36 @@
+P0-02A clean reproduction trace
+Date: 2026-08-05 Asia/Saigon
+
+Forced order: AuthControllerIntegrationTest -> ChatControllerIntegrationTest -> CredentialRegistrationIntegrationTest
+
+AuthControllerIntegrationTest
+- HikariPool-1 connection: jdbc:h2:mem:testdb
+- Tests run: 9, Failures: 0, Errors: 0
+- Spring context remains cached for the matching registration test configuration.
+
+ChatControllerIntegrationTest
+- HikariPool-2 connection before fix: jdbc:h2:mem:testdb
+- Annotation: @DirtiesContext(classMode = AFTER_CLASS)
+- Tests run: 4, Failures: 0, Errors: 0
+- After class: Closing JPA EntityManagerFactory, HikariPool-2 shutdown.
+- Hibernate ddl-auto=create-drop removes the shared testdb schema.
+
+CredentialRegistrationIntegrationTest
+- Reuses the cached auth Spring context instead of creating a new schema.
+- BeforeEach failure: CredentialRegistrationIntegrationTest.cleanUsers:55
+- Root exception:
+  org.h2.jdbc.JdbcSQLSyntaxErrorException:
+  Table "EMAIL_VERIFICATION_TOKENS" not found (this database is empty) [42104-224]
+- Tests run: 5, Failures: 0, Errors: 5
+
+Reverse-order confirmation
+- CredentialRegistrationIntegrationTest: PASS 5/5 on jdbc:h2:mem:testdb.
+- ChatControllerIntegrationTest: PASS 4/4, then closes its shared context/schema.
+- AuthControllerIntegrationTest reuses the cached testdb context.
+- Root exception: Table "AUTH_REFRESH_TOKENS" not found (this database is empty).
+- Tests run: 9, Failures: 0, Errors: 9.
+
+Conclusion
+- No DROP/TRUNCATE statement in business test cleanup caused the failure.
+- The contamination source was ChatControllerIntegrationTest sharing the named H2 database while using @DirtiesContext with Hibernate create-drop.
+- The production entity and V52 migration were present; focused registration passed before and after the fix.

@@ -1,8 +1,8 @@
 # Tổng hợp tính năng LuxeStay
 
-Ngày tổng hợp: 19/07/2026.
+Ngày rà soát tài liệu: 29/07/2026.
 
-Tài liệu này tổng hợp các tính năng hiện có trong source và các báo cáo kiểm thử gần nhất. Backend test và Angular production build đã được chạy lại sau các thay đổi payment; frontend unit và Playwright vẫn cần được chạy lại trên worktree hiện hành.
+Tài liệu này tổng hợp các tính năng nhìn thấy trong source và các báo cáo kiểm thử theo ngày. Trạng thái COMPLETE chỉ được sử dụng sau khi có kết quả kiểm thử hiện hành; các số liệu test cũ trong tài liệu này được gắn nhãn HISTORICAL cho tới khi chạy lại trên worktree đã chốt.
 
 ## 1. Xác thực và tài khoản
 
@@ -74,7 +74,7 @@ Giới hạn hiện tại: hỗ trợ một RoomType với `quantity > 1`, chưa
 - Hủy booking tạo giao dịch hoàn tiền âm có mã `REFUND-{paymentId}`.
 - Migration `V10__payment_idempotency_constraint.sql` bổ sung ràng buộc duy nhất ở tầng dữ liệu.
 
-Trạng thái: backend đã đạt 60/60 test ngày 20/07/2026, gồm nghiệp vụ payment idempotency, hủy booking và hoàn tiền. Angular production build đã thành công; frontend unit và Playwright E2E chưa được chạy lại trên các thay đổi payment hiện hành.
+Trạng thái tài liệu: source, migration và test file cho payment idempotency, hủy booking và hoàn tiền đang hiện diện. Kết quả 60/60 ngày 20/07/2026 và 122/122 ngày 28/07/2026 là HISTORICAL; kết luận hiện hành dùng run ngày 29/07/2026.
 
 ## 8. Quản lý cơ sở
 
@@ -115,6 +115,8 @@ Trạng thái một phần: activate, renew, upgrade, downgrade và revoke có l
 - Chủ cơ sở, đăng ký cơ sở, tài khoản chưa mua gói và nhân viên cơ sở.
 - Subscription order, payment và contract.
 
+Giới hạn cần nêu rõ: import staging đã có contract backend, nhưng claim controller hiện còn dùng requester/reviewer ID cố định; claim chưa được coi là ownership workflow hoàn chỉnh. Subscription plan/context/feature lookup đã có, nhưng lifecycle mutation chưa có REST contract đầy đủ.
+
 ## 11. Unicode và địa giới
 
 - 34 Province và 6.283 Ward; không có District.
@@ -150,15 +152,29 @@ Theo báo cáo seed STANDARD gần nhất:
 - Đối soát payment chuyên biệt.
 - UI Owner đầy đủ cho ảnh, nhân viên, dịch vụ và toàn bộ vận hành lưu trú.
 - Báo cáo doanh thu/công suất hoàn chỉnh theo cơ sở và khoảng ngày.
+- Notification và support chat giữ PARTIAL cho tới khi frontend delivery/E2E và release workstream ổn định; backend và frontend unit tests hiện đã đạt.
 
-## 14. Kết quả kiểm thử gần nhất
+## 14. Bằng chứng kiểm thử hiện có
 
-- Backend Maven test: 60/60 pass, không có failure, error hoặc skipped (ngày 20/07/2026).
-- Frontend unit: 20/20 test pass (mốc ngày 15/07/2026).
-- Home Search Playwright: 10/10 pass (mốc ngày 15/07/2026).
-- Public/Customer Playwright: 5/5 pass (mốc ngày 15/07/2026).
-- Search Result Playwright: 2/2 pass (mốc ngày 15/07/2026).
-- Admin Playwright: 3/3 pass (mốc ngày 15/07/2026).
-- Angular production build: pass, còn warning bundle/CommonJS (ngày 20/07/2026).
+- Backend Maven test 60/60 ngày 20/07/2026: HISTORICAL.
+- Frontend unit 20/20 ngày 15/07/2026: HISTORICAL.
+- Home Search Playwright 10/10 ngày 15/07/2026: HISTORICAL.
+- Public/Customer Playwright 5/5 ngày 15/07/2026: HISTORICAL.
+- Search Result Playwright 2/2 ngày 15/07/2026: HISTORICAL.
+- Admin Playwright 3/3 ngày 15/07/2026: HISTORICAL.
+- Angular production build ngày 20/07/2026: HISTORICAL.
 
-Kết quả backend và Angular build là lần chạy mới nhất. Backend bao gồm các test về payment, cancellation, refund, subscription và profile. Kết quả frontend unit và Playwright vẫn là bằng chứng lịch sử ngày 15/07/2026; chưa được chạy lại trên worktree hiện hành.
+- Backend Maven test 123/123 ngày 29/07/2026: CURRENT, 0 failure/error/skipped.
+- Frontend unit 73/73 trong 36 file ngày 29/07/2026: CURRENT.
+- Angular production build ngày 29/07/2026: PASS, còn cảnh báo NG8107 và CommonJS STOMP/SockJS.
+- Playwright E2E: full suite vẫn BLOCKED sau timeout; discovery ghi nhận 71 test/12 file và có artifact lỗi redirect/search.
+- Admin core data-backed E2E: 1 fail, 2 không chạy vì tài khoản `admin/admin` bị giữ tại `/admin/login`; chưa đủ bằng chứng cho read/mutation/authorization của 29 route Admin.
+
+Run backend CURRENT bao gồm notification controller/service, WebSocket channel authorization, E2E fixture, location import, payment, reservation, subscription, tenant isolation và Unicode/inventory. Frontend unit CURRENT bao gồm notification.service, chat.service, chat widget, checkout, payment và admin/shared components.
+
+## 15. Trạng thái chat và notification ngày 29/07/2026
+
+- Central support chat có controller/service, history/conversation API và WebSocket security source; backend controller/service/channel tests đã pass trong run 123/123 CURRENT.
+- Notification có controller/service và handshake/channel security source; backend notification controller/service/channel tests đã pass trong run 123/123 CURRENT.
+- Hai capability này hiện giữ PARTIAL: frontend delivery, authenticated E2E và release stability vẫn cần xác minh sau khi workstream code chốt.
+- Tài liệu không dùng test backend pass để suy ra frontend/E2E đã hoàn thành.
