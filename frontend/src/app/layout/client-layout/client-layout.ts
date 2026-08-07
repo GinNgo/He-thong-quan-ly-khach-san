@@ -35,6 +35,7 @@ export class ClientLayout implements OnInit, OnDestroy {
   fullName = '';
   avatarUrl = '';
   userContext: UserContext | null = null;
+  showScrollTop = false;
 
   ngOnInit(): void {
     this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(state => {
@@ -78,6 +79,11 @@ export class ClientLayout implements OnInit, OnDestroy {
   closeMobileMenu(): void { this.isMobileMenuOpen = false; }
   toggleLocale(): void { this.localeService.toggle(); }
   handleAvatarError(): void { this.avatarUrl = ''; }
+
+  @HostListener('window:scroll')
+  onWindowScroll(): void { this.showScrollTop = window.scrollY > 420; }
+
+  scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
   navigatePartner(): void {
     this.closeAccountMenu();

@@ -68,6 +68,7 @@
   </nav>
 </header>
 <main class="public-main"><router-outlet></router-outlet></main>
+<button *ngIf="showScrollTop" type="button" class="scroll-top" (click)="scrollToTop()" aria-label="Cuộn lên đầu trang" title="Lên đầu trang"><i class="pi pi-arrow-up" aria-hidden="true"></i></button>
 <footer class="public-footer" aria-labelledby="footer-brand-title">
   <div class="footer-inner">
     <div class="footer-brand-panel">

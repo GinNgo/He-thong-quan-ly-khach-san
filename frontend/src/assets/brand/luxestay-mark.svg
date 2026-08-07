@@ -1,20 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="title desc">
   <title id="title">LuxeStay</title>
-  <desc id="desc">Biểu tượng chữ L trong cổng nghỉ dưỡng</desc>
+  <desc id="desc">Biểu tượng vương miện vàng trong khung xanh đêm</desc>
   <defs>
-    <linearGradient id="surface" x1="8" y1="5" x2="41" y2="44" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#12324A"/>
-      <stop offset="1" stop-color="#071B2D"/>
-    </linearGradient>
-    <linearGradient id="gold" x1="15" y1="9" x2="35" y2="36" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F7D58A"/>
-      <stop offset=".52" stop-color="#D9A84E"/>
-      <stop offset="1" stop-color="#B77A25"/>
-    </linearGradient>
+    <linearGradient id="navy" x1="5" y1="4" x2="43" y2="44" gradientUnits="userSpaceOnUse"><stop stop-color="#182b45"/><stop offset="1" stop-color="#071321"/></linearGradient>
+    <linearGradient id="gold" x1="9" y1="12" x2="39" y2="38" gradientUnits="userSpaceOnUse"><stop stop-color="#fff0b8"/><stop offset=".45" stop-color="#d8a84e"/><stop offset="1" stop-color="#93601f"/></linearGradient>
   </defs>
-  <rect x="2" y="2" width="44" height="44" rx="13" fill="url(#surface)"/>
-  <path d="M14 35V20.5C14 13.6 18.7 9 24 9s10 4.6 10 11.5V35" fill="none" stroke="url(#gold)" stroke-width="3.2" stroke-linecap="round"/>
-  <path d="M19 17.5v13h10" fill="none" stroke="#F8FAFC" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M10.5 36.5c5.3-2 9.2-2.2 13.5-.5 4.3 1.7 8.2 1.5 13.5-.5" fill="none" stroke="#43C4B1" stroke-width="2.4" stroke-linecap="round"/>
-  <circle cx="34" cy="12" r="2" fill="#F7D58A"/>
+  <rect x="1.5" y="1.5" width="45" height="45" rx="14" fill="url(#navy)" stroke="#d8a84e" stroke-width="1"/>
+  <path d="M10 15.2 16.5 22l7.5-10 7.5 10 6.5-6.8-2.4 16.3H12.4L10 15.2Z" fill="url(#gold)" stroke="#fff0b8" stroke-width=".8" stroke-linejoin="round"/>
+  <path d="M13 34.5h22M16 38h16" stroke="#f5d889" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="10" cy="15" r="1.6" fill="#fff0b8"/><circle cx="24" cy="12" r="1.6" fill="#fff0b8"/><circle cx="38" cy="15" r="1.6" fill="#fff0b8"/>
 </svg>
