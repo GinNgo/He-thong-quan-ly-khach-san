@@ -144,6 +144,7 @@ public class ReservationController {
             @RequestBody ReservationRequest request,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             HttpServletRequest httpRequest) {
+        request.setUserId(null);
         String publicScope = "PUBLIC:" + httpRequest.getRemoteAddr();
         return createIdempotentReservation(publicScope, request, idempotencyKey, httpRequest, null);
     }
@@ -154,6 +155,7 @@ public class ReservationController {
                                                                     @RequestBody ReservationRequest request,
                                                                     @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
                                                                     HttpServletRequest httpRequest) {
+        request.setUserId(null);
         return createIdempotentReservation(authentication.getName(), request, idempotencyKey, httpRequest);
     }
 

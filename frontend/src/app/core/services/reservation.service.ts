@@ -52,6 +52,8 @@ export interface Reservation {
   cancellationReason?: string;
   cancelledAt?: string;
   details: ReservationDetail[];
+  roomTypeId?: number;
+  quantity?: number;
   payment?: PaymentLifecycleSummary;
   refunds?: RefundSummary[];
 }

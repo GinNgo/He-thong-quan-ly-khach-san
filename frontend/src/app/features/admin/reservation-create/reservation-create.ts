@@ -1,17 +1,18 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePickerModule } from 'primeng/datepicker';
-import { SelectModule } from 'primeng/select';
-import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
-import { TextareaModule } from 'primeng/textarea';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { ReservationService, Reservation } from '../../../core/services/reservation.service';
-import { RoomService, Room } from '../../../core/services/room.service';
-import { UserService, User } from '../../../core/services/user.service';
 import { Router } from '@angular/router';
 import { MessageService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { DatePickerModule } from 'primeng/datepicker';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { InputTextModule } from 'primeng/inputtext';
+import { SelectModule } from 'primeng/select';
+import { TextareaModule } from 'primeng/textarea';
+import { Reservation, ReservationService } from '../../../core/services/reservation.service';
+import { Room, RoomService } from '../../../core/services/room.service';
+import { User, UserService } from '../../../core/services/user.service';
 
 @Component({
   selector: 'app-reservation-create',
@@ -20,20 +21,18 @@ import { MessageService } from 'primeng/api';
   templateUrl: './reservation-create.html'
 })
 export class ReservationCreate implements OnInit {
-  reservation: Partial<Reservation> = {
-    paymentMethod: 'CASH',
-    guests: 1,
-    details: []
-  };
-
+  reservation: Partial<Reservation> = { paymentMethod: 'CASH', guests: 1, details: [] };
   users: User[] = [];
   rooms: Room[] = [];
   selectedRoomId?: number;
+  minCheckInDate = this.startOfToday();
+  minCheckOutDate?: Date;
+  saving = false;
 
   paymentMethods = [
-    { label: 'Tien mat', value: 'CASH' },
-    { label: 'The tin dung', value: 'CREDIT_CARD' },
-    { label: 'Chuyen khoan', value: 'BANK_TRANSFER' }
+    { label: 'Tiền mặt', value: 'CASH' },
+    { label: 'Thẻ tín dụng', value: 'CREDIT_CARD' },
+    { label: 'Chuyển khoản', value: 'BANK_TRANSFER' }
   ];
 
   private reservationService = inject(ReservationService);
@@ -49,25 +48,76 @@ export class ReservationCreate implements OnInit {
     });
   }
 
-  save() {
-    if (this.reservation.userId && this.reservation.checkInDate && this.reservation.checkOutDate && this.selectedRoomId) {
-      this.reservation.details = [{ roomId: this.selectedRoomId }];
-
-      const checkIn = new Date(this.reservation.checkInDate);
-      const checkOut = new Date(this.reservation.checkOutDate);
-      this.reservation.checkInDate = checkIn.toISOString().split('T')[0];
-      this.reservation.checkOutDate = checkOut.toISOString().split('T')[0];
-
-      this.reservationService.createReservation(this.reservation as Reservation).subscribe(() => {
-        this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Tạo đặt phòng thành công' });
-        this.router.navigate(['/admin/reservations']);
-      });
-    } else {
-      this.messageService.add({ severity: 'warn', summary: 'Canh bao', detail: 'Vui long dien day du thong tin bat buoc.' });
+  onCheckInChange(value: Date | string | null | undefined) {
+    if (!value) {
+      this.reservation.checkOutDate = undefined;
+      this.minCheckOutDate = undefined;
+      return;
     }
+    const nextDay = this.addDays(new Date(value), 1);
+    this.minCheckOutDate = nextDay;
+    if (!this.reservation.checkOutDate || new Date(this.reservation.checkOutDate) < nextDay) {
+      this.reservation.checkOutDate = nextDay as unknown as string;
+    }
+  }
+
+  get formValid(): boolean {
+    if (!this.reservation.userId || !this.selectedRoomId || !this.reservation.checkInDate || !this.reservation.checkOutDate) return false;
+    return new Date(this.reservation.checkOutDate) > new Date(this.reservation.checkInDate);
+  }
+
+  save() {
+    if (!this.formValid) {
+      this.messageService.add({ severity: 'warn', summary: 'Cảnh báo', detail: 'Vui lòng điền đầy đủ thông tin bắt buộc.' });
+      return;
+    }
+
+    const selectedRoom = this.rooms.find(room => room.id === this.selectedRoomId);
+    if (!selectedRoom?.roomType?.id) {
+      this.messageService.add({ severity: 'error', summary: 'Không thể đặt phòng', detail: 'Phòng chưa có loại phòng hợp lệ.' });
+      return;
+    }
+
+    const request: Reservation = {
+      ...(this.reservation as Reservation),
+      roomTypeId: selectedRoom.roomType.id,
+      quantity: 1,
+      details: [],
+      checkInDate: this.toLocalDate(new Date(this.reservation.checkInDate!)),
+      checkOutDate: this.toLocalDate(new Date(this.reservation.checkOutDate!))
+    };
+
+    this.saving = true;
+    this.reservationService.createReservation(request).subscribe({
+      next: () => {
+        this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Tạo đặt phòng thành công.' });
+        this.router.navigate(['/admin/reservations']);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.saving = false;
+        const detail = error.error?.message || error.error?.detail || 'Không thể tạo đặt phòng. Vui lòng kiểm tra lại thông tin.';
+        this.messageService.add({ severity: 'error', summary: 'Tạo đặt phòng thất bại', detail });
+      }
+    });
   }
 
   cancel() {
     this.router.navigate(['/admin/reservations']);
+  }
+
+  private startOfToday(): Date {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  }
+
+  private addDays(value: Date, days: number): Date {
+    return new Date(value.getFullYear(), value.getMonth(), value.getDate() + days);
+  }
+
+  private toLocalDate(value: Date): string {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }
