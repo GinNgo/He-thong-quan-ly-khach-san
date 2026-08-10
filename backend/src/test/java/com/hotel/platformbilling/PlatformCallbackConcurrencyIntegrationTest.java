@@ -34,10 +34,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
@@ -84,7 +84,7 @@ class PlatformCallbackConcurrencyIntegrationTest {
     private static final String MERCHANT = "LUXESTAY-PLATFORM-SIMULATOR";
     private static final String SECRET = "platform-simulator-signing-secret-32-bytes";
 
-    @TestConfiguration(proxyBeanMethods = false)
+    @SpringBootConfiguration
     @EnableAutoConfiguration
     @EntityScan(basePackages = "com.hotel")
     @EnableJpaRepositories(basePackages = "com.hotel")
@@ -211,7 +211,6 @@ class PlatformCallbackConcurrencyIntegrationTest {
 
         SubscriptionPlan plan = new SubscriptionPlan();
         plan.setCode("PRO-" + unique);
-        plan.setFamilyCode("PRO-" + UUID.randomUUID());
         plan.setNameVi("Professional");
         plan.setNameEn("Professional");
         plan.setBillingType("YEARLY");

@@ -24,11 +24,6 @@ server:
   port: 8080
 
 app:
-  reservation-amendment:
-    cutoff-minutes: 5
-    quote-ttl-minutes: 2
-    default-arrival-time: 14:00
-    property-zone-id: Asia/Ho_Chi_Minh
   auth:
     password-reset:
       ttl-minutes: 30
@@ -48,15 +43,3 @@ app:
     nationwide-property-seed: false
   accommodation-import:
     enabled: false
-  location-import:
-    enabled: true
-    file-path: ${LOCATION_IMPORT_FILE_PATH:}
-    resource: ${LOCATION_IMPORT_RESOURCE:classpath:data/locations.json}
-    current-province-resource: ${CURRENT_PROVINCE_IMPORT_RESOURCE:classpath:data/provinces-current-34.json}
-    landmark-resource: ${LANDMARK_IMPORT_RESOURCE:classpath:data/landmarks.json}
-    cleanup-obsolete: false
-  demo-data:
-    enabled: true
-    legacy-seed: true
-    nationwide-property-seed: false
-    allow-public-demo: true

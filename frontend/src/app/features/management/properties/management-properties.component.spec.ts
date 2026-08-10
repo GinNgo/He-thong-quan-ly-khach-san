@@ -1,47 +1,35 @@
 import { TestBed } from '@angular/core/testing';
 import { Subject, of } from 'rxjs';
-import { ManagementApiService, ManagedProperty } from '../../../core/services/management-api.service';
+import { AuthService } from '../../../core/services/auth';
+import { ManagedProperty, ManagementApiService } from '../../../core/services/management-api.service';
 import { PropertyService } from '../../../core/services/property.service';
 import { ManagementPropertiesComponent } from './management-properties.component';
 
 describe('ManagementPropertiesComponent', () => {
-  it('renders a distinct profile surface and submits only editable fields', async () => {
-    const properties$ = new Subject<ManagedProperty[]>();
-    const update$ = new Subject<ManagedProperty>();
-    const updateProperty = vi.fn((_id: number, _body: Record<string, unknown>) => update$);
+  it('renders assigned properties and creates a draft property for an owner', async () => {
+    const create$ = new Subject<ManagedProperty>();
+    const createProperty = vi.fn(() => create$);
     await TestBed.configureTestingModule({
       imports: [ManagementPropertiesComponent],
       providers: [
-        { provide: ManagementApiService, useValue: { properties: () => properties$, updateProperty } },
-        { provide: PropertyService, useValue: { getProvinces: () => of([{ id: 1, nameVi: 'Ha Noi' }]), getWards: () => of([{ id: 2, nameVi: 'Ba Dinh' }]) } },
+        { provide: AuthService, useValue: { getRoles: () => ['PROPERTY_OWNER'] } },
+        { provide: ManagementApiService, useValue: { properties: () => of([]), createProperty } },
+        { provide: PropertyService, useValue: { getProvinces: () => of([{ id: 1, nameVi: 'Da Nang' }]), getWards: () => of([{ id: 2, nameVi: 'Hai Chau' }]) } },
       ],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(ManagementPropertiesComponent);
     fixture.detectChanges();
-    const property: ManagedProperty = {
-      id: 10, code: 'HN-10', nameVi: 'LuxeStay Ha Noi', propertyType: 'HOTEL', address: 'Old', addressLine: 'Old',
-      provinceId: 1, wardId: 2, approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', operational: true, isDemo: false,
-    };
-    properties$.next([property]);
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Hồ sơ cơ sở');
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Đối soát số phòng');
-    fixture.componentInstance.form.patchValue({ nameVi: 'LuxeStay Capital', address: 'New address' });
+    fixture.componentInstance.openCreate();
+    fixture.componentInstance.form.patchValue({ nameVi: 'LuxeStay Test', provinceId: 1, wardId: 2, address: '01 Bien Dong' });
     fixture.componentInstance.save();
-    const body = updateProperty.mock.calls[0][1] as Record<string, unknown>;
-    const profile = body['profile'] as Record<string, unknown>;
-    expect(profile['nameVi']).toBe('LuxeStay Capital');
-    expect(body['reason']).toBe('Property profile update');
-    expect(profile['approvalStatus']).toBeUndefined();
-    expect(profile['operationStatus']).toBeUndefined();
-    expect(profile['isDemo']).toBeUndefined();
+    expect(createProperty).toHaveBeenCalledWith(expect.objectContaining({ nameVi: 'LuxeStay Test', provinceId: 1, wardId: 2 }));
 
-    update$.next({ ...property, nameVi: 'LuxeStay Capital', address: 'New address', addressLine: 'New address' });
+    create$.next({ id: 9, code: 'OWNER-9', nameVi: 'LuxeStay Test', propertyType: 'HOTEL', address: '01 Bien Dong', approvalStatus: 'DRAFT', operationStatus: 'INACTIVE', isDemo: false });
+    create$.complete();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Đã lưu hồ sơ cơ sở.');
+    expect(fixture.nativeElement.textContent).toContain('Đã tạo cơ sở ở trạng thái bản nháp.');
+    fixture.destroy();
   });
 });

@@ -7,6 +7,7 @@ import { AccessTokenSessionStore } from '../auth/access-token-session.store';
 
 export interface AuthState {
   isAuthenticated: boolean;
+  userId?: number | null;
   username: string;
   fullName: string;
   avatarUrl: string;
@@ -30,6 +31,7 @@ export interface AuthResponse {
 
 export interface AuthSessionUser {
   id?: number;
+  userId?: number;
   username?: string;
   fullName?: string;
   avatarUrl?: string;
@@ -71,6 +73,7 @@ export class AuthService {
 
   private authStateSubject = new BehaviorSubject<AuthState>({
     isAuthenticated: false,
+    userId: null,
     username: '',
     fullName: '',
     avatarUrl: '',
@@ -99,6 +102,7 @@ export class AuthService {
         const user = JSON.parse(userStr);
         this.authStateSubject.next({
           isAuthenticated: true,
+          userId: this.resolveUserId(user),
           username: user.username || '',
           fullName: user.fullName || '',
           avatarUrl: user.avatarUrl || '',
@@ -124,6 +128,7 @@ export class AuthService {
     }
     this.authStateSubject.next({
       isAuthenticated: false,
+      userId: null,
       username: '',
       fullName: '',
       avatarUrl: '',
@@ -232,6 +237,7 @@ export class AuthService {
     }
     this.authStateSubject.next({
       isAuthenticated: true,
+      userId: this.resolveUserId(user),
       username: user.username || '',
       fullName: user.fullName || '',
       avatarUrl: user.avatarUrl || '',
@@ -241,16 +247,24 @@ export class AuthService {
     this.scheduleSessionExpiry(token);
   }
 
-  updateCurrentUser(user: { username?: string; fullName?: string; avatarUrl?: string | null }): void {
+  updateCurrentUser(user: { id?: number; userId?: number; username?: string; fullName?: string; avatarUrl?: string | null }): void {
     const currentState = this.authStateSubject.value;
     if (!currentState.isAuthenticated) return;
 
     const nextState: AuthState = {
       ...currentState,
+      userId: this.resolveUserId(user) ?? currentState.userId,
       username: user.username ?? currentState.username,
       fullName: user.fullName ?? currentState.fullName,
       avatarUrl: user.avatarUrl ?? ''
     };
+
+    if (
+      nextState.userId === currentState.userId
+      && nextState.username === currentState.username
+      && nextState.fullName === currentState.fullName
+      && nextState.avatarUrl === currentState.avatarUrl
+    ) return;
 
     if (isPlatformBrowser(this.platformId)) {
       const storedUser = localStorage.getItem('user');
@@ -262,6 +276,7 @@ export class AuthService {
       }
       localStorage.setItem('user', JSON.stringify({
         ...sessionUser,
+        id: nextState.userId ?? undefined,
         username: nextState.username,
         fullName: nextState.fullName,
         avatarUrl: nextState.avatarUrl
@@ -282,14 +297,7 @@ export class AuthService {
   }
 
   getCurrentUserId(): number | null {
-    if (!isPlatformBrowser(this.platformId)) return null;
-    try {
-      const rawUser = localStorage.getItem('user');
-      const user = rawUser ? JSON.parse(rawUser) as { id?: number } : null;
-      return typeof user?.id === 'number' ? user.id : null;
-    } catch {
-      return null;
-    }
+    return this.authStateSubject.value.userId ?? null;
   }
 
   private sessionUserFor(response: AuthResponse): AuthSessionUser {
@@ -303,10 +311,18 @@ export class AuthService {
     return {
       ...storedUser,
       id: response.userId ?? response.id ?? storedUser.id,
+      userId: response.userId ?? response.id ?? storedUser.userId ?? storedUser.id,
       username: response.username || storedUser.username,
       roles: response.roles || storedUser.roles || [],
       permissions: response.permissions || storedUser.permissions || [],
     };
+  }
+
+  private resolveUserId(user: { id?: unknown; userId?: unknown }): number | null {
+    const candidate = user.id ?? user.userId;
+    if (typeof candidate === 'number' && Number.isInteger(candidate) && candidate > 0) return candidate;
+    if (typeof candidate === 'string' && /^\d+$/.test(candidate)) return Number(candidate);
+    return null;
   }
 
   private scheduleSessionExpiry(token: string): void {

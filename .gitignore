@@ -19,16 +19,6 @@ backups/
 /test_output.txt
 /indent
 /tmp-spa-server.js
-node_modules/
-dist/
-build/
-target/
-bin/
-obj/
-coverage/
-.angular/
-.venv/
-venv/
 __pycache__/
 *.py[cod]
 node_modules/
@@ -44,12 +34,6 @@ blob-report/
 frontend/.certs/
 .idea/
 .vscode/
-*.tmp
-*.swp
-
-# Editor and temporary files
-.vscode/
-.idea/
 *.tmp
 *.swp
 

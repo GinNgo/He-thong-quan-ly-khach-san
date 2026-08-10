@@ -7,8 +7,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
-import java.util.List;
-import org.springframework.data.domain.Pageable;
 
 public interface SubscriptionEntitlementRepository extends JpaRepository<SubscriptionEntitlement, Long> {
 
@@ -18,9 +16,4 @@ public interface SubscriptionEntitlementRepository extends JpaRepository<Subscri
     @Query("select entitlement from SubscriptionEntitlement entitlement "
             + "where entitlement.targetHotel.id = :targetHotelId")
     Optional<SubscriptionEntitlement> findByTargetHotelIdForUpdate(@Param("targetHotelId") Long targetHotelId);
-
-    @Query("select entitlement.targetHotel.id from SubscriptionEntitlement entitlement "
-            + "where entitlement.status = 'ACTIVE' and entitlement.lifetime = false "
-            + "and entitlement.effectiveUntil <= :cutoff order by entitlement.targetHotel.id")
-    List<Long> findDueHotelIds(@Param("cutoff") java.time.LocalDateTime cutoff, Pageable pageable);
 }

@@ -59,14 +59,6 @@ public class OperationalMetrics {
         }
     }
 
-    public void recordAuthLogin(String outcome, String reason) {
-        Counter.builder("hotel.auth.login.attempts")
-                .description("Credential login outcomes with low-cardinality, pseudonym-free tags")
-                .tags("outcome", safeTag(outcome), "reason", safeTag(reason))
-                .register(registry)
-                .increment();
-    }
-
     public Object observeJob(String jobName, ObservedOperation operation) throws Throwable {
         String safeJobName = safeTag(jobName);
         String correlationId = CorrelationIdSupport.generate();

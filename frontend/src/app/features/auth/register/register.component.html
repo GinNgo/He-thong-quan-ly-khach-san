@@ -1,4 +1,4 @@
-<div class="bg-gradient-to-r from-[#f0f4f8] to-white text-on-background min-h-screen w-screen flex flex-col font-body-md overflow-x-hidden md:h-screen md:overflow-hidden relative">
+<div class="register-page-shell bg-gradient-to-r from-[#f0f4f8] to-white text-on-background min-h-screen w-screen flex flex-col font-body-md overflow-x-hidden md:h-screen md:overflow-hidden relative">
   <!-- Top Navigation Bar (Simplified for Auth) -->
   <nav class="w-full bg-white/80 backdrop-blur-md border-b border-outline-variant z-50 shrink-0">
     <div class="max-w-[1440px] mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
@@ -15,7 +15,7 @@
   <!-- Main Content Canvas -->
   <main class="flex-1 flex flex-col items-center justify-center relative overflow-visible md:overflow-hidden py-4 px-4">
     <!-- Registration Container -->
-    <div class="relative z-10 w-full max-w-[1000px] flex-none md:flex-1 max-h-[650px] shrink-0 flex flex-col md:flex-row shadow-2xl rounded-xl overflow-hidden bg-surface border border-outline-variant">
+    <div class="register-card relative z-10 w-full max-w-[1000px] flex-none md:flex-1 max-h-[650px] shrink-0 flex flex-col md:flex-row shadow-2xl rounded-xl overflow-hidden bg-surface border border-outline-variant">
       
       <!-- Left Side: Editorial Image/Mood Section -->
       <div class="hidden md:flex w-5/12 relative flex-col justify-end p-8 text-on-primary shrink-0">
@@ -47,7 +47,7 @@
             <div class="space-y-0.5">
               <label class="font-label-md text-[10px] font-bold text-on-surface-variant block uppercase tracking-wider" for="full_name">Họ và Tên</label>
               <div class="auth-field">
-                <span class="material-symbols-outlined field-icon field-icon--start" aria-hidden="true">person</span>
+                <i class="pi pi-user field-icon field-icon--start" aria-hidden="true"></i>
                 <input class="auth-input form-input-focus" id="full_name" name="fullName" placeholder="Nguyễn Văn An" type="text" autocomplete="name" required [(ngModel)]="registerObj.fullName">
               </div>
             </div>
@@ -56,7 +56,7 @@
             <div class="space-y-0.5">
               <label class="font-label-md text-[10px] font-bold text-on-surface-variant block uppercase tracking-wider" for="email">Email</label>
               <div class="auth-field">
-                <span class="material-symbols-outlined field-icon field-icon--start" aria-hidden="true">mail</span>
+                <i class="pi pi-envelope field-icon field-icon--start" aria-hidden="true"></i>
                 <input class="auth-input form-input-focus" id="email" name="email" placeholder="email@domain.com" type="email" autocomplete="email" inputmode="email" required email [(ngModel)]="registerObj.email">
               </div>
             </div>
@@ -66,10 +66,10 @@
               <div class="space-y-0.5">
                 <label class="font-label-md text-[10px] font-bold text-on-surface-variant block uppercase tracking-wider" for="password">Mật khẩu</label>
                 <div class="auth-field">
-                  <span class="material-symbols-outlined field-icon field-icon--start" aria-hidden="true">lock</span>
+                  <i class="pi pi-lock field-icon field-icon--start" aria-hidden="true"></i>
                   <input class="auth-input auth-input--password form-input-focus" id="password" name="password" placeholder="••••••••" [type]="passwordVisible ? 'text' : 'password'" autocomplete="new-password" required [attr.minlength]="passwordPolicy.minLength" [attr.maxlength]="passwordPolicy.maxLength" [(ngModel)]="registerObj.password">
                   <button class="field-icon field-icon--end password-toggle" type="button" (click)="togglePasswordVisibility('password')" [attr.aria-label]="passwordVisible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'" [attr.aria-pressed]="passwordVisible">
-                    <span class="material-symbols-outlined" aria-hidden="true">{{ passwordVisible ? 'visibility_off' : 'visibility' }}</span>
+                    <i class="pi" [class.pi-eye-slash]="passwordVisible" [class.pi-eye]="!passwordVisible" aria-hidden="true"></i>
                   </button>
                 </div>
               </div>
@@ -78,10 +78,10 @@
               <div class="space-y-0.5">
                 <label class="font-label-md text-[10px] font-bold text-on-surface-variant block uppercase tracking-wider" for="confirmPassword">Xác nhận mật khẩu</label>
                 <div class="auth-field">
-                  <span class="material-symbols-outlined field-icon field-icon--start" aria-hidden="true">lock_reset</span>
+                  <i class="pi pi-lock field-icon field-icon--start" aria-hidden="true"></i>
                   <input class="auth-input auth-input--password form-input-focus" id="confirmPassword" name="confirmPassword" placeholder="••••••••" [type]="confirmPasswordVisible ? 'text' : 'password'" autocomplete="new-password" required [attr.minlength]="passwordPolicy.minLength" [attr.maxlength]="passwordPolicy.maxLength" [(ngModel)]="registerObj.confirmPassword">
                   <button class="field-icon field-icon--end password-toggle" type="button" (click)="togglePasswordVisibility('confirmPassword')" [attr.aria-label]="confirmPasswordVisible ? 'Ẩn mật khẩu xác nhận' : 'Hiện mật khẩu xác nhận'" [attr.aria-pressed]="confirmPasswordVisible">
-                    <span class="material-symbols-outlined" aria-hidden="true">{{ confirmPasswordVisible ? 'visibility_off' : 'visibility' }}</span>
+                    <i class="pi" [class.pi-eye-slash]="confirmPasswordVisible" [class.pi-eye]="!confirmPasswordVisible" aria-hidden="true"></i>
                   </button>
                 </div>
               </div>
@@ -90,9 +90,9 @@
             <!-- Phone Number -->
             <div class="space-y-0.5">
               <label class="font-label-md text-[10px] font-bold text-on-surface-variant block uppercase tracking-wider" for="phone">Số điện thoại</label>
-              <div class="flex items-stretch shadow-sm rounded-md border border-outline-variant focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all duration-200">
+              <div class="phone-field flex items-stretch shadow-sm rounded-md border border-outline-variant focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all duration-200">
                 <div class="relative flex items-center bg-surface-container-low border-r border-outline-variant shrink-0 rounded-l-md">
-                   <select class="pl-2.5 pr-6 py-2 bg-transparent font-body-md text-[12px] font-medium text-on-surface outline-none appearance-none cursor-pointer border-0 w-[72px]" name="countryCode" [(ngModel)]="registerObj.countryCode">
+                   <select class="country-code-select pl-2.5 pr-6 py-2 bg-transparent font-body-md text-[12px] font-medium text-on-surface outline-none appearance-none cursor-pointer border-0" name="countryCode" [(ngModel)]="registerObj.countryCode">
                       <option value="+84">🇻🇳 +84</option>
                       <option value="+1">🇺🇸 +1</option>
                       <option value="+44">🇬🇧 +44</option>
@@ -104,9 +104,9 @@
                       <option value="+33">🇫🇷 +33</option>
                       <option value="+65">🇸🇬 +65</option>
                    </select>
-                   <span class="material-symbols-outlined field-icon country-code-arrow" aria-hidden="true">expand_more</span>
+                   <i class="pi pi-chevron-down field-icon country-code-arrow" aria-hidden="true"></i>
                 </div>
-                <input class="w-full pl-3 pr-3 py-2 bg-white font-body-md text-[12px] text-on-surface border-0 outline-none placeholder:text-gray-400 rounded-r-md" id="phone" name="phone" placeholder="901 234 567" type="tel" autocomplete="tel-national" inputmode="tel" [(ngModel)]="registerObj.phone">
+                <input class="phone-input w-full pl-3 pr-3 py-2 bg-white font-body-md text-[12px] text-on-surface border-0 outline-none placeholder:text-gray-400 rounded-r-md" id="phone" name="phone" placeholder="901 234 567" type="tel" autocomplete="tel-national" inputmode="tel" [(ngModel)]="registerObj.phone">
               </div>
             </div>
 
@@ -117,9 +117,9 @@
               </div>
               <p id="terms-consent-copy" class="text-[11px] text-on-surface-variant leading-5 m-0">
                 <label class="select-none cursor-pointer" for="terms">{{ i18n.text('AUTH_LEGAL.CONSENT.PREFIX') }}</label>
-                <a class="text-primary font-bold hover:underline" routerLink="/terms">{{ i18n.text('AUTH_LEGAL.NAV.TERMS') }}</a>
+                <a class="text-primary font-bold hover:underline terms-consent-link" href="/terms" (click)="openLegal($event, 'TERMS')">{{ i18n.text('AUTH_LEGAL.NAV.TERMS') }}</a>
                 {{ i18n.text('AUTH_LEGAL.CONSENT.AND') }}
-                <a class="text-primary font-bold hover:underline" routerLink="/privacy">{{ i18n.text('AUTH_LEGAL.NAV.PRIVACY') }}</a>.
+                <a class="text-primary font-bold hover:underline terms-consent-link" href="/privacy" (click)="openLegal($event, 'PRIVACY')">{{ i18n.text('AUTH_LEGAL.NAV.PRIVACY') }}</a>.
               </p>
             </div>
 
@@ -127,8 +127,8 @@
             <div class="pt-1.5">
               <button class="w-full bg-primary text-white py-2.5 px-4 rounded-md font-bold text-[11px] uppercase tracking-widest hover:bg-primary-container active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-1.5 border-0 disabled:opacity-50 disabled:cursor-not-allowed" type="submit" [disabled]="isLoading || registerForm.invalid">
                 <span *ngIf="!isLoading">Tạo tài khoản</span>
-                <span *ngIf="isLoading" class="material-symbols-outlined animate-spin text-[14px]">progress_activity</span>
-                <span *ngIf="!isLoading" class="material-symbols-outlined text-[14px]">arrow_forward</span>
+                <i *ngIf="isLoading" class="pi pi-spin pi-spinner text-[14px]"></i>
+                <i *ngIf="!isLoading" class="pi pi-arrow-right text-[14px]"></i>
               </button>
             </div>
           </form>
@@ -137,8 +137,7 @@
           <div class="mt-4 text-center shrink-0">
             <p class="font-body-sm text-[12px] text-on-surface-variant m-0">
               Đã có tài khoản? 
-              <a class="text-primary font-bold hover:underline" routerLink="/login"
-                [queryParams]="returnUrl === '/' ? null : { returnUrl }">Đăng nhập</a>
+              <a class="text-primary font-bold hover:underline" routerLink="/login">Đăng nhập</a>
             </p>
           </div>
         </div>
@@ -161,4 +160,13 @@
       </div>
     </div>
   </footer>
+</div>
+
+<div *ngIf="legalModal" class="legal-modal-backdrop" role="presentation" (click)="closeLegal()">
+  <section class="legal-modal" role="dialog" aria-modal="true" aria-labelledby="legal-modal-title" (click)="$event.stopPropagation()">
+    <button type="button" class="legal-modal-close" (click)="closeLegal()" aria-label="Đóng">×</button>
+    <h2 id="legal-modal-title">{{ legalModal === 'TERMS' ? i18n.text('AUTH_LEGAL.NAV.TERMS') : i18n.text('AUTH_LEGAL.NAV.PRIVACY') }}</h2>
+    <p>{{ legalModal === 'TERMS' ? 'Các điều khoản sử dụng dịch vụ và quy định đặt phòng của LuxeStay.' : 'LuxeStay bảo vệ thông tin tài khoản, liên hệ và lịch sử đặt phòng của bạn.' }}</p>
+    <a class="legal-modal-link" [routerLink]="legalModal === 'TERMS' ? '/terms' : '/privacy'" (click)="closeLegal()">Xem đầy đủ</a>
+  </section>
 </div>

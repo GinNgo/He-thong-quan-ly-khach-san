@@ -6,7 +6,6 @@ import com.hotel.dtos.SupportChatReplyRequest;
 import com.hotel.security.ChatAuthorizationService;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.services.ChatService;
-import com.hotel.services.SupportAttachmentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +16,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.util.Map;
+import java.util.List;
 import java.util.Set;
 
 import static org.mockito.Mockito.verify;
@@ -25,9 +25,11 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ChatControllerTest {
 
-    @Mock private ChatService chatService;
-    @Mock private SimpMessagingTemplate messagingTemplate;
-    @Mock private SupportAttachmentService attachmentService;
+    @Mock
+    private ChatService chatService;
+
+    @Mock
+    private SimpMessagingTemplate messagingTemplate;
 
     private ChatController controller;
     private CustomUserDetails customer;
@@ -35,21 +37,18 @@ class ChatControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new ChatController(
-                chatService, messagingTemplate, new ChatAuthorizationService(), attachmentService);
+        controller = new ChatController(chatService, messagingTemplate, new ChatAuthorizationService());
         customer = user(42L, "customer");
         support = user(7L, "support");
     }
 
     @Test
-    void customerMessageUsesSelectedConversationAndIsAcknowledged() {
+    void customerMessageIsAcknowledgedOnStandardUserQueueAndPublishedToSupport() {
         CustomerChatMessageRequest request = new CustomerChatMessageRequest();
-        request.setConversationId(9L);
         request.setContent("Can ho tro");
-        request.setClientMessageId("customer-1");
-        ChatMessageDTO saved = message(9L, 42L, 0L, "Can ho tro");
-        when(chatService.sendToSupport(customer, 9L, "Can ho tro", "customer-1")).thenReturn(saved);
-        when(chatService.getSupportRecipients(5L)).thenReturn(java.util.List.of("support"));
+        ChatMessageDTO saved = message(42L, 0L, "Can ho tro");
+        when(chatService.sendToSupport(customer, null, null, "Can ho tro")).thenReturn(saved);
+        when(chatService.getSupportRecipients(11L)).thenReturn(List.of("support"));
 
         controller.sendToSupport(request, authentication(customer));
 
@@ -58,69 +57,18 @@ class ChatControllerTest {
     }
 
     @Test
-    void supportReplyUsesConversationCustomerForThePrivateDestination() {
+    void supportReplyUsesCustomerUsernameForUserDestination() {
         SupportChatReplyRequest request = new SupportChatReplyRequest();
         request.setConversationId(9L);
         request.setContent("Da tiep nhan");
-        request.setClientMessageId("support-1");
-        ChatMessageDTO saved = message(9L, 7L, 42L, "Da tiep nhan");
-        when(chatService.replyToConversation(support, 9L, "Da tiep nhan", null, "support-1")).thenReturn(saved);
-        when(chatService.getConversationCustomerId(9L)).thenReturn(42L);
+        ChatMessageDTO saved = message(7L, 42L, "Da tiep nhan");
+        when(chatService.replyToCustomer(support, 9L, "Da tiep nhan")).thenReturn(saved);
         when(chatService.getUsername(42L)).thenReturn("customer");
-        when(chatService.getSupportRecipients(5L)).thenReturn(java.util.List.of("support"));
 
         controller.replyToCustomer(request, authentication(support));
 
         verify(messagingTemplate).convertAndSendToUser("customer", "/queue/messages", saved);
         verify(messagingTemplate).convertAndSendToUser("support", "/queue/support/messages", saved);
-    }
-
-    @Test
-    void customerRestSendPersistsAndBroadcastsTheSelectedConversation() {
-        CustomerChatMessageRequest request = new CustomerChatMessageRequest();
-        request.setContent("Can ho tro qua HTTP");
-        request.setClientMessageId("customer-http-1");
-        ChatMessageDTO saved = message(9L, 42L, 0L, "Can ho tro qua HTTP");
-        when(chatService.sendToSupport(customer, 9L, "Can ho tro qua HTTP", "customer-http-1"))
-                .thenReturn(saved);
-        when(chatService.getSupportRecipients(5L)).thenReturn(java.util.List.of("support"));
-
-        controller.sendMyConversationMessage(authentication(customer), 9L, request);
-
-        verify(messagingTemplate).convertAndSendToUser("customer", "/queue/messages", saved);
-        verify(messagingTemplate).convertAndSendToUser("support", "/queue/support/messages", saved);
-    }
-
-    @Test
-    void supportRestSendPersistsAndNotifiesTheOwningCustomer() {
-        SupportChatReplyRequest request = new SupportChatReplyRequest();
-        request.setContent("Da tiep nhan qua HTTP");
-        request.setClientMessageId("support-http-1");
-        ChatMessageDTO saved = message(9L, 7L, 42L, "Da tiep nhan qua HTTP");
-        when(chatService.replyToConversation(support, 9L, "Da tiep nhan qua HTTP", null, "support-http-1"))
-                .thenReturn(saved);
-        when(chatService.getConversationCustomerId(9L)).thenReturn(42L);
-        when(chatService.getUsername(42L)).thenReturn("customer");
-        when(chatService.getSupportRecipients(5L)).thenReturn(java.util.List.of("support"));
-
-        controller.sendSupportConversationMessage(9L, request, authentication(support));
-
-        verify(messagingTemplate).convertAndSendToUser("customer", "/queue/messages", saved);
-        verify(messagingTemplate).convertAndSendToUser("support", "/queue/support/messages", saved);
-    }
-
-    @Test
-    void acknowledgementNotifiesTheOriginalSenderAndSupportQueue() {
-        ChatMessageDTO read = message(9L, 42L, 0L, "Can ho tro");
-        read.setDeliveryStatus("READ");
-        when(chatService.acknowledgeMessage(support, 1L, "READ")).thenReturn(read);
-        when(chatService.getUsername(42L)).thenReturn("customer");
-        when(chatService.getSupportRecipients(5L)).thenReturn(java.util.List.of("support"));
-
-        controller.acknowledgeMessage(1L, "READ", authentication(support));
-
-        verify(messagingTemplate).convertAndSendToUser("customer", "/queue/messages", read);
-        verify(messagingTemplate).convertAndSendToUser("support", "/queue/support/messages", read);
     }
 
     private UsernamePasswordAuthenticationToken authentication(CustomUserDetails user) {
@@ -138,11 +86,11 @@ class ChatControllerTest {
                 Map.of());
     }
 
-    private ChatMessageDTO message(Long conversationId, Long senderId, Long receiverId, String content) {
+    private ChatMessageDTO message(Long senderId, Long receiverId, String content) {
         ChatMessageDTO dto = new ChatMessageDTO();
         dto.setId(1L);
-        dto.setConversationId(conversationId);
-        dto.setHotelId(5L);
+        dto.setConversationId(9L);
+        dto.setHotelId(11L);
         dto.setSenderId(senderId);
         dto.setReceiverId(receiverId);
         dto.setContent(content);

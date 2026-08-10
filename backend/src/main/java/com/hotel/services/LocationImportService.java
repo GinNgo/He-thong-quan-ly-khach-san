@@ -52,14 +52,8 @@ public class LocationImportService {
     @Value("${app.location-import.current-province-resource:classpath:data/provinces-current-34.json}")
     Resource currentProvinceResource;
 
-    @Value("${app.location-import.resource:classpath:data/locations.json}")
-    private Resource locationResource;
-
-    @Value("${app.location-import.current-province-resource:classpath:data/provinces-current-34.json}")
-    private Resource currentProvinceResource;
-
-    @Value("${app.location-import.landmark-resource:classpath:data/landmarks.json}")
-    private Resource landmarkResource;
+    @Value("${app.location-import.current-ward-resource:classpath:data/wards-current-34.json}")
+    Resource currentWardResource;
 
     @Value("${app.location-import.cleanup-obsolete:false}")
     private boolean cleanupObsolete;
@@ -86,10 +80,7 @@ public class LocationImportService {
 
     @Transactional
     public ImportReport importData(boolean removeObsolete) {
-<<<<<<< HEAD
-=======
         Resource source = resolveSourceResource();
->>>>>>> codex/ui-functional-audit-polish
         MutableReport report = new MutableReport();
         Set<String> canonicalKeys = new HashSet<>();
         Map<String, Location> existingByKey = new HashMap<>();
@@ -102,11 +93,7 @@ public class LocationImportService {
             }
         }
 
-<<<<<<< HEAD
-        try (InputStream source = openLocationSource(); InputStream input = openUtf8BomSafe(source)) {
-=======
         try (InputStream input = openUtf8BomSafe(source.getInputStream())) {
->>>>>>> codex/ui-functional-audit-polish
             List<Map<String, Object>> provinces = objectMapper.readValue(input, new TypeReference<>() { });
             for (Map<String, Object> provinceData : provinces) {
                 String sourceCode = requiredText(provinceData, "code");
@@ -128,14 +115,9 @@ public class LocationImportService {
                 }
             }
 
-<<<<<<< HEAD
-            Map<String, Set<String>> currentProvinceAliases = importCurrentProvinces(
-                    existingByKey, canonicalKeys, report);
-            importLandmarks(existingByKey, currentProvinceAliases, canonicalKeys, report);
-=======
             importCurrentProvinces(existingByKey, canonicalKeys, report);
+            importCurrentWards(existingByKey, canonicalKeys, report);
             importLandmarks(existingByKey, existingLandmarksBySourceIdentity, canonicalKeys, report);
->>>>>>> codex/ui-functional-audit-polish
 
             if (removeObsolete) {
                 report.removed = removeObsoleteRows(canonicalKeys);
@@ -143,10 +125,6 @@ public class LocationImportService {
             locationRepository.flush();
             return report.toImmutable();
         } catch (Exception exception) {
-<<<<<<< HEAD
-            log.error("Location import failed", exception);
-            throw new IllegalStateException("Cannot import the packaged UTF-8 location catalog.", exception);
-=======
             log.error("Location import failed for {}", source.getDescription(), exception);
             throw new IllegalStateException(
                     "Không thể import địa giới từ resource UTF-8: " + source.getDescription(),
@@ -196,186 +174,41 @@ public class LocationImportService {
         } catch (IOException exception) {
             throw new IllegalStateException("Không thể đọc danh mục 34 tỉnh/thành hiện hành: "
                     + resource.getDescription(), exception);
->>>>>>> codex/ui-functional-audit-polish
         }
     }
 
-    private Map<String, Set<String>> importCurrentProvinces(Map<String, Location> existingByKey,
-                                                             Set<String> canonicalKeys,
-                                                             MutableReport report) throws IOException {
-        Resource resource = requireReadable(currentProvinceResource, "current province");
-        Map<String, Set<String>> aliasesByCurrentCode = new HashMap<>();
-        Set<String> allLegacyCodes = new HashSet<>();
-        try (InputStream input = openUtf8BomSafe(resource.getInputStream())) {
+    private void importCurrentWards(Map<String, Location> existingByKey,
+                                    Set<String> canonicalKeys, MutableReport report) {
+        if (currentWardResource == null || !currentWardResource.exists() || !currentWardResource.isReadable()) {
+            log.info("Current two-tier ward resource is unavailable; keeping legacy compatibility data.");
+            return;
+        }
+        try (InputStream input = openUtf8BomSafe(currentWardResource.getInputStream())) {
             List<Map<String, Object>> provinces = objectMapper.readValue(input, new TypeReference<>() { });
-            if (provinces.size() != 34) {
-                throw new IllegalArgumentException("Current province catalog must contain exactly 34 rows.");
-            }
             for (Map<String, Object> provinceData : provinces) {
-                String sourceCode = requiredText(provinceData, "sourceCode");
-                if (!sourceCode.startsWith(ProvinceCompatibilityService.CURRENT_PREFIX)) {
-                    throw new IllegalArgumentException("Invalid current province code: " + sourceCode);
-                }
-                String officialCode = requiredText(provinceData, "officialCode");
-                Set<String> legacyCodes = new java.util.LinkedHashSet<>(stringList(
-                        provinceData, "legacyProvinceCodes"));
-                if (legacyCodes.isEmpty() || aliasesByCurrentCode.putIfAbsent(sourceCode, legacyCodes) != null) {
-                    throw new IllegalArgumentException("Invalid or duplicate current province mapping: " + sourceCode);
-                }
-                for (String legacyCode : legacyCodes) {
-                    if (!allLegacyCodes.add(legacyCode)) {
-                        throw new IllegalArgumentException("Legacy province code is mapped more than once: " + legacyCode);
-                    }
-                    if (!existingByKey.containsKey(key("PROVINCE", legacyCode))) {
-                        throw new IllegalArgumentException("Legacy province is absent from the baseline: " + legacyCode);
-                    }
-                }
-
-                String name = requiredVietnameseName(provinceData);
-                Location current = upsert(existingByKey, "PROVINCE", sourceCode,
-                        "P-" + sourceCode, name, null, null, name, report);
-                current.setSortOrder(Integer.parseInt(officialCode));
-                locationRepository.save(current);
-                canonicalKeys.add(key("PROVINCE", sourceCode));
-                report.provinces++;
-            }
-        }
-        if (allLegacyCodes.size() != 63) {
-            throw new IllegalArgumentException("Current province catalog must map exactly 63 legacy codes.");
-        }
-        return aliasesByCurrentCode;
-    }
-
-    private void importLandmarks(Map<String, Location> existingByKey,
-                                 Map<String, Set<String>> currentProvinceAliases,
-                                 Set<String> canonicalKeys,
-                                 MutableReport report) throws IOException {
-        Resource resource = requireReadable(landmarkResource, "landmark");
-        Set<String> seenCodes = new HashSet<>();
-        int errorsBeforeImport = report.errors;
-        try (InputStream input = openUtf8BomSafe(resource.getInputStream())) {
-            List<Map<String, Object>> landmarks = objectMapper.readValue(input, new TypeReference<>() { });
-            for (Map<String, Object> landmarkData : landmarks) {
-                try {
-                    String sourceCode = requiredText(landmarkData, "code");
-                    if (!seenCodes.add(sourceCode)) {
-                        throw new IllegalArgumentException("Duplicate landmark code: " + sourceCode);
-                    }
-                    String provinceCode = requiredText(landmarkData, "provinceCode");
-                    Location province = existingByKey.get(key("PROVINCE", provinceCode));
-                    if (province == null) {
-                        throw new IllegalArgumentException("Unknown landmark province: " + provinceCode);
-                    }
-
-                    String status = optionalText(landmarkData, "status", "ACTIVE").toUpperCase();
-                    Double latitude = number(landmarkData, "latitude");
-                    Double longitude = number(landmarkData, "longitude");
-                    if ("ACTIVE".equals(status) && !validCoordinates(latitude, longitude)) {
-                        throw new IllegalArgumentException("Active landmark has invalid coordinates: " + sourceCode);
-                    }
-                    Double defaultRadiusKm = number(landmarkData, "defaultRadiusKm");
-                    if (defaultRadiusKm != null && (!Double.isFinite(defaultRadiusKm)
-                            || defaultRadiusKm <= 0 || defaultRadiusKm > 50)) {
-                        throw new IllegalArgumentException("Landmark radius must be within 0..50 km: " + sourceCode);
-                    }
-
-                    Location parent = province;
-                    String wardCode = optionalText(landmarkData, "wardCode", null);
-                    if (wardCode != null) {
-                        parent = existingByKey.get(key("WARD", wardCode));
-                        if (parent == null || parent.getParent() == null) {
-                            throw new IllegalArgumentException("Unknown landmark ward: " + wardCode);
-                        }
-                        String legacyParentCode = parent.getParent().getSourceCode();
-                        if (!provinceCode.equals(legacyParentCode)
-                                && !currentProvinceAliases.getOrDefault(provinceCode, Set.of()).contains(legacyParentCode)) {
-                            throw new IllegalArgumentException("Landmark ward/province mismatch: " + sourceCode);
-                        }
-                    }
-
-                    upsertLandmark(existingByKey, sourceCode, landmarkData, parent,
-                            latitude, longitude, defaultRadiusKm, status, report);
-                    canonicalKeys.add(key("LANDMARK", sourceCode));
-                    report.landmarks++;
-                } catch (IllegalArgumentException exception) {
-                    report.errors++;
-                    log.warn("Skipping invalid landmark fixture: {}", exception.getMessage());
+                String provinceCode = requiredText(provinceData, "code");
+                Location province = existingByKey.get(key("PROVINCE", "VN34-" + String.format("%02d", Integer.parseInt(provinceCode))));
+                if (province == null) throw new IllegalArgumentException("Không tìm thấy tỉnh hiện hành: " + provinceCode);
+                for (Map<String, Object> wardData : childList(provinceData, "wards")) {
+                    String officialCode = requiredText(wardData, "code");
+                    String sourceCode = "VN34-W-" + officialCode;
+                    String wardName = requiredVietnameseName(wardData);
+                    Location ward = upsert(existingByKey, "WARD", sourceCode, "W-" + sourceCode,
+                            wardName, province, null, wardName + ", " + province.getNameVi(), report);
+                    ward.setSourceProvider("PROVINCES_OPEN_API_V2");
+                    ward.setSourceObjectType("WARD");
+                    ward.setSourceObjectId(officialCode);
+                    ward.setDataQualityStatus("VERIFIED");
+                    ward.setLastSeenAt(LocalDateTime.now());
+                    locationRepository.save(ward);
+                    canonicalKeys.add(key("WARD", sourceCode));
+                    report.wards++;
                 }
             }
+        } catch (IOException exception) {
+            throw new IllegalStateException("Không thể đọc danh mục phường/xã 2 cấp hiện hành: "
+                    + currentWardResource.getDescription(), exception);
         }
-        if (report.errors > errorsBeforeImport) {
-            throw new IllegalArgumentException("Landmark catalog contains invalid rows; import was rolled back.");
-        }
-    }
-
-    private void upsertLandmark(Map<String, Location> existingByKey,
-                                String sourceCode,
-                                Map<String, Object> data,
-                                Location parent,
-                                Double latitude,
-                                Double longitude,
-                                Double defaultRadiusKm,
-                                String status,
-                                MutableReport report) {
-        String naturalKey = key("LANDMARK", sourceCode);
-        Location location = existingByKey.get(naturalKey);
-        boolean created = location == null;
-        if (created) {
-            location = new Location();
-            location.setLocationType("LANDMARK");
-            location.setSourceCode(sourceCode);
-        }
-
-        String nameVi = requiredText(data, "nameVi");
-        String nameEn = optionalText(data, "nameEn", null);
-        String category = optionalText(data, "category", "OTHER").toUpperCase();
-        Integer popularityScore = integer(data, "popularityScore", 0);
-        if (popularityScore < 0) {
-            throw new IllegalArgumentException("Landmark popularity cannot be negative: " + sourceCode);
-        }
-        String fullPath = nameVi + ", " + provinceFor(parent).getNameVi();
-        boolean changed = created
-                || !Objects.equals(location.getCode(), sourceCode)
-                || !Objects.equals(location.getNameVi(), nameVi)
-                || !Objects.equals(location.getNameEn(), nameEn)
-                || !Objects.equals(location.getParent() == null ? null : location.getParent().getId(), parent.getId())
-                || !Objects.equals(location.getLatitude(), latitude)
-                || !Objects.equals(location.getLongitude(), longitude)
-                || !Objects.equals(location.getCategory(), category)
-                || !Objects.equals(location.getDefaultRadiusKm(), defaultRadiusKm)
-                || !Objects.equals(location.getPopularityScore(), popularityScore)
-                || !Objects.equals(location.getStatus(), status);
-
-        location.setCode(sourceCode);
-        location.setSourceCode(sourceCode);
-        location.setNameVi(nameVi);
-        location.setNameEn(nameEn);
-        location.setNormalizedName(VietnameseTextNormalizer.normalize(nameVi));
-        location.setParent(parent);
-        location.setFullPath(fullPath);
-        location.setLatitude(latitude);
-        location.setLongitude(longitude);
-        location.setCategory(category);
-        location.setDefaultRadiusKm(defaultRadiusKm);
-        location.setPopularityScore(popularityScore);
-        location.setDescriptionVi(optionalText(data, "descriptionVi", null));
-        location.setDescriptionEn(optionalText(data, "descriptionEn", null));
-        location.setStatus(status);
-        Location saved = locationRepository.save(location);
-        existingByKey.put(naturalKey, saved);
-
-        if (created) report.added++;
-        else if (changed) report.updated++;
-        else report.skipped++;
-    }
-
-    private Location provinceFor(Location location) {
-        Location cursor = location;
-        for (int depth = 0; cursor != null && depth < 3; depth++) {
-            if ("PROVINCE".equals(cursor.getLocationType())) return cursor;
-            cursor = cursor.getParent();
-        }
-        throw new IllegalArgumentException("Location has no province parent.");
     }
 
     private Location upsert(Map<String, Location> existingByKey, String type, String sourceCode, String code, String name, Location parent,
@@ -605,21 +438,6 @@ public class LocationImportService {
         return staleWards.size() + staleParents.size();
     }
 
-<<<<<<< HEAD
-    private InputStream openLocationSource() throws IOException {
-        if (jsonFilePath != null && !jsonFilePath.isBlank()) {
-            Path configuredPath = Path.of(jsonFilePath).toAbsolutePath().normalize();
-            if (Files.isRegularFile(configuredPath)) return Files.newInputStream(configuredPath);
-        }
-        return requireReadable(locationResource, "location").getInputStream();
-    }
-
-    private Resource requireReadable(Resource resource, String catalogName) {
-        if (resource == null || !resource.exists() || !resource.isReadable()) {
-            throw new IllegalStateException("Packaged " + catalogName + " catalog is unavailable.");
-        }
-        return resource;
-=======
     Resource resolveSourceResource() {
         if (locationResource == null || !locationResource.exists() || !locationResource.isReadable()) {
             String description = locationResource == null ? "<not configured>" : locationResource.getDescription();
@@ -648,7 +466,6 @@ public class LocationImportService {
                             + ". Configure CURRENT_PROVINCE_IMPORT_RESOURCE or package classpath:data/provinces-current-34.json.");
         }
         return currentProvinceResource;
->>>>>>> codex/ui-functional-audit-polish
     }
 
     private InputStream openUtf8BomSafe(InputStream source) throws IOException {
@@ -680,28 +497,13 @@ public class LocationImportService {
     private Double number(Map<String, Object> source, String field) {
         Object value = source.get(field);
         if (value == null || value.toString().isBlank()) return null;
-<<<<<<< HEAD
-        try {
-            return Double.valueOf(value.toString());
-        } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException(field + " must be numeric.");
-        }
-=======
         try { return Double.valueOf(value.toString()); }
         catch (NumberFormatException exception) { throw new IllegalArgumentException(field + " không phải số hợp lệ."); }
->>>>>>> codex/ui-functional-audit-polish
     }
 
     private Integer integer(Map<String, Object> source, String field, int fallback) {
         Object value = source.get(field);
         if (value == null || value.toString().isBlank()) return fallback;
-<<<<<<< HEAD
-        try {
-            return Integer.valueOf(value.toString());
-        } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException(field + " must be an integer.");
-        }
-=======
         try { return Integer.valueOf(value.toString()); }
         catch (NumberFormatException exception) { throw new IllegalArgumentException(field + " không phải số nguyên hợp lệ."); }
     }
@@ -713,19 +515,11 @@ public class LocationImportService {
         if ("true".equalsIgnoreCase(value.toString())) return true;
         if ("false".equalsIgnoreCase(value.toString())) return false;
         throw new IllegalArgumentException(field + " không phải boolean hợp lệ.");
->>>>>>> codex/ui-functional-audit-polish
     }
 
     private List<String> stringList(Map<String, Object> source, String field) {
         Object value = source.get(field);
         if (!(value instanceof List<?> list)) return List.of();
-<<<<<<< HEAD
-        return list.stream()
-                .map(Object::toString)
-                .map(String::trim)
-                .filter(item -> !item.isBlank())
-                .toList();
-=======
         return list.stream().map(Object::toString).map(String::trim).filter(item -> !item.isBlank()).toList();
     }
 
@@ -737,15 +531,10 @@ public class LocationImportService {
         } catch (DateTimeParseException exception) {
             throw new IllegalArgumentException(field + " không phải thời gian ISO hợp lệ.");
         }
->>>>>>> codex/ui-functional-audit-polish
     }
 
     private boolean validCoordinates(Double latitude, Double longitude) {
         return latitude != null && longitude != null
-<<<<<<< HEAD
-                && Double.isFinite(latitude) && Double.isFinite(longitude)
-=======
->>>>>>> codex/ui-functional-audit-polish
                 && latitude >= -90 && latitude <= 90
                 && longitude >= -180 && longitude <= 180;
     }
@@ -762,10 +551,6 @@ public class LocationImportService {
         return type + "|" + sourceCode;
     }
 
-<<<<<<< HEAD
-    public record ImportReport(int added, int updated, int skipped, int removed, int errors,
-                               int provinces, int wards, int landmarks) { }
-=======
     private String sourceIdentity(String provider, String objectType, String objectId) {
         if (provider == null || provider.isBlank() || objectType == null || objectType.isBlank()
                 || objectId == null || objectId.isBlank()) {
@@ -775,7 +560,6 @@ public class LocationImportService {
     }
 
     public record ImportReport(int added, int updated, int skipped, int removed, int errors, int provinces, int wards, int landmarks) { }
->>>>>>> codex/ui-functional-audit-polish
 
     private static final class MutableReport {
         int added;
@@ -786,12 +570,6 @@ public class LocationImportService {
         int provinces;
         int wards;
         int landmarks;
-<<<<<<< HEAD
-        ImportReport toImmutable() {
-            return new ImportReport(added, updated, skipped, removed, errors, provinces, wards, landmarks);
-        }
-=======
         ImportReport toImmutable() { return new ImportReport(added, updated, skipped, removed, errors, provinces, wards, landmarks); }
->>>>>>> codex/ui-functional-audit-polish
     }
 }

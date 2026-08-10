@@ -41,6 +41,9 @@ class EndpointSecurityArchitectureTest {
             "PublicPromotionController.list",
             "PublicQuoteController.quote",
             "PropertySearchController.searchProperties",
+            // Public customer assistant used by the guest-facing chat widget.
+            "AiController.customerChat",
+            "AiController.customerChatStream",
             // Location lookup — /api/public/**
             "LocationController.search",
             "LocationController.getPopularProvinces",

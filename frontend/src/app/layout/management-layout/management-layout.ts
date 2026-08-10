@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, RouterModule, RouterOutlet } from '@angular/router';
 import { Subscription, filter } from 'rxjs';
 import { AuthService } from '../../core/services/auth';
@@ -7,9 +7,7 @@ import {
   ManagedProperty,
   ManagementApiService,
 } from '../../core/services/management-api.service';
-import { ManagementPropertyContextService } from '../../core/services/management-property-context.service';
 import { ActionCode, FunctionCode, PermissionService } from '../../core/services/permission.service';
-import { RouteFocusTargetDirective } from '../../shared/directives/focus-management.directive';
 
 interface ManagementLink {
   label: string;
@@ -23,20 +21,17 @@ interface ManagementLink {
 @Component({
   selector: 'app-management-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, RouterOutlet, RouteFocusTargetDirective],
+  imports: [CommonModule, RouterModule, RouterOutlet],
   templateUrl: './management-layout.html',
   styleUrls: ['./management-layout.css'],
 })
 export class ManagementLayout implements OnInit, OnDestroy {
-  @ViewChild('navigationTrigger') private navigationTrigger?: ElementRef<HTMLButtonElement>;
-  @ViewChild('profileTrigger') private profileTrigger?: ElementRef<HTMLButtonElement>;
   private authService = inject(AuthService);
   private managementApi = inject(ManagementApiService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   private permissionService = inject(PermissionService);
-  private propertyContext = inject(ManagementPropertyContextService);
 
   readonly navigationGroups: ReadonlyArray<{
     label: string;
@@ -45,17 +40,18 @@ export class ManagementLayout implements OnInit, OnDestroy {
     {
       label: 'Vận hành',
       links: [
-<<<<<<< HEAD
-        { label: 'Tổng quan', url: '/management/dashboard', icon: 'dashboard', functionCode: FunctionCode.HOTEL, actionCode: ActionCode.VIEW },
-        { label: 'Cơ sở lưu trú', url: '/management/properties', icon: 'domain', functionCode: FunctionCode.HOTEL, actionCode: ActionCode.VIEW },
-        { label: 'Loại phòng', url: '/management/room-types', icon: 'bed', functionCode: FunctionCode.ROOM_TYPE, actionCode: ActionCode.VIEW, operationalOnly: true },
-        { label: 'Phòng vật lý', url: '/management/rooms', icon: 'meeting_room', functionCode: FunctionCode.ROOM, actionCode: ActionCode.VIEW, operationalOnly: true },
-        { label: 'Dịch vụ cơ sở', url: '/management/services', icon: 'room_service', functionCode: FunctionCode.HOTEL_SERVICE, actionCode: ActionCode.VIEW, operationalOnly: true },
-=======
         { label: 'Tổng quan', url: '/management/dashboard', icon: 'dashboard' },
         { label: 'Cơ sở lưu trú', url: '/management/properties', icon: 'domain' },
         { label: 'Loại phòng', url: '/management/room-types', icon: 'bed', operationalOnly: true },
         { label: 'Danh sách phòng', url: '/management/rooms', icon: 'meeting_room', operationalOnly: true },
+        {
+          label: 'Tác vụ vận hành',
+          url: '/management/tasks',
+          icon: 'task_alt',
+          functionCode: FunctionCode.OPERATIONAL_TASK,
+          actionCode: ActionCode.VIEW,
+          operationalOnly: true,
+        },
         {
           label: 'Dịch vụ lưu trú',
           url: '/management/services',
@@ -64,12 +60,18 @@ export class ManagementLayout implements OnInit, OnDestroy {
           actionCode: ActionCode.VIEW,
           operationalOnly: true,
         },
->>>>>>> codex/ui-functional-audit-polish
       ],
     },
     {
       label: 'Tài khoản',
       links: [
+        {
+          label: 'Nhân viên & phân quyền',
+          url: '/admin/users',
+          icon: 'group',
+          functionCode: FunctionCode.USER,
+          actionCode: ActionCode.VIEW,
+        },
         {
           label: 'Cấu hình thanh toán',
           url: '/management/payment-configuration',
@@ -93,11 +95,6 @@ export class ManagementLayout implements OnInit, OnDestroy {
           functionCode: FunctionCode.PLATFORM_BILLING,
           actionCode: ActionCode.VIEW,
         },
-        {
-          label: 'Chủ sở hữu',
-          url: '/management/ownership',
-          icon: 'group',
-        },
       ],
     },
     {
@@ -118,11 +115,10 @@ export class ManagementLayout implements OnInit, OnDestroy {
           functionCode: FunctionCode.AUDIT_LOG,
           actionCode: ActionCode.VIEW,
         },
-        { label: 'Nhat ky tai chinh', url: '/management/financial-audit', icon: 'policy', functionCode: FunctionCode.AUDIT_LOG, actionCode: ActionCode.VIEW },
       ],
     },
     {
-      label: 'Housekeeping',
+      label: 'Dọn phòng',
       links: [
         {
           label: 'Hàng đợi dọn phòng',
@@ -131,6 +127,16 @@ export class ManagementLayout implements OnInit, OnDestroy {
           functionCode: FunctionCode.HOUSEKEEPING,
           actionCode: ActionCode.VIEW,
           operationalOnly: true,
+        },
+      ],
+    },
+    {
+      label: 'Hỗ trợ',
+      links: [
+        {
+          label: 'Liên hệ quản trị hệ thống',
+          url: '/management/support',
+          icon: 'support_agent',
         },
       ],
     },
@@ -149,7 +155,6 @@ export class ManagementLayout implements OnInit, OnDestroy {
   activePropertyOperational = false;
 
   private subscriptions = new Subscription();
-  private contextRequestSequence = 0;
 
   ngOnInit(): void {
     this.updateViewportState();
@@ -165,15 +170,14 @@ export class ManagementLayout implements OnInit, OnDestroy {
         .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
         .subscribe((event) => {
           this.updatePageTitle(event.urlAfterRedirects);
-          this.closeOverlays(false);
+          this.closeOverlays();
           this.cdr.markForCheck();
         }),
     );
 
     this.updatePageTitle(this.router.url);
-    this.subscriptions.add(this.propertyContext.propertyId$.subscribe(propertyId => this.loadContext(propertyId)));
     const propertyId = Number(this.route.snapshot.queryParamMap.get('propertyId'));
-    if (Number.isInteger(propertyId) && propertyId > 0) this.propertyContext.select(propertyId);
+    this.loadContext(Number.isInteger(propertyId) && propertyId > 0 ? propertyId : undefined);
   }
 
   ngOnDestroy(): void {
@@ -181,14 +185,12 @@ export class ManagementLayout implements OnInit, OnDestroy {
   }
 
   loadContext(propertyId?: number, updateUrl = false): void {
-    const requestSequence = ++this.contextRequestSequence;
     this.contextLoading = true;
     this.contextError = '';
 
     this.subscriptions.add(
       this.managementApi.context(propertyId).subscribe({
         next: (context) => {
-          if (requestSequence !== this.contextRequestSequence) return;
           this.properties = context.properties;
           this.activePropertyId = context.activePropertyId;
           this.activePropertyOperational = context.activePropertyOperational
@@ -206,7 +208,6 @@ export class ManagementLayout implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         },
         error: () => {
-          if (requestSequence !== this.contextRequestSequence) return;
           this.properties = [];
           this.activePropertyId = undefined;
           this.activePropertyOperational = false;
@@ -221,11 +222,8 @@ export class ManagementLayout implements OnInit, OnDestroy {
   selectProperty(rawValue: string): void {
     const requestedId = Number(rawValue);
     if (!Number.isInteger(requestedId) || requestedId <= 0) return;
-    this.propertyContext.select(requestedId);
-    void this.router.navigate([], {
-      queryParams: { propertyId: requestedId },
-      queryParamsHandling: 'merge',
-    });
+
+    this.loadContext(requestedId, true);
   }
 
   logout(): void {
@@ -242,9 +240,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
   }
 
   toggleUserMenu(): void {
-    const restoreFocus = this.isUserMenuOpen;
     this.isUserMenuOpen = !this.isUserMenuOpen;
-    if (restoreFocus) queueMicrotask(() => this.profileTrigger?.nativeElement.focus());
   }
 
   closeMobileNavigation(): void {
@@ -252,14 +248,9 @@ export class ManagementLayout implements OnInit, OnDestroy {
   }
 
   @HostListener('document:keydown.escape')
-  closeOverlays(restoreFocus = true): void {
-    const navigationWasOpen = this.isMobileSidebarOpen;
-    const profileWasOpen = this.isUserMenuOpen;
+  closeOverlays(): void {
     this.isMobileSidebarOpen = false;
     this.isUserMenuOpen = false;
-    if (!restoreFocus) return;
-    if (profileWasOpen) queueMicrotask(() => this.profileTrigger?.nativeElement.focus());
-    else if (navigationWasOpen) queueMicrotask(() => this.navigationTrigger?.nativeElement.focus());
   }
 
   @HostListener('window:resize')
@@ -278,6 +269,13 @@ export class ManagementLayout implements OnInit, OnDestroy {
     return this.properties.find((property) => property.id === this.activePropertyId);
   }
 
+  propertyName(property: ManagedProperty): string {
+    return property.nameVi?.trim()
+      || property.name?.trim()
+      || property.nameEn?.trim()
+      || `Cơ sở #${property.id}`;
+  }
+
   statusLabel(status?: string): string {
     return ({
       ACTIVE: 'Đang hoạt động',
@@ -291,7 +289,11 @@ export class ManagementLayout implements OnInit, OnDestroy {
   }
 
   canViewLink(link: ManagementLink): boolean {
-    if (link.operationalOnly && !this.activePropertyOperational) return false;
+    if (
+      link.operationalOnly
+      && !this.activePropertyOperational
+      && !this.permissionService.isSuperAdmin()
+    ) return false;
     return !link.functionCode || this.permissionService.hasPermission(
       link.functionCode,
       link.actionCode ?? ActionCode.VIEW,

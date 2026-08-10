@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
+import { MessageService } from 'primeng/api';
 import { of } from 'rxjs';
 
 import { PASSWORD_POLICY, isPasswordLengthValid } from '../../../core/auth/password-policy';
@@ -19,22 +20,11 @@ describe('Authenticated password change', () => {
       imports: [AccountSettingsComponent],
       providers: [
         { provide: UserService, useValue: { changePassword } },
-<<<<<<< HEAD
-        {
-          provide: AuthService,
-          useValue: {
-            logout,
-            listSocialIdentities: vi.fn(() => of([])),
-            linkSocialIdentity: vi.fn(() => of(void 0)),
-            unlinkSocialIdentity: vi.fn(() => of(void 0)),
-          },
-        },
-=======
         { provide: AuthService, useValue: { logout, listSocialIdentities: () => of([]) } },
->>>>>>> codex/ui-functional-audit-polish
         { provide: Router, useValue: { navigate } },
         { provide: ActivatedRoute, useValue: { snapshot: {} } },
         { provide: PublicI18nService, useValue: { text: (key: string) => key } },
+        { provide: MessageService, useValue: { add: vi.fn() } },
       ],
     }).compileComponents();
   });

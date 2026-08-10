@@ -20,13 +20,11 @@ import {
   PropertyRevenueReportFilters,
   RevenueBasis,
   RevenueBreakdown,
-  RevenueExportFormat,
   RevenueReportResult,
   RevenueReportService,
   RevenueTransactionRow,
 } from '../../../core/services/revenue-report.service';
 import { FeedbackStateComponent } from '../../../shared/components/feedback-state/feedback-state.component';
-import { ActionCode, FunctionCode, PermissionService } from '../../../core/services/permission.service';
 
 @Component({
   selector: 'app-property-revenue',
@@ -40,7 +38,6 @@ export class PropertyRevenueComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly managementApi = inject(ManagementApiService);
   private readonly reportService = inject(RevenueReportService);
-  private readonly permissionService = inject(PermissionService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly report = signal<RevenueReportResult | null>(null);
@@ -49,12 +46,6 @@ export class PropertyRevenueComponent implements OnInit {
   readonly loading = signal(false);
   readonly contextLoading = signal(true);
   readonly errorMessage = signal('');
-  readonly exportLoading = signal<RevenueExportFormat | null>(null);
-  readonly exportMessage = signal('');
-  readonly exportChecksum = signal('');
-  readonly canExport = this.permissionService.hasPermission(FunctionCode.REPORT, ActionCode.EXPORT);
-  readonly page = signal(0);
-  readonly pageSize = 50;
 
   fromDate = this.monthStart();
   toDate = this.inputDate(new Date());
@@ -168,35 +159,7 @@ export class PropertyRevenueComponent implements OnInit {
   }
 
   visibleRows(): RevenueTransactionRow[] {
-    const start = this.page() * this.pageSize;
-    return (this.report()?.rows ?? []).slice(start, start + this.pageSize);
-  }
-
-  totalPages(): number { return Math.max(1, Math.ceil((this.report()?.rows.length ?? 0) / this.pageSize)); }
-  previousPage(): void { this.page.update(value => Math.max(0, value - 1)); }
-  nextPage(): void { this.page.update(value => Math.min(this.totalPages() - 1, value + 1)); }
-
-  export(format: RevenueExportFormat): void {
-    const propertyId = this.propertyId();
-    if (!propertyId || !this.canExport || this.exportLoading()) return;
-    this.exportLoading.set(format);
-    this.exportMessage.set(`Dang tao tep ${format}...`);
-    this.exportChecksum.set('');
-    this.reportService.exportPropertyRevenue(this.filters(propertyId), format)
-      .pipe(finalize(() => this.exportLoading.set(null)), takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: download => {
-          const url = URL.createObjectURL(download.blob);
-          const anchor = document.createElement('a');
-          anchor.href = url;
-          anchor.download = download.filename;
-          anchor.click();
-          URL.revokeObjectURL(url);
-          this.exportChecksum.set(download.checksum);
-          this.exportMessage.set(`Da tai ${download.filename} (${download.rowCount} dong).`);
-        },
-        error: (error: HttpErrorResponse) => this.exportMessage.set(this.errorMessageFrom(error)),
-      });
+    return (this.report()?.rows ?? []).slice(0, 100);
   }
 
   propertyName(): string {
@@ -237,8 +200,16 @@ export class PropertyRevenueComponent implements OnInit {
   private loadReport(propertyId: number): void {
     this.loading.set(true);
     this.errorMessage.set('');
-    const filters = this.filters(propertyId);
-    this.page.set(0);
+    const filters: PropertyRevenueReportFilters = {
+      from: this.fromDate,
+      to: this.toDate,
+      basis: this.basis,
+      propertyId,
+      provider: this.provider || undefined,
+      method: this.method || undefined,
+      transactionType: this.transactionType || undefined,
+      roomType: this.roomType || undefined,
+    };
 
     this.reportService.getPropertyRevenue(filters)
       .pipe(
@@ -252,19 +223,6 @@ export class PropertyRevenueComponent implements OnInit {
           this.errorMessage.set(this.errorMessageFrom(error));
         },
       });
-  }
-
-  private filters(propertyId: number): PropertyRevenueReportFilters {
-    return {
-      from: this.fromDate,
-      to: this.toDate,
-      basis: this.basis,
-      propertyId,
-      provider: this.provider || undefined,
-      method: this.method || undefined,
-      transactionType: this.transactionType || undefined,
-      roomType: this.roomType || undefined,
-    };
   }
 
   private errorMessageFrom(error: HttpErrorResponse): string {

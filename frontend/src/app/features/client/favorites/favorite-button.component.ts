@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Observable } from 'rxjs';
 import { FavoriteService } from '../../../core/services/favorite.service';
 import { AuthService } from '../../../core/services/auth';
+import { PublicI18nService } from '../../../core/i18n/public-i18n.service';
 
 @Component({
   selector: 'app-favorite-button',
@@ -18,11 +19,11 @@ import { AuthService } from '../../../core/services/auth';
       [disabled]="busy"
       [attr.aria-pressed]="isActive"
       [attr.aria-busy]="busy"
-      [attr.aria-label]="isActive ? 'Remove from saved stays' : 'Save this stay'"
-      [title]="isActive ? 'Remove from saved stays' : 'Save this stay'"
+      [attr.aria-label]="isActive ? i18n.text('PUBLIC.FAVORITES.REMOVE_ARIA') : i18n.text('PUBLIC.FAVORITES.SAVE_ARIA')"
+      [title]="isActive ? i18n.text('PUBLIC.FAVORITES.REMOVE_ARIA') : i18n.text('PUBLIC.FAVORITES.SAVE_ARIA')"
       (click)="toggle($event)">
       <i class="pi" [ngClass]="isActive ? 'pi-heart-fill' : 'pi-heart'" aria-hidden="true"></i>
-      <span *ngIf="showLabel">{{ isActive ? 'Saved' : 'Save' }}</span>
+      <span *ngIf="showLabel">{{ isActive ? i18n.text('PUBLIC.FAVORITES.SAVED') : i18n.text('PUBLIC.FAVORITES.SAVE') }}</span>
     </button>
   `,
   styles: [`
@@ -37,6 +38,7 @@ export class FavoriteButtonComponent {
   private readonly favoriteService = inject(FavoriteService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  readonly i18n = inject(PublicI18nService);
   busy = false;
 
   get isActive(): boolean { return this.favoriteService.isFavorite(this.hotelId); }

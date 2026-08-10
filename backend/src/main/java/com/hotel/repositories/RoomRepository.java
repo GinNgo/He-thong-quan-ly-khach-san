@@ -25,49 +25,19 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     @Query("""
             select count(room)
             from Room room
-            join room.hotel hotel
-            where hotel.approvalStatus = 'APPROVED'
-              and hotel.operationStatus = 'ACTIVE'
-              and hotel.isDemo = false
-              and room.status <> 'MAINTENANCE'
+            where room.roomType.id = :roomTypeId
+              and room.status not in :excludedRoomStatuses
               and (room.maintenanceStatus is null or room.maintenanceStatus = 'NONE')
             """)
-    long countSystemOperationalRooms();
-
-    @Query("""
-            select count(room)
-            from Room room
-            where room.roomType.id = :roomTypeId
-              and room.status in :eligibleRoomStatuses
-              and room.housekeepingStatus in :eligibleHousekeepingStatuses
-              and room.maintenanceStatus = 'NONE'
-            """)
-    long countRoomsInAvailabilityPool(
+    long countBookableRoomsByRoomTypeId(
             @Param("roomTypeId") Long roomTypeId,
-            @Param("eligibleRoomStatuses") List<String> eligibleRoomStatuses,
-            @Param("eligibleHousekeepingStatuses") List<String> eligibleHousekeepingStatuses
-    );
-
-    @Query("""
-            select room.roomType.id, count(room)
-            from Room room
-            where room.roomType.id in :roomTypeIds
-              and room.status in :eligibleRoomStatuses
-              and room.housekeepingStatus in :eligibleHousekeepingStatuses
-              and room.maintenanceStatus = 'NONE'
-            group by room.roomType.id
-            """)
-    List<Object[]> countRoomsInAvailabilityPoolByRoomTypeIds(
-            @Param("roomTypeIds") java.util.Collection<Long> roomTypeIds,
-            @Param("eligibleRoomStatuses") List<String> eligibleRoomStatuses,
-            @Param("eligibleHousekeepingStatuses") List<String> eligibleHousekeepingStatuses
+            @Param("excludedRoomStatuses") List<String> excludedRoomStatuses
     );
 
     @Query("""
             select room
             from Room room
-            where room.hotel.id = :hotelId
-              and room.roomType.id = :roomTypeId
+            where room.roomType.id = :roomTypeId
               and room.status not in :excludedRoomStatuses
               and (room.maintenanceStatus is null or room.maintenanceStatus = 'NONE')
               and room.id not in (
@@ -78,13 +48,12 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
                   where detail.roomType.id = :roomTypeId
                     and assignment.status = 'ASSIGNED'
                     and reservation.status not in :excludedReservationStatuses
-                    and coalesce(assignment.stayStartDate, reservation.checkInDate) < :checkOut
-                    and coalesce(assignment.stayEndDate, reservation.checkOutDate) > :checkIn
+                    and reservation.checkInDate < :checkOut
+                    and reservation.checkOutDate > :checkIn
               )
-            order by room.floor, room.roomNumber, room.id
+            order by room.id
             """)
     List<Room> findAvailableRoomsByRoomTypeAndDate(
-            @Param("hotelId") Long hotelId,
             @Param("roomTypeId") Long roomTypeId,
             @Param("excludedRoomStatuses") List<String> excludedRoomStatuses,
             @Param("excludedReservationStatuses") List<String> excludedReservationStatuses,
@@ -97,9 +66,8 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
             select room
             from Room room
             where room.roomType.id = :roomTypeId
-              and room.status in :eligibleRoomStatuses
-              and room.housekeepingStatus in :eligibleHousekeepingStatuses
-              and room.maintenanceStatus = 'NONE'
+              and room.status not in :excludedRoomStatuses
+              and (room.maintenanceStatus is null or room.maintenanceStatus = 'NONE')
               and room.id not in (
                   select assignment.room.id
                   from ReservationRoom assignment
@@ -108,15 +76,14 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
                   where detail.roomType.id = :roomTypeId
                     and assignment.status = 'ASSIGNED'
                     and reservation.status not in :excludedReservationStatuses
-                    and coalesce(assignment.stayStartDate, reservation.checkInDate) < :checkOut
-                    and coalesce(assignment.stayEndDate, reservation.checkOutDate) > :checkIn
+                    and reservation.checkInDate < :checkOut
+                    and reservation.checkOutDate > :checkIn
               )
-            order by room.floor, room.roomNumber, room.id
+            order by room.id
             """)
-    List<Room> findRoomsInDatedAvailabilityPoolForUpdate(
+    List<Room> findAvailableRoomsByRoomTypeAndDateForUpdate(
             @Param("roomTypeId") Long roomTypeId,
-            @Param("eligibleRoomStatuses") List<String> eligibleRoomStatuses,
-            @Param("eligibleHousekeepingStatuses") List<String> eligibleHousekeepingStatuses,
+            @Param("excludedRoomStatuses") List<String> excludedRoomStatuses,
             @Param("excludedReservationStatuses") List<String> excludedReservationStatuses,
             @Param("checkIn") java.time.LocalDate checkIn,
             @Param("checkOut") java.time.LocalDate checkOut
@@ -125,18 +92,6 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select room from Room room where room.id in :roomIds order by room.id")
     List<Room> findAllByIdForUpdate(@Param("roomIds") List<Long> roomIds);
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
-            select room
-            from Room room
-            where room.hotel.id = :hotelId
-              and room.id in :roomIds
-            order by room.id
-            """)
-    List<Room> findAllByHotelIdAndIdInForUpdate(
-            @Param("hotelId") Long hotelId,
-            @Param("roomIds") List<Long> roomIds);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select room from Room room where room.id = :roomId")

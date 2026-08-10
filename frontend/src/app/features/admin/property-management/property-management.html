@@ -29,8 +29,6 @@
           <th>Địa điểm</th>
           <th>Loại hình</th>
           <th>Trạng thái</th>
-          <th>Phê duyệt</th>
-          <th>Vận hành</th>
           <th class="actions">Hành động</th>
         </tr>
       </ng-template>
@@ -42,95 +40,27 @@
           </td>
           <td>{{ property.city || 'Chưa cập nhật' }}</td>
           <td>{{ property.propertyType || 'HOTEL' }}</td>
-          <td><p-tag [severity]="statusValueSeverity(property.status)" [value]="statusValueLabel(property.status)"></p-tag></td>
-          <td><p-tag [severity]="statusValueSeverity(property.approvalStatus)" [value]="statusValueLabel(property.approvalStatus)"></p-tag></td>
-          <td><p-tag [severity]="statusValueSeverity(property.operationStatus)" [value]="statusValueLabel(property.operationStatus)"></p-tag></td>
+          <td><p-tag [severity]="statusSeverity(property)" [value]="statusLabel(property)"></p-tag></td>
           <td class="actions">
             <ng-container *ngIf="!isAdmin">
               <button *ngIf="statusCode(property) === 'INACTIVE'" pButton type="button" icon="pi pi-send" class="p-button-rounded p-button-text" pTooltip="Gửi yêu cầu duyệt" (click)="submit(property)" aria-label="Gửi yêu cầu duyệt"></button>
             </ng-container>
             <ng-container *ngIf="isAdmin">
-              <button pButton type="button" icon="pi pi-pencil" class="p-button-rounded p-button-text" pTooltip="Chỉnh sửa hồ sơ" (click)="openEdit(property)" aria-label="Chỉnh sửa hồ sơ cơ sở"></button>
               <button *ngIf="statusCode(property) === 'PENDING'" pButton type="button" icon="pi pi-check" class="p-button-rounded p-button-text p-button-success" pTooltip="Duyệt" (click)="approve(property)" aria-label="Duyệt cơ sở"></button>
               <button *ngIf="statusCode(property) === 'PENDING'" pButton type="button" icon="pi pi-times" class="p-button-rounded p-button-text p-button-danger" pTooltip="Từ chối" (click)="reject(property)" aria-label="Từ chối cơ sở"></button>
-            </ng-container>
-            <button
-              *ngIf="canViewHistory"
-              pButton
-              type="button"
-              [icon]="historyLoading && historyPropertyId === property.propertyId ? 'pi pi-spinner pi-spin' : 'pi pi-history'"
-              class="p-button-rounded p-button-text"
-              pTooltip="Lịch sử xét duyệt"
-              (click)="openHistory(property)"
-              [disabled]="isLifecycleBusy(property) || historyLoading"
-              [attr.aria-label]="'Xem lịch sử cơ sở ' + property.name"
-            ></button>
-            <ng-container *ngIf="canManageLifecycle">
-              <button *ngIf="canRunLifecycle(property, 'SUSPEND')" pButton type="button" icon="pi pi-pause" class="p-button-rounded p-button-text p-button-warning" pTooltip="Tạm ngừng" (click)="openLifecycle(property, 'SUSPEND')" [disabled]="isLifecycleBusy(property)"></button>
-              <button *ngIf="canRunLifecycle(property, 'REACTIVATE')" pButton type="button" icon="pi pi-play" class="p-button-rounded p-button-text p-button-success" pTooltip="Kích hoạt lại" (click)="openLifecycle(property, 'REACTIVATE')" [disabled]="isLifecycleBusy(property)"></button>
-              <button *ngIf="canRunLifecycle(property, 'CLOSE')" pButton type="button" icon="pi pi-lock" class="p-button-rounded p-button-text p-button-danger" pTooltip="Đóng cơ sở" (click)="openLifecycle(property, 'CLOSE')" [disabled]="isLifecycleBusy(property)"></button>
             </ng-container>
           </td>
         </tr>
       </ng-template>
       <ng-template pTemplate="emptymessage">
-        <tr><td colspan="7"><div class="empty-state"><i class="pi pi-building"></i><strong>Chưa có cơ sở nào</strong><span>Tạo cơ sở đầu tiên để bắt đầu cấu hình loại phòng và phòng vật lý.</span><button *ngIf="isAdmin" pButton type="button" label="Thêm cơ sở" icon="pi pi-plus" (click)="openCreate()"></button></div></td></tr>
+        <tr><td colspan="5"><div class="empty-state"><i class="pi pi-building"></i><strong>Chưa có cơ sở nào</strong><span>Tạo cơ sở đầu tiên để bắt đầu cấu hình loại phòng và phòng vật lý.</span><button *ngIf="isAdmin" pButton type="button" label="Thêm cơ sở" icon="pi pi-plus" (click)="openCreate()"></button></div></td></tr>
       </ng-template>
     </p-table>
   </div>
 </section>
 
-<p-dialog
-  [(visible)]="lifecycleDialogVisible"
-  [modal]="true"
-  [draggable]="false"
-  [dismissableMask]="false"
-  [style]="{width:'min(560px, 96vw)'}"
-  [header]="lifecycleDialogTitle()"
-  [closable]="!lifecycleTarget || !isLifecycleBusy(lifecycleTarget)"
-  (onHide)="closeLifecycleDialog()">
-  <ng-container *ngIf="lifecycleTarget as target">
-    <div class="lifecycle-dialog" [class.lifecycle-dialog--terminal]="lifecycleAction === 'CLOSE'">
-      <div class="lifecycle-warning" role="note">
-        <i [class]="lifecycleAction === 'CLOSE' ? 'pi pi-exclamation-triangle' : 'pi pi-info-circle'" aria-hidden="true"></i>
-        <div><strong>{{ target.name }}</strong><p>{{ lifecycleWarning() }}</p></div>
-      </div>
-      <div *ngIf="lifecycleError" id="property-lifecycle-error" class="form-error" role="alert">
-        <i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ lifecycleError }}</span>
-      </div>
-      <label for="property-lifecycle-reason">Lý do *</label>
-      <textarea
-        id="property-lifecycle-reason"
-        pInputTextarea
-        rows="5"
-        maxlength="500"
-        [value]="lifecycleReason"
-        [disabled]="isLifecycleBusy(target)"
-        [attr.aria-invalid]="lifecycleError ? 'true' : null"
-        (input)="updateLifecycleReason($any($event.target).value)"></textarea>
-      <div class="lifecycle-reason-meta"><span>Nhập từ 10 đến 500 ký tự.</span><span>{{ lifecycleReason.length }}/500</span></div>
-    </div>
-  </ng-container>
-  <ng-template pTemplate="footer">
-    <button pButton type="button" label="Hủy" class="p-button-text" (click)="closeLifecycleDialog()" [disabled]="!!lifecycleTarget && isLifecycleBusy(lifecycleTarget)"></button>
-    <button pButton type="button" [label]="lifecycleTarget && isLifecycleBusy(lifecycleTarget) ? 'Đang xử lý...' : lifecycleDialogTitle()" [class.p-button-danger]="lifecycleAction === 'CLOSE'" (click)="submitLifecycle()" [disabled]="!lifecycleTarget || isLifecycleBusy(lifecycleTarget)"></button>
-  </ng-template>
-</p-dialog>
-
-<p-dialog
-  [(visible)]="historyDialogVisible"
-  [modal]="true"
-  [draggable]="false"
-  [dismissableMask]="false"
-  [closable]="!historyLoading"
-  [style]="{width:'min(760px, 96vw)'}"
-  [header]="'Lịch sử xét duyệt · ' + historyPropertyName"
-  (onHide)="closeHistoryDialog()">
-  <app-property-review-history [events]="historyEvents" [loading]="historyLoading" [error]="historyError" (retry)="retryHistory()" />
-</p-dialog>
-
-<p-dialog [(visible)]="dialogVisible" [modal]="true" [draggable]="false" [style]="{width:'min(920px, 96vw)'}" [header]="editingProperty ? 'Chỉnh sửa hồ sơ cơ sở' : 'Thêm cơ sở lưu trú'" [closable]="!saving" (onHide)="closeDialog()">
-  <form id="property-profile-form" [formGroup]="form" class="property-form" (ngSubmit)="save()" novalidate>
+<p-dialog [(visible)]="dialogVisible" [modal]="true" [draggable]="false" [style]="{width:'min(820px, 96vw)'}" header="Thêm cơ sở lưu trú" [closable]="!saving" (onHide)="closeCreate()">
+  <form id="property-create-form" [formGroup]="form" class="property-form" (ngSubmit)="save()" novalidate>
     <div *ngIf="formError" class="form-error" role="alert"><i class="pi pi-exclamation-circle"></i><span>{{ formError }}</span></div>
     <p class="form-intro">Các trường có dấu * là bắt buộc. Cơ sở sẽ được lưu ở trạng thái bản nháp.</p>
 
@@ -150,20 +80,16 @@
         <small *ngIf="isInvalid('provinceId')" class="field-error">Chọn tỉnh/thành phố.</small>
       </label>
       <label for="property-ward">Phường/xã *
-        <p-select inputId="property-ward" [options]="wards" optionLabel="nameVi" optionValue="id" formControlName="wardId" [placeholder]="form.controls.provinceId.value ? 'Chọn phường/xã' : 'Chọn tỉnh/thành phố trước'" [loading]="locationsLoading"></p-select>
+        <p-select inputId="property-ward" [options]="wards" optionLabel="displayName" optionValue="id" formControlName="wardId"
+          [placeholder]="form.controls.provinceId.value ? 'Chọn phường/xã' : 'Chọn tỉnh/thành phố trước'" [loading]="locationsLoading"
+          [filter]="true" filterBy="displayName,nameVi,legacyParentName" filterMatchMode="contains"
+          filterPlaceholder="Nhập tên phường/xã hoặc quận/huyện" emptyFilterMessage="Không tìm thấy phường/xã"></p-select>
         <small *ngIf="isInvalid('wardId')" class="field-error">Chọn phường/xã.</small>
       </label>
       <label class="wide" for="property-address">Địa chỉ *
-        <input id="property-address" pInputText formControlName="addressLine" autocomplete="street-address" [class.invalid]="isInvalid('addressLine')" />
-        <small *ngIf="isInvalid('addressLine')" class="field-error">Nhập địa chỉ cơ sở.</small>
+        <input id="property-address" pInputText formControlName="address" autocomplete="street-address" [class.invalid]="isInvalid('address')" />
+        <small *ngIf="isInvalid('address')" class="field-error">Nhập địa chỉ cơ sở.</small>
       </label>
-      <label for="property-latitude">Vĩ độ
-        <input id="property-latitude" pInputText type="number" min="-90" max="90" step="any" formControlName="latitude" />
-      </label>
-      <label for="property-longitude">Kinh độ
-        <input id="property-longitude" pInputText type="number" min="-180" max="180" step="any" formControlName="longitude" />
-      </label>
-      <small *ngIf="form.hasError('coordinatePair')" class="wide field-error">Vĩ độ và kinh độ phải được nhập cùng nhau.</small>
       <label for="property-stars">Hạng sao
         <input id="property-stars" pInputText type="number" min="0" max="5" formControlName="starRating" />
       </label>
@@ -175,55 +101,22 @@
         <small *ngIf="isInvalid('email')" class="field-error">Email chưa đúng định dạng.</small>
       </label>
       <label for="property-website">Website
-        <input id="property-website" pInputText type="url" formControlName="website" inputmode="url" [class.invalid]="isInvalid('website')" />
-        <small *ngIf="isInvalid('website')" class="field-error">Website phải bắt đầu bằng http:// hoặc https://.</small>
+        <input id="property-website" pInputText formControlName="website" inputmode="url" />
       </label>
-      <label for="property-checkin">Giờ nhận phòng
-        <input id="property-checkin" pInputText type="time" formControlName="checkinTime" />
+      <label class="wide" for="property-image">Ảnh đại diện (URL)
+        <input id="property-image" pInputText formControlName="mainImage" placeholder="/assets/properties/..." />
       </label>
-      <label for="property-checkout">Giờ trả phòng
-        <input id="property-checkout" pInputText type="time" formControlName="checkoutTime" />
-      </label>
-      <label for="property-min-price">Giá tối thiểu
-        <input id="property-min-price" pInputText type="number" min="0" formControlName="minPrice" />
-      </label>
-      <label for="property-max-price">Giá tối đa
-        <input id="property-max-price" pInputText type="number" min="0" formControlName="maxPrice" />
-      </label>
-      <small *ngIf="form.hasError('priceRange')" class="wide field-error">Giá tối thiểu không được lớn hơn giá tối đa.</small>
       <label class="wide" for="property-description-vi">Mô tả tiếng Việt
         <textarea id="property-description-vi" pInputTextarea rows="3" formControlName="descriptionVi"></textarea>
       </label>
       <label class="wide" for="property-description-en">Mô tả tiếng Anh
         <textarea id="property-description-en" pInputTextarea rows="3" formControlName="descriptionEn"></textarea>
       </label>
-      <label *ngIf="editingProperty" class="wide" for="property-reason">Lý do cập nhật *
-        <textarea id="property-reason" pInputTextarea rows="2" formControlName="reason" maxlength="500"></textarea>
-      </label>
     </div>
-
-    <app-property-gallery
-      *ngIf="editingProperty?.id"
-      [propertyId]="editingProperty!.id!"
-      [editable]="isAdmin">
-    </app-property-gallery>
-    <app-amenity-assignment
-      *ngIf="editingProperty?.id"
-      scope="property"
-      [entityId]="editingProperty!.id!"
-      [editable]="isAdmin"
-      [catalogEditable]="isAdmin"
-      title="Tiện nghi của cơ sở">
-    </app-amenity-assignment>
-    <app-operational-policy-editor
-      *ngIf="editingProperty?.id"
-      [propertyId]="editingProperty!.id!"
-      [editable]="isAdmin">
-    </app-operational-policy-editor>
 
   </form>
   <ng-template pTemplate="footer">
-    <button pButton type="button" label="Hủy" class="p-button-text" (click)="closeDialog()" [disabled]="saving"></button>
-    <button pButton type="submit" form="property-profile-form" [label]="saving ? 'Đang lưu...' : (editingProperty ? 'Lưu hồ sơ' : 'Lưu bản nháp')" icon="pi pi-check" [disabled]="saving || locationsLoading"></button>
+    <button pButton type="button" label="Hủy" class="p-button-text" (click)="closeCreate()" [disabled]="saving"></button>
+    <button pButton type="submit" form="property-create-form" [label]="saving ? 'Đang lưu...' : 'Lưu bản nháp'" icon="pi pi-check" [disabled]="saving || locationsLoading"></button>
   </ng-template>
 </p-dialog>

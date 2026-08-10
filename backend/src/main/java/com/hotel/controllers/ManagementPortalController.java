@@ -1,19 +1,11 @@
 package com.hotel.controllers;
 
 import com.hotel.dtos.*;
-<<<<<<< HEAD
-import com.hotel.services.HotelManagementService;
-=======
 import com.hotel.housekeeping.HousekeepingQueueService;
 import com.hotel.security.ActionCode;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.Permission;
->>>>>>> codex/ui-functional-audit-polish
 import com.hotel.services.ManagementPortalService;
-import com.hotel.security.ActionCode;
-import com.hotel.security.FunctionCode;
-import com.hotel.security.Permission;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,40 +20,20 @@ import java.util.Map;
 @PreAuthorize("hasAnyAuthority('PROPERTY_OWNER','HOTEL_ADMIN','HOTEL_MANAGER','HOUSEKEEPING','SUPER_ADMIN','ADMIN')")
 public class ManagementPortalController {
     private final ManagementPortalService service;
-<<<<<<< HEAD
-    private final HotelManagementService hotelManagementService;
-=======
     private final HousekeepingQueueService housekeepingQueueService;
->>>>>>> codex/ui-functional-audit-polish
 
     @GetMapping("/context")
-    @Permission(function = FunctionCode.HOTEL, action = ActionCode.VIEW)
     public ResponseEntity<Map<String, Object>> context(@RequestParam(required = false) Long activePropertyId) {
         return ResponseEntity.ok(service.context(activePropertyId));
     }
 
     @GetMapping("/properties")
-    @Permission(function = FunctionCode.HOTEL, action = ActionCode.VIEW)
-    public ResponseEntity<List<PropertyProfileDTO>> properties() { return ResponseEntity.ok(service.properties()); }
-
-    @GetMapping("/properties/{id}")
-    @Permission(function = FunctionCode.HOTEL, action = ActionCode.VIEW)
-    public ResponseEntity<PropertyProfileDTO> property(@PathVariable Long id) {
-        return ResponseEntity.ok(hotelManagementService.getOwnedProfile(id));
-    }
+    public ResponseEntity<List<Map<String, Object>>> properties() { return ResponseEntity.ok(service.properties()); }
 
     @PostMapping("/properties")
-    @Permission(function = FunctionCode.HOTEL, action = ActionCode.CREATE)
-    public ResponseEntity<PropertyProfileDTO> createProperty(@Valid @RequestBody PropertyProfileDTO request) {
+    @PreAuthorize("hasAnyAuthority('PROPERTY_OWNER','SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> createProperty(@RequestBody ManagementPropertyRequest request) {
         return ResponseEntity.ok(service.createProperty(request));
-    }
-
-    @PutMapping("/properties/{id}")
-    @Permission(function = FunctionCode.HOTEL, action = ActionCode.UPDATE)
-    public ResponseEntity<PropertyProfileDTO> updateProperty(
-            @PathVariable Long id,
-            @Valid @RequestBody PropertyProfileUpdateRequest request) {
-        return ResponseEntity.ok(hotelManagementService.updateOwnedHotel(id, request));
     }
 
     @GetMapping("/room-types")
@@ -72,21 +44,14 @@ public class ManagementPortalController {
 
     @PostMapping("/room-types")
     @Permission(function = FunctionCode.ROOM_TYPE, action = ActionCode.CREATE)
-    public ResponseEntity<RoomTypeDTO> createRoomType(@Valid @RequestBody RoomTypeDTO request) {
+    public ResponseEntity<RoomTypeDTO> createRoomType(@RequestBody RoomTypeDTO request) {
         return ResponseEntity.ok(service.createRoomType(request));
     }
 
     @PutMapping("/room-types/{id}")
     @Permission(function = FunctionCode.ROOM_TYPE, action = ActionCode.UPDATE)
-    public ResponseEntity<RoomTypeDTO> updateRoomType(@PathVariable Long id, @Valid @RequestBody RoomTypeDTO request) {
+    public ResponseEntity<RoomTypeDTO> updateRoomType(@PathVariable Long id, @RequestBody RoomTypeDTO request) {
         return ResponseEntity.ok(service.updateRoomType(id, request));
-    }
-
-    @DeleteMapping("/room-types/{id}")
-    @Permission(function = FunctionCode.ROOM_TYPE, action = ActionCode.DELETE)
-    public ResponseEntity<Void> deleteRoomType(@PathVariable Long id) {
-        service.deleteRoomType(id);
-        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/rooms")
@@ -97,19 +62,19 @@ public class ManagementPortalController {
 
     @PostMapping("/rooms")
     @Permission(function = FunctionCode.ROOM, action = ActionCode.CREATE)
-    public ResponseEntity<RoomDTO> createRoom(@Valid @RequestBody RoomDTO request) {
+    public ResponseEntity<RoomDTO> createRoom(@RequestBody RoomDTO request) {
         return ResponseEntity.ok(service.createRoom(request));
     }
 
     @PostMapping("/rooms/bulk")
     @Permission(function = FunctionCode.ROOM, action = ActionCode.CREATE)
-    public ResponseEntity<BulkRoomResultDTO> bulkRooms(@Valid @RequestBody BulkRoomRequest request) {
+    public ResponseEntity<List<RoomDTO>> bulkRooms(@RequestBody BulkRoomRequest request) {
         return ResponseEntity.ok(service.bulkRooms(request));
     }
 
     @PutMapping("/rooms/{id}")
     @Permission(function = FunctionCode.ROOM, action = ActionCode.UPDATE)
-    public ResponseEntity<RoomDTO> updateRoom(@PathVariable Long id, @Valid @RequestBody RoomDTO request) {
+    public ResponseEntity<RoomDTO> updateRoom(@PathVariable Long id, @RequestBody RoomDTO request) {
         return ResponseEntity.ok(service.updateRoom(id, request));
     }
 
@@ -125,20 +90,8 @@ public class ManagementPortalController {
         return ResponseEntity.ok(service.completeRoomMaintenance(id));
     }
 
-    @DeleteMapping("/rooms/{id}")
-    @Permission(function = FunctionCode.ROOM, action = ActionCode.DELETE)
-    public ResponseEntity<Void> deleteRoom(@PathVariable Long id) {
-        service.deleteRoom(id);
-        return ResponseEntity.noContent().build();
-    }
-
     @PostMapping("/housekeeping/{taskId}/complete")
-<<<<<<< HEAD
-    @Permission(function = FunctionCode.ROOM, action = ActionCode.UPDATE)
-    public ResponseEntity<Map<String, Object>> completeHousekeeping(@PathVariable Long taskId) {
-        return ResponseEntity.ok(service.completeHousekeeping(taskId));
-=======
-    @Permission(function = FunctionCode.HOUSEKEEPING, action = ActionCode.APPROVE)
+    @Permission(function = FunctionCode.HOUSEKEEPING, action = ActionCode.TASK_EXECUTE)
     public ResponseEntity<Map<String, Object>> completeHousekeeping(
             @PathVariable Long taskId,
             @RequestBody(required = false) HousekeepingCommandRequest request) {
@@ -151,6 +104,5 @@ public class ManagementPortalController {
                 "housekeepingStatus", task.roomHousekeepingStatus(),
                 "maintenanceStatus", task.roomMaintenanceStatus(),
                 "roomReleased", task.roomReleased()));
->>>>>>> codex/ui-functional-audit-polish
     }
 }

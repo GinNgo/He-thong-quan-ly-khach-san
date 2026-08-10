@@ -13,7 +13,8 @@ class JavaMailEmailDeliveryAdapterTest {
     @Test
     void disabledAdapterFailsClosedWithoutContactingSmtp() {
         JavaMailSender sender = mock(JavaMailSender.class);
-        JavaMailEmailDeliveryAdapter adapter = new JavaMailEmailDeliveryAdapter(sender, false, "sandbox@example.test");
+        JavaMailEmailDeliveryAdapter adapter = new JavaMailEmailDeliveryAdapter(
+                sender, false, "sandbox@example.test", "LuxeStay");
         EmailOutboxMessage message = new EmailOutboxMessage(null, "disabled-test", "hash", "test", "v1",
                 "guest@example.com", "Subject", null, "body", null, null, null, 1,
                 java.time.LocalDateTime.now());

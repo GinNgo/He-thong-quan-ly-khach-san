@@ -229,3 +229,4 @@ US2:
 - D03/D04 đã được mapping 14/14; không quay lại trạng thái TBD trừ khi trường phát hành phiên bản rubric mới.
 - Mọi task hoàn thành phải cập nhật verifiedAt và evidence tương ứng.
 - T042 được mở lại vì structural QA không phát hiện lỗi tương thích SVG của Microsoft Word; từ nay visual Word gate là bắt buộc.
+- Flowchart được quy ước là Activity Diagram nghiệp vụ: FLOW-01..FLOW-04 ánh xạ lần lượt UML-16..UML-19; không nhân đôi hình CRUD đơn giản trong DOCX (updated 2026-08-08).

@@ -50,7 +50,7 @@ describe('PaymentResult', () => {
     fixture.detectChanges();
 
     expect(component.status).toBe('PENDING');
-    expect(component.message).toContain('callback máy chủ');
+    expect(component.message).toContain('máy chủ xác nhận giao dịch');
   });
 
   it('shows a reconciliation state instead of reviving an expired reservation', () => {

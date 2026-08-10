@@ -13,10 +13,7 @@ export class PublicI18nService {
 
   text(key: string, params?: MessageParams): string {
     this.localeService.locale();
-<<<<<<< HEAD
-=======
 
->>>>>>> codex/ui-functional-audit-polish
     const translated = this.translate?.instant(key, params);
     const fallback = this.lookup(viMessages, key) ?? key;
     return this.interpolate(translated && translated !== key ? translated : fallback, params);

@@ -51,6 +51,9 @@ public class EmailService {
     @Value("${app.mail.login-url:http://localhost:4200/login}")
     private String loginUrl;
 
+    @Value("${app.mail.admin-recipient:}")
+    private String adminRecipient;
+
     @org.springframework.beans.factory.annotation.Autowired
     public EmailService(JavaMailSender mailSender, OperationalMetrics operationalMetrics,
                         EmailOutboxService emailOutboxService) {
@@ -98,6 +101,53 @@ public class EmailService {
         } catch (Exception exception) {
             operationalMetrics.recordExternal("mail", "registration", true, elapsed(startedAt));
             log.warn("MAIL_DELIVERY template=registration outcome=failure type={}",
+                    exception.getClass().getSimpleName());
+            return false;
+        }
+    }
+
+    /** Queues a partner-registration alert for the system administrator after commit. */
+    public boolean sendPartnerRegistrationAlert(Long propertyId, String ownerName, String ownerEmail,
+                                                String propertyName, String propertyAddress) {
+        if (!useOutbox() || propertyId == null) {
+            return false;
+        }
+        String recipient = normalizeDeliverableRecipient(adminRecipient);
+        if (recipient == null || (ownerEmail != null && recipient.equalsIgnoreCase(ownerEmail.trim()))) {
+            log.warn("MAIL_DELIVERY template=partner_registration_alert outcome=disabled_or_invalid_recipient");
+            return false;
+        }
+        String safeOwner = HtmlUtils.htmlEscape(ownerName == null ? "-" : ownerName.trim());
+        String safeEmail = HtmlUtils.htmlEscape(ownerEmail == null ? "-" : ownerEmail.trim());
+        String safeProperty = HtmlUtils.htmlEscape(propertyName == null ? "-" : propertyName.trim());
+        String safeAddress = HtmlUtils.htmlEscape(propertyAddress == null ? "-" : propertyAddress.trim());
+        EmailOutboxDtos.EnqueueRequest request = new EmailOutboxDtos.EnqueueRequest(
+                propertyId,
+                "partner-registration-alert:" + propertyId,
+                "partner_registration_alert",
+                "v1",
+                recipient,
+                "Có cơ sở mới đang chờ duyệt - LuxeStay",
+                "<p>Có một cơ sở mới vừa đăng ký và đang chờ quản trị viên duyệt.</p>"
+                        + "<p><strong>Cơ sở:</strong> " + safeProperty + "<br>"
+                        + "<strong>Chủ cơ sở:</strong> " + safeOwner + "<br>"
+                        + "<strong>Email:</strong> " + safeEmail + "<br>"
+                        + "<strong>Địa chỉ:</strong> " + safeAddress + "</p>",
+                "Có cơ sở mới đang chờ duyệt. Cơ sở: " + safeProperty + "; chủ cơ sở: " + safeOwner
+                        + "; email: " + safeEmail + "; địa chỉ: " + safeAddress,
+                null, null, null, 5);
+        try {
+            if (TransactionSynchronizationManager.isActualTransactionActive()
+                    && TransactionSynchronizationManager.isSynchronizationActive()) {
+                emailOutboxService.enqueueAfterCommit(request);
+            } else {
+                emailOutboxService.enqueue(request);
+            }
+            operationalMetrics.recordExternal("mail", "partner_registration_alert", false, Duration.ZERO);
+            return true;
+        } catch (Exception exception) {
+            operationalMetrics.recordExternal("mail", "partner_registration_alert", true, Duration.ZERO);
+            log.warn("MAIL_DELIVERY template=partner_registration_alert outcome=failure type={}",
                     exception.getClass().getSimpleName());
             return false;
         }
@@ -214,25 +264,6 @@ public class EmailService {
         }
     }
 
-<<<<<<< HEAD
-    public boolean sendOwnerInvitationEmail(String toEmail, String propertyName, String token, long expiresInDays) {
-        if (toEmail == null || toEmail.isBlank() || token == null || token.isBlank()) return false;
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(toEmail.trim());
-            message.setSubject("LuxeStay co-owner invitation");
-            message.setText("You were invited to co-own " + propertyName + ". Use this one-time token within "
-                    + expiresInDays + " days: " + token);
-            mailSender.send(message);
-            return true;
-        } catch (Exception exception) {
-            log.warn("MAIL_DELIVERY template=owner_invitation outcome=failure type={}", exception.getClass().getSimpleName());
-            return false;
-        }
-    }
-
-=======
     private Duration elapsed(long startedAt) {
         return Duration.ofNanos(System.nanoTime() - startedAt);
     }
@@ -396,6 +427,16 @@ public class EmailService {
         return normalized.equals("en") || normalized.startsWith("en-") ? "en" : "vi";
     }
 
+    private String normalizeDeliverableRecipient(String recipient) {
+        if (recipient == null || recipient.isBlank()) return null;
+        String normalized = recipient.trim().toLowerCase(Locale.ROOT);
+        if (!normalized.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) return null;
+        String domain = normalized.substring(normalized.lastIndexOf('@') + 1);
+        if (domain.equals("example.com") || domain.equals("guest.local")
+                || domain.endsWith(".test") || domain.endsWith(".local")) return null;
+        return normalized;
+    }
+
     private String normalizeTemplateValue(String value, String fallback) {
         if (value == null || value.isBlank()) return fallback;
         String normalized = value.replace('\r', ' ').replace('\n', ' ').trim();
@@ -445,7 +486,6 @@ public class EmailService {
                 .replace("{{loginUrl}}", safeLoginUrl);
     }
 
->>>>>>> codex/ui-functional-audit-polish
     private String passwordResetTemplate(String customerName, String safeResetUrl, long expiresInMinutes) {
         return """
                 <!doctype html>

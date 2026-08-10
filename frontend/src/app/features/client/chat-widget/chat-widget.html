@@ -3,184 +3,145 @@
     *ngIf="isOpen()"
     id="support-chat-panel"
     class="support-panel"
-    pFocusTrap
     role="dialog"
-    aria-modal="true"
+    aria-modal="false"
     aria-labelledby="support-chat-title"
-    aria-describedby="support-chat-description"
-    (keydown.escape)="closeChat(); $event.stopPropagation()">
+    aria-describedby="support-chat-description">
     <header class="support-header">
       <div class="support-brand-mark" aria-hidden="true">
         <i class="pi pi-headphones"></i>
       </div>
       <div class="support-heading">
         <h2 id="support-chat-title">LuxeStay Care</h2>
-<<<<<<< HEAD
-        <p id="support-chat-description">Ho tro truc tuyen tu doi ngu trung tam</p>
-        <span class="connection-status" role="status" aria-live="polite" [class.is-connected]="connectionState() === 'connected'">
-=======
         <p id="support-chat-description">{{ i18n.text('PUBLIC.SUPPORT.DESCRIPTION') }}</p>
         <span class="connection-status" [class.is-connected]="connectionState() === 'connected'">
->>>>>>> codex/ui-functional-audit-polish
           <span class="connection-dot" aria-hidden="true"></span>
           {{ connectionLabel() }}
         </span>
       </div>
-<<<<<<< HEAD
-      <button type="button" class="icon-button close-button" aria-label="Dong cua so ho tro" (click)="closeChat()">
-=======
       <button type="button" class="icon-button close-button" [attr.aria-label]="i18n.text('PUBLIC.SUPPORT.CLOSE')" (click)="closeChat()">
->>>>>>> codex/ui-functional-audit-polish
         <i class="pi pi-times" aria-hidden="true"></i>
       </button>
     </header>
 
-    <ng-container *ngIf="isLoggedIn()">
-      <div class="conversation-tools">
-        <label for="support-conversation">Cuoc tro chuyen</label>
-        <select
-          id="support-conversation"
-          name="supportConversation"
-          [ngModel]="selectedConversationId()"
-          (ngModelChange)="selectConversationById($event)">
-          <option [ngValue]="null" disabled>Chon hoi thoai</option>
-          <option *ngFor="let conversation of conversations()" [ngValue]="conversation.conversationId">
-            {{ conversation.subject }}
-          </option>
-        </select>
-        <div class="new-conversation-row">
-          <label class="visually-hidden" for="support-subject">Chu de hoi thoai moi</label>
-          <input
-            id="support-subject"
-            name="supportSubject"
-            type="text"
-            maxlength="120"
-            [(ngModel)]="newSubject"
-            placeholder="Chu de moi">
-          <button type="button" (click)="createConversation()" [disabled]="isCreatingConversation()">
-            <i class="pi" [class.pi-plus]="!isCreatingConversation()" [class.pi-spin]="isCreatingConversation()"
-              [class.pi-spinner]="isCreatingConversation()" aria-hidden="true"></i>
-            <span>Tao moi</span>
-          </button>
-        </div>
-      </div>
-    </ng-container>
+    <div *ngIf="isLoggedIn()" class="support-mode-switch" role="tablist" aria-label="Chọn hình thức hỗ trợ">
+      <button type="button" role="tab" [attr.aria-selected]="mode() === 'ai'" [class.active]="mode() === 'ai'" (click)="switchMode('ai')">
+        <i class="pi pi-sparkles" aria-hidden="true"></i> AI tư vấn
+      </button>
+      <button type="button" role="tab" [attr.aria-selected]="mode() === 'human'" [class.active]="mode() === 'human'" (click)="switchMode('human')">
+        <i class="pi pi-headphones" aria-hidden="true"></i> Gặp nhân viên
+      </button>
+    </div>
 
     <div class="support-body" #scrollMe role="log" aria-live="polite" aria-relevant="additions">
       <div *ngIf="!isLoggedIn()" class="support-state support-state-centered">
         <span class="state-icon" aria-hidden="true"><i class="pi pi-lock"></i></span>
-<<<<<<< HEAD
-        <h3>Dang nhap de tro chuyen</h3>
-        <p>Ban can dang nhap de xem lich su va gui yeu cau toi bo phan cham soc khach hang.</p>
-        <a routerLink="/login" class="support-primary-link">Dang nhap ngay</a>
-      </div>
-
-      <ng-container *ngIf="isLoggedIn()">
-        <div *ngIf="conversationState() === 'loading' || historyState() === 'loading'" class="support-state"
-          aria-label="Dang tai lich su chat">
-          <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
-          <span>Dang tai lich su ho tro...</span>
-=======
         <h3>{{ i18n.text('PUBLIC.SUPPORT.LOGIN_TITLE') }}</h3>
         <p>{{ i18n.text('PUBLIC.SUPPORT.LOGIN_BODY') }}</p>
         <a routerLink="/login" class="support-primary-link">{{ i18n.text('PUBLIC.SUPPORT.LOGIN') }}</a>
       </div>
 
-      <ng-container *ngIf="isLoggedIn()">
+      <ng-container *ngIf="isLoggedIn() && mode() === 'ai'">
+        <div class="ai-suggestions" *ngIf="aiMessages().length <= 1">
+          <button type="button" (click)="useSuggestion('Tư vấn giúp tôi chọn điểm đến phù hợp')">Chọn điểm đến</button>
+          <button type="button" (click)="useSuggestion('Tìm khu vực lưu trú thuận tiện cho tôi')">Tìm khu vực lưu trú</button>
+          <button type="button" (click)="useSuggestion('Tư vấn loại phòng phù hợp cho gia đình')">Chọn loại phòng</button>
+        </div>
+
+        <article *ngFor="let message of aiMessages()" class="message-row" [class.is-own]="message.sender === 'user'">
+          <div class="message-bubble" [class.is-own]="message.sender === 'user'" [class.is-ai]="message.sender === 'ai'">
+            <a
+              *ngIf="message.sender === 'ai' && message.searchParams"
+              class="ai-search-action"
+              routerLink="/search"
+              [queryParams]="message.searchParams"
+              (click)="closeChat()">
+              <i class="pi pi-search" aria-hidden="true"></i>
+              Xem phòng phù hợp với yêu cầu
+            </a>
+            <div
+              *ngIf="message.sender === 'ai'; else userMessage"
+              class="ai-formatted-message"
+              [innerHTML]="formatAiMessage(message.text)"></div>
+            <ng-template #userMessage><p>{{ message.text }}</p></ng-template>
+            <div *ngIf="message.sender === 'ai' && message.suggestedProperties?.length" class="ai-property-list">
+              <a
+                *ngFor="let property of message.suggestedProperties"
+                class="ai-property-card"
+                [routerLink]="['/hotel', property.id]"
+                [queryParams]="message.searchParams"
+                fragment="rooms"
+                (click)="closeChat()">
+                <img
+                  [src]="propertyImage(property)"
+                  [alt]="property.imageAltText || property.name"
+                  loading="lazy"
+                  (error)="handlePropertyImageError($event, property)">
+                <span class="ai-property-copy">
+                  <strong>{{ property.name }}</strong>
+                  <small>{{ property.lowestRoomType?.name || property.propertyType || 'Nơi lưu trú' }}</small>
+                  <b *ngIf="propertyPrice(property) as price">Từ {{ price | currency:'VND':'symbol':'1.0-0' }}/đêm</b>
+                </span>
+                <i class="pi pi-arrow-up-right" aria-hidden="true"></i>
+              </a>
+            </div>
+            <time>{{ message.time | date:'HH:mm' }}</time>
+          </div>
+        </article>
+
+        <div *ngIf="aiTyping()" class="ai-thinking" role="status" aria-label="AI đang chuẩn bị tư vấn">
+          <span class="ai-thinking-icon" aria-hidden="true"><i class="pi pi-sparkles"></i></span>
+          <span class="ai-thinking-bubble" aria-hidden="true">
+            <span class="ai-typing-dot"></span>
+            <span class="ai-typing-dot"></span>
+            <span class="ai-typing-dot"></span>
+          </span>
+        </div>
+        <div *ngIf="aiError()" class="connection-alert" role="alert">
+          <span>{{ aiError() }}</span>
+          <button type="button" class="text-action" (click)="switchMode('human')">Gặp nhân viên</button>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="isLoggedIn() && mode() === 'human'">
         <div *ngIf="historyState() === 'loading'" class="support-state" [attr.aria-label]="i18n.text('PUBLIC.SUPPORT.LOADING_HISTORY')">
           <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
           <span>{{ i18n.text('PUBLIC.SUPPORT.LOADING_HISTORY_TEXT') }}</span>
->>>>>>> codex/ui-functional-audit-polish
         </div>
 
-        <div *ngIf="historyState() === 'error' || conversationState() === 'error'"
-          class="support-state support-error" role="alert" aria-live="assertive" [appFocusOnError]="true">
+        <div *ngIf="historyState() === 'error'" class="support-state support-error" role="alert">
           <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
           <span>{{ historyError() }}</span>
-<<<<<<< HEAD
-          <button type="button" class="text-action" (click)="retryHistory()">Thu lai</button>
-=======
           <button type="button" class="text-action" (click)="loadHistory()">{{ i18n.text('PUBLIC.SUPPORT.RETRY') }}</button>
->>>>>>> codex/ui-functional-audit-polish
         </div>
 
         <div *ngIf="connectionError()" class="connection-alert" role="status">
           <span>{{ connectionError() }}</span>
-<<<<<<< HEAD
-          <button type="button" class="text-action" (click)="retryConnection()">Ket noi lai</button>
-=======
           <button type="button" class="text-action" (click)="retryConnection()">{{ i18n.text('PUBLIC.SUPPORT.RECONNECT') }}</button>
->>>>>>> codex/ui-functional-audit-polish
         </div>
 
-        <button *ngIf="hasOlderMessages()" type="button" class="load-older"
-          (click)="loadOlderMessages()" [disabled]="isLoadingOlder()">
-          <i class="pi" [class.pi-history]="!isLoadingOlder()" [class.pi-spin]="isLoadingOlder()"
-            [class.pi-spinner]="isLoadingOlder()" aria-hidden="true"></i>
-          {{ isLoadingOlder() ? 'Dang tai...' : 'Tai tin nhan cu hon' }}
-        </button>
-
-        <div *ngIf="conversationState() === 'ready' && conversations().length === 0"
-          class="support-state support-state-centered empty-state">
+        <div *ngIf="historyState() === 'ready' && messages().length === 0" class="support-state support-state-centered empty-state">
           <span class="state-icon" aria-hidden="true"><i class="pi pi-comments"></i></span>
-<<<<<<< HEAD
-          <h3>Tao cuoc tro chuyen dau tien</h3>
-          <p>Dat chu de ngan gon de doi ngu ho tro nam duoc van de cua ban.</p>
-=======
           <h3>{{ i18n.text('PUBLIC.SUPPORT.EMPTY_TITLE') }}</h3>
           <p>{{ i18n.text('PUBLIC.SUPPORT.EMPTY_BODY') }}</p>
->>>>>>> codex/ui-functional-audit-polish
         </div>
 
-        <div *ngIf="historyState() === 'ready' && selectedConversationId() && messages().length === 0"
-          class="support-state support-state-centered empty-state">
-          <span class="state-icon" aria-hidden="true"><i class="pi pi-comment"></i></span>
-          <h3>Bat dau trao doi</h3>
-          <p>Gui tin nhan dau tien trong cuoc tro chuyen da chon.</p>
-        </div>
-
-        <article *ngFor="let message of messages()" class="message-row" [class.is-own]="isOwnMessage(message)">
+        <article
+          *ngFor="let message of messages()"
+          class="message-row"
+          [class.is-own]="isOwnMessage(message)">
           <div class="message-bubble" [class.is-own]="isOwnMessage(message)">
             <p>{{ message.content }}</p>
             <time *ngIf="message.timestamp" [attr.datetime]="message.timestamp">
               {{ message.timestamp | date:'HH:mm' }}
             </time>
-            <small *ngIf="isOwnMessage(message)" class="message-state">
-              {{ messageStateLabel(message) }}
-            </small>
           </div>
         </article>
       </ng-container>
     </div>
 
-    <section *ngIf="isLoggedIn() && selectedConversationId()" aria-label="Tep dinh kem ho tro"
-      style="padding: .5rem .75rem; border-top: 1px solid var(--hotel-border)">
-      <div style="display: flex; align-items: center; justify-content: space-between; gap: .5rem">
-        <small>PDF, PNG, JPEG, TXT; toi da 5 MB</small>
-        <label style="color: var(--hotel-primary); cursor: pointer">
-          <input type="file" accept=".pdf,.png,.jpg,.jpeg,.txt" style="position: absolute; opacity: 0"
-            [disabled]="isUploadingAttachment() || isSelectedConversationClosed()"
-            (change)="uploadAttachment($event)">
-          {{ isUploadingAttachment() ? 'Dang tai...' : 'Dinh kem' }}
-        </label>
-      </div>
-      <p *ngIf="attachmentError()" role="alert" style="margin: .25rem 0; color: var(--hotel-danger); font-size: .75rem">
-        {{ attachmentError() }}
-      </p>
-      <div *ngIf="attachments().length" style="display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .35rem">
-        <button *ngFor="let attachment of attachments()" type="button" (click)="downloadAttachment(attachment)"
-          style="padding: .25rem .5rem; color: var(--hotel-primary); background: var(--hotel-primary-light); border: 1px solid var(--hotel-border); border-radius: .5rem">
-          <i class="pi pi-paperclip" aria-hidden="true"></i> {{ attachment.filename }}
-        </button>
-      </div>
-    </section>
-
     <form *ngIf="isLoggedIn()" class="support-composer" (ngSubmit)="sendMessage()">
-<<<<<<< HEAD
-      <label class="visually-hidden" for="support-message">Noi dung tin nhan ho tro</label>
-=======
       <label class="visually-hidden" for="support-message">{{ i18n.text('PUBLIC.SUPPORT.MESSAGE_LABEL') }}</label>
->>>>>>> codex/ui-functional-audit-polish
       <input
         #messageInput
         id="support-message"
@@ -189,34 +150,19 @@
         maxlength="2000"
         autocomplete="off"
         [(ngModel)]="newMessage"
-        [disabled]="isSending() || !selectedConversationId() || isSelectedConversationClosed()"
+        [disabled]="(mode() === 'human' && isSending()) || (mode() === 'ai' && aiTyping())"
         aria-describedby="support-send-status"
-<<<<<<< HEAD
-        placeholder="Nhap noi dung can ho tro...">
-      <button
-        type="submit"
-        class="send-button"
-        aria-label="Gui tin nhan ho tro"
-        [disabled]="!newMessage.trim() || isSending() || !selectedConversationId() || isSelectedConversationClosed()">
-        <i *ngIf="!isSending()" class="pi pi-send" aria-hidden="true"></i>
-        <i *ngIf="isSending()" class="pi pi-spin pi-spinner" aria-hidden="true"></i>
-      </button>
-      <p id="support-send-status" class="composer-status" [class.has-error]="sendError()" aria-live="polite"
-        [appFocusOnError]="!!sendError()">
-        {{ sendError() || (isSending() ? 'Dang cho may chu xac nhan...' : '') }}
-=======
-        [placeholder]="i18n.text('PUBLIC.SUPPORT.MESSAGE_PLACEHOLDER')">
+        [placeholder]="mode() === 'ai' ? 'Hỏi về điểm đến, khách sạn, loại phòng...' : i18n.text('PUBLIC.SUPPORT.MESSAGE_PLACEHOLDER')">
       <button
         type="submit"
         class="send-button"
         [attr.aria-label]="i18n.text('PUBLIC.SUPPORT.SEND')"
-        [disabled]="!newMessage.trim() || isSending() || connectionState() !== 'connected'">
-        <i *ngIf="!isSending()" class="pi pi-send" aria-hidden="true"></i>
-        <i *ngIf="isSending()" class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+        [disabled]="!newMessage.trim() || (mode() === 'human' && (isSending() || connectionState() !== 'connected')) || (mode() === 'ai' && aiTyping())">
+        <i *ngIf="(mode() === 'human' && !isSending()) || (mode() === 'ai' && !aiTyping())" class="pi pi-send" aria-hidden="true"></i>
+        <i *ngIf="(mode() === 'human' && isSending()) || (mode() === 'ai' && aiTyping())" class="pi pi-spin pi-spinner" aria-hidden="true"></i>
       </button>
       <p id="support-send-status" class="composer-status" [class.has-error]="sendError()" aria-live="polite">
-        {{ sendError() || (isSending() ? i18n.text('PUBLIC.SUPPORT.WAITING_ACK') : '') }}
->>>>>>> codex/ui-functional-audit-polish
+        {{ mode() === 'ai' ? aiError() : (sendError() || (isSending() ? i18n.text('PUBLIC.SUPPORT.WAITING_ACK') : '')) }}
       </p>
     </form>
   </section>
@@ -226,19 +172,11 @@
     #triggerButton
     type="button"
     class="support-trigger"
-<<<<<<< HEAD
-    aria-label="Mo ho tro truc tuyen LuxeStay"
-=======
     [attr.aria-label]="i18n.text('PUBLIC.SUPPORT.OPEN')"
->>>>>>> codex/ui-functional-audit-polish
     [attr.aria-expanded]="isOpen()"
     aria-controls="support-chat-panel"
     (click)="toggleChat()">
     <i class="pi pi-comments" aria-hidden="true"></i>
-<<<<<<< HEAD
-    <span>Ho tro</span>
-=======
     <span>{{ i18n.text('LAYOUT.SUPPORT') }}</span>
->>>>>>> codex/ui-functional-audit-polish
   </button>
 </div>

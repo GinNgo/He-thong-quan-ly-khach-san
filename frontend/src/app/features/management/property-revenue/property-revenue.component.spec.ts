@@ -4,7 +4,6 @@ import { of } from 'rxjs';
 import { ManagementApiService } from '../../../core/services/management-api.service';
 import { RevenueReportResult, RevenueReportService } from '../../../core/services/revenue-report.service';
 import { PropertyRevenueComponent } from './property-revenue.component';
-import { PermissionService } from '../../../core/services/permission.service';
 
 const reportFixture: RevenueReportResult = {
   context: 'PROPERTY_COMMERCE',
@@ -77,7 +76,7 @@ describe('PropertyRevenueComponent', () => {
           provide: ManagementApiService,
           useValue: {
             context: () => of({
-              properties: [{ id: 7, code: 'P7', nameVi: 'Bờ biển xanh', propertyType: 'HOTEL', addressLine: 'Đà Nẵng', provinceId: 1, wardId: 2, approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', isDemo: false }],
+              properties: [{ id: 7, code: 'P7', nameVi: 'Bờ biển xanh', propertyType: 'HOTEL', address: 'Đà Nẵng', approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', isDemo: false }],
               activePropertyId: 7,
               planCode: 'PRO',
               subscriptionStatus: 'ACTIVE',
@@ -88,11 +87,7 @@ describe('PropertyRevenueComponent', () => {
             }),
           },
         },
-        { provide: PermissionService, useValue: { hasPermission: () => true } },
-        { provide: RevenueReportService, useValue: {
-          getPropertyRevenue: () => of(reportFixture),
-          exportPropertyRevenue: () => of({ blob: new Blob(['report']), filename: 'revenue.csv', checksum: 'a'.repeat(64), rowCount: 1 }),
-        } },
+        { provide: RevenueReportService, useValue: { getPropertyRevenue: () => of(reportFixture) } },
       ],
     }).compileComponents();
 
@@ -105,6 +100,5 @@ describe('PropertyRevenueComponent', () => {
     expect(text).toContain('Bờ biển xanh');
     expect(text).toContain('Khớp dữ liệu');
     expect(text).toContain('TX-7');
-    expect(text).toContain('CSV');
   });
 });

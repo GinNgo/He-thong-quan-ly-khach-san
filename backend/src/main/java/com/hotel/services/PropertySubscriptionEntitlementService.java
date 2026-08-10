@@ -16,7 +16,7 @@ import com.hotel.platformbilling.subscription.SubscriptionEntitlementRepository;
 import com.hotel.repositories.AccountSubscriptionRepository;
 import com.hotel.repositories.UserPropertyRepository;
 import com.hotel.repositories.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +41,7 @@ import java.util.stream.Collectors;
  * legacy subscriptions are projected only when their property scope is unambiguous.
  */
 @Service
+@RequiredArgsConstructor
 public class PropertySubscriptionEntitlementService {
 
     private final SubscriptionEntitlementRepository platformRepository;
@@ -51,26 +52,7 @@ public class PropertySubscriptionEntitlementService {
     private final FinancialAuditService auditService;
     private final ObjectMapper objectMapper;
 
-    private final Clock clock;
-
-    @Autowired
-    public PropertySubscriptionEntitlementService(SubscriptionEntitlementRepository platformRepository,
-            LegacySubscriptionEntitlementProjectionRepository legacyRepository,
-            UserPropertyRepository userPropertyRepository, AccountSubscriptionRepository accountSubscriptionRepository,
-            UserRepository userRepository, FinancialAuditService auditService, ObjectMapper objectMapper) {
-        this(platformRepository, legacyRepository, userPropertyRepository, accountSubscriptionRepository,
-                userRepository, auditService, objectMapper, Clock.systemUTC());
-    }
-
-    PropertySubscriptionEntitlementService(SubscriptionEntitlementRepository platformRepository,
-            LegacySubscriptionEntitlementProjectionRepository legacyRepository,
-            UserPropertyRepository userPropertyRepository, AccountSubscriptionRepository accountSubscriptionRepository,
-            UserRepository userRepository, FinancialAuditService auditService, ObjectMapper objectMapper, Clock clock) {
-        this.platformRepository = platformRepository; this.legacyRepository = legacyRepository;
-        this.userPropertyRepository = userPropertyRepository; this.accountSubscriptionRepository = accountSubscriptionRepository;
-        this.userRepository = userRepository; this.auditService = auditService; this.objectMapper = objectMapper;
-        this.clock = clock;
-    }
+    private final Clock clock = Clock.systemUTC();
 
     @Transactional
     public EntitlementView getCurrent(Long targetHotelId) {
@@ -223,14 +205,12 @@ public class PropertySubscriptionEntitlementService {
                 && (entitlement.isLifetime()
                 || entitlement.getEffectiveUntil() != null && entitlement.getEffectiveUntil().isAfter(now));
         Map<String, Integer> limits = active ? parseSnapshot(entitlement.getFeatureSnapshotJson()) : Map.of();
-        String publicStatus = !active && entitlement.getStatus() == SubscriptionEntitlement.Status.ACTIVE
-                ? SubscriptionEntitlement.Status.EXPIRED.name() : entitlement.getStatus().name();
         return new EntitlementView(
                 entitlement.getTargetHotel().getId(), "PLATFORM", true,
                 entitlement.getPlan() == null ? null : entitlement.getPlan().getId(),
                 entitlement.getPlan() == null ? null : entitlement.getPlan().getCode(),
                 entitlement.getPlan() == null ? null : entitlement.getPlan().getNameVi(),
-                publicStatus, entitlement.getEffectiveFrom(), entitlement.getEffectiveUntil(),
+                entitlement.getStatus().name(), entitlement.getEffectiveFrom(), entitlement.getEffectiveUntil(),
                 entitlement.isLifetime(), limits, entitlement.getContract() == null ? null : entitlement.getContract().getPublicId(),
                 active ? null : "PLATFORM_ENTITLEMENT_NOT_ACTIVE");
     }

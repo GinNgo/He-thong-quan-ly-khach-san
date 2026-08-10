@@ -11,14 +11,12 @@ import {
 } from '../../../core/services/property-payment.service';
 import { PropertyPaymentPanelComponent } from './property-payment-panel.component';
 import { AsyncActionCoordinatorService } from '../../../core/services/async-action-coordinator.service';
-import { BookingCheckoutRecoveryService, CheckoutPhase } from './booking-checkout-recovery.service';
-import { OperationalPolicyService, PublicOperationalPolicy } from '../../../core/services/operational-policy.service';
-import { FocusOnErrorDirective } from '../../../shared/directives/focus-management.directive';
+import { PaymentService } from '../../../core/services/payment.service';
 
 @Component({
   selector: 'app-booking-checkout',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, PropertyPaymentPanelComponent, FocusOnErrorDirective],
+  imports: [CommonModule, RouterModule, FormsModule, PropertyPaymentPanelComponent],
   templateUrl: './booking-checkout.component.html',
   styleUrls: ['./booking-checkout.component.css']
 })
@@ -27,14 +25,10 @@ export class BookingCheckoutComponent implements OnInit {
   private router = inject(Router);
   private clientApi = inject(ClientApiService);
   private propertyPaymentService = inject(PropertyPaymentService);
+  private paymentService = inject(PaymentService);
   private changeDetector = inject(ChangeDetectorRef);
   private actionCoordinator = inject(AsyncActionCoordinatorService);
-<<<<<<< HEAD
-  private checkoutRecovery = inject(BookingCheckoutRecoveryService);
-  private policyApi = inject(OperationalPolicyService);
-=======
   readonly i18n = inject(PublicI18nService);
->>>>>>> codex/ui-functional-audit-polish
 
   roomTypeId: number = 0;
   roomTypeName = '';
@@ -59,7 +53,6 @@ export class BookingCheckoutComponent implements OnInit {
 
   isSubmitting = false;
   bookingSuccess = false;
-  checkoutPhase: CheckoutPhase | null = null;
   errorMessage = '';
   contextError = '';
   reservationDetails: any = null;
@@ -73,8 +66,6 @@ export class BookingCheckoutComponent implements OnInit {
   private paymentRequestIdentity = '';
   private reservedPaymentMethod = '';
   private bookingIdempotencyKey = '';
-  operationalPolicy: PublicOperationalPolicy | null = null;
-  policyAccepted = false;
 
   ngOnInit(): void {
     this.route.paramMap.subscribe(params => {
@@ -83,11 +74,7 @@ export class BookingCheckoutComponent implements OnInit {
         this.roomTypeId = Number(id);
         this.bookingData.roomTypeId = this.roomTypeId;
         this.validateBookingContext();
-<<<<<<< HEAD
-        this.resumeCheckout();
-=======
         this.loadQuote();
->>>>>>> codex/ui-functional-audit-polish
       }
     });
 
@@ -106,11 +93,7 @@ export class BookingCheckoutComponent implements OnInit {
       this.loadPlacementDisclosure();
       this.bookingData.couponCode = params['couponCode'] || undefined;
       this.validateBookingContext();
-<<<<<<< HEAD
-      this.loadOperationalPolicy();
-=======
       this.loadQuote();
->>>>>>> codex/ui-functional-audit-polish
     });
 
     this.prefillUserInfo();
@@ -119,14 +102,9 @@ export class BookingCheckoutComponent implements OnInit {
   submitBooking(): void {
     if (this.isSubmitting || !this.bookingContextValid) return;
     this.errorMessage = '';
-<<<<<<< HEAD
-    if (this.operationalPolicy && !this.policyAccepted) {
-      this.errorMessage = 'Vui lòng đọc và xác nhận chính sách lưu trú trước khi đặt phòng.';
-=======
     if (this.quoteLoading || !this.quote) {
       this.errorMessage = this.quoteError || this.i18n.text('PUBLIC.BOOKING.QUOTE_REQUIRED');
       if (!this.quoteLoading) this.loadQuote();
->>>>>>> codex/ui-functional-audit-polish
       return;
     }
     if (this.reservationDetails?.id && !this.paymentAttempt) {
@@ -148,14 +126,11 @@ export class BookingCheckoutComponent implements OnInit {
     }
 
     this.isSubmitting = true;
-    this.bookingData.operationalPolicyVersion = this.operationalPolicy?.version;
     const bookingKey = this.getBookingIdempotencyKey();
     this.actionCoordinator.run('booking:create', () => this.clientApi.bookRoom(this.bookingData, bookingKey)).subscribe({
       next: (res) => {
         this.reservationDetails = res;
         this.reservedPaymentMethod = this.bookingData.paymentMethod;
-        this.checkoutPhase = 'RESERVATION_CREATED';
-        this.persistRecovery();
         
         if (this.bookingData.paymentMethod !== 'PAY_AT_HOTEL') {
           this.createPaymentAttempt(res.id);
@@ -169,13 +144,13 @@ export class BookingCheckoutComponent implements OnInit {
       error: (err) => {
         console.error('Error submitting booking', err);
         this.isSubmitting = false;
-        if (err?.status === 409) {
-          this.errorMessage = this.i18n.text('PUBLIC.BOOKING.ERROR_ROOM_SOLD_OUT');
+        if (err?.error?.message) {
+          this.errorMessage = err.error.message;
           this.changeDetector.markForCheck();
           return;
         }
-        if (err?.error?.message) {
-          this.errorMessage = err.error.message;
+        if (err?.status === 409) {
+          this.errorMessage = this.i18n.text('PUBLIC.BOOKING.ERROR_ROOM_SOLD_OUT');
           this.changeDetector.markForCheck();
           return;
         }
@@ -241,8 +216,6 @@ export class BookingCheckoutComponent implements OnInit {
 
   onPaymentAttemptChange(attempt: PropertyPaymentAttempt): void {
     this.paymentAttempt = attempt;
-    this.checkoutPhase = this.phaseForAttempt(attempt);
-    this.persistRecovery();
   }
 
   retryPaymentAttempt(): void {
@@ -354,6 +327,32 @@ export class BookingCheckoutComponent implements OnInit {
       this.paymentIdempotencyKey = this.newRequestId();
     }
 
+    if (method === 'VNPAY') {
+      this.paymentService.createPaymentSession(
+        reservationId,
+        'VNPAY',
+        this.paymentIdempotencyKey,
+      ).subscribe({
+        next: (session) => {
+          this.isSubmitting = false;
+          if (!session.url) {
+            this.errorMessage = this.i18n.text('PUBLIC.BOOKING.ERROR_PAYMENT_CONNECTION');
+            this.changeDetector.markForCheck();
+            return;
+          }
+          window.location.href = session.url;
+        },
+        error: (err) => {
+          console.error('Unable to create VNPAY payment session', err);
+          this.isSubmitting = false;
+          this.errorMessage = err?.error?.message
+            || this.i18n.text('PUBLIC.BOOKING.ERROR_PAYMENT_CONNECTION');
+          this.changeDetector.markForCheck();
+        },
+      });
+      return;
+    }
+
     this.propertyPaymentService.createAttempt(
       reservationId,
       { purpose: 'DEPOSIT', method },
@@ -363,8 +362,6 @@ export class BookingCheckoutComponent implements OnInit {
         this.paymentAttempt = attempt;
         this.isSubmitting = false;
         this.bookingSuccess = true;
-        this.checkoutPhase = this.phaseForAttempt(attempt);
-        this.persistRecovery();
         this.changeDetector.markForCheck();
         if (attempt.redirectUrl) {
           window.location.href = attempt.redirectUrl;
@@ -418,80 +415,5 @@ export class BookingCheckoutComponent implements OnInit {
       expiresAt: Date.now() + 30 * 60 * 1000,
     }));
     return this.bookingIdempotencyKey;
-  }
-
-  private resumeCheckout(): void {
-    const state = this.checkoutRecovery.load(this.roomTypeId);
-    if (!state) return;
-    this.clientApi.getReservation(state.reservationId).subscribe({
-      next: (reservation) => {
-        this.reservationDetails = reservation;
-        this.reservedPaymentMethod = state.paymentMethod;
-        this.checkoutPhase = state.phase;
-        this.bookingSuccess = true;
-        if (!state.attemptId) {
-          this.changeDetector.markForCheck();
-          return;
-        }
-        this.propertyPaymentService.getAttempt(state.attemptId).subscribe({
-          next: (attempt) => {
-            if (attempt.reservationId !== reservation.id) {
-              this.checkoutRecovery.clear();
-              this.resetRecoveredCheckout();
-              return;
-            }
-            this.paymentAttempt = attempt;
-            this.checkoutPhase = this.phaseForAttempt(attempt);
-            this.persistRecovery();
-            this.changeDetector.markForCheck();
-          },
-          error: () => {
-            this.checkoutRecovery.clear();
-            this.resetRecoveredCheckout();
-          },
-        });
-      },
-      error: () => {
-        this.checkoutRecovery.clear();
-        this.resetRecoveredCheckout();
-      },
-    });
-  }
-
-  private persistRecovery(): void {
-    const reservationId = Number(this.reservationDetails?.id);
-    if (!Number.isInteger(reservationId) || reservationId <= 0 || !this.checkoutPhase) return;
-    this.checkoutRecovery.save({
-      roomTypeId: this.roomTypeId,
-      reservationId,
-      attemptId: this.paymentAttempt?.attemptId || null,
-      paymentMethod: this.reservedPaymentMethod || this.bookingData.paymentMethod,
-      phase: this.checkoutPhase,
-    });
-  }
-
-  private phaseForAttempt(attempt: PropertyPaymentAttempt): CheckoutPhase {
-    if (attempt.status === 'SUCCESS') return 'PAYMENT_SUCCESS';
-    if (attempt.status === 'EXPIRED') return 'PAYMENT_EXPIRED';
-    if (attempt.status === 'FAILED' || attempt.status === 'CANCELLED') return 'PAYMENT_FAILED';
-    return 'PAYMENT_PENDING';
-  }
-
-  private resetRecoveredCheckout(): void {
-    this.reservationDetails = null;
-    this.paymentAttempt = null;
-    this.checkoutPhase = null;
-    this.bookingSuccess = false;
-    this.changeDetector.markForCheck();
-  }
-
-  private loadOperationalPolicy(): void {
-    if (!this.hotelId || !this.bookingData.checkInDate) return;
-    this.operationalPolicy = null;
-    this.policyAccepted = false;
-    this.policyApi.current(this.hotelId, 'vi', this.bookingData.checkInDate).subscribe({
-      next: policy => { this.operationalPolicy = policy; this.changeDetector.markForCheck(); },
-      error: () => { this.operationalPolicy = null; this.changeDetector.markForCheck(); }
-    });
   }
 }

@@ -7,20 +7,10 @@ export interface AnalyticsData {
   totalRevenue: number;
   totalBookings: number;
   occupancyRate: number;
-  totalRooms: number;
-  occupiedRooms: number;
-  operationalProperties: number;
-  scope: 'SYSTEM_NON_DEMO';
-  revenueBasis: 'PLATFORM_BILLING_NET';
-  occupancyBasis: string;
-  reconciliationStatus: 'RECONCILED' | 'UNRECONCILED';
-  sourceWatermark: string;
-  generatedAt: string;
-  periodFrom: string;
-  periodTo: string;
   labels: string[];
   revenueData: number[];
   occupancyData: number[];
+  aiPredictedOccupancy: number[];
 }
 
 @Injectable({

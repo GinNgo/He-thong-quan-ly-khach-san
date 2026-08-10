@@ -30,7 +30,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository.findByUsername(normalizedIdentifier)
                 .or(() -> userRepository.findByEmail(normalizedIdentifier))
                 .orElseThrow(() -> new UsernameNotFoundException("Invalid login credentials."));
-        AccountStatusPolicy.requireActive(user);
+        AccountStatusPolicy.requireLoginAllowed(user);
 
         java.util.Set<GrantedAuthority> authorities = user.getRoles().stream()
                 .map(role -> new SimpleGrantedAuthority(role.getCode()))

@@ -42,6 +42,6 @@ describe('FavoritesPageComponent', () => {
     state.loading.set(true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[aria-busy="true"]')).toBeTruthy();
-    expect(fixture.nativeElement.textContent).toContain('Loading saved stays');
+    expect(fixture.nativeElement.textContent).toContain('Đang tải danh sách yêu thích');
   });
 });

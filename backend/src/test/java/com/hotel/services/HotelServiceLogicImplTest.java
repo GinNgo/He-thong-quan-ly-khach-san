@@ -5,7 +5,6 @@ import com.hotel.entities.Hotel;
 import com.hotel.entities.HotelService;
 import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.repositories.HotelServiceRepository;
-import com.hotel.repositories.HotelServiceHistoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,9 +34,6 @@ class HotelServiceLogicImplTest {
 
     @Mock
     private PropertyAccessService propertyAccessService;
-
-    @Mock
-    private HotelServiceHistoryRepository historyRepository;
 
     @InjectMocks
     private HotelServiceLogicImpl hotelServiceLogic;
@@ -131,12 +127,12 @@ class HotelServiceLogicImplTest {
     @Test
     void crossPropertyUpdateAndDeleteAreRejectedBeforeMutation() {
         firstService.setHotel(secondProperty);
-        when(serviceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(firstService));
+        when(serviceRepository.findUnfilteredById(1L)).thenReturn(Optional.of(firstService));
         doThrow(new ResourceNotFoundException("Service not found."))
                 .when(propertyAccessService).requireAccessibleOrNotFound(20L, "service");
 
         assertThrows(ResourceNotFoundException.class, () -> hotelServiceLogic.updateService(1L, serviceDto));
-        assertThrows(ResourceNotFoundException.class, () -> hotelServiceLogic.deleteService(1L, "Not offered"));
+        assertThrows(ResourceNotFoundException.class, () -> hotelServiceLogic.deleteService(1L));
         verify(serviceRepository, never()).save(any());
         verify(serviceRepository, never()).delete(any());
     }
@@ -148,46 +144,11 @@ class HotelServiceLogicImplTest {
         systemTemplate.setCode("LATE_CHECKOUT");
         systemTemplate.setSystemService(true);
         when(serviceRepository.findUnfilteredById(2L)).thenReturn(Optional.of(systemTemplate));
-        when(serviceRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(systemTemplate));
 
         assertNotNull(hotelServiceLogic.getServiceById(2L));
         assertThrows(IllegalStateException.class, () -> hotelServiceLogic.updateService(2L, serviceDto));
-        assertThrows(IllegalStateException.class, () -> hotelServiceLogic.deleteService(2L, "Not offered"));
+        assertThrows(IllegalStateException.class, () -> hotelServiceLogic.deleteService(2L));
         verify(serviceRepository, never()).delete(systemTemplate);
-    }
-
-    @Test
-    void validatesNormalizedFieldsAndPositiveIntegerVnd() {
-        when(propertyAccessService.requireManagedHotel(10L)).thenReturn(firstProperty);
-        serviceDto.setNameVi("  ");
-        assertThrows(IllegalArgumentException.class, () -> hotelServiceLogic.createService(10L, serviceDto));
-
-        serviceDto.setNameVi("Breakfast");
-        serviceDto.setPrice(new BigDecimal("10.5"));
-        assertThrows(IllegalArgumentException.class, () -> hotelServiceLogic.createService(10L, serviceDto));
-
-        serviceDto.setPrice(BigDecimal.ZERO);
-        assertThrows(IllegalArgumentException.class, () -> hotelServiceLogic.createService(10L, serviceDto));
-
-        serviceDto.setPrice(new BigDecimal("100000"));
-        serviceDto.setStatus("ARCHIVED");
-        assertThrows(IllegalArgumentException.class, () -> hotelServiceLogic.createService(10L, serviceDto));
-        verify(serviceRepository, never()).save(any());
-    }
-
-    @Test
-    void deleteSoftDeactivatesWithReasonAndHistory() {
-        when(serviceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(firstService));
-        when(serviceRepository.save(firstService)).thenReturn(firstService);
-
-        hotelServiceLogic.deleteService(1L, "Seasonal service removed");
-
-        assertEquals("INACTIVE", firstService.getStatus());
-        verify(serviceRepository).save(firstService);
-        verify(serviceRepository, never()).delete(any());
-        verify(historyRepository).save(org.mockito.ArgumentMatchers.argThat(history ->
-                "DEACTIVATE".equals(history.getAction())
-                        && "Seasonal service removed".equals(history.getReason())));
     }
 
     private Hotel property(Long id) {

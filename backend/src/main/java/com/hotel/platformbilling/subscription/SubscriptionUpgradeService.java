@@ -309,7 +309,16 @@ public class SubscriptionUpgradeService {
     }
 
     private Long currentUsage(String code, Long ownerId, Long hotelId) {
-        return usageRepository.currentUsage(code, ownerId, hotelId);
+        return switch (code) {
+            case "MAX_PROPERTIES" -> usageRepository.countActiveOwnedProperties(ownerId);
+            case "MAX_ROOM_TYPES" -> usageRepository.countRoomTypes(hotelId);
+            case "MAX_ROOMS" -> usageRepository.countRooms(hotelId);
+            case "MAX_IMAGES" -> usageRepository.countPropertyImages(hotelId)
+                    + usageRepository.countRoomTypeImages(hotelId)
+                    + usageRepository.countRoomImages(hotelId);
+            case "MAX_STAFF" -> usageRepository.countActiveStaff(hotelId);
+            default -> null;
+        };
     }
 
     private Map<String, Integer> planFeatures(SubscriptionPlan plan) {

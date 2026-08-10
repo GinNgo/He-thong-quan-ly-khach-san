@@ -1,7 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-export type StayType = 'OVERNIGHT';
+export type StayType = 'OVERNIGHT' | 'DAY_USE';
 export type SuggestionType = 'PROVINCE' | 'WARD' | 'PROPERTY' | 'LANDMARK';
 
 export interface HomeSearchState {
@@ -58,11 +58,6 @@ export interface SearchSelection {
   category?: string;
 }
 
-<<<<<<< HEAD
-export interface HomeSearchValidationError {
-  code: 'CHECK_IN_REQUIRED' | 'CHECK_OUT_REQUIRED' | 'CHECK_IN_PAST' | 'INVALID_DATE_RANGE';
-  message: string;
-=======
 export interface RestoredLocationContext {
   keyword: string;
   displayName: string;
@@ -74,14 +69,12 @@ export interface RestoredLocationContext {
   radiusKm?: number | null;
   latitude?: number | null;
   longitude?: number | null;
->>>>>>> codex/ui-functional-audit-polish
 }
 
 @Injectable({ providedIn: 'root' })
 export class HomeSearchStateService {
   readonly state = signal<HomeSearchState>(this.createDefaultState());
   readonly recentSearches = signal<RecentSearch[]>(this.readRecentSearches());
-  readonly validationError = signal<HomeSearchValidationError | null>(null);
 
   readonly guestSummary = computed(() => {
     const state = this.state();
@@ -90,8 +83,6 @@ export class HomeSearchStateService {
     return `${summary} · ${state.roomCount} phòng`;
   });
 
-<<<<<<< HEAD
-=======
   readonly isDayUse = computed(() => this.state().stayType === 'DAY_USE');
 
   readonly dateValidationError = computed(() => {
@@ -106,7 +97,6 @@ export class HomeSearchStateService {
     return '';
   });
 
->>>>>>> codex/ui-functional-audit-polish
   constructor(private router: Router) {}
 
   updateKeyword(value: string): void {
@@ -125,23 +115,15 @@ export class HomeSearchStateService {
     }));
   }
 
-  updateLocation(keyword: string, displayName: string, provinceId: number | null, wardId: number | null,
-                 landmarkId: number | null = null, latitude: number | null = null,
-                 longitude: number | null = null, radiusKm: number | null = null): void {
+  updateLocation(keyword: string, displayName: string, provinceId: number | null, wardId: number | null): void {
     this.state.update(state => ({
       ...state,
       keyword,
       locationDisplayName: displayName,
-      selectedSuggestionType: landmarkId ? 'LANDMARK' : wardId ? 'WARD' : provinceId ? 'PROVINCE' : null,
+      selectedSuggestionType: wardId ? 'WARD' : provinceId ? 'PROVINCE' : null,
       provinceId,
       wardId,
       propertyId: null,
-<<<<<<< HEAD
-      landmarkId,
-      radiusKm: landmarkId ? radiusKm : null,
-      latitude: landmarkId ? latitude : null,
-      longitude: landmarkId ? longitude : null
-=======
       landmarkId: null,
       radiusKm: null,
       latitude: null,
@@ -162,7 +144,6 @@ export class HomeSearchStateService {
       radiusKm: context.radiusKm ?? null,
       latitude: context.latitude ?? null,
       longitude: context.longitude ?? null
->>>>>>> codex/ui-functional-audit-polish
     }));
   }
 
@@ -206,8 +187,6 @@ export class HomeSearchStateService {
     }));
   }
 
-<<<<<<< HEAD
-=======
   updateStayType(stayType: StayType): void {
     this.state.update(state => {
       const next = { ...state, stayType };
@@ -221,22 +200,11 @@ export class HomeSearchStateService {
     });
   }
 
->>>>>>> codex/ui-functional-audit-polish
   updatePropertyTypes(propertyTypes: string[]): void {
     this.state.update(state => ({ ...state, propertyTypes }));
   }
 
   updateDates(checkInDate: Date | null, checkOutDate: Date | null): void {
-<<<<<<< HEAD
-    this.state.update(state => {
-      const next = { ...state, checkInDate, checkOutDate };
-      if (checkInDate && checkOutDate && checkOutDate <= checkInDate) {
-        next.checkOutDate = this.addDays(checkInDate, 1);
-      }
-      return next;
-    });
-    this.validationError.set(null);
-=======
     this.state.update(state => ({
       ...state,
       checkInDate: checkInDate ? this.startOfDay(checkInDate) : null,
@@ -244,7 +212,6 @@ export class HomeSearchStateService {
         ? null
         : checkOutDate ? this.startOfDay(checkOutDate) : null
     }));
->>>>>>> codex/ui-functional-audit-polish
   }
 
   updateGuests(adultCount: number, childCount: number, roomCount: number): void {
@@ -281,10 +248,7 @@ export class HomeSearchStateService {
       radiusKm: recent.radiusKm ?? null,
       latitude: recent.latitude ?? null,
       longitude: recent.longitude ?? null,
-<<<<<<< HEAD
-=======
       stayType,
->>>>>>> codex/ui-functional-audit-polish
       checkInDate: checkIn,
       checkOutDate: checkOut,
       adultCount: recent.adultCount || 1,
@@ -304,14 +268,7 @@ export class HomeSearchStateService {
 
   submitSearch(): boolean {
     const state = this.state();
-<<<<<<< HEAD
-    const validationError = this.validateDates(state);
-    this.validationError.set(validationError);
-    if (validationError) return false;
-    const checkInDate = state.checkInDate as Date;
-=======
     if (this.dateValidationError() || !state.checkInDate) return false;
->>>>>>> codex/ui-functional-audit-polish
     if (state.propertyId) {
       this.saveRecentSearch(state);
       this.router.navigate(['/hotel', state.propertyId], { queryParams: this.bookingQueryParams() });
@@ -319,7 +276,8 @@ export class HomeSearchStateService {
     }
 
     const queryParams: Record<string, string | number> = {
-      checkInDate: this.formatDate(checkInDate),
+      stayType: state.stayType,
+      checkInDate: this.formatDate(state.checkInDate),
       adultCount: state.adultCount,
       childCount: state.childCount,
       roomCount: state.roomCount
@@ -357,33 +315,11 @@ export class HomeSearchStateService {
     const checkInDate = this.startOfToday();
     return {
       keyword: '', locationDisplayName: '', selectedSuggestionType: null,
-<<<<<<< HEAD
-      provinceId: null, wardId: null, propertyId: null, landmarkId: null, radiusKm: null, propertyTypes: [],
-=======
       provinceId: null, wardId: null, propertyId: null, propertyTypes: [],
       landmarkId: null, radiusKm: null,
->>>>>>> codex/ui-functional-audit-polish
       stayType: 'OVERNIGHT', checkInDate, checkOutDate: this.addDays(checkInDate, 1),
       adultCount: 2, childCount: 0, roomCount: 1, latitude: null, longitude: null
     };
-  }
-
-  private validateDates(state: HomeSearchState): HomeSearchValidationError | null {
-    if (!state.checkInDate) {
-      return { code: 'CHECK_IN_REQUIRED', message: 'Vui lòng chọn ngày nhận phòng.' };
-    }
-    const checkIn = new Date(state.checkInDate);
-    checkIn.setHours(0, 0, 0, 0);
-    if (checkIn < this.startOfToday()) {
-      return { code: 'CHECK_IN_PAST', message: 'Ngày nhận phòng không thể ở trong quá khứ.' };
-    }
-    if (!state.checkOutDate) {
-      return { code: 'CHECK_OUT_REQUIRED', message: 'Vui lòng chọn ngày trả phòng.' };
-    }
-    if (state.checkOutDate <= state.checkInDate) {
-      return { code: 'INVALID_DATE_RANGE', message: 'Ngày trả phòng phải sau ngày nhận phòng.' };
-    }
-    return null;
   }
 
   private saveRecentSearch(state: HomeSearchState): void {

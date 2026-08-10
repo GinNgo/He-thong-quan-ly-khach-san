@@ -10,8 +10,6 @@ import com.hotel.paymentprovider.domain.VndMoney;
 import com.hotel.paymentprovider.reporting.RevenueReportModels.FinancialContext;
 import com.hotel.paymentprovider.reporting.RevenueReportModels.NormalizedFilters;
 import com.hotel.paymentprovider.reporting.RevenueReportModels.RecognitionBasis;
-import com.hotel.paymentprovider.reporting.RevenueExportService;
-import com.hotel.paymentprovider.reporting.RevenueExportService.Format;
 import com.hotel.platformbilling.config.PlatformPaymentConfiguration;
 import com.hotel.platformbilling.order.SubscriptionOrder;
 import com.hotel.platformbilling.payment.PlatformFinancialTransaction;
@@ -19,32 +17,25 @@ import com.hotel.platformbilling.payment.PlatformPaymentAttempt;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({PlatformRevenueRepository.class, PlatformRevenueService.class, RevenueExportService.class})
+@Import({PlatformRevenueRepository.class, PlatformRevenueService.class})
 @ContextConfiguration(classes = BackendApplication.class)
 @TestPropertySource(properties = {
-        "spring.datasource.url=${PLATFORM_REVENUE_DATABASE_URL:jdbc:h2:mem:platform-revenue-reconciliation;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}",
-        "spring.datasource.username=${PLATFORM_REVENUE_DATABASE_USERNAME:sa}",
-        "spring.datasource.password=${PLATFORM_REVENUE_DATABASE_PASSWORD:}",
-        "spring.datasource.driver-class-name=${PLATFORM_REVENUE_DATABASE_DRIVER:org.h2.Driver}",
-        "spring.jpa.database-platform=${PLATFORM_REVENUE_DATABASE_DIALECT:org.hibernate.dialect.H2Dialect}",
+        "spring.datasource.url=jdbc:h2:mem:platform-revenue-reconciliation;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.flyway.enabled=false"
 })
@@ -52,7 +43,6 @@ class PlatformRevenueReconciliationIntegrationTest {
 
     @Autowired private EntityManager entityManager;
     @Autowired private PlatformRevenueService revenueService;
-    @Autowired private RevenueExportService exportService;
 
     @Test
     void reportMatchesSystemLedgerToOneVndAndRespectsPlanFilter() {
@@ -116,25 +106,6 @@ class PlatformRevenueReconciliationIntegrationTest {
         assertEquals(((Number) databaseTotals[3]).longValue(), report.totalRowCount());
         assertEquals(0, report.totals().unreconciledTransactionCount());
         assertEquals(1, report.totals().successfulTransactionCount());
-
-        BigDecimal exportedRowNet = report.rows().stream()
-                .map(row -> row.netAmount())
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        assertEquals(report.totals().netRevenue(), exportedRowNet);
-        assertTrue(report.rows().stream().allMatch(row -> row.propertyId() == null));
-
-        var csv = exportService.export(report, Format.CSV);
-        String csvText = new String(csv.content(), StandardCharsets.UTF_8);
-        assertEquals(report.totalRowCount(), csv.rowCount());
-        assertEquals(exportService.checksum(report), csv.checksum());
-        assertEquals(csv.checksum(), exportService.export(report, Format.CSV).checksum());
-        assertTrue(csvText.contains(csv.checksum()));
-        assertTrue(csvText.contains("pro-debit"));
-        assertTrue(csvText.contains("pro-refund"));
-        assertTrue(csvText.contains("pro-credit"));
-        assertFalse(csvText.contains("basic-debit"));
-        assertTrue(csvText.contains(report.totals().grossRevenue().toString()));
-        assertTrue(csvText.contains(report.totals().netRevenue().toString()));
     }
 
     private NormalizedFilters filters(String planCode) {
@@ -170,7 +141,6 @@ class PlatformRevenueReconciliationIntegrationTest {
     private SubscriptionPlan persistPlan(String code, String billingType, long price) {
         SubscriptionPlan plan = new SubscriptionPlan();
         plan.setCode(code);
-        plan.setFamilyCode(code);
         plan.setNameVi(code + " Plan");
         plan.setNameEn(code + " Plan");
         plan.setBillingType(billingType);

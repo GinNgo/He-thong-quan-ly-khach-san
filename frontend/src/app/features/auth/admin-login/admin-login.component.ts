@@ -3,20 +3,17 @@ import { SharedModule } from '@app/shared/shared.module';
 import { AuthService } from '@app/core/services/auth';
 import { AuthLegalCopyService } from '../legal-support/auth-legal-copy.service';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { ActionCode, FunctionCode } from '@app/core/services/permission.service';
+import { AuthPermission } from '@app/core/services/auth';
 import {
   ACCOUNT_DISABLED_CODE,
   ACCOUNT_DISABLED_MESSAGE,
   authenticationErrorMessage,
 } from '@app/core/auth/account-status-error';
-import { FocusOnErrorDirective } from '../../../shared/directives/focus-management.directive';
 
 @Component({
   standalone: true,
-<<<<<<< HEAD
-  imports: [SharedModule, FocusOnErrorDirective],
-=======
   imports: [SharedModule, RouterModule],
->>>>>>> codex/ui-functional-audit-polish
   selector: 'app-admin-login',
   templateUrl: './admin-login.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -83,7 +80,66 @@ export class AdminLoginComponent implements OnInit {
   }
 
   private redirectToPortal(): void {
-    void this.router.navigateByUrl(this.returnUrl);
+    const authState = this.authService.getAuthState();
+    void this.router.navigateByUrl(this.resolveAuthorizedPortalUrl(
+      this.returnUrl,
+      authState.roles,
+      authState.permissions,
+    ));
+  }
+
+  private resolveAuthorizedPortalUrl(
+    requestedUrl: string,
+    roles: string[],
+    permissions: AuthPermission[],
+  ): string {
+    const isAdministrator = roles.some((role) => role === 'SUPER_ADMIN' || role === 'ADMIN');
+    if (isAdministrator) return requestedUrl;
+
+    const requestedPath = requestedUrl.split(/[?#]/, 1)[0];
+    const requirement = this.portalRequirement(requestedPath);
+    if (requirement && this.hasPermission(permissions, requirement.functionCode, requirement.actionCode)) {
+      return requestedUrl;
+    }
+
+    const landingPages = [
+      { url: '/admin/dashboard', functionCode: FunctionCode.REPORT, actionCode: ActionCode.VIEW },
+      { url: '/admin/reservations', functionCode: FunctionCode.RESERVATION, actionCode: ActionCode.VIEW },
+      { url: '/admin/rooms', functionCode: FunctionCode.ROOM, actionCode: ActionCode.VIEW },
+      { url: '/admin/invoices', functionCode: FunctionCode.INVOICE, actionCode: ActionCode.VIEW },
+      { url: '/admin/customers', functionCode: FunctionCode.CUSTOMER, actionCode: ActionCode.VIEW },
+    ];
+    return landingPages.find((page) => this.hasPermission(
+      permissions,
+      page.functionCode,
+      page.actionCode,
+    ))?.url ?? '/403';
+  }
+
+  private portalRequirement(path: string): { functionCode: FunctionCode; actionCode: ActionCode } | null {
+    const requirements: Array<{
+      prefix: string;
+      functionCode: FunctionCode;
+      actionCode: ActionCode;
+    }> = [
+      { prefix: '/admin/services', functionCode: FunctionCode.HOTEL_SERVICE, actionCode: ActionCode.VIEW },
+      { prefix: '/admin/reservations/create', functionCode: FunctionCode.RESERVATION, actionCode: ActionCode.CREATE },
+      { prefix: '/admin/reservations', functionCode: FunctionCode.RESERVATION, actionCode: ActionCode.VIEW },
+      { prefix: '/admin/rooms', functionCode: FunctionCode.ROOM, actionCode: ActionCode.VIEW },
+      { prefix: '/admin/room-types', functionCode: FunctionCode.ROOM_TYPE, actionCode: ActionCode.VIEW },
+      { prefix: '/admin/invoices', functionCode: FunctionCode.INVOICE, actionCode: ActionCode.VIEW },
+      { prefix: '/admin/customers', functionCode: FunctionCode.CUSTOMER, actionCode: ActionCode.VIEW },
+      { prefix: '/admin/dashboard', functionCode: FunctionCode.REPORT, actionCode: ActionCode.VIEW },
+    ];
+    const match = requirements.find((item) => path === item.prefix || path.startsWith(`${item.prefix}/`));
+    return match
+      ? { functionCode: match.functionCode, actionCode: match.actionCode }
+      : null;
+  }
+
+  private hasPermission(permissions: AuthPermission[], functionCode: FunctionCode, actionCode: ActionCode): boolean {
+    const permission = permissions.find((item) => item.function === functionCode);
+    return permission !== undefined && (permission.actionMask & actionCode) === actionCode;
   }
 
   private resolvePortalReturnUrl(value: unknown): string {

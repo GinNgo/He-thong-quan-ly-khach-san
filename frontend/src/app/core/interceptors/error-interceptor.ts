@@ -26,7 +26,15 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       const accountDisabled = errorCode === ACCOUNT_DISABLED_CODE;
       const isAuthRequest = req.url.includes('/api/auth/');
 
-      if (error.status === 403 && !isAuthRequest) {
+      const isReadRequest = req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS';
+
+      if (error.status === 403 && errorCode === 'FORBIDDEN_PERMISSION'
+          && !isAuthRequest && authService.canRefreshSession()) {
+        // Refresh presentation state only; the rejected request is never replayed automatically.
+        authService.refreshAccessToken().subscribe({ error: () => undefined });
+      }
+
+      if (error.status === 403 && !isAuthRequest && isReadRequest) {
         const errCode = isApiError(error.error) ? error.error.code : 'ACCESS_DENIED';
         if (!currentUrl.includes('/403')) {
           router.navigate(['/403'], { queryParams: { reason: errCode } });

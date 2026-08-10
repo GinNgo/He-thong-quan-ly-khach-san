@@ -40,8 +40,7 @@
         <p class="text-muted small">Đăng nhập để quản lý bảng điều khiển của bạn</p>
       </div>
 
-      <div *ngIf="errorMessage" id="admin-login-error" class="alert alert-danger p-3 mb-4 d-flex align-items-center rounded bg-danger-subtle text-danger border border-danger-subtle fw-medium small"
-        role="alert" aria-live="assertive" aria-atomic="true" [appFocusOnError]="true">
+      <div *ngIf="errorMessage" class="alert alert-danger p-3 mb-4 d-flex align-items-center rounded bg-danger-subtle text-danger border border-danger-subtle fw-medium small">
         <i class="pi pi-exclamation-circle me-2 fs-6"></i>
         {{ errorMessage }}
       </div>
@@ -59,11 +58,10 @@
             [(ngModel)]="loginObj.username" 
             name="username" 
             class="w-100 custom-input" 
-            placeholder="support hoặc support@luxestay.vn"
+            placeholder="support hoặc luxestay8386@gmail.com"
             autocomplete="username"
             required 
             autofocus 
-            [attr.aria-describedby]="errorMessage ? 'admin-login-error' : null"
           />
         </div>
 
@@ -72,16 +70,17 @@
           <label for="password" class="form-label fw-bold small text-dark d-flex align-items-center mb-2">
             <i class="pi pi-lock me-2 text-primary"></i> Mật khẩu
           </label>
-          <input
-            id="password"
-            type="password"
-            [(ngModel)]="loginObj.password"
-            name="password"
-            class="w-100 custom-input"
+          <p-password 
+            id="password" 
+            [(ngModel)]="loginObj.password" 
+            name="password" 
+            [toggleMask]="true" 
+            [feedback]="false"
+            styleClass="w-100"
+            inputStyleClass="w-100 custom-input"
             placeholder="••••••••••••••"
-            required
-            [attr.aria-describedby]="errorMessage ? 'admin-login-error' : null"
-          />
+            [required]="true">
+          </p-password>
         </div>
 
         <!-- Options -->

@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnInit, OnDestroy, inject, ViewChild, ElementRef } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, OnInit, OnDestroy, inject, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
@@ -37,7 +37,7 @@ import { LocaleService } from '../../../core/i18n/locale.service';
   templateUrl: './home.html',
   styleUrls: ['./home.css']
 })
-export class HomeComponent implements OnInit, OnDestroy {
+export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   private router = inject(Router);
   private clientApi = inject(ClientApiService);
   private layoutState = inject(LayoutStateService);
@@ -45,6 +45,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private changeDetector = inject(ChangeDetectorRef);
   private localeService = inject(LocaleService);
+  private revealObserver?: IntersectionObserver;
   
   destinations: LocationSuggestion[] = [];
   featuredProperties: Hotel[] = [];
@@ -58,11 +59,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   promotionsError = false;
   isLoadingDestinations = true;
   isLoadingFeatured = true;
-<<<<<<< HEAD
-  destinationError = false;
-=======
   destinationsError = false;
->>>>>>> codex/ui-functional-audit-polish
   featuredError = false;
 
   @ViewChild('heroSearchRef', { static: true }) heroSearchRef!: ElementRef;
@@ -76,9 +73,10 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.loadFeaturedProperties();
     this.loadPromotions();
     this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe((state) => {
+      const becameAuthenticated = state.isAuthenticated && !this.isAuthenticated;
       this.isAuthenticated = state.isAuthenticated;
-      if (this.isAuthenticated) this.loadMemberProfile();
-      else {
+      if (becameAuthenticated) this.loadMemberProfile();
+      if (!this.isAuthenticated) {
         this.memberProfile = null;
         this.memberTier = null;
         this.memberLoading = false;
@@ -106,15 +104,24 @@ export class HomeComponent implements OnInit, OnDestroy {
     if (this.observer) {
       this.observer.disconnect();
     }
+    this.revealObserver?.disconnect();
     this.layoutState.hideMainHeader.set(false);
   }
 
-<<<<<<< HEAD
-  loadPopularDestinations(forceRefresh = false) {
-    this.isLoadingDestinations = true;
-    this.destinationError = false;
-    this.clientApi.getPopularDestinations(8, forceRefresh).subscribe({
-=======
+  ngAfterViewInit(): void {
+    if (!('IntersectionObserver' in globalThis)) return;
+    this.revealObserver = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        entry.target.classList.add('is-visible');
+        this.revealObserver?.unobserve(entry.target);
+      }
+    }, { threshold: 0.12 });
+    globalThis.document.querySelectorAll<HTMLElement>('.reveal-on-scroll').forEach(element => {
+      this.revealObserver?.observe(element);
+    });
+  }
+
   get memberPoints(): number {
     return Math.max(0, this.memberProfile?.points ?? 0);
   }
@@ -188,7 +195,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.isLoadingDestinations = true;
     this.destinationsError = false;
     this.clientApi.getPopularDestinations(8).pipe(takeUntil(this.destroy$)).subscribe({
->>>>>>> codex/ui-functional-audit-polish
       next: (provinces) => {
         this.destinations = provinces;
         this.isLoadingDestinations = false;
@@ -197,7 +203,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.destinations = [];
-        this.destinationError = true;
         this.isLoadingDestinations = false;
         this.destinationsError = true;
         this.changeDetector.detectChanges();
@@ -205,12 +210,13 @@ export class HomeComponent implements OnInit, OnDestroy {
     });
   }
 
-  loadFeaturedProperties() {
+  private loadFeaturedProperties() {
     this.isLoadingFeatured = true;
     this.featuredError = false;
     this.clientApi.searchHotels({
       ...this.searchState.bookingQueryParams(),
-      pageNumber: 0,
+      // The public API uses one-based pages.
+      pageNumber: 1,
       pageSize: 8,
       sortBy: 'RATING'
     }).pipe(takeUntil(this.destroy$)).subscribe({
@@ -222,7 +228,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.featuredProperties = [];
-        this.featuredError = true;
         this.isLoadingFeatured = false;
         this.featuredError = true;
         this.changeDetector.detectChanges();

@@ -11,34 +11,13 @@ public class ChatConversationDTO {
     private Long conversationId;
     private Long customerId;
     private String customerName;
-<<<<<<< HEAD
-    private String subject;
-=======
->>>>>>> codex/ui-functional-audit-polish
     private Long hotelId;
     private String hotelName;
     private Long reservationId;
     private Long assignedAgentId;
-<<<<<<< HEAD
-    private String assignedAgentName;
+    private String channel;
+    private String subject;
     private String status;
-    private Long version;
-    private Instant slaDeadlineAt;
-    private String slaState;
-    private Instant createdAt;
-    private Instant lastActivityAt;
-    private Instant assignedAt;
-    private Instant escalatedAt;
-    private Instant closedAt;
-    private Instant firstResponseAt;
-    private Instant lastCustomerMessageAt;
-    private Instant lastSupportReplyAt;
-    private String closedReason;
-    private Instant reopenedAt;
-    private String reopenReason;
-=======
-    private String status;
->>>>>>> codex/ui-functional-audit-polish
     private String lastMessage;
     private Instant lastMessageAt;
 }

@@ -25,6 +25,24 @@ class AccountStatusPolicyTest {
         }
     }
 
+    @Test
+    void loginRejectsActiveAccountUntilEmailIsVerified() {
+        User unverified = user("ACTIVE");
+        unverified.setEmailVerifiedAt(null);
+
+        assertThrows(
+                EmailNotVerifiedAuthenticationException.class,
+                () -> AccountStatusPolicy.requireLoginAllowed(unverified));
+    }
+
+    @Test
+    void loginAllowsActiveVerifiedAccount() {
+        User verified = user("ACTIVE");
+        verified.setEmailVerifiedAt(java.time.Instant.parse("2026-08-09T00:00:00Z"));
+
+        assertDoesNotThrow(() -> AccountStatusPolicy.requireLoginAllowed(verified));
+    }
+
     private User user(String status) {
         User user = new User();
         user.setStatus(status);

@@ -21,18 +21,13 @@ jwt:
   refresh-expiration: 604800000
 
 payment:
-<<<<<<< HEAD
   property:
-    encryption-key: test-property-payment-encryption-key
-  demo:
-    signing-secret: test-payment-demo-signing-secret
-=======
+    encryption-key: test_property_payment_encryption_key_at_least_32_chars
   provider-recovery:
     enabled: false
   demo:
     enabled: true
     signing-secret: test_demo_payment_signing_secret_at_least_32_chars
->>>>>>> codex/ui-functional-audit-polish
   vnpay:
     tmn-code: test_code
     hash-secret: test_hash
@@ -44,8 +39,6 @@ server:
 app:
   auth:
     refresh-cookie-secure: false
-    login:
-      audit-secret: test-login-audit-secret-only
   mail:
     registration-enabled: false
     email-verification-enabled: false

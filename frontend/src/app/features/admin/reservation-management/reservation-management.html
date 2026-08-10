@@ -25,44 +25,6 @@
     </div>
   </div>
 
-<<<<<<< HEAD
-  <p-card styleClass="shadow-sm border-0 rounded-4" [style]="{'border-radius': '12px'}">
-    <form class="reservation-filters" (submit)="$event.preventDefault(); loadReservations(true)">
-      <label>
-        <span>Tìm đặt phòng</span>
-        <input
-          type="search"
-          name="reservationQuery"
-          [(ngModel)]="searchQuery"
-          placeholder="Mã đặt phòng hoặc khách hàng"
-        >
-      </label>
-      <label>
-        <span>Trạng thái</span>
-        <select name="reservationStatus" [(ngModel)]="statusFilter">
-          <option value="">Tất cả trạng thái</option>
-          <option value="PENDING">Chờ xác nhận</option>
-          <option value="PENDING_PAYMENT">Chờ thanh toán</option>
-          <option value="CONFIRMED">Đã xác nhận</option>
-          <option value="CHECKED_IN">Đã nhận phòng</option>
-          <option value="CHECKED_OUT">Đã trả phòng</option>
-          <option value="CANCELLED">Đã hủy</option>
-          <option value="NO_SHOW">Khách không đến</option>
-        </select>
-      </label>
-      <button pButton type="submit" icon="pi pi-search" label="Lọc"></button>
-    </form>
-
-    <div *ngIf="reservationsLoading" class="reservation-state" role="status">
-      <i class="pi pi-spin pi-spinner" aria-hidden="true"></i> Đang tải danh sách đặt phòng
-    </div>
-    <div *ngIf="reservationsError" class="reservation-state reservation-state--error" role="alert">
-      <span>{{ reservationsError }}</span>
-      <button type="button" (click)="loadReservations()">Thử lại</button>
-    </div>
-
-    <p-table *ngIf="!reservationsLoading && !reservationsError" [value]="reservations" responsiveLayout="scroll" [rowHover]="true" styleClass="p-datatable-striped p-datatable-sm border-top">
-=======
   <p-card styleClass="shadow-sm border-0 rounded-4" [style]="{ 'border-radius': '12px' }">
     <p-table
       [value]="reservations"
@@ -72,7 +34,6 @@
       [rowHover]="true"
       styleClass="p-datatable-striped p-datatable-sm border-top"
     >
->>>>>>> codex/ui-functional-audit-polish
       <ng-template pTemplate="header">
         <tr>
           <th
@@ -139,16 +100,6 @@
           <td class="text-muted">{{ res.checkOutDate | date: 'dd/MM/yyyy' }}</td>
           <td class="text-dark fw-bold">{{ res.totalAmount | currency: 'VND' }}</td>
           <td>
-<<<<<<< HEAD
-            <span class="badge rounded-pill badge-status" 
-                  [ngClass]="{
-                    'status-available': res.status === 'CONFIRMED' || res.status === 'CHECKED_OUT', 
-                    'status-occupied': res.status === 'CHECKED_IN', 
-                    'status-reserved': res.status === 'PENDING', 
-                    'status-maintenance': res.status === 'CANCELLED'
-                  }">
-              {{ getStatusLabel(res.status) }}
-=======
             <span
               class="badge rounded-pill badge-status"
               [ngClass]="{
@@ -159,8 +110,10 @@
               }"
             >
               {{ getReservationLabel(res.status) }}
->>>>>>> codex/ui-functional-audit-polish
             </span>
+            <small *ngIf="res.status === 'CANCELLED' && res.cancellationReason" class="d-block mt-1 text-danger">
+              Lý do: {{ res.cancellationReason }}
+            </small>
           </td>
           <td>
             <div class="financial-cell">
@@ -199,17 +152,6 @@
           </td>
           <td class="text-center">
             <div class="d-flex gap-2 justify-content-center">
-<<<<<<< HEAD
-              <button pButton icon="pi pi-eye" class="p-button-text p-button-secondary p-button-sm" data-action="view-reservation" pTooltip="Xem chi tiết" (click)="openReservationDetail(res.id)"></button>
-              <button pButton icon="pi pi-calendar-plus" class="p-button-text p-button-secondary p-button-sm" data-action="amend-reservation" pTooltip="Thay đổi đặt phòng" *ngIf="canAmendReservation && (res.status === 'PENDING_PAYMENT' || res.status === 'CONFIRMED')" (click)="openAmendmentWorkspace(res)"></button>
-              <button pButton icon="pi pi-check" class="p-button-text p-button-success p-button-sm" pTooltip="Xác nhận" *ngIf="canUpdateReservation && res.status === 'PENDING'" [loading]="isLifecycleBusy(res.id, 'STATUS_CONFIRMED')" [disabled]="lifecycleActionKey() !== null" (click)="updateStatus(res.id, 'CONFIRMED')"></button>
-              <button pButton icon="pi pi-sign-in" class="p-button-text p-button-info p-button-sm" data-action="check-in" pTooltip="Check-in" *ngIf="canCheckIn && res.status === 'CONFIRMED'" [loading]="isLifecycleBusy(res.id, 'CHECK_IN')" [disabled]="lifecycleActionKey() !== null" (click)="checkIn(res.id)"></button>
-              <button pButton icon="pi pi-user-minus" class="p-button-text p-button-warning p-button-sm" data-action="no-show" pTooltip="No-show" *ngIf="canMarkNoShow && res.status === 'CONFIRMED'" [loading]="isLifecycleBusy(res.id, 'NO_SHOW')" [disabled]="lifecycleActionKey() !== null" (click)="markNoShow(res.id)"></button>
-              <button pButton icon="pi pi-plus" class="p-button-text p-button-primary p-button-sm" data-action="open-authoritative-folio" pTooltip="Dịch vụ & quyết toán" *ngIf="res.status === 'CHECKED_IN'" (click)="openCheckoutWorkspace(res)"></button>
-              <button pButton icon="pi pi-sign-out" class="p-button-text p-button-secondary p-button-sm" pTooltip="Check-out" *ngIf="res.status === 'CHECKED_IN'" (click)="openCheckoutWorkspace(res)"></button>
-              <button pButton icon="pi pi-file-pdf" class="p-button-text p-button-help p-button-sm" pTooltip="Xuất hóa đơn" *ngIf="res.status === 'CHECKED_OUT'" (click)="generateInvoice(res.id)"></button>
-              <button pButton icon="pi pi-times" class="p-button-text p-button-danger p-button-sm" data-action="cancel-operational" pTooltip="Hủy phòng" *ngIf="canCancelOperational && (res.status === 'PENDING' || res.status === 'CONFIRMED')" [loading]="isLifecycleBusy(res.id, 'CANCEL')" [disabled]="lifecycleActionKey() !== null" (click)="cancelOperational(res.id)"></button>
-=======
               <button
                 pButton
                 icon="pi pi-check"
@@ -290,7 +232,6 @@
                 [disabled]="lifecycleActionKey() !== null"
                 (click)="cancelOperational(res.id)"
               ></button>
->>>>>>> codex/ui-functional-audit-polish
             </div>
           </td>
         </tr>
@@ -301,111 +242,7 @@
         </tr>
       </ng-template>
     </p-table>
-
-    <nav *ngIf="!reservationsLoading && !reservationsError && totalPages > 1" class="reservation-pagination" aria-label="Phân trang đặt phòng">
-      <button type="button" [disabled]="page === 0" (click)="goToPage(page - 1)">Trang trước</button>
-      <span>Trang {{ page + 1 }} / {{ totalPages }} · {{ totalElements }} đặt phòng</span>
-      <button type="button" [disabled]="page + 1 >= totalPages" (click)="goToPage(page + 1)">Trang sau</button>
-    </nav>
   </p-card>
-
-  <p-dialog
-    [(visible)]="showDetailDialog"
-    header="Chi tiết đặt phòng"
-    [modal]="true"
-    [style]="{ width: 'min(760px, 96vw)' }"
-  >
-    <div *ngIf="detailLoading" class="reservation-state" role="status">
-      <i class="pi pi-spin pi-spinner" aria-hidden="true"></i> Đang tải chi tiết đặt phòng
-    </div>
-    <div *ngIf="detailError" class="reservation-state reservation-state--error" role="alert">{{ detailError }}</div>
-    <section *ngIf="selectedReservation as reservation" class="reservation-detail">
-      <div class="reservation-detail__summary">
-        <div><small>Mã đặt phòng</small><strong>RES-{{ reservation.id }}</strong></div>
-        <div><small>Khách hàng</small><strong>{{ reservation.userFullName || reservation.username }}</strong></div>
-        <div><small>Lưu trú</small><strong>{{ reservation.checkInDate | date:'dd/MM/yyyy' }} - {{ reservation.checkOutDate | date:'dd/MM/yyyy' }}</strong></div>
-        <div><small>Trạng thái</small><strong>{{ getStatusLabel(reservation.status) }}</strong></div>
-      </div>
-      <div class="room-picker-entry" *ngIf="canOpenRoomPicker(reservation.status)">
-        <div>
-          <strong>{{ roomAssignmentCopy.text('sectionTitle') }}</strong>
-          <span>{{ roomAssignmentCopy.text('sectionBody') }}</span>
-        </div>
-        <button type="button" data-action="open-room-picker" (click)="openRoomPicker(reservation)">
-          {{ roomAssignmentCopy.text('openPicker') }}
-        </button>
-      </div>
-      <h3>Lịch sử sự kiện</h3>
-      <ol *ngIf="reservation.events?.length; else noEvents" class="reservation-events">
-        <li *ngFor="let event of reservation.events">
-          <div><strong>{{ getEventLabel(event.eventType) }}</strong><time>{{ event.occurredAt | date:'dd/MM/yyyy HH:mm' }}</time></div>
-          <p>{{ event.reason }}</p>
-          <small *ngIf="getAssignmentEventSummary(event) as summary">{{ summary }}</small>
-        </li>
-      </ol>
-      <ng-template #noEvents><p class="reservation-state">Chưa có sự kiện vận hành được ghi nhận.</p></ng-template>
-    </section>
-  </p-dialog>
-
-  <p-dialog
-    [(visible)]="showCheckInDialog"
-    [modal]="true"
-    [showHeader]="false"
-    [style]="{ width: 'min(720px, 96vw)' }"
-    [breakpoints]="{ '640px': '100vw' }"
-    styleClass="check-in-dialog"
-    (onHide)="checkInReservationId = null"
-  >
-    <app-check-in-readiness
-      *ngIf="checkInReservationId as reservationId"
-      [reservationId]="reservationId"
-      [canAssignRooms]="canManageRoomAssignments && canViewRoomAssignments"
-      (assignmentRequested)="openAssignmentFromCheckIn()"
-      (checkedIn)="handleCheckInCompleted($event)"
-      (closed)="showCheckInDialog = false"
-    ></app-check-in-readiness>
-  </p-dialog>
-
-  <p-dialog
-    [(visible)]="showRoomPickerDialog"
-    [modal]="true"
-    [showHeader]="false"
-    [style]="{ width: 'min(920px, 96vw)' }"
-    [breakpoints]="{ '640px': '100vw' }"
-    styleClass="room-picker-dialog"
-    (onHide)="roomPickerReservationId = null; roomPickerAllowsMutation = false"
-  >
-    <app-physical-room-picker
-      *ngIf="roomPickerReservationId as reservationId"
-      [reservationId]="reservationId"
-      [allowMutation]="roomPickerAllowsMutation"
-      (selectionChange)="handleRoomPickerSelection($event)"
-      (assignmentApplied)="handleRoomAssignmentApplied($event)"
-    ></app-physical-room-picker>
-    <div class="room-picker-dialog__footer" *ngIf="roomPickerReservationId">
-      <span *ngIf="roomPickerAllowsMutation">{{ roomAssignmentCopy.text('selectedCount', { count: roomPickerSelection.length }) }}</span>
-      <span *ngIf="!roomPickerAllowsMutation">{{ roomAssignmentCopy.text('viewOnly') }}</span>
-      <button type="button" (click)="showRoomPickerDialog = false">{{ roomAssignmentCopy.text('close') }}</button>
-    </div>
-  </p-dialog>
-
-  <p-dialog
-    [(visible)]="showAmendmentDialog"
-    [modal]="true"
-    [showHeader]="false"
-    [style]="{ width: 'min(900px, 96vw)' }"
-    [breakpoints]="{ '640px': '100vw' }"
-    styleClass="amendment-dialog"
-    (onHide)="amendmentReservationId = null"
-  >
-    <app-reservation-amendment-workspace
-      *ngIf="amendmentReservationId as reservationId"
-      [reservationId]="reservationId"
-      [staffMode]="true"
-      (closed)="showAmendmentDialog = false"
-      (applied)="handleAmendmentApplied($event)"
-    ></app-reservation-amendment-workspace>
-  </p-dialog>
 
   <p-dialog
     [(visible)]="showCheckoutDialog"

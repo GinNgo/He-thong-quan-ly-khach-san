@@ -1,21 +1,5 @@
 package com.hotel.dtos;
 
-<<<<<<< HEAD
-import java.math.BigDecimal;
-import java.util.List;
-
-public record SubscriptionPlanDTO(
-        Long id,
-        String code,
-        String nameVi,
-        String nameEn,
-        String billingType,
-        BigDecimal price,
-        String currency,
-        boolean lifetime,
-        String status,
-        List<SubscriptionFeatureDTO> features) {
-=======
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -40,5 +24,4 @@ public class SubscriptionPlanDTO {
     private Boolean isLifetime;
     private String status;
     private List<SubscriptionFeatureDTO> features = new ArrayList<>();
->>>>>>> codex/ui-functional-audit-polish
 }

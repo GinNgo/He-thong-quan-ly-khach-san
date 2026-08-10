@@ -1,0 +1,10 @@
+target/
+.git/
+.idea/
+.vscode/
+*.log
+.env*
+coverage/
+test-results/
+*.tmp
+

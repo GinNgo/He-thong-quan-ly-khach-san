@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Observable, catchError, map, shareReplay, throwError } from 'rxjs';
+import { Observable, catchError, map, of, shareReplay, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import type { PaymentLifecycleSummary, RefundSummary } from './reservation.service';
 
@@ -25,13 +25,12 @@ export interface Hotel {
   galleryUrls?: string[];
   imageCount?: number;
   imageAltText?: string;
-  imageProvenance?: string;
   propertyType?: string;
   provinceName?: string;
   wardName?: string;
   reviewScore?: number;
   reviewCount?: number;
-  availableRoomCount?: number | null;
+  availableRoomCount?: number;
   amenities?: string[];
   sponsoredPlacement?: PublicPlacementDisclosure;
   lowestRoomType?: { id: number; name: string; maxGuests: number };
@@ -48,6 +47,14 @@ export interface Hotel {
     currency: string;
   };
   quote?: PromotionQuote;
+  property?: {
+    id: number;
+    name: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    contactName?: string;
+  };
 }
 
 export interface PublicPlacementDisclosure {
@@ -66,34 +73,6 @@ export interface PagedResponse<T> {
   size: number;
 }
 
-export interface PropertySearchParams {
-  keyword?: string;
-  provinceId?: number;
-  wardId?: number;
-  landmarkId?: number;
-  checkInDate?: string;
-  checkOutDate?: string;
-  adultCount?: number;
-  childCount?: number;
-  roomCount?: number;
-  latitude?: number;
-  longitude?: number;
-  radiusKm?: number;
-  sortBy?: string;
-  pageNumber?: number;
-  pageSize?: number;
-  propertyTypes?: string[];
-  stayType?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  starRatings?: number[];
-  minReviewScore?: number;
-  amenityIds?: number[];
-  freeCancellation?: boolean;
-  payAtProperty?: boolean;
-  breakfastIncluded?: boolean;
-}
-
 export interface RoomType {
   id: number;
   hotelId?: number;
@@ -109,7 +88,7 @@ export interface RoomType {
   basePrice: number;
   descriptionVi: string;
   descriptionEn: string;
-  availableRooms?: number | null;
+  availableRooms?: number;
   nights?: number;
   totalPrice?: number;
   quote?: PromotionQuote;
@@ -183,15 +162,14 @@ export interface ReservationRequest {
   lastName: string;
   phone: string;
   paymentMethod: string;
+  cancellationReasonCode?: string;
+  cancellationReason?: string;
+  cancelledAt?: string;
   quantity?: number;
   adults?: number;
   children?: number;
   specialRequests?: string;
-<<<<<<< HEAD
-  operationalPolicyVersion?: number;
-=======
   couponCode?: string;
->>>>>>> codex/ui-functional-audit-polish
 }
 
 export interface ReservationSummary {
@@ -208,20 +186,20 @@ export interface ReservationSummary {
   payment?: PaymentLifecycleSummary;
   refunds?: RefundSummary[];
   quote?: PromotionQuote;
+  property?: {
+    id: number;
+    name: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    contactName?: string;
+  };
   details?: Array<{
     id: number;
     roomId: number;
     roomNumber: string;
     priceAtBooking: number;
   }>;
-}
-
-interface ReservationSummaryPage {
-  content: ReservationSummary[];
-  page: number;
-  size: number;
-  totalElements: number;
-  totalPages: number;
 }
 
 export interface LocationSuggestion {
@@ -241,8 +219,6 @@ export interface LocationSuggestion {
   propertyType?: string;
   thumbnailUrl?: string;
   imageUrl?: string;
-  imageAltText?: string;
-  imageProvenance?: string;
   reviewScore?: number;
   distanceKm?: number;
   latitude?: number;
@@ -364,31 +340,16 @@ export interface UserContext {
 export class ClientApiService {
   private http = inject(HttpClient);
   private apiUrl = environment.apiUrl;
-  private readonly popularDestinationsTtlMs = 60_000;
-  private readonly popularDestinationsCache = new Map<number, {
-    expiresAt: number;
-    response: Observable<LocationSuggestion[]>;
-  }>();
+  private readonly popularDestinationsCache = new Map<number, Observable<LocationSuggestion[]>>();
   private hotelApiUrl = `${environment.apiUrl}/v1/hotels`;
 
-  searchHotels(paramsObj: PropertySearchParams): Observable<PagedResponse<Hotel>> {
+  searchHotels(paramsObj: any): Observable<PagedResponse<Hotel>> {
     let params = new HttpParams();
-<<<<<<< HEAD
-    for (const key of Object.keys(paramsObj) as Array<keyof PropertySearchParams>) {
-      const value = paramsObj[key];
-      if (value === null || value === undefined) continue;
-      const serialized = Array.isArray(value)
-        ? value.join(',')
-        : typeof value === 'string' ? value.trim() : String(value);
-      if (serialized) params = params.set(key, serialized);
-    }
-=======
     Object.keys(paramsObj).forEach((key) => {
       if (paramsObj[key] !== null && paramsObj[key] !== undefined) {
         params = params.set(key, String(paramsObj[key]));
       }
     });
->>>>>>> codex/ui-functional-audit-polish
 
     return this.http.get<PagedResponse<Hotel>>(`${environment.apiUrl}/public/properties/search`, {
       params,
@@ -397,6 +358,10 @@ export class ClientApiService {
 
   getHotelById(id: number): Observable<Hotel> {
     return this.http.get<Hotel>(`${this.hotelApiUrl}/public/${id}`);
+  }
+
+  getAccessibleHotels(): Observable<Hotel[]> {
+    return this.http.get<Hotel[]>(`${this.hotelApiUrl}/accessible`);
   }
 
   getProvinces(): Observable<any[]> {
@@ -425,9 +390,6 @@ export class ClientApiService {
     return this.http.get<any[]>(`${this.apiUrl}/hotels/${hotelId}/available-rooms`, { params });
   }
 
-<<<<<<< HEAD
-  getRoomTypesByHotel(hotelId: number, checkIn?: string, checkOut?: string, guests?: number): Observable<RoomType[]> {
-=======
   submitPropertyClaim(propertyId: number, data: any): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/properties/${propertyId}/claim`, data);
   }
@@ -438,7 +400,6 @@ export class ClientApiService {
     checkOut?: string,
     guests?: number,
   ): Observable<RoomType[]> {
->>>>>>> codex/ui-functional-audit-polish
     let params = new HttpParams();
     if (checkIn) params = params.set('checkIn', checkIn);
     if (checkOut) params = params.set('checkOut', checkOut);
@@ -470,13 +431,7 @@ export class ClientApiService {
   }
 
   getMyBookings(): Observable<ReservationSummary[]> {
-    const params = new HttpParams().set('page', '0').set('size', '100');
-    return this.http.get<ReservationSummaryPage>(`${this.apiUrl}/reservations/my-bookings/page`, { params })
-      .pipe(map(result => result.content));
-  }
-
-  getReservation(reservationId: number): Observable<ReservationSummary> {
-    return this.http.get<ReservationSummary>(`${this.apiUrl}/reservations/${reservationId}`);
+    return this.http.get<ReservationSummary[]>(`${this.apiUrl}/reservations/my-bookings`);
   }
 
   getProfile(): Observable<UserContext> {
@@ -494,9 +449,6 @@ export class ClientApiService {
     return this.searchLocations(keyword, 15);
   }
 
-<<<<<<< HEAD
-  getSearchSuggestions(keyword: string, limit: number = 10, latitude?: number, longitude?: number, provinceId?: number): Observable<SearchSuggestionGroups> {
-=======
   getSearchSuggestions(
     keyword: string,
     limit: number = 10,
@@ -504,55 +456,22 @@ export class ClientApiService {
     longitude?: number,
     provinceId?: number,
   ): Observable<SearchSuggestionGroups> {
->>>>>>> codex/ui-functional-audit-polish
     let params = new HttpParams().set('keyword', keyword).set('limit', limit.toString());
     if (latitude !== undefined) params = params.set('latitude', latitude.toString());
     if (longitude !== undefined) params = params.set('longitude', longitude.toString());
     if (provinceId !== undefined) params = params.set('provinceId', provinceId.toString());
-<<<<<<< HEAD
-    return this.http.get<SearchSuggestionGroups>(`${environment.apiUrl}/public/search/suggestions`, { params });
-=======
     return this.http.get<SearchSuggestionGroups>(
       `${environment.apiUrl}/public/search/suggestions`,
       { params },
     );
->>>>>>> codex/ui-functional-audit-polish
   }
 
-  getPopularDestinations(limit: number = 8, forceRefresh = false): Observable<LocationSuggestion[]> {
-    const safeLimit = Math.min(Math.max(limit, 1), 8);
+  getPopularDestinations(limit: number = 8): Observable<LocationSuggestion[]> {
+    const safeLimit = Math.min(Math.max(limit, 1), 12);
     const cached = this.popularDestinationsCache.get(safeLimit);
-    if (!forceRefresh && cached && cached.expiresAt > Date.now()) return cached.response;
-    this.popularDestinationsCache.delete(safeLimit);
+    if (cached) return cached;
 
     const params = new HttpParams().set('limit', safeLimit.toString());
-<<<<<<< HEAD
-    const request = this.http.get<LocationSuggestion[]>(
-      `${environment.apiUrl}/public/popular-destinations`,
-      { params }
-    ).pipe(
-      catchError(error => {
-        if (this.popularDestinationsCache.get(safeLimit)?.response === request) {
-          this.popularDestinationsCache.delete(safeLimit);
-        }
-        return throwError(() => error);
-      }),
-      shareReplay({ bufferSize: 1, refCount: false })
-    );
-    this.popularDestinationsCache.set(safeLimit, {
-      expiresAt: Date.now() + this.popularDestinationsTtlMs,
-      response: request
-    });
-    return request;
-  }
-
-  invalidatePopularDestinations(limit?: number): void {
-    if (limit === undefined) {
-      this.popularDestinationsCache.clear();
-      return;
-    }
-    this.popularDestinationsCache.delete(Math.min(Math.max(limit, 1), 8));
-=======
     const request = this.http
       .get<LocationSuggestion[]>(`${environment.apiUrl}/public/popular-destinations`, { params })
       .pipe(
@@ -580,6 +499,18 @@ export class ClientApiService {
     return this.http.get<HomeRecommendationDestination[]>(
       `${environment.apiUrl}/public/home/recommendation-destinations`,
       { params },
+    ).pipe(
+      // Older deployed APIs do not expose the recommendation endpoint yet.
+      // Popular destinations preserve a useful home experience until that API is available.
+      catchError(() => this.getPopularDestinations(limit).pipe(
+        map(destinations => destinations.map((destination, index) => ({
+          id: destination.provinceId ?? destination.id,
+          name: destination.name,
+          displayName: destination.displayName,
+          propertyCount: destination.propertyCount ?? 0,
+          selectedByDefault: index === 0,
+        }))),
+      )),
     );
   }
 
@@ -597,6 +528,43 @@ export class ClientApiService {
     return this.http.get<HomeRecommendationResponse>(
       `${environment.apiUrl}/public/home/recommendations`,
       { params },
+    ).pipe(
+      catchError(() => this.searchHotels({
+        provinceId: query.provinceId,
+        pageNumber: 1,
+        pageSize: Math.min(Math.max(query.limit ?? 8, 1), 12),
+      }).pipe(
+        map(page => ({
+          destination: {
+            id: query.provinceId,
+            name: '',
+            displayName: '',
+            propertyCount: page.content?.length ?? 0,
+            selectedByDefault: true,
+          },
+          items: (page.content ?? []).map(property => ({
+            propertyId: property.id,
+            name: property.name,
+            propertyType: property.propertyType ?? 'HOTEL',
+            provinceId: query.provinceId,
+            provinceName: property.provinceName ?? '',
+            wardName: property.wardName,
+            imageUrl: property.mainImageUrl ?? property.mainImage,
+            imageAlt: property.imageAltText,
+            starRating: property.starRating,
+            reviewScore: property.reviewScore,
+            reviewCount: property.reviewCount,
+            availableRoomCount: property.availableRoomCount,
+            pricing: property.startingPrice === undefined ? null : {
+              nightlyPrice: property.startingPrice,
+              currency: 'VND' as const,
+            },
+            recommendationReason: 'POPULAR_DESTINATION' as const,
+            sponsored: false as const,
+          })),
+          totalAvailable: page.totalElements ?? page.content?.length ?? 0,
+        })),
+      )),
     );
   }
 
@@ -607,7 +575,36 @@ export class ClientApiService {
     return this.http.get<HomeSpotlight[]>(
       `${environment.apiUrl}/public/home/spotlights`,
       { params },
-    );
->>>>>>> codex/ui-functional-audit-polish
+    ).pipe(catchError(() => of(this.localHomeSpotlights(locale).slice(0, Math.min(Math.max(limit, 1), 10)))));
+  }
+
+  /** Keeps the editorial rail useful while older API images are being upgraded. */
+  private localHomeSpotlights(locale: 'vi' | 'en'): HomeSpotlight[] {
+    const english = locale === 'en';
+    const items: Array<[string, string, string, string]> = english
+      ? [
+        ['Discover Hanoi heritage stays', 'A curated selection for your next city break.', 'Hanoi', '01'],
+        ['Da Nang by the coast', 'Wake up close to beaches, food and local life.', 'Da Nang', '04'],
+        ['A slower Phu Quoc escape', 'Find a quiet island stay for your next reset.', 'Phu Quoc', '06'],
+        ['Weekend in Ho Chi Minh City', 'Hand-picked stays in the city that never sleeps.', 'Ho Chi Minh City', '02'],
+      ]
+      : [
+        ['Khám phá nơi ở giữa lòng Hà Nội', 'Gợi ý lưu trú chọn lọc cho chuyến đi sắp tới.', 'Hà Nội', '01'],
+        ['Đà Nẵng bên bờ biển', 'Tận hưởng biển xanh, ẩm thực và nhịp sống địa phương.', 'Đà Nẵng', '04'],
+        ['Một Phú Quốc thật chậm', 'Tìm nơi nghỉ yên bình cho kỳ nghỉ tiếp theo.', 'Phú Quốc', '06'],
+        ['Cuối tuần ở Thành phố Hồ Chí Minh', 'Những nơi ở nổi bật giữa thành phố không ngủ.', 'Thành phố Hồ Chí Minh', '02'],
+      ];
+    return items.map(([title, description, location, image], index) => ({
+      id: 9000 + index,
+      kind: 'EDITORIAL' as const,
+      title,
+      description,
+      imageUrl: `assets/destinations/destination-${image}.webp`,
+      imageAlt: title,
+      disclosure: english ? 'LuxeStay editorial' : 'LuxeStay tuyển chọn',
+      target: { type: 'SEARCH_COLLECTION' as const, route: '/search', query: { displayLocation: location } },
+      startsAt: '2020-01-01T00:00:00Z',
+      endsAt: '2035-12-31T23:59:59Z',
+    }));
   }
 }

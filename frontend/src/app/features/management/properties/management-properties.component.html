@@ -1,5 +1,12 @@
 <section class="property-page">
-  <header><div><p class="eyebrow">Hồ sơ vận hành</p><h1>Cơ sở lưu trú</h1><p>Chỉnh sửa thông tin công khai; trạng thái duyệt và vận hành do hệ thống kiểm soát.</p></div></header>
+  <header>
+    <div><p class="eyebrow">Hồ sơ vận hành</p><h1>Cơ sở lưu trú</h1><p>Quản lý các cơ sở thuộc tài khoản và tạo thêm trong giới hạn gói.</p></div>
+    @if (canCreate) { <button type="button" class="primary" (click)="openCreate()">Thêm cơ sở</button> }
+  </header>
+
+  @if (success) { <p class="message success" role="status">{{ success }}</p> }
+  @if (error && properties.length) { <p class="message error" role="alert">{{ error }}</p> }
+
   @if (loading) {
     <app-feedback-state state="loading" title="Đang tải cơ sở" message="Đang kiểm tra các cơ sở được gán cho tài khoản." />
   } @else if (error && !properties.length) {
@@ -7,34 +14,36 @@
   } @else if (!properties.length) {
     <app-feedback-state state="empty" title="Chưa có cơ sở" message="Tài khoản chưa được gán cơ sở lưu trú nào." />
   } @else {
-    <div class="workspace">
-      <nav aria-label="Danh sách cơ sở">
-        @for (property of properties; track property.id) {
-          <button type="button" [class.active]="selected?.id === property.id" (click)="select(property)">
-            <strong>{{ property.nameVi }}</strong><span>{{ property.code }}</span>
-            <small>{{ property.approvalStatus }} · {{ property.operationStatus }}</small>
-          </button>
-        }
-      </nav>
-      <form [formGroup]="form" (ngSubmit)="save()" aria-labelledby="profile-title">
-        <div class="profile-heading"><div><p class="eyebrow">Hồ sơ cơ sở</p><h2 id="profile-title">{{ selected?.nameVi }}</h2></div><span class="status">{{ selected?.approvalStatus }} · {{ selected?.operationStatus }}</span></div>
-        @if (error) { <p class="message error" role="alert">{{ error }}</p> }
-        @if (success) { <p class="message success" role="status">{{ success }}</p> }
-        <div class="grid">
-          <label>Tên tiếng Việt<input formControlName="nameVi" /></label>
-          <label>Tên tiếng Anh<input formControlName="nameEn" /></label>
-          <label>Loại cơ sở<select formControlName="propertyType"><option value="HOTEL">Khách sạn</option><option value="HOMESTAY">Homestay</option><option value="APARTMENT">Căn hộ/Villa</option><option value="MOTEL">Nhà nghỉ</option></select></label>
-          <label>Hạng sao<input type="number" min="0" max="5" formControlName="starRating" /></label>
-          <label>Tỉnh/thành<select formControlName="provinceId" (change)="provinceChanged()"><option [ngValue]="null">Chọn tỉnh/thành</option>@for (province of provinces; track province.id) { <option [ngValue]="province.id">{{ province.nameVi }}</option> }</select></label>
-          <label>Phường/xã<select formControlName="wardId"><option [ngValue]="null">Chọn phường/xã</option>@for (ward of wards; track ward.id) { <option [ngValue]="ward.id">{{ ward.nameVi }}</option> }</select></label>
-          <label class="wide">Địa chỉ<input formControlName="address" /></label>
-          <label>Điện thoại<input formControlName="phone" /></label>
-          <label>Email<input type="email" formControlName="email" /></label>
-          <label class="wide">Website<input formControlName="website" /></label>
-          <label class="wide">Mô tả<textarea rows="5" formControlName="descriptionVi"></textarea></label>
-        </div>
-        <div class="actions"><p>Không thể chỉnh trạng thái duyệt, trạng thái vận hành, dữ liệu demo hoặc chủ sở hữu tại đây.</p><button type="submit" [disabled]="form.invalid || saving">{{ saving ? 'Đang lưu...' : 'Lưu hồ sơ' }}</button></div>
-      </form>
+    <div class="property-grid">
+      @for (property of properties; track property.id) {
+        <article>
+          <div><p class="eyebrow">{{ property.code }}</p><h2>{{ property.nameVi || property.name }}</h2></div>
+          <span class="status">{{ property.approvalStatus }} · {{ property.operationStatus }}</span>
+          <p>{{ property.address || 'Chưa cập nhật địa chỉ' }}</p>
+          <small>{{ property.propertyType }}</small>
+        </article>
+      }
     </div>
+  }
+
+  @if (showCreate) {
+    <form [formGroup]="form" (ngSubmit)="save()">
+      <div class="form-heading"><div><p class="eyebrow">Cơ sở mới</p><h2>Thêm cơ sở lưu trú</h2></div><button type="button" class="text" (click)="showCreate = false">Đóng</button></div>
+      <div class="grid">
+        <label>Tên tiếng Việt *<input formControlName="nameVi" /></label>
+        <label>Tên tiếng Anh<input formControlName="nameEn" /></label>
+        <label>Loại cơ sở *<select formControlName="propertyType"><option value="HOTEL">Khách sạn</option><option value="HOMESTAY">Homestay</option><option value="APARTMENT">Căn hộ</option><option value="MOTEL">Nhà nghỉ</option><option value="VILLA">Biệt thự</option><option value="RESORT">Khu nghỉ dưỡng</option></select></label>
+        <label>Hạng sao<input type="number" min="0" max="5" formControlName="starRating" /></label>
+        <label>Tỉnh/thành *<select formControlName="provinceId" (change)="provinceChanged()"><option [ngValue]="null">Chọn tỉnh/thành</option>@for (province of provinces; track province.id) { <option [ngValue]="province.id">{{ province.nameVi }}</option> }</select></label>
+        <label>Phường/xã *<select formControlName="wardId" [disabled]="locationsLoading || !form.controls.provinceId.value"><option [ngValue]="null">Chọn phường/xã</option>@for (ward of wards; track ward.id) { <option [ngValue]="ward.id">{{ ward.displayName || ward.nameVi }}</option> }</select></label>
+        <label class="wide">Địa chỉ *<input formControlName="address" /></label>
+        <label>Điện thoại<input formControlName="phone" /></label>
+        <label>Email<input type="email" formControlName="email" /></label>
+        <label class="wide">Website<input formControlName="website" /></label>
+        <label class="wide">Mô tả tiếng Việt<textarea rows="4" formControlName="descriptionVi"></textarea></label>
+        <label class="wide">Mô tả tiếng Anh<textarea rows="4" formControlName="descriptionEn"></textarea></label>
+      </div>
+      <div class="actions"><p>Cơ sở mới được lưu ở trạng thái bản nháp và chịu giới hạn số cơ sở của gói.</p><button type="submit" class="primary" [disabled]="form.invalid || saving || locationsLoading">{{ saving ? 'Đang lưu...' : 'Lưu bản nháp' }}</button></div>
+    </form>
   }
 </section>

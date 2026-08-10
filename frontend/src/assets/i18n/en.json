@@ -227,6 +227,28 @@
     }
   },
   "PUBLIC": {
+    "FAVORITES": {
+      "EYEBROW": "SAVED STAYS",
+      "TITLE": "Your wishlist",
+      "DESCRIPTION": "Keep the properties you want to revisit in one place.",
+      "BROWSE": "Browse stays",
+      "LOADING_TITLE": "Loading saved stays",
+      "LOADING_BODY": "Please wait while your wishlist is refreshed.",
+      "ERROR_TITLE": "Could not load saved stays",
+      "RETRY": "Try again",
+      "EMPTY_TITLE": "Your wishlist is empty",
+      "EMPTY_BODY": "Tap the heart on a property card or detail page to save it here.",
+      "FIND_STAY": "Find a stay",
+      "VIEW_PROPERTY": "View {{name}}",
+      "REVIEWS": "{{count}} reviews",
+      "FROM": "From",
+      "PER_NIGHT": "/ night",
+      "VIEW_DETAILS": "View details",
+      "SAVED": "Saved",
+      "SAVE": "Save",
+      "REMOVE_ARIA": "Remove from saved stays",
+      "SAVE_ARIA": "Save this stay"
+    },
     "SEARCH": {
       "REGION_ARIA": "Search stays",
       "PLAN_KICKER": "Plan your stay",
@@ -501,6 +523,8 @@
       "MEMBER_PRICE": "{{tier}} member benefit",
       "TOTAL": "Total",
       "BACKEND_NOTE": "The backend will validate and recalculate this total on confirmation.",
+      "ONE_NIGHT_ESTIMATE_NOTE": "Estimated for one night and the selected room quantity. Choose dates to see the exact total.",
+      "QUOTE_PENDING_NOTE": "Estimated from the room rate while the exact quote is being checked.",
       "CAPACITY_ERROR": "The selected rooms do not have enough capacity for these guests.",
       "SELECT_HINT": "Choose a quantity for a room type to see the total.",
       "CONTINUE_BOOKING": "Continue booking",
@@ -540,6 +564,9 @@
       "INITIAL_MESSAGE": "Processing the payment result...",
       "INVALID_DATA": "No valid payment data was found.",
       "STATUS_UNAVAILABLE": "The server status cannot be checked yet. Open booking history to verify again.",
+      "STATUS_TIMEOUT": "VNPAY is taking longer than usual to confirm. You will not be charged again; check again or open booking history.",
+      "CHECK_AGAIN": "Check again",
+      "CHECKING_AGAIN": "Checking...",
       "RECONCILIATION_MESSAGE": "The payment was recorded, but the reservation expired or was cancelled. Support will reconcile it before completion.",
       "SUCCESS_MESSAGE": "The payment gateway confirmed the transaction and your reservation was updated.",
       "FAILED_MESSAGE": "The gateway reported an unsuccessful transaction. Return to the reservation to try again.",
@@ -637,6 +664,19 @@
       "PAYMENT": "Payment",
       "REFUND": "Refund",
       "CANCEL_CONFIRM": "A refund request will be created and remains pending until the payment provider confirms it. Continue?"
+      ,"CANCEL_DIALOG_TITLE": "Confirm booking cancellation"
+      ,"CANCEL_REASON_LABEL": "Cancellation reason"
+      ,"CANCEL_REASON_PLACEHOLDER": "Select a reason"
+      ,"CANCEL_REASON_CHANGE": "Change of plans"
+      ,"CANCEL_REASON_MISTAKE": "Booked by mistake"
+      ,"CANCEL_REASON_OTHER_PROPERTY": "I found another property"
+      ,"CANCEL_REASON_PAYMENT": "Payment issue"
+      ,"CANCEL_REASON_OTHER": "Other reason"
+      ,"CANCEL_REASON_DETAIL": "Details (optional unless Other is selected)"
+      ,"CANCEL_REASON_REQUIRED": "Please select a cancellation reason."
+      ,"CANCEL_OTHER_REQUIRED": "Please enter the other reason."
+      ,"CANCEL_DIALOG_BACK": "Go back"
+      ,"CANCEL_DIALOG_SUBMIT": "Confirm cancellation"
       ,"BOOKINGS_LOAD_ERROR": "Trips could not be loaded."
       ,"CANCEL_SUCCESS_REFUND": "Booking cancelled. A refund request was created and is waiting for provider processing."
       ,"CANCEL_SUCCESS_NO_REFUND": "Booking cancelled. No successful payment needs a refund."

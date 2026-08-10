@@ -5,12 +5,10 @@ import com.hotel.paymentprovider.config.PaymentEnvironmentGuard.PaymentEnvironme
 import com.hotel.platformbilling.config.PlatformPaymentConfigurationService;
 import com.hotel.platformbilling.order.SubscriptionOrderService;
 import com.hotel.platformbilling.payment.PlatformPaymentAttemptService;
+import com.hotel.paymentprovider.vnpay.VnpayCheckoutUrlService;
 import com.hotel.platformbilling.subscription.SubscriptionPolicyService;
 import com.hotel.platformbilling.subscription.SubscriptionRenewalService;
 import com.hotel.platformbilling.subscription.SubscriptionUpgradeService;
-import com.hotel.platformbilling.subscription.SubscriptionLifecycleService;
-import com.hotel.platformbilling.subscription.SubscriptionPlanAdministrationService;
-import com.hotel.exceptions.CorrelationIdSupport;
 import com.hotel.security.ActionCode;
 import com.hotel.security.FunctionCode;
 import com.hotel.security.Permission;
@@ -18,8 +16,6 @@ import com.hotel.services.SubscriptionCatalogService;
 import com.hotel.services.PropertySubscriptionEntitlementService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,7 +26,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
 
@@ -47,8 +42,7 @@ public class PlatformBillingController {
     private final PlatformPaymentConfigurationService configurationService;
     private final PlatformBillingQueryService queryService;
     private final PropertySubscriptionEntitlementService entitlementService;
-    private final SubscriptionLifecycleService lifecycleService;
-    private final SubscriptionPlanAdministrationService planAdministrationService;
+    private final VnpayCheckoutUrlService vnpayCheckoutUrlService;
 
     @Autowired
     public PlatformBillingController(
@@ -61,8 +55,7 @@ public class PlatformBillingController {
             PlatformPaymentConfigurationService configurationService,
             PlatformBillingQueryService queryService,
             PropertySubscriptionEntitlementService entitlementService,
-            SubscriptionLifecycleService lifecycleService,
-            SubscriptionPlanAdministrationService planAdministrationService) {
+            VnpayCheckoutUrlService vnpayCheckoutUrlService) {
         this.catalogService = catalogService;
         this.orderService = orderService;
         this.attemptService = attemptService;
@@ -72,8 +65,7 @@ public class PlatformBillingController {
         this.configurationService = configurationService;
         this.queryService = queryService;
         this.entitlementService = entitlementService;
-        this.lifecycleService = lifecycleService;
-        this.planAdministrationService = planAdministrationService;
+        this.vnpayCheckoutUrlService = vnpayCheckoutUrlService;
     }
 
     /** Compatibility constructor retained for focused controller tests and integrations. */
@@ -87,7 +79,7 @@ public class PlatformBillingController {
             PlatformPaymentConfigurationService configurationService,
             PlatformBillingQueryService queryService) {
         this(catalogService, orderService, attemptService, renewalService, upgradeService, policyService,
-                configurationService, queryService, null, null, null);
+                configurationService, queryService, null, null);
     }
 
     @GetMapping("/subscription-plans")
@@ -114,12 +106,22 @@ public class PlatformBillingController {
 
     @PostMapping("/subscription-orders/{orderId}/payment-attempts")
     @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.CREATE)
-    public ResponseEntity<PlatformPaymentAttemptService.AttemptResponse> createAttempt(
+    public ResponseEntity<PaymentAttemptResponse> createAttempt(
             @PathVariable String orderId,
             @RequestBody PaymentAttemptRequest request,
             @RequestHeader("Idempotency-Key") String idempotencyKey) {
-        return ResponseEntity.ok(attemptService.create(new PlatformPaymentAttemptService.CreateAttemptCommand(
-                orderId, request.provider(), request.method(), idempotencyKey)));
+        PlatformPaymentAttemptService.AttemptResponse attempt = attemptService.create(
+                new PlatformPaymentAttemptService.CreateAttemptCommand(
+                        orderId, request.provider(), request.method(), idempotencyKey));
+        String redirectUrl = null;
+        if (vnpayCheckoutUrlService != null && "VNPAY".equalsIgnoreCase(attempt.provider())) {
+            var ready = configurationService.requireReady(attempt.provider());
+            String callbackUrl = ready.configuration().getCallbackUrl();
+            String returnUrl = callbackUrl + (callbackUrl.contains("?") ? "&" : "?")
+                    + "redirect=1&orderId=" + orderId;
+            redirectUrl = vnpayCheckoutUrlService.create(attempt, ready.credentials(), returnUrl);
+        }
+        return ResponseEntity.ok(new PaymentAttemptResponse(attempt, redirectUrl));
     }
 
     @PostMapping("/subscription-orders/{orderId}/cancel")
@@ -175,59 +177,6 @@ public class PlatformBillingController {
         return ResponseEntity.ok(entitlementService.getCurrent(targetHotelId));
     }
 
-    @GetMapping(value = "/subscriptions/{targetHotelId}/history/export", produces = "text/csv;charset=UTF-8")
-    @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.VIEW)
-    public ResponseEntity<String> exportHistory(@PathVariable Long targetHotelId) {
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"subscription-history-" + targetHotelId + ".csv\"")
-                .contentType(new MediaType("text", "csv", java.nio.charset.StandardCharsets.UTF_8))
-                .body(queryService.historyCsv(targetHotelId));
-    }
-
-    @PostMapping("/subscriptions/{targetHotelId}/revoke")
-    @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.UPDATE)
-    public ResponseEntity<SubscriptionLifecycleService.LifecycleResult> revoke(
-            @PathVariable Long targetHotelId,
-            @RequestBody RevokeRequest request,
-            HttpServletRequest servletRequest) {
-        return ResponseEntity.ok(lifecycleService.revoke(targetHotelId, request.reason(),
-                servletRequest.getRemoteAddr(), servletRequest.getHeader("User-Agent"),
-                CorrelationIdSupport.resolve(servletRequest)));
-    }
-
-    @GetMapping("/subscription-plan-admin")
-    @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.UPDATE)
-    public ResponseEntity<List<SubscriptionPlanAdministrationService.PlanVersionView>> planVersions() {
-        return ResponseEntity.ok(planAdministrationService.list());
-    }
-
-    @PostMapping("/subscription-plan-admin")
-    @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.UPDATE)
-    public ResponseEntity<SubscriptionPlanAdministrationService.PlanVersionView> createPlanVersion(
-            @RequestBody SubscriptionPlanAdministrationService.CreateVersionCommand command,
-            @RequestHeader("Idempotency-Key") String idempotencyKey,
-            @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId) {
-        return ResponseEntity.ok(planAdministrationService.createVersion(command, idempotencyKey, correlationId));
-    }
-
-    @PostMapping("/subscription-plan-admin/{planId}/activate")
-    @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.UPDATE)
-    public ResponseEntity<SubscriptionPlanAdministrationService.PlanVersionView> activatePlanVersion(
-            @PathVariable Long planId, @RequestHeader("Idempotency-Key") String idempotencyKey,
-            @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId) {
-        return ResponseEntity.ok(planAdministrationService.activate(planId, idempotencyKey, correlationId));
-    }
-
-    @PostMapping("/subscription-plan-admin/{planId}/deactivate")
-    @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.UPDATE)
-    public ResponseEntity<SubscriptionPlanAdministrationService.PlanVersionView> deactivatePlanVersion(
-            @PathVariable Long planId, @RequestBody PlanDeactivationRequest request,
-            @RequestHeader("Idempotency-Key") String idempotencyKey,
-            @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId) {
-        return ResponseEntity.ok(planAdministrationService.deactivate(planId, request.reason(), idempotencyKey, correlationId));
-    }
-
     @GetMapping("/subscription-policies")
     @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.VIEW)
     public ResponseEntity<SubscriptionPolicyService.PolicyAvailability> policies() {
@@ -268,12 +217,20 @@ public class PlatformBillingController {
     public record PaymentAttemptRequest(String provider, String method) {
     }
 
+    public record PaymentAttemptResponse(
+            Long id, String publicId, String orderPublicId,
+            com.hotel.platformbilling.payment.PlatformPaymentAttempt.Status status,
+            String provider, String method, PaymentEnvironment environment,
+            java.math.BigDecimal expectedAmount, String currency,
+            String providerOrderReference, java.time.LocalDateTime expiresAt,
+            String merchantReferenceMasked, boolean replayed, String redirectUrl) {
+        PaymentAttemptResponse(PlatformPaymentAttemptService.AttemptResponse value, String redirectUrl) {
+            this(value.id(), value.publicId(), value.orderPublicId(), value.status(), value.provider(), value.method(),
+                    value.environment(), value.expectedAmount(), value.currency(), value.providerOrderReference(),
+                    value.expiresAt(), value.merchantReferenceMasked(), value.replayed(), redirectUrl);
+        }
+    }
+
     public record PlanChangeRequest(Long targetPlanId) {
-    }
-
-    public record RevokeRequest(String reason) {
-    }
-
-    public record PlanDeactivationRequest(String reason) {
     }
 }

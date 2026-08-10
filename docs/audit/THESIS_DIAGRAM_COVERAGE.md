@@ -4,6 +4,8 @@
 **Nguồn:** `docs/UML.md`, `docs/ERD.md`, `docs/audit/FEATURE_TRACEABILITY_MATRIX.md`, source route/API/entity/test hiện hành.  
 **Quy tắc:** SVG là source để diff; PNG là asset nhúng DOCX. `REQUIRED` nghĩa capability cần được nhìn thấy trong loại sơ đồ đó; `NOT_APPLICABLE` phải có lý do.
 
+**Flowchart policy:** Không tạo flowchart trùng với Activity Diagram. FLOW-01..FLOW-04 được biểu diễn lần lượt bằng UML-16..UML-19; các CRUD đơn giản không cần flowchart riêng.
+
 ## 1. Capability -> diagram coverage
 
 | Capability | Use Case | Class | Sequence | Activity | ERD | Figure/source hiện có | Evidence hiện tại | Việc còn thiếu |
@@ -37,6 +39,7 @@
 | UML-16..19 | Activity | Dọc riêng; không co chữ dưới ngưỡng đọc | PNG tương ứng 4 source | Caption/reference đã gắn | `PASS_STRUCTURAL/BLOCKED_VISUAL` |
 | ERD-01..04 | Schema hiện hành | ERD-01/03 landscape hoặc panel `(a)/(b)` | PNG tương ứng 4 source | Alt text entity/relationship đã gắn | `PASS_STRUCTURAL/BLOCKED_VISUAL` |
 | ERD-05 | Mô hình mục tiêu | Dọc/lưu appendix | `docs/thesis-assets/diagrams/png/erd-05.png` | Bắt buộc nhãn `DEFERRED` và caption | `PASS_STRUCTURAL/BLOCKED_VISUAL` |
+| ARCH-01 | Kiến trúc tổng thể/flow triển khai | Dọc hoặc landscape | `docs/thesis-assets/diagrams/png/architecture-01.png` | Hình 3.2; caption và alt text đã gắn trong builder | `PASS_STRUCTURAL/BLOCKED_VISUAL` |
 
 ## 3. Gate phát hành
 

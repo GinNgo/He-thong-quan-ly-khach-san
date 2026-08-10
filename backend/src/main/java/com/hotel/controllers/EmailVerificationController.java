@@ -32,7 +32,6 @@ public class EmailVerificationController {
     }
 
     @PostMapping("/api/auth/email-verification/confirm")
-    @PreAuthorize("permitAll()")
     public ResponseEntity<EmailVerificationResultResponse> confirm(
             @Valid @RequestBody EmailVerificationRequest request) {
         EmailVerificationService.ConfirmationResult result = service.confirm(request.token());

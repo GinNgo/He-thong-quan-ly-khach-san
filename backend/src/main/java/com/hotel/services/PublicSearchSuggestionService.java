@@ -8,6 +8,7 @@ import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.LocationRepository;
 import com.hotel.repositories.PropertyImageRepository;
 import com.hotel.util.VietnameseTextNormalizer;
+import com.hotel.util.FuzzySearchMatcher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
@@ -18,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 
@@ -44,71 +44,26 @@ public class PublicSearchSuggestionService {
             return emptyGroups();
         }
 
-<<<<<<< HEAD
-        int safeLimit = Math.min(Math.max(propertyLimit, 1), 10);
-        int candidateLimit = Math.min(safeLimit * 3, 30);
-        Set<Long> provinceScope = provinceCompatibilityService.provinceScopeIds(provinceId);
-        List<Location> provinceCandidates = new ArrayList<>(locationRepository
-                .searchCurrentProvinces(normalizedKeyword, rawKeyword,
-                        provinceCompatibilityService.currentSourceCodes(), PageRequest.of(0, candidateLimit))
-                .getContent());
-        locationRepository.searchLocations(
-                        normalizedKeyword, rawKeyword, "PROVINCE", PageRequest.of(0, candidateLimit))
-                .stream()
-                .map(provinceCompatibilityService::currentProvinceFor)
-                .filter(java.util.Objects::nonNull)
-                .filter(provinceCompatibilityService::isCurrentProvince)
-                .forEach(provinceCandidates::add);
-        List<LocationSuggestionDTO> provinces = provinceCandidates.stream()
-                .filter(location -> provinceId == null || provinceScope.contains(location.getId()))
-                .map(this::toLocationSuggestion)
-                .collect(java.util.stream.Collectors.collectingAndThen(
-                        java.util.stream.Collectors.toList(), items -> distinctAndLimit(items, safeLimit)));
-        var wardPage = provinceId == null
-                ? locationRepository.searchLocations(
-                        normalizedKeyword, rawKeyword, "WARD", PageRequest.of(0, candidateLimit))
-                : locationRepository.searchWardsInProvinceScope(
-                        normalizedKeyword, rawKeyword, provinceScope, PageRequest.of(0, candidateLimit));
-        List<LocationSuggestionDTO> wards = wardPage.stream()
-=======
         int safePropertyLimit = Math.min(Math.max(propertyLimit, 1), 10);
         Set<Long> provinceScope = provinceCompatibilityService.provinceScopeIds(provinceId);
         List<LocationSuggestionDTO> provinces = locationRepository
                 .searchCurrentProvinces(normalizedKeyword, rawKeyword, PageRequest.of(0, 5))
                 .stream()
                 .filter(location -> provinceId == null || provinceScope.contains(location.getId()))
-                .map(this::toLocationSuggestion)
+                .map(location -> toLocationSuggestion(location, false))
                 .toList();
         List<LocationSuggestionDTO> wards = locationRepository
                 .searchLocations(normalizedKeyword, rawKeyword, "WARD", PageRequest.of(0, 8))
                 .stream()
                 .filter(location -> provinceId == null || belongsToProvince(location, provinceScope))
->>>>>>> codex/ui-functional-audit-polish
-                .map(this::toLocationSuggestion)
-                .collect(java.util.stream.Collectors.collectingAndThen(
-                        java.util.stream.Collectors.toList(), items -> distinctAndLimit(items, safeLimit)));
-        List<Hotel> propertyCandidates = provinceId == null
-                ? hotelRepository.searchAutocomplete(normalizedKeyword, rawKeyword, PageRequest.of(0, candidateLimit))
-                : hotelRepository.searchAutocompleteInProvinceScope(
-                        normalizedKeyword, rawKeyword, provinceScope, PageRequest.of(0, candidateLimit));
-        List<LocationSuggestionDTO> properties = propertyCandidates.stream()
+                .map(location -> toLocationSuggestion(location, false))
+                .toList();
+        List<LocationSuggestionDTO> properties = hotelRepository
+                .searchAutocomplete(normalizedKeyword, rawKeyword, PageRequest.of(0, safePropertyLimit))
+                .stream()
                 .filter(hotel -> includeDemo() || !Boolean.TRUE.equals(hotel.getIsDemo()))
-<<<<<<< HEAD
-                .map(hotel -> toPropertySuggestion(hotel, latitude, longitude))
-                .collect(java.util.stream.Collectors.collectingAndThen(
-                        java.util.stream.Collectors.toList(), items -> distinctAndLimit(items, safeLimit)));
-        var landmarkPage = provinceId == null
-                ? locationRepository.searchActiveLandmarks(
-                        normalizedKeyword, rawKeyword, null, PageRequest.of(0, candidateLimit))
-                : locationRepository.searchActiveLandmarksInProvinceScope(
-                        normalizedKeyword, rawKeyword, provinceScope, PageRequest.of(0, candidateLimit));
-        List<LocationSuggestionDTO> landmarks = landmarkPage.stream()
-                .map(this::toLandmarkSuggestion)
-                .collect(java.util.stream.Collectors.collectingAndThen(
-                        java.util.stream.Collectors.toList(), items -> distinctAndLimit(items, safeLimit)));
-=======
                 .filter(hotel -> provinceId == null || provinceScope.contains(hotel.getProvinceId()))
-                .map(hotel -> toPropertySuggestion(hotel, latitude, longitude))
+                .map(hotel -> toPropertySuggestion(hotel, latitude, longitude, false))
                 .toList();
         var landmarkPage = provinceId == null
                 ? locationRepository.searchActiveLandmarks(normalizedKeyword, rawKeyword, null, PageRequest.of(0, 8))
@@ -118,7 +73,31 @@ public class PublicSearchSuggestionService {
                 .stream()
                 .map(this::toLandmarkSuggestion)
                 .toList();
->>>>>>> codex/ui-functional-audit-polish
+
+        if (provinces.isEmpty() || wards.isEmpty() || properties.isEmpty() || landmarks.isEmpty()) {
+            List<Location> candidates = locationRepository.findActiveSearchCandidates(PageRequest.of(0, 500));
+            if (provinces.isEmpty()) {
+                provinces = fuzzyLocations(candidates, normalizedKeyword, "PROVINCE", 5, provinceId, provinceScope);
+            }
+            if (wards.isEmpty()) {
+                wards = fuzzyLocations(candidates, normalizedKeyword, "WARD", 8, provinceId, provinceScope);
+            }
+            if (landmarks.isEmpty()) {
+                landmarks = fuzzyLocations(candidates, normalizedKeyword, "LANDMARK", 8, provinceId, provinceScope);
+            }
+            if (properties.isEmpty()) {
+                properties = hotelRepository.findPublicSearchCandidates(PageRequest.of(0, 500)).stream()
+                        .filter(hotel -> includeDemo() || !Boolean.TRUE.equals(hotel.getIsDemo()))
+                        .filter(hotel -> provinceId == null || provinceScope.contains(hotel.getProvinceId()))
+                        .map(hotel -> new RankedSuggestion(hotel, FuzzySearchMatcher.score(normalizedKeyword,
+                                VietnameseTextNormalizer.joinAndNormalize(hotel.getNameVi(), hotel.getName(), hotel.getAddressLine()))))
+                        .filter(item -> item.score() >= 0.55d)
+                        .sorted(Comparator.comparingDouble(RankedSuggestion::score).reversed())
+                        .limit(safePropertyLimit)
+                        .map(item -> toPropertySuggestion(item.hotel(), latitude, longitude, false))
+                        .toList();
+            }
+        }
 
         return SearchSuggestionGroupsDTO.builder()
                 .provinces(provinces)
@@ -127,6 +106,26 @@ public class PublicSearchSuggestionService {
                 .landmarks(landmarks)
                 .build();
     }
+
+    private List<LocationSuggestionDTO> fuzzyLocations(List<Location> candidates, String keyword, String type,
+                                                       int limit, Long provinceId, Set<Long> provinceScope) {
+        return candidates.stream()
+                .filter(location -> type.equals(location.getLocationType()))
+                .filter(location -> provinceId == null || ("PROVINCE".equals(type)
+                        ? provinceScope.contains(location.getId()) : belongsToProvince(location, provinceScope)))
+                .map(location -> new RankedLocation(location, FuzzySearchMatcher.score(keyword,
+                        VietnameseTextNormalizer.joinAndNormalize(location.getNameVi(), location.getNameEn(), location.getFullPath()))))
+                .filter(item -> item.score() >= 0.55d)
+                .sorted(Comparator.comparingDouble(RankedLocation::score).reversed())
+                .limit(limit)
+                .map(item -> "LANDMARK".equals(type)
+                        ? toLandmarkSuggestion(item.location())
+                        : toLocationSuggestion(item.location(), false))
+                .toList();
+    }
+
+    private record RankedSuggestion(Hotel hotel, double score) {}
+    private record RankedLocation(Location location, double score) {}
 
     public List<LocationSuggestionDTO> searchFlat(String keyword, int size, Long provinceId) {
         SearchSuggestionGroupsDTO groups = search(keyword, Math.min(size, 10), provinceId, null, null);
@@ -142,25 +141,16 @@ public class PublicSearchSuggestionService {
         int safeLimit = Math.min(Math.max(limit, 1), 8);
         List<LocationSuggestionDTO> results = provinceCompatibilityService.currentProvinces()
                 .stream()
-                .map(this::toPopularDestination)
+                .map(location -> toLocationSuggestion(location, true))
                 .filter(item -> item.getPropertyCount() != null && item.getPropertyCount() > 0)
                 .sorted(Comparator.comparing(LocationSuggestionDTO::getPropertyCount).reversed()
-                        .thenComparing(LocationSuggestionDTO::getDisplayName)
-                        .thenComparing(LocationSuggestionDTO::getId))
+                        .thenComparing(LocationSuggestionDTO::getDisplayName))
                 .limit(safeLimit)
                 .toList();
+        for (int index = 0; index < results.size(); index++) {
+            results.get(index).setImageUrl("/assets/destinations/destination-" + String.format("%02d", index + 1) + ".webp");
+        }
         return results;
-    }
-
-    private LocationSuggestionDTO toPopularDestination(Location location) {
-        LocationSuggestionDTO destination = toLocationSuggestion(location);
-        String stableAssetKey = location.getSourceCode() == null ? location.getCode() : location.getSourceCode();
-        int assetNumber = Math.floorMod(stableAssetKey.hashCode(), 8) + 1;
-        String assetName = "destination-" + String.format("%02d", assetNumber) + ".webp";
-        destination.setImageUrl("/assets/destinations/" + assetName);
-        destination.setImageAltText("Kh\u00E1m ph\u00E1 " + location.getNameVi());
-        destination.setImageProvenance("BUNDLED_DESTINATION:" + assetName);
-        return destination;
     }
 
     private SearchSuggestionGroupsDTO emptyGroups() {
@@ -168,23 +158,14 @@ public class PublicSearchSuggestionService {
                 .provinces(List.of()).wards(List.of()).properties(List.of()).landmarks(List.of()).build();
     }
 
-<<<<<<< HEAD
-    private List<LocationSuggestionDTO> distinctAndLimit(List<LocationSuggestionDTO> items, int limit) {
-        LinkedHashMap<String, LocationSuggestionDTO> distinct = new LinkedHashMap<>();
-        for (LocationSuggestionDTO item : items) {
-            distinct.putIfAbsent(item.getType() + ":" + item.getId(), item);
-        }
-        return distinct.values().stream().limit(limit).toList();
-=======
     private boolean belongsToProvince(Location location, Set<Long> provinceIds) {
         Location province = provinceFor(location);
         return province != null && provinceIds.contains(province.getId());
->>>>>>> codex/ui-functional-audit-polish
     }
 
-    private LocationSuggestionDTO toLocationSuggestion(Location location) {
+    private LocationSuggestionDTO toLocationSuggestion(Location location, boolean includePropertyCount) {
         Location province = provinceCompatibilityService.currentProvinceFor(location);
-        long propertyCount = countProperties(location);
+        Long propertyCount = includePropertyCount ? countProperties(location) : null;
         String displayName = "WARD".equals(location.getLocationType()) && province != null
                 ? location.getNameVi() + ", " + province.getNameVi()
                 : location.getNameVi();
@@ -210,28 +191,16 @@ public class PublicSearchSuggestionService {
         Location parent = landmark.getParent();
         Location ward = parent != null && "WARD".equals(parent.getLocationType()) ? parent : null;
         String provinceName = province == null ? null : province.getNameVi();
-<<<<<<< HEAD
-        String displayName = provinceName == null
-                ? landmark.getNameVi()
-                : landmark.getNameVi() + ", " + provinceName;
-        String secondary = categoryLabel(landmark.getCategory());
-        if (ward != null) secondary += " · " + ward.getNameVi();
-=======
         String displayName = provinceName == null ? landmark.getNameVi() : landmark.getNameVi() + ", " + provinceName;
         String context = categoryLabel(landmark.getCategory());
         if (ward != null) context += " · " + ward.getNameVi();
->>>>>>> codex/ui-functional-audit-polish
         return LocationSuggestionDTO.builder()
                 .type("LANDMARK")
                 .id(landmark.getId())
                 .parentId(parent == null ? null : parent.getId())
                 .name(landmark.getNameVi())
                 .displayName(displayName)
-<<<<<<< HEAD
-                .secondaryText(secondary)
-=======
                 .secondaryText(context)
->>>>>>> codex/ui-functional-audit-polish
                 .provinceId(province == null ? null : province.getId())
                 .provinceName(provinceName)
                 .wardId(ward == null ? null : ward.getId())
@@ -245,10 +214,6 @@ public class PublicSearchSuggestionService {
                 .build();
     }
 
-<<<<<<< HEAD
-    private Double defaultRadius(Double radius) {
-        if (radius == null || !Double.isFinite(radius) || radius <= 0) return 5d;
-=======
     private Location provinceFor(Location location) {
         Location cursor = location;
         for (int depth = 0; cursor != null && depth < 3; depth++) {
@@ -260,7 +225,6 @@ public class PublicSearchSuggestionService {
 
     private Double defaultRadius(Double radius) {
         if (radius == null || radius <= 0) return 5d;
->>>>>>> codex/ui-functional-audit-polish
         return Math.min(radius, 50d);
     }
 
@@ -276,20 +240,6 @@ public class PublicSearchSuggestionService {
 
     private long countProperties(Location location) {
         boolean province = "PROVINCE".equals(location.getLocationType());
-<<<<<<< HEAD
-        Set<Long> provinceIds = province
-                ? provinceCompatibilityService.provinceScopeIds(location.getId())
-                : Set.of();
-        if (includeDemo()) {
-            return province
-                    ? hotelRepository.countByProvinceIdInAndApprovalStatusAndOperationStatus(
-                            provinceIds, "APPROVED", "ACTIVE")
-                    : hotelRepository.countByWardIdAndApprovalStatusAndOperationStatus(location.getId(), "APPROVED", "ACTIVE");
-        }
-        return province
-                ? hotelRepository.countByProvinceIdInAndApprovalStatusAndOperationStatusAndIsDemoFalse(
-                        provinceIds, "APPROVED", "ACTIVE")
-=======
         Set<Long> provinceIds = province ? provinceCompatibilityService.provinceScopeIds(location.getId()) : Set.of();
         if (includeDemo()) {
             return province
@@ -298,11 +248,11 @@ public class PublicSearchSuggestionService {
         }
         return province
                 ? hotelRepository.countByProvinceIdInAndApprovalStatusAndOperationStatusAndIsDemoFalse(provinceIds, "APPROVED", "ACTIVE")
->>>>>>> codex/ui-functional-audit-polish
                 : hotelRepository.countByWardIdAndApprovalStatusAndOperationStatusAndIsDemoFalse(location.getId(), "APPROVED", "ACTIVE");
     }
 
-    private LocationSuggestionDTO toPropertySuggestion(Hotel hotel, Double latitude, Double longitude) {
+    private LocationSuggestionDTO toPropertySuggestion(Hotel hotel, Double latitude, Double longitude,
+                                                        boolean includeThumbnail) {
         Location province = provinceCompatibilityService.currentProvinceForId(hotel.getProvinceId());
         Location ward = hotel.getWardId() == null ? null : locationRepository.findById(hotel.getWardId()).orElse(null);
         String displayName = firstNotBlank(hotel.getNameVi(), hotel.getName(), hotel.getNameEn());
@@ -312,7 +262,7 @@ public class PublicSearchSuggestionService {
                 .type("PROPERTY").id(hotel.getId()).slug(hotel.getSlug())
                 .name(displayName).displayName(displayName).secondaryText(secondary)
                 .address(hotel.getAddressLine()).propertyType(hotel.getPropertyType())
-                .thumbnailUrl(thumbnailFor(hotel))
+                .thumbnailUrl(includeThumbnail ? thumbnailFor(hotel) : null)
                 .reviewScore(hotel.getReviewCount() != null && hotel.getReviewCount() > 0 ? hotel.getAverageRating() : null)
                 .distanceKm(distance(latitude, longitude, hotel.getLatitude(), hotel.getLongitude()))
                 .provinceId(province == null ? hotel.getProvinceId() : province.getId())
@@ -322,7 +272,7 @@ public class PublicSearchSuggestionService {
     }
 
     private String thumbnailFor(Hotel hotel) {
-        var images = propertyImageRepository.findByHotelIdOrderBySortOrderAscIdAsc(hotel.getId());
+        var images = propertyImageRepository.findByHotelIdOrderBySortOrderAsc(hotel.getId());
         return images.stream().filter(image -> Boolean.TRUE.equals(image.getIsPrimary())).findFirst()
                 .or(() -> images.stream().findFirst())
                 .map(image -> image.getImageUrl()).orElse(null);

@@ -1,13 +1,5 @@
 package com.hotel.dtos;
 
-<<<<<<< HEAD
-public record SubscriptionFeatureDTO(
-        String code,
-        String nameVi,
-        String nameEn,
-        String valueType,
-        Integer limit) {
-=======
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,5 +15,4 @@ public class SubscriptionFeatureDTO {
     private String nameEn;
     private String valueType;
     private Integer limit;
->>>>>>> codex/ui-functional-audit-polish
 }

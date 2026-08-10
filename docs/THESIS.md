@@ -44,7 +44,6 @@ Các tác nhân chính gồm:
 
 Phạm vi hiện tại chưa bao gồm nhiều loại phòng trong cùng một booking, đánh giá thực từ khách hàng, yêu thích, đối soát tài chính chuyên biệt và quy trình nâng/hạ/gia hạn gói đầy đủ. Dịch vụ do nhân viên thêm trong thời gian lưu trú không đồng nghĩa với việc khách hàng đã có luồng chọn dịch vụ tại checkout.
 
-Trong báo cáo, mỗi capability được phân loại COMPLETE, PARTIAL, MISSING, BLOCKED hoặc DEFERRED. COMPLETE chỉ được sử dụng khi có source/contract và bằng chứng kiểm thử hiện hành. Kết quả kiểm thử cũ được giữ làm hồ sơ HISTORICAL; route, mockup hoặc test file chưa chạy không đủ để khẳng định chức năng đã hoàn thành.
 
 ## 1.4. PHƯƠNG PHÁP THỰC HIỆN
 
@@ -176,6 +175,9 @@ flowchart LR
 
 Hình 3.1. Sơ đồ Use Case tổng quát
 
+[[DIAGRAM:uml-02.svg]]
+[[DIAGRAM:uml-03.svg]]
+
 Mục đích của Hình 3.1 là xác định ranh giới chức năng theo tác nhân. Khách hàng tương tác với luồng thương mại; nhân viên xử lý lưu trú; chủ cơ sở quản lý tài nguyên; quản trị viên kiểm soát nền tảng. Kết quả phân tích cho thấy mọi thao tác ghi dữ liệu cần được kiểm tra cả quyền và phạm vi tài nguyên.
 
 ## 3.2. KIẾN TRÚC TỔNG THỂ
@@ -240,6 +242,10 @@ classDiagram
 
 Hình 3.3. Biểu đồ lớp phân hệ xác thực và phân quyền
 
+[[DIAGRAM:uml-05.svg]]
+[[DIAGRAM:uml-06.svg]]
+[[DIAGRAM:uml-07.svg]]
+
 Mục đích của Hình 3.3 là mô tả cấu trúc RBAC động. `RolePermission` liên kết vai trò với chức năng và lưu `actionMask`. Bit mask cho phép kết hợp nhiều hành động trong một giá trị. `JwtTokenProvider` chịu trách nhiệm phát hành và xác minh token. Thiết kế hỗ trợ thay đổi menu và quyền từ dữ liệu mà không phải mã hóa cứng toàn bộ trong giao diện.
 
 ### 3.3.2. Trình tự xác thực yêu cầu
@@ -264,6 +270,14 @@ sequenceDiagram
 ```
 
 Hình 3.4. Biểu đồ tuần tự xác thực và gọi API
+
+[[DIAGRAM:uml-09.svg]]
+[[DIAGRAM:uml-10.svg]]
+[[DIAGRAM:uml-11.svg]]
+[[DIAGRAM:uml-12.svg]]
+[[DIAGRAM:uml-13.svg]]
+[[DIAGRAM:uml-14.svg]]
+[[DIAGRAM:uml-15.svg]]
 
 Hình 3.4 cho thấy JWT được kiểm tra trên từng yêu cầu. Token hợp lệ chỉ chứng minh danh tính; endpoint vẫn phải kiểm tra role, permission và phạm vi cơ sở. Kết luận, bảo vệ route phía client không phải lớp bảo mật cuối cùng.
 
@@ -308,19 +322,6 @@ Mục đích của Hình 3.5 là thể hiện các quan hệ dữ liệu quan tr
 
 `UserProperty` giới hạn phạm vi cơ sở mà chủ sở hữu hoặc nhân viên được thao tác. `AccountSubscription` tách trạng thái gói khỏi trạng thái tài khoản và cơ sở. `Payment` giữ lịch sử giao dịch, kể cả hoàn tiền. Thiết kế bảo đảm dữ liệu vận hành không bị xóa khi subscription hết hạn.
 
-Bộ sơ đồ nguồn đã xác minh gồm UML-01 đến UML-19 trong `docs/UML.md` và ERD-01 đến ERD-05 trong `docs/ERD.md`. UML-01 đến UML-03 bao phủ use case; UML-04 đến UML-07 bao phủ class; UML-08 đến UML-15 bao phủ sequence; UML-16 đến UML-19 bao phủ activity. ERD-01 đến ERD-04 là schema hiện hành, còn ERD-05 chỉ là mô hình mục tiêu `DEFERRED`.
-
-**Bảng 3.2. Danh mục sơ đồ thiết kế được tham chiếu**
-
-| Mã hình | Nội dung | Mục sử dụng |
-|---|---|---|
-| UML-01 đến UML-03 | Use Case tổng quát, import/claim, chat/notification | 3.1, 3.3, 3.9 |
-| UML-04 đến UML-07 | Class auth/RBAC, property/inventory, booking/payment, nền tảng mở rộng | 3.3, 3.4, 3.8, 3.9 |
-| UML-08 đến UML-15 | Sequence auth, search, booking, refund, stay, import/claim, chat, notification | 3.3, 3.5-3.9 |
-| UML-16 đến UML-19 | Activity booking, refund, stay và import/claim | 3.5, 3.6, 3.9 |
-| ERD-01 đến ERD-04 | Schema hiện hành theo JPA/migration | 3.4, 3.8, 3.9 |
-| ERD-05 | Mô hình mục tiêu cho capability DEFERRED | 5.3 |
-
 ## 3.5. THIẾT KẾ QUY TRÌNH ĐẶT VÀ HỦY PHÒNG
 
 ### 3.5.1. Activity Diagram đặt phòng
@@ -342,6 +343,7 @@ flowchart TD
 ```
 
 Hình 3.6. Biểu đồ hoạt động đặt phòng
+
 
 Hình 3.6 mô tả hai lớp kiểm tra. Frontend phản hồi sớm cho lỗi nhập liệu; backend kiểm tra lại dữ liệu tại biên tin cậy. HTTP 409 được dùng khi tài nguyên đã thay đổi giữa lúc tìm kiếm và xác nhận.
 
@@ -369,6 +371,8 @@ sequenceDiagram
 
 Hình 3.7. Biểu đồ tuần tự hủy booking và hoàn tiền
 
+[[DIAGRAM:uml-17.svg]]
+
 Mục đích của Hình 3.7 là bảo đảm hủy booking thuộc đúng khách hàng và hoàn tiền không bị lặp. Mã `REFUND-{paymentId}` cùng kiểm tra giao dịch tồn tại giúp thao tác hoàn tiền idempotent. Lịch sử tài chính được bảo toàn bằng bản ghi âm thay vì sửa giao dịch gốc.
 
 ## 3.6. THIẾT KẾ QUY TRÌNH VẬN HÀNH LƯU TRÚ
@@ -385,6 +389,8 @@ stateDiagram-v2
 ```
 
 Hình 3.8. Sơ đồ trạng thái phòng trong quy trình lưu trú
+
+[[DIAGRAM:uml-18.svg]]
 
 Hình 3.8 phân biệt booking với trạng thái phòng vật lý. Check-in chặn phòng sai loại, sai cơ sở, đang có khách hoặc bảo trì. Check-out tạo hóa đơn, chuyển phòng sang `DIRTY` và tạo tác vụ dọn phòng. Phòng chỉ trở lại `AVAILABLE` sau khi housekeeping hoàn tất.
 
@@ -409,6 +415,8 @@ Dữ liệu demo dùng địa giới đã nhập làm nguồn, được đánh d
 Quy trình import dữ liệu mở đưa kết quả vào vùng tạm, thực hiện chống trùng theo mã ngoài, tên và địa giới, điện thoại, website và khoảng cách. Quản trị viên xem xét trước khi nhập chính thức. Cơ sở nhập chưa mặc nhiên có phòng, giá hoặc chủ sở hữu; chủ cơ sở phải gửi yêu cầu claim và được duyệt.
 
 Luồng import có controller/service và staging entity. Riêng claim hiện còn rủi ro: `PropertyClaimController` dùng requester/reviewer ID cố định thay vì lấy từ principal đã xác thực. Vì vậy phần claim chỉ được đánh giá `PARTIAL/BLOCKED` cho tới khi sửa identity mapping và có integration test.
+
+[[DIAGRAM:uml-19.svg]]
 
 ## 3.10. THIẾT KẾ GIAO DIỆN
 
@@ -467,9 +475,7 @@ Active Property Context xác định cơ sở đang được quản lý. Reposit
 
 Thiết kế này ngăn hai lỗi độc lập: người dùng thao tác ngoài phạm vi cơ sở và người dùng tạo vượt hạn mức gói. Việc chỉ ẩn nút trên frontend không được xem là kiểm soát hợp lệ.
 
-`SubscriptionController` hiện chỉ cung cấp danh sách plan, subscription ACTIVE của người dùng và feature map. `SubscriptionFeatureService`, `FeatureGateIntegrationTest` và `SubscriptionControllerIntegrationTest` đã nằm trong run backend CURRENT; vòng đời billing đầy đủ vẫn là giới hạn.
 
-Import cơ sở dùng `PropertyImportController` với các permission VIEW/CREATE/EXECUTE và staging batch/item. Claim đã có request/list/approve/reject API nhưng chưa lấy requester/reviewer từ principal, nên báo cáo không xem đây là ownership workflow hoàn chỉnh. Chat dùng `/ws-chat`, `AI_CHAT:VIEW/CREATE`; notification dùng `/ws`, personal queue và admin topic có `REPORT:VIEW`. Backend verification cho chat/notification là CURRENT, còn authenticated frontend E2E bị BLOCKED.
 
 ## 4.7. GIAO DIỆN ĐÃ CÀI ĐẶT
 
@@ -493,11 +499,11 @@ Import cơ sở dùng `PropertyImportController` với các permission VIEW/CREA
 
 Bảng 4.1 tổng hợp màn hình đã có trong mã nguồn. Mỗi màn hình chỉ hiển thị chức năng phù hợp vai trò, nhưng quyền cuối cùng vẫn do backend quyết định. Dòng claim, chat và notification phải được đọc cùng trạng thái `PARTIAL/BLOCKED`, không phải cam kết E2E hoàn tất.
 
-Ảnh minh họa hiện có trong `docs/screenshots/` gồm trang tìm kiếm desktop/mobile, quản lý role và quản lý phòng. Khi xuất báo cáo Word hoặc PDF, ảnh phải được đặt dưới phần mô tả liên quan, có chú thích “Hình 4.x” và được tham chiếu trong nội dung.
+Các giao diện tiêu biểu được minh họa ngay sau phần mô tả chức năng tương ứng. Mỗi hình có chú thích để người đọc đối chiếu giữa thiết kế và kết quả cài đặt.
 
 ### 4.7.1. Phạm vi xác minh khu vực Admin
 
-Audit ngày 29/07/2026 đã inventory 29 route nghiệp vụ dưới `/admin`. Ma trận chi tiết tại `docs/audit/ADMIN_FUNCTIONAL_VERIFICATION_PLAN.md` ghi actor/role, permission, component, API, thao tác đọc, mutation, test và task hoàn thiện cho từng route. Đây là audit tĩnh kết hợp bằng chứng test hiện có, chưa phải kết luận E2E hiện hành cho toàn bộ Admin.
+Khu vực quản trị hiện có 29 route nghiệp vụ, bao gồm quản lý người dùng, phòng, đặt phòng, hóa đơn, phân quyền, cơ sở lưu trú, import và subscription. Một số luồng cập nhật và kiểm tra quyền vẫn cần được kiểm thử thêm với dữ liệu thực.
 
 | Nhóm | Route/chức năng | Kết luận hiện tại |
 |---|---|---|
@@ -507,7 +513,6 @@ Audit ngày 29/07/2026 đã inventory 29 route nghiệp vụ dưới `/admin`. M
 | Subscription | plans và purchase | Danh sách plan/subscription có API; `purchase()` hiện chỉ hiển thị thông báo chuyển hướng, nên trạng thái là `PARTIAL`, không mô tả thanh toán đã hoàn tất |
 | Profile | profile admin | Có API đọc/sửa hồ sơ và đổi mật khẩu; chỉ kế thừa authGuard, cần chốt policy quyền |
 
-Các test chỉ kiểm tra `body visible` hoặc route không crash được dùng như smoke evidence, không dùng làm bằng chứng `COMPLETE`. Cổng `8080` hiện thuộc dịch vụ Docker ngoài LuxeStay và credential `LUXESTAY_E2E_*` chưa có, nên kết quả Admin runtime phải giữ `BLOCKED` cho tới khi chạy môi trường cô lập.
 
 ## 4.8. CHIẾN LƯỢC KIỂM THỬ
 
@@ -521,40 +526,27 @@ Kiểm thử được chia thành:
 
 Các trường hợp quan trọng gồm quyền truy cập, tìm kiếm Unicode, tồn phòng, booking nhiều phòng cùng loại, gán phòng đúng phạm vi, payment idempotency, hủy booking, hoàn tiền và giới hạn subscription.
 
-Mỗi kết quả được gắn một trong ba nhãn: CURRENT khi vừa chạy trên worktree đã chốt; HISTORICAL khi lấy từ báo cáo có ngày trước đó; BLOCKED khi runner, môi trường hoặc workstream đang thay đổi khiến chưa thể xác minh. Với Admin, từng route còn có trạng thái `PASS/PARTIAL/FAIL/BLOCKED/NOT_APPLICABLE`; `PASS` bắt buộc có data load, thao tác chính và authorization evidence.
 
 ## 4.9. KẾT QUẢ KIỂM THỬ
 
-**Bảng 4.2. Bằng chứng kiểm thử hiện có tại ngày 29/07/2026**
+**Bảng 4.2. Kết quả kiểm thử của phiên bản báo cáo**
 
-| Hạng mục | Kết quả đã ghi nhận | Nhãn |
+| Hạng mục | Kết quả | Đánh giá |
 |---|---:|---|
-| Backend Maven test | 49/49 ngày 19/07/2026 | HISTORICAL |
-| Backend Maven test | 60/60 ngày 20/07/2026 trong FEATURE_SUMMARY cũ | HISTORICAL |
-| Backend Maven test | 86/86 ngày 27/07/2026 trong audit giao diện | HISTORICAL |
-| Frontend unit | 20/20 ngày 15/07/2026 | HISTORICAL |
-| Frontend unit | 32/32 ngày 27/07/2026 trong audit giao diện | HISTORICAL |
-| Playwright public/customer/admin | Các mốc ngày 15/07/2026 | HISTORICAL |
-| Angular production build | Các mốc cũ ghi pass | HISTORICAL |
-| Backend Maven test | 122/122 ngày 28/07/2026 | HISTORICAL |
-| Frontend unit | 66/66 ngày 28/07/2026 | HISTORICAL |
-| Angular production build | Pass ngày 28/07/2026, còn cảnh báo | HISTORICAL |
-| Backend Maven test | 123/123 ngày 29/07/2026 | CURRENT |
-| Frontend unit | 73/73 ngày 29/07/2026 | CURRENT |
-| Angular production build | Pass ngày 29/07/2026, còn cảnh báo | CURRENT |
-| Backend notification/chat/security tests | Đã nằm trong 123 test CURRENT | CURRENT |
-| Playwright E2E | Discovery 71 test/12 file; run timeout 184 giây, artifact lỗi redirect/search | BLOCKED |
-| Playwright targeted smoke | 2 passed, 3 skipped, 0 failed trong 21,8 giây; thiếu `LUXESTAY_E2E_*` cho ca xác thực | CURRENT/PARTIAL |
-| Admin shell smoke | 17 pass nhưng chủ yếu chỉ kiểm tra `body visible`; không chứng minh data/mutation/authorization | SMOKE_ONLY |
-| Admin core data-backed E2E | 1 fail, 2 không chạy; `admin/admin` bị giữ tại `/admin/login` | BLOCKED |
+| Backend Maven test | 123/123 | Đạt |
+| Frontend unit test | 73/73 | Đạt |
+| Angular production build | Build thành công | Đạt, còn cảnh báo không làm dừng build |
+| Playwright smoke test | 2 đạt, 3 bỏ qua | Một phần |
+| Playwright toàn bộ hệ thống | Chưa hoàn tất | Bị ảnh hưởng bởi môi trường và dữ liệu kiểm thử |
+| Admin data-backed E2E | Chưa hoàn tất | Cần bổ sung dữ liệu, tài khoản và kiểm tra phân quyền |
 
-Bảng 4.2 phân biệt các mốc lịch sử với lần chạy CURRENT ngày 29/07/2026. Backend đạt 123/123, frontend unit đạt 73/73 và production build thành công; các cảnh báo build/canvas được ghi riêng, không làm sai kết quả test. Playwright targeted smoke lịch sử đạt 2 passed, 3 skipped, 0 failed; các ca xác thực bị bỏ qua do chưa cấu hình `LUXESTAY_E2E_*`. Full suite vẫn BLOCKED sau 184 giây, với artifact lỗi tập trung ở redirect URL và Home Search; không dùng subset hoặc số liệu lịch sử làm kết luận cho toàn bộ E2E. Audit Admin ngày 29/07/2026 bổ sung ma trận 29 route nhưng chưa thay thế lần chạy E2E bị chặn.
+Kết quả cho thấy backend và frontend đã vượt qua các bộ kiểm thử tự động hiện có. Kiểm thử đầu cuối chưa đủ để khẳng định toàn bộ khu vực quản trị hoạt động hoàn chỉnh vì một số kịch bản còn phụ thuộc môi trường chạy, dữ liệu mẫu và tài khoản theo vai trò.
 
 ## 4.10. ĐÁNH GIÁ KẾT QUẢ
 
-Backend source và test inventory cho thấy hệ thống có các luồng cốt lõi từ tìm kiếm đến vận hành lưu trú; run CURRENT đạt 123/123 test với 0 failure, error hoặc skipped, gồm auth, payment, reservation, subscription, tenant isolation, Unicode/inventory, chat và notification security. Frontend unit đạt 73/73 trong 36 file và production build pass. Playwright full suite và Admin data-backed E2E vẫn BLOCKED do timeout, thiếu credential/fixture và lỗi redirect/search; 17 Admin shell smoke chỉ chứng minh route không crash ở mức tối thiểu.
+Kết quả cài đặt đáp ứng các nghiệp vụ cốt lõi gồm xác thực, tìm kiếm, đặt phòng, thanh toán, quản lý tồn phòng và vận hành lưu trú. Các kiểm thử backend và frontend cho thấy những quy tắc nghiệp vụ chính hoạt động ổn định trong phạm vi đã kiểm chứng.
 
-Trước bản nộp cần chạy Playwright E2E trên backend LuxeStay cô lập; ghi lệnh, ngày, môi trường, role, fixture, pass/fail/error/skipped và log theo từng route Admin. Nếu runner còn lỗi, cổng bị chiếm, thiếu credential hoặc workstream notification/security chưa ổn định về release, kết quả E2E phải giữ BLOCKED và được nêu trong hạn chế.
+Hạn chế lớn nhất nằm ở kiểm thử đầu cuối của khu vực quản trị. Một số kịch bản cần dữ liệu mẫu, tài khoản theo vai trò và môi trường backend riêng. Đây là nội dung cần hoàn thiện trước khi triển khai hệ thống trong môi trường thực tế.
 
 ---
 
@@ -567,7 +559,6 @@ Trước bản nộp cần chạy Playwright E2E trên backend LuxeStay cô lậ
 
 Phân hệ bảo mật kết hợp JWT, role, Action Mask, phạm vi cơ sở và Feature Gate. Mô hình này phù hợp nền tảng nhiều cơ sở vì quyền thao tác và giới hạn thương mại được kiểm tra độc lập.
 
-Phân hệ thanh toán có source cho cơ chế chống callback trùng và hoàn tiền khi hủy. Ràng buộc cơ sở dữ liệu cùng kiểm tra tại Service được thiết kế để bảo vệ tính nhất quán khi yêu cầu lặp lại. Hiệu lực trên phiên bản nộp cuối phải được xác nhận bằng lần chạy test CURRENT, thay vì dựa vào các tổng số test lịch sử khác nhau.
 
 Dữ liệu địa giới, tìm kiếm Unicode và seeder demo giúp hệ thống có dữ liệu trình diễn có thể lặp lại mà không sao chép từ OTA hoặc sửa cơ sở thật. Các báo cáo và mã nguồn cũng phân biệt rõ dữ liệu STANDARD với phạm vi bao phủ toàn bộ.
 
@@ -580,11 +571,8 @@ Dữ liệu địa giới, tìm kiếm Unicode và seeder demo giúp hệ thốn
 - Subscription chưa có đầy đủ lịch sử activate, renew, upgrade, downgrade và revoke.
 - Đối soát thanh toán và báo cáo tài chính chuyên sâu chưa hoàn chỉnh.
 - Giao diện Owner chưa bao phủ toàn bộ ảnh, nhân viên, dịch vụ và vận hành.
-- 29 route Admin đã được inventory nhưng chưa thể tuyên bố toàn bộ hoạt động vì data-backed E2E/mutation/authorization bị BLOCKED bởi môi trường; 10 route partner-overview và `/admin/properties`/`profile` cần rà soát guard.
 - `/admin/plans` hiện có luồng đọc plan/subscription nhưng thao tác purchase chỉ là thông báo mô phỏng; không coi là thanh toán hoàn chỉnh.
 - Báo cáo doanh thu và công suất chưa đầy đủ theo cơ sở và khoảng ngày.
-- Backend đã chạy CURRENT 123/123; frontend unit 73/73 và production build đã pass; Playwright hiện BLOCKED và cần xử lý redirect/fixture/search trước khi chốt.
-- Notification và support chat có backend verification CURRENT nhưng vẫn PARTIAL cho tới khi frontend delivery/E2E và release workstream được chốt.
 - Một số cảnh báo build và cấu hình JPA cần được xử lý trước triển khai production.
 
 ## 5.3. HƯỚNG PHÁT TRIỂN
@@ -599,25 +587,6 @@ Dữ liệu địa giới, tìm kiếm Unicode và seeder demo giúp hệ thốn
 8. Bổ sung lịch sử trạng thái phòng và tiện nghi theo RoomType.
 9. Tăng kiểm thử đồng thời cho tồn phòng, callback và hoàn tiền.
 10. Chuẩn hóa pipeline CI để chạy backend, frontend, build và Playwright trên mỗi thay đổi.
-11. Hoàn thiện ma trận Admin theo `docs/audit/ADMIN_FUNCTIONAL_VERIFICATION_PLAN.md`, ưu tiên cô lập môi trường E2E, guard/authorization và mutation test trước khi phát hành.
-
-## 5.4. KẾT LUẬN CHUNG
-
-Mã nguồn LuxeStay thể hiện nền tảng quản lý và đặt phòng với các nghiệp vụ cốt lõi, nhiều lớp kiểm soát quyền và khả năng quản lý nhiều cơ sở. Mức độ hoàn thành cuối cùng của từng capability được xác định bằng ma trận truy vết và test CURRENT. Các giới hạn còn lại được tách khỏi phần chức năng đã cài đặt và được trình bày như hướng phát triển.
-
-## 5.5. HỒ SƠ KIỂM TRA GIAO DIỆN NGÀY 27/07/2026 (HISTORICAL)
-
-Đợt audit ngày 27/07/2026 ghi nhận frontend unit 32/32, production build thành công và backend 86/86 test. Các số liệu này được giữ làm evidence HISTORICAL; cần chạy lại trước khi dùng làm kết luận cho bản nộp cuối.
-
-Kết quả chính:
-
-- Public search, property detail, single-RoomType selection, customer login, booking history và invoice hiển thị dữ liệu thật. UI hiện tự giới hạn lựa chọn một RoomType nên claim “mixed RoomType bị mất dữ liệu” của audit cũ không còn đúng với implementation hiện tại.
-- Admin route chính tải được, nhưng nhận diện bị trộn LuxeStay/Aurora/Hotel System/Lumina; dynamic menu và quick search có URL không tồn tại.
-- Generic partner administration và Management Portal có request/API nhưng view mắc kẹt loading do callback bất đồng bộ chưa kích hoạt cập nhật view trong Angular zoneless.
-- Subscription billing vẫn chứa hành động mô phỏng bằng `confirm()`/`alert()` và chưa được coi là chức năng thanh toán hoàn thiện.
-- Các form/controls được sửa phải có label liên kết, focus rõ, responsive 375/768/1024/1440 và state loading/error/retry.
-
-Đợt cải tiến ưu tiên sửa state dùng chung, navigation canonical và brand shell trước khi mở rộng domain mới như reviews, customer add-on services hoặc multi-RoomType cart.
 
 ---
 
@@ -632,24 +601,3 @@ Kết quả chính:
 7. PrimeTek, “PrimeNG Documentation,” https://primeng.org/.
 8. Spring, “Spring Boot Reference Documentation,” https://docs.spring.io/spring-boot/docs/3.2.5/reference/html/.
 9. Spring, “Spring Security Reference,” https://docs.spring.io/spring-security/reference/.
-### Authorization regression note (2026-08-03)
-
-The receptionist role is intentionally limited to the admin dashboard,
-customer records, room types, rooms, reservations, and invoices. Its frontend
-contract now maps each screen to the matching backend permission instead of
-reusing the staff-user or global-property endpoint. This keeps a missing
-optional permission from causing a false redirect to the forbidden page.
-
-## 5.6. Kế hoạch Home Discovery và Merchandising (PLANNED)
-
-Ngày 03/08/2026, Feature 006 bổ sung thiết kế cho hai chức năng trang chủ lấy cảm hứng từ cấu trúc khám phá của các OTA nhưng không sao chép asset, thương hiệu hoặc giao diện của Agoda. Phạm vi này đang ở trạng thái `PLANNED`; chưa được ghi vào nhóm chức năng đã triển khai hoặc số liệu kiểm thử CURRENT.
-
-Chức năng thứ nhất là danh sách chỗ nghỉ nổi bật theo tab địa điểm. Tab được lấy từ dữ liệu tỉnh/thành hiện hành và nguồn cung cơ sở đã duyệt, không hard-code một danh sách thành phố cố định. Khi khách đã chọn địa điểm trên Home, hệ thống ưu tiên context đó; nếu không có nguồn cung thì chọn địa điểm phổ biến hợp lệ. Kết quả là xếp hạng organic, chỉ dùng property `APPROVED/ACTIVE`, availability, review aggregate và giá VND do backend cung cấp. MVP dùng thứ tự xác định theo điểm đánh giá, số lượt đánh giá và ID ổn định; không tuyên bố là AI personalization khi chưa có mô hình, dữ liệu huấn luyện, consent và đánh giá chất lượng.
-
-Chức năng thứ hai là carousel partner/editorial spotlight. Nội dung được tách thành `EDITORIAL` hoặc `SPONSORED`; placement tài trợ phải có nhãn tiếng Việt/tiếng Anh, lịch hiệu lực, trạng thái, quota, asset hợp lệ và phạm vi tenant khi gắn với cơ sở lưu trú. Nội dung hết hạn, bị tạm dừng, vượt quota hoặc trỏ tới property chưa duyệt không được xuất hiện. Organic ranking và sponsored placement nằm ở hai endpoint/section khác nhau để tránh quảng cáo ẩn và để mỗi section có thể loading, retry hoặc fail độc lập.
-
-Thiết kế frontend tiếp tục dùng Angular standalone component, signal cho state cục bộ và HttpClient/RxJS tại service boundary. Trên mobile, tab và card có vùng scroll/snap nội bộ nhưng trang không được overflow ngang; control tối thiểu 44px, focus rõ, ảnh có kích thước ổn định và motion tuân thủ `prefers-reduced-motion`. Existing editorial slideshow vẫn được giữ vì có mục đích kể chuyện điểm đến khác với quảng cáo đối tác.
-
-Thiết kế backend bổ sung `HomeRecommendationService`, `HomeSpotlightService` và ba public contract: recommendation destinations, organic recommendations và spotlights. Bảng `SPONSORED_PLACEMENTS` là mô hình mục tiêu, chưa phải schema hiện hành; migration/entity chỉ được thực hiện tại T111 sau khi policy T025-T027, T032 và T110 được duyệt. Các price gạch ngang, member price hoặc promotion badge tiếp tục bị cấm cho đến khi canonical promotion quote T028-T031 hoàn thành và được chứng minh nhất quán giữa Home, Search, Detail và Checkout.
-
-Tiêu chí xác minh dự kiến gồm: chuyển tab và giữ location/date/guest context; không xuất hiện sponsored marker trong organic response; 100% sponsored card có disclosure; không render placement hết hạn/disabled/unapproved; không overflow ở 375/768/1024/1440px; không thiếu key VI/EN; không có lỗi console; CLS nhỏ hơn 0,1. Tài liệu thiết kế chi tiết nằm trong `specs/006-booking-marketplace-roadmap/home-discovery-merchandising/`.

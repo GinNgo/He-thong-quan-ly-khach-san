@@ -3,18 +3,16 @@
     *ngIf="isOpen"
     id="ai-assistant-dialog"
     class="ai-chat-window"
-    pFocusTrap
     role="dialog"
-    aria-modal="true"
+    aria-modal="false"
     aria-labelledby="ai-assistant-title"
-    (keydown.escape)="toggleChat(); $event.stopPropagation()"
   >
     <div class="ai-header d-flex justify-content-between align-items-center p-3">
       <div class="d-flex align-items-center">
         <i class="pi pi-sparkles fs-4 me-2 ai-header-icon" aria-hidden="true"></i>
         <div>
           <h2 id="ai-assistant-title" class="ai-title">AI Concierge</h2>
-          <p class="ai-subtitle">Sẵn sàng hỗ trợ 24/7</p>
+          <p class="ai-subtitle"><span class="ai-online-dot" aria-hidden="true"></span> Gemini · Sẵn sàng hỗ trợ</p>
         </div>
       </div>
       <button type="button" class="ai-icon-button" aria-label="Đóng trợ lý AI" (click)="toggleChat()">
@@ -60,6 +58,7 @@
     </div>
 
     <div class="ai-footer p-3 border-top">
+      <p class="ai-disclaimer">AI có thể nhầm lẫn. Hãy kiểm tra dữ liệu trước khi thao tác.</p>
       <div class="input-group">
         <label class="visually-hidden" for="ai-message-input">Tin nhắn cho trợ lý AI</label>
         <input

@@ -1,6 +1,10 @@
 <main class="payment-result-shell">
   <section class="payment-result-card" aria-live="polite">
-    <p class="payment-eyebrow">{{ provider || i18n.text('PUBLIC.PAYMENT.GATEWAY') }}</p>
+    <div class="provider-brand">
+      <img *ngIf="provider.toUpperCase() === 'VNPAY'" src="assets/payment/vnpay-logo.svg" alt="VNPAY" class="provider-logo">
+      <p *ngIf="provider.toUpperCase() !== 'VNPAY'" class="payment-eyebrow">{{ provider || i18n.text('PUBLIC.PAYMENT.GATEWAY') }}</p>
+      <span *ngIf="provider.toUpperCase() === 'VNPAY'" class="sandbox-badge">Sandbox</span>
+    </div>
 
     <div *ngIf="status === 'PROCESSING' || status === 'PENDING'" class="status-mark status-mark--pending" aria-hidden="true">
       <i class="pi pi-spin pi-spinner"></i>
@@ -25,6 +29,10 @@
     <p *ngIf="reservationId" class="reservation-reference">{{ i18n.text('PUBLIC.PAYMENT.RESERVATION_REFERENCE', { id: reservationId }) }}</p>
 
     <div class="payment-actions">
+      <button *ngIf="pollingTimedOut" type="button" class="retry-action" [disabled]="isPolling" (click)="retryStatus()">
+        <i class="pi" [class.pi-refresh]="!isPolling" [class.pi-spinner]="isPolling" [class.pi-spin]="isPolling" aria-hidden="true"></i>
+        {{ i18n.text(isPolling ? 'PUBLIC.PAYMENT.CHECKING_AGAIN' : 'PUBLIC.PAYMENT.CHECK_AGAIN') }}
+      </button>
       <button type="button" class="primary-action" (click)="goToBookings()">{{ i18n.text('PUBLIC.PAYMENT.VIEW_BOOKINGS') }}</button>
       <a routerLink="/" class="secondary-action">{{ i18n.text('PUBLIC.PAYMENT.HOME') }}</a>
     </div>

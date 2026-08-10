@@ -158,57 +158,6 @@ class PropertyRefundServiceTest {
                 VndMoney.of(100_000), LocalDateTime.ofInstant(NOW, ZoneOffset.UTC)));
     }
 
-    @Test
-    void singleSourceRefundSelectsTheOnlyPaymentThatCanCoverTheAmount() {
-        PropertyFinancialTransaction smaller = payment("property-transaction-small", 101L, 250_000);
-        arrangeSingleSourceBalances(List.of(original, smaller));
-        when(requestRepository.findByHotelIdAndIdempotencyKey(any(), any())).thenReturn(Optional.empty());
-        when(requestRepository.saveAndFlush(any(PropertyRefundRequest.class))).thenAnswer(invocation -> {
-            PropertyRefundRequest request = invocation.getArgument(0);
-            ReflectionTestUtils.setField(request, "id", 201L);
-            return request;
-        });
-
-        PropertyRefundService.RefundResult result = service.requestSingleSource(
-                new PropertyRefundService.SingleSourceCommand(
-                        20L,
-                        BigDecimal.valueOf(700_000),
-                        "Reservation amendment decrease",
-                        "amendment-refund-1",
-                        "correlation-amendment"));
-
-        assertEquals(original.getPublicId(), result.originalTransactionPublicId());
-        assertEquals(0, BigDecimal.valueOf(700_000).compareTo(result.requestedAmount()));
-    }
-
-    @Test
-    void ambiguousOrSplitRefundSourceFailsWithoutInventingPolicy() {
-        PropertyFinancialTransaction secondCovering = payment("property-transaction-second", 101L, 900_000);
-        arrangeSingleSourceBalances(List.of(original, secondCovering));
-
-        FinancialException ambiguous = assertThrows(FinancialException.class,
-                () -> service.requestSingleSource(new PropertyRefundService.SingleSourceCommand(
-                        20L,
-                        BigDecimal.valueOf(500_000),
-                        "Ambiguous source",
-                        "amendment-refund-ambiguous",
-                        "correlation-ambiguous")));
-        assertEquals(FinancialErrorCode.POLICY_NOT_CONFIGURED, ambiguous.code());
-
-        PropertyFinancialTransaction firstPartial = payment("property-transaction-first-partial", 102L, 400_000);
-        PropertyFinancialTransaction secondPartial = payment("property-transaction-second-partial", 103L, 400_000);
-        arrangeSingleSourceBalances(List.of(firstPartial, secondPartial));
-
-        FinancialException split = assertThrows(FinancialException.class,
-                () -> service.requestSingleSource(new PropertyRefundService.SingleSourceCommand(
-                        20L,
-                        BigDecimal.valueOf(700_000),
-                        "Split source",
-                        "amendment-refund-split",
-                        "correlation-split")));
-        assertEquals(FinancialErrorCode.POLICY_NOT_CONFIGURED, split.code());
-    }
-
     private void arrangeEmptyBalance() {
         when(propertyAccessService.currentUser()).thenReturn(actor);
         when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
@@ -217,47 +166,5 @@ class PropertyRefundServiceTest {
         when(requestRepository.findByHotelIdAndIdempotencyKey(any(), any())).thenReturn(Optional.empty());
         when(requestRepository.findByOriginalTransactionIdOrderByRequestedAtAsc(100L)).thenReturn(List.of());
         when(transactionRepository.findByOriginalTransactionIdOrderByOccurredAtAsc(100L)).thenReturn(List.of());
-    }
-
-    private void arrangeSingleSourceBalances(List<PropertyFinancialTransaction> sources) {
-        when(propertyAccessService.currentUser()).thenReturn(actor);
-        when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
-        when(propertyAccessService.accessibleHotelIds()).thenReturn(Set.of(10L));
-        when(transactionRepository.findBookingDebitsByReservationIdForUpdate(
-                20L,
-                PropertyFinancialTransaction.Direction.DEBIT,
-                Set.of(PropertyFinancialTransaction.TransactionType.BOOKING_DEPOSIT,
-                        PropertyFinancialTransaction.TransactionType.ROOM_PAYMENT)))
-                .thenReturn(sources);
-        for (PropertyFinancialTransaction source : sources) {
-            when(requestRepository.findByOriginalTransactionIdOrderByRequestedAtAsc(source.getId()))
-                    .thenReturn(List.of());
-            when(transactionRepository.findByOriginalTransactionIdOrderByOccurredAtAsc(source.getId()))
-                    .thenReturn(List.of());
-        }
-    }
-
-    private PropertyFinancialTransaction payment(String publicId, Long id, long amount) {
-        PropertyFinancialTransaction payment = PropertyFinancialTransaction.record(
-                publicId,
-                original.getHotel(),
-                original.getReservation(),
-                null,
-                null,
-                null,
-                PropertyFinancialTransaction.TransactionType.ROOM_PAYMENT,
-                PropertyFinancialTransaction.Direction.DEBIT,
-                VndMoney.of(amount),
-                "MOMO",
-                "SIMULATOR",
-                PaymentEnvironment.SIMULATOR,
-                "provider-" + publicId,
-                "effect-" + publicId,
-                "PROVIDER",
-                null,
-                "Room payment",
-                LocalDateTime.ofInstant(NOW.minusSeconds(30), ZoneOffset.UTC));
-        ReflectionTestUtils.setField(payment, "id", id);
-        return payment;
     }
 }

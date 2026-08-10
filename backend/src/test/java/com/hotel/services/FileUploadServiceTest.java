@@ -2,7 +2,6 @@ package com.hotel.services;
 
 import com.hotel.entities.User;
 import com.hotel.exceptions.AvatarUploadException;
-import com.hotel.exceptions.PropertyMediaException;
 import com.hotel.repositories.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,37 +60,6 @@ class FileUploadServiceTest {
                 "^/api/public/uploads/avatar-41-[0-9a-f-]+\\.png$"));
         assertEquals(result.url(), user.getAvatarUrl());
         assertTrue(Files.isRegularFile(pathFromUrl(result.url())));
-    }
-
-    @Test
-    void storesAndDeletesPropertyManagedImageWithPropertyScopedRandomName() throws Exception {
-        FileUploadService.StoredImage result = service.storePropertyImage(
-                77L,
-                new MockMultipartFile("file", "gallery.png", "image/png", png(4, 3)));
-
-        assertTrue(result.url().matches(
-                "^/api/public/uploads/property-77-[0-9a-f-]+\\.png$"));
-        assertEquals("image/png", result.contentType());
-        assertEquals(4, result.width());
-        assertEquals(3, result.height());
-        assertTrue(result.sizeBytes() > 0);
-        assertTrue(result.checksumSha256().matches("^[0-9a-f]{64}$"));
-        assertTrue(result.storageKey().startsWith("property-77-"));
-        assertTrue(Files.isRegularFile(pathFromUrl(result.url())));
-        assertTrue(service.deleteManagedImage(result.url()));
-        assertFalse(Files.exists(pathFromUrl(result.url())));
-    }
-
-    @Test
-    void propertyUploadUsesPropertySpecificValidationErrors() {
-        PropertyMediaException exception = assertThrows(
-                PropertyMediaException.class,
-                () -> service.storePropertyImage(
-                        77L,
-                        new MockMultipartFile(
-                                "file", "spoofed.png", "image/png", "not-image".getBytes())));
-
-        assertEquals("PROPERTY_MEDIA_SIGNATURE_INVALID", exception.code());
     }
 
     @Test

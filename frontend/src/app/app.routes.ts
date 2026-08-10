@@ -36,7 +36,6 @@ export const routes: Routes = [
   { path: 'register', loadComponent: () => import('./features/auth/register/register.component').then(m => m.RegisterComponent) },
   { path: 'partner/register', loadComponent: () => import('./features/client/partner-register/partner-register.component').then(m => m.PartnerRegisterComponent) },
   { path: 'partner/registration-status', loadComponent: () => import('./features/client/partner-registration-status/partner-registration-status.component').then(m => m.PartnerRegistrationStatusComponent), canActivate: [clientAuthGuard] },
-  { path: 'partner/owner-invitation', loadComponent: () => import('./features/client/owner-invitation-accept/owner-invitation-accept.component').then(m => m.OwnerInvitationAcceptComponent), canActivate: [clientAuthGuard] },
   { path: 'admin/login', loadComponent: () => import('./features/auth/admin-login/admin-login.component').then(m => m.AdminLoginComponent) },
   {
     path: 'admin',
@@ -52,26 +51,23 @@ export const routes: Routes = [
       { path: 'rooms', loadComponent: () => import('./features/admin/room-management/room-management').then(m => m.RoomManagement), canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROOM, actionCode: ActionCode.VIEW } },
       { path: 'services', loadComponent: () => import('./features/admin/service-management/service-management').then(m => m.ServiceManagement), canActivate: [permissionGuard], data: { functionCode: FunctionCode.HOTEL_SERVICE, actionCode: ActionCode.VIEW } },
       { path: 'reservations', loadComponent: () => import('./features/admin/reservation-management/reservation-management').then(m => m.ReservationManagement), canActivate: [permissionGuard], data: { functionCode: FunctionCode.RESERVATION, actionCode: ActionCode.VIEW } },
-      { path: 'reviews', loadComponent: () => import('./features/management/reviews/review-management.component').then(m => m.ReviewManagementComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.REVIEW, actionCode: ActionCode.VIEW } },
       { path: 'refunds', loadComponent: () => import('./features/admin/reservation-management/refund-management.component').then(m => m.RefundManagementComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PROPERTY_REFUND, actionCode: ActionCode.APPROVE } },
       { path: 'platform-refunds', loadComponent: () => import('./features/admin/platform-refunds/platform-refunds.component').then(m => m.PlatformRefundsComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PLATFORM_REFUND, actionCode: ActionCode.APPROVE } },
       { path: 'platform-revenue', loadComponent: () => import('./features/admin/platform-revenue/platform-revenue.component').then(m => m.PlatformRevenueComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PLATFORM_REVENUE, actionCode: ActionCode.VIEW } },
       { path: 'reservations/timeline', loadComponent: () => import('./features/admin/reservation-timeline/reservation-timeline.component').then(m => m.ReservationTimelineComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.RESERVATION, actionCode: ActionCode.VIEW } },
       { path: 'reservations/create', loadComponent: () => import('./features/admin/reservation-create/reservation-create').then(m => m.ReservationCreate), canActivate: [permissionGuard], data: { functionCode: FunctionCode.RESERVATION, actionCode: ActionCode.CREATE } },
       { path: 'invoices', loadComponent: () => import('./features/admin/invoice-management/invoice-management').then(m => m.InvoiceManagement), canActivate: [permissionGuard], data: { functionCode: FunctionCode.INVOICE, actionCode: ActionCode.VIEW } },
+      { path: 'housekeeping', loadComponent: () => import('./features/management/housekeeping/housekeeping.component').then(m => m.HousekeepingComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.HOUSEKEEPING, actionCode: ActionCode.VIEW } },
+      { path: 'property-revenue', loadComponent: () => import('./features/management/property-revenue/property-revenue.component').then(m => m.PropertyRevenueComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.REPORT, actionCode: ActionCode.VIEW } },
       { path: 'modules', loadComponent: () => import('./features/system/module-management/module-management').then(m => m.ModuleManagementComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.SYSTEM, actionCode: ActionCode.VIEW } },
       { path: 'chat', loadComponent: () => import('./features/admin/chat-dashboard/chat-dashboard').then(m => m.ChatDashboardComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.AI_CHAT, actionCode: ActionCode.VIEW } },
-      { path: 'properties', loadComponent: () => import('./features/admin/property-management/property-management').then(m => m.PropertyManagementComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PROPERTY_LIFECYCLE, actionCode: ActionCode.VIEW } },
+      { path: 'properties', loadComponent: () => import('./features/admin/property-management/property-management').then(m => m.PropertyManagementComponent) },
       { path: 'plans', loadComponent: () => import('./features/admin/subscription-plans/subscription-plans').then(m => m.SubscriptionPlansComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.SYSTEM, actionCode: ActionCode.VIEW } },
       { path: 'platform-payment-configuration', loadComponent: () => import('./features/admin/platform-payment-configuration/platform-payment-configuration.component').then(m => m.PlatformPaymentConfigurationComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PAYMENT_READINESS, actionCode: ActionCode.VIEW } },
       { path: 'roles', loadComponent: () => import('./features/admin/role-management/role-management.component').then(m => m.RoleManagementComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROLE, actionCode: ActionCode.VIEW } },
       { path: 'role-permissions', loadComponent: () => import('./features/admin/role-permission/role-permission.component').then(m => m.RolePermissionComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.ROLE_PERMISSION, actionCode: ActionCode.VIEW } },
       { path: 'audit-log', loadComponent: () => import('./features/admin/audit-log/audit-log.component').then(m => m.AuditLogComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.AUDIT_LOG, actionCode: ActionCode.VIEW } },
-<<<<<<< HEAD
-      { path: 'financial-audit', loadComponent: () => import('./features/admin/financial-audit/financial-audit.component').then(m => m.FinancialAuditComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.AUDIT_LOG, actionCode: ActionCode.VIEW } },
-=======
       { path: 'email-outbox', loadComponent: () => import('./features/admin/email-outbox/email-outbox.component').then(m => m.EmailOutboxComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.AUDIT_LOG, actionCode: ActionCode.VIEW } },
->>>>>>> codex/ui-functional-audit-polish
       { path: 'property-imports', loadComponent: () => import('./features/admin/property-imports/property-imports.component').then(m => m.PropertyImportsComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PROPERTY_IMPORT, actionCode: ActionCode.VIEW } },
       { path: 'property-claims', loadComponent: () => import('./features/admin/property-claims/property-claims.component').then(m => m.PropertyClaimsComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PROPERTY_CLAIM, actionCode: ActionCode.VIEW } },
       { path: 'property-owners', loadComponent: () => import('./features/admin/partner-overview/partner-overview.component').then(m => m.PartnerOverviewComponent), data: { title: 'Chủ cơ sở', endpoint: 'property-owners' } },
@@ -98,32 +94,21 @@ export const routes: Routes = [
     path: 'management',
     loadComponent: () => import('./layout/management-layout/management-layout').then(m => m.ManagementLayout),
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['PROPERTY_OWNER', 'HOTEL_ADMIN', 'HOTEL_MANAGER', 'HOUSEKEEPING', 'SUPER_ADMIN', 'ADMIN'] },
+    data: { roles: ['PROPERTY_OWNER', 'HOTEL_ADMIN', 'HOTEL_MANAGER', 'RECEPTIONIST', 'HOUSEKEEPING', 'SUPER_ADMIN', 'ADMIN'] },
     children: [
-<<<<<<< HEAD
-      { path: 'dashboard', loadComponent: () => import('./features/management/dashboard/management-dashboard.component').then(m => m.ManagementDashboardComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.HOTEL, actionCode: ActionCode.VIEW } },
-      { path: 'properties', loadComponent: () => import('./features/management/dashboard/management-dashboard.component').then(m => m.ManagementDashboardComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.HOTEL, actionCode: ActionCode.VIEW } },
-      { path: 'room-types', loadComponent: () => import('./features/management/inventory/management-inventory.component').then(m => m.ManagementInventoryComponent), canActivate: [permissionGuard], data: { mode: 'room-types', functionCode: FunctionCode.ROOM_TYPE, actionCode: ActionCode.VIEW } },
-      { path: 'rooms', loadComponent: () => import('./features/management/inventory/management-inventory.component').then(m => m.ManagementInventoryComponent), canActivate: [permissionGuard], data: { mode: 'rooms', functionCode: FunctionCode.ROOM, actionCode: ActionCode.VIEW } },
-=======
       { path: 'dashboard', loadComponent: () => import('./features/management/dashboard/management-dashboard.component').then(m => m.ManagementDashboardComponent) },
-      { path: 'properties', loadComponent: () => import('./features/management/dashboard/management-dashboard.component').then(m => m.ManagementDashboardComponent) },
+      { path: 'properties', loadComponent: () => import('./features/management/properties/management-properties.component').then(m => m.ManagementPropertiesComponent) },
       { path: 'room-types', loadComponent: () => import('./features/management/inventory/management-inventory.component').then(m => m.ManagementInventoryComponent), data: { mode: 'room-types' } },
       { path: 'rooms', loadComponent: () => import('./features/management/inventory/management-inventory.component').then(m => m.ManagementInventoryComponent), data: { mode: 'rooms' } },
       { path: 'housekeeping', loadComponent: () => import('./features/management/housekeeping/housekeeping.component').then(m => m.HousekeepingComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.HOUSEKEEPING, actionCode: ActionCode.VIEW } },
->>>>>>> codex/ui-functional-audit-polish
+      { path: 'tasks', loadComponent: () => import('./features/management/operational-tasks/operational-tasks.component').then(m => m.OperationalTasksComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.OPERATIONAL_TASK, actionCode: ActionCode.VIEW } },
       { path: 'services', loadComponent: () => import('./features/admin/service-management/service-management').then(m => m.ServiceManagement), canActivate: [permissionGuard], data: { functionCode: FunctionCode.HOTEL_SERVICE, actionCode: ActionCode.VIEW } },
       { path: 'payment-configuration', loadComponent: () => import('./features/management/property-payment-configuration/property-payment-configuration.component').then(m => m.PropertyPaymentConfigurationComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PROPERTY_PAYMENT_CONFIG, actionCode: ActionCode.VIEW } },
       { path: 'refunds', loadComponent: () => import('./features/admin/reservation-management/refund-management.component').then(m => m.RefundManagementComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PROPERTY_REFUND, actionCode: ActionCode.APPROVE } },
       { path: 'property-revenue', loadComponent: () => import('./features/management/property-revenue/property-revenue.component').then(m => m.PropertyRevenueComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.REPORT, actionCode: ActionCode.VIEW } },
-      { path: 'reviews', loadComponent: () => import('./features/management/reviews/review-management.component').then(m => m.ReviewManagementComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.REVIEW, actionCode: ActionCode.VIEW } },
       { path: 'audit-log', loadComponent: () => import('./features/admin/audit-log/audit-log.component').then(m => m.AuditLogComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.AUDIT_LOG, actionCode: ActionCode.VIEW } },
-<<<<<<< HEAD
-      { path: 'billing', loadComponent: () => import('./features/management/subscription-billing/subscription-billing.component').then(m => m.SubscriptionBillingComponent) },
-      { path: 'ownership', loadComponent: () => import('./features/management/property-ownership/property-ownership.component').then(m => m.PropertyOwnershipComponent) },
-=======
       { path: 'billing', loadComponent: () => import('./features/management/subscription-billing/subscription-billing.component').then(m => m.SubscriptionBillingComponent), canActivate: [permissionGuard], data: { functionCode: FunctionCode.PLATFORM_BILLING, actionCode: ActionCode.VIEW } },
->>>>>>> codex/ui-functional-audit-polish
+      { path: 'support', loadComponent: () => import('./features/management/system-support/system-support.component').then(m => m.SystemSupportComponent) },
       { path: 'subscription', redirectTo: 'billing', pathMatch: 'full' },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]

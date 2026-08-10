@@ -1,11 +1,13 @@
 import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { SharedModule } from '@app/shared/shared.module';
-import { PropertyOption, StaffAssignment, StaffCreateRequest, StaffUpdateRequest, UserService, User } from '@app/core/services/user';
+import { StaffAssignment, UserService, User } from '@app/core/services/user';
 import { RoleService, Role } from '@app/core/services/role.service';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ClientApiService, Hotel } from '@app/core/services/client-api.service';
+import { ActivatedRoute } from '@angular/router';
 import { MessageService } from 'primeng/api';
-import { finalize, timeout } from 'rxjs/operators';
-import { ActionCode, FunctionCode, PermissionService } from '@app/core/services/permission.service';
+import { finalize, map, timeout } from 'rxjs/operators';
+import { AuthService } from '@app/core/services/auth';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-user-management',
@@ -18,7 +20,7 @@ import { ActionCode, FunctionCode, PermissionService } from '@app/core/services/
 export class UserManagement implements OnInit {
   users: User[] = [];
   roles: Role[] = [];
-  hotels: PropertyOption[] = [];
+  hotels: Hotel[] = [];
   loading = true;
   saving = false;
   errorMessage = '';
@@ -32,18 +34,17 @@ export class UserManagement implements OnInit {
   lifecycleUser: User | null = null;
   lifecycleHotelId: number | null = null;
   lifecycleReason = '';
-  canViewAudit = false;
 
   private userService = inject(UserService);
   private roleService = inject(RoleService);
+  private hotelService = inject(ClientApiService);
   private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  private permissionService = inject(PermissionService);
   private messageService = inject(MessageService);
   private cdr = inject(ChangeDetectorRef);
+  private authService = inject(AuthService);
+  readonly isSystemAdministrator = this.authService.getRoles().includes('SUPER_ADMIN');
 
   ngOnInit(): void {
-    this.canViewAudit = this.permissionService.hasPermission(FunctionCode.AUDIT_LOG, ActionCode.VIEW);
     this.userType = this.route.snapshot.data['userType'] || 'STAFF';
     this.loadUsers();
 
@@ -59,13 +60,8 @@ export class UserManagement implements OnInit {
       }
     });
 
-<<<<<<< HEAD
-    this.loadRoles();
-    if (this.userType === 'STAFF') {
-=======
     if (this.userType === 'STAFF') {
       this.loadRoles();
->>>>>>> codex/ui-functional-audit-polish
       this.loadHotels();
     }
   }
@@ -75,18 +71,26 @@ export class UserManagement implements OnInit {
     this.errorMessage = '';
     this.users = [];
 
-<<<<<<< HEAD
-    const request = this.userType === 'STAFF'
-      ? this.userService.getStaff()
-      : this.userService.getUsers();
-    request.pipe(
-=======
-    const usersRequest = this.userType === 'CUSTOMER'
-      ? this.userService.getCustomers()
-      : this.userService.getUsers();
+    let usersRequest: Observable<User[]>;
+    if (this.userType !== 'CUSTOMER') {
+      usersRequest = this.userService.getUsers();
+    } else if (this.isSystemAdministrator) {
+      usersRequest = this.userService.getCustomers();
+    } else {
+      usersRequest = this.userService.getPropertyGuests().pipe(
+        map(guests => guests.map((guest, index) => ({
+          id: -(index + 1),
+          username: '',
+          email: guest.email,
+          fullName: guest.fullName,
+          roles: [],
+          status: '',
+          createdAt: '',
+        }))),
+      );
+    }
 
     usersRequest.pipe(
->>>>>>> codex/ui-functional-audit-polish
       timeout(10000),
       finalize(() => {
         this.loading = false;
@@ -95,13 +99,8 @@ export class UserManagement implements OnInit {
     ).subscribe({
       next: (data) => {
         this.users = this.userType === 'CUSTOMER'
-<<<<<<< HEAD
-          ? data.filter(u => u.roles && u.roles.some((r: any) => r.code === 'CUSTOMER'))
-          : data;
-=======
           ? data
           : data.filter(u => !u.roles || !u.roles.some((r: any) => r.code === 'CUSTOMER'));
->>>>>>> codex/ui-functional-audit-polish
       },
       error: (error) => {
         this.errorMessage = error?.error?.message || 'Không thể tải danh sách người dùng.';
@@ -111,10 +110,7 @@ export class UserManagement implements OnInit {
   }
 
   loadRoles(): void {
-    const request = this.userType === 'STAFF'
-      ? this.userService.getStaffRoles()
-      : this.roleService.getRoles();
-    request.pipe(timeout(10000)).subscribe({
+    this.roleService.getRoles().pipe(timeout(10000)).subscribe({
       next: (data) => {
         this.roles = data;
       },
@@ -126,9 +122,12 @@ export class UserManagement implements OnInit {
   }
 
   loadHotels(): void {
-    this.userService.getStaffProperties().pipe(timeout(10000)).subscribe({
-      next: (data) => {
-        this.hotels = data;
+    this.hotelService.getAccessibleHotels().pipe(timeout(10000)).subscribe({
+      next: (hotels) => {
+        this.hotels = hotels;
+        if (!this.isSystemAdministrator && this.hotels.length === 1 && !this.userForm.hotelId) {
+          this.userForm.hotelId = this.hotels[0].id;
+        }
       },
       error: (error) => {
         const detail = error?.error?.message || 'Không thể tải danh sách cơ sở.';
@@ -139,6 +138,9 @@ export class UserManagement implements OnInit {
 
   openNew(): void {
     this.userForm = this.createEmptyForm();
+    if (!this.isSystemAdministrator && this.hotels.length === 1) {
+      this.userForm.hotelId = this.hotels[0].id;
+    }
     this.userDialogMode = 'create';
     this.displayDialog = true;
   }
@@ -147,7 +149,6 @@ export class UserManagement implements OnInit {
     const activeAssignment = user.staffAssignments?.find(item => item.status === 'ACTIVE');
     this.userForm = {
       id: user.id,
-      expectedVersion: user.version,
       username: user.username,
       email: user.email,
       password: '',
@@ -155,10 +156,7 @@ export class UserManagement implements OnInit {
       phone: (user as any).phone || '',
       status: user.status,
       roleIds: user.roles ? user.roles.map((r: any) => r.id) : [],
-      hotelId: activeAssignment?.hotelId ?? user.hotel?.id ?? null,
-      originalHotelId: activeAssignment?.hotelId ?? user.hotel?.id ?? null,
-      assignmentReason: '',
-      changeReason: '',
+      hotelId: activeAssignment?.hotelId ?? user.hotel?.id ?? null
     };
     this.userDialogMode = 'edit';
     this.displayDialog = true;
@@ -166,6 +164,15 @@ export class UserManagement implements OnInit {
 
   saveUser(): void {
     if (this.saving) return;
+
+    if (this.userType === 'STAFF' && !this.userForm.hotelId) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Thiếu cơ sở',
+        detail: 'Vui lòng chọn cơ sở được phân công cho nhân sự.'
+      });
+      return;
+    }
 
     const payload = { ...this.userForm };
     if (this.userType === 'CUSTOMER') {
@@ -175,47 +182,6 @@ export class UserManagement implements OnInit {
       }
     }
 
-<<<<<<< HEAD
-    let request;
-    if (this.userDialogMode === 'create' && this.userType === 'STAFF') {
-      const validationMessage = this.staffCreateValidationMessage();
-      if (validationMessage) {
-        this.messageService.add({ severity: 'warn', summary: 'Invalid staff account', detail: validationMessage });
-        return;
-      }
-      const staffRequest: StaffCreateRequest = {
-        username: String(payload.username).trim(),
-        email: String(payload.email).trim(),
-        password: payload.password,
-        fullName: String(payload.fullName).trim(),
-        phone: String(payload.phone || '').trim() || null,
-        roleIds: payload.roleIds,
-        hotelId: payload.hotelId,
-      };
-      request = this.userService.createStaff(staffRequest);
-    } else if (this.userDialogMode === 'edit' && this.userType === 'STAFF') {
-      const validationMessage = this.staffUpdateValidationMessage();
-      if (validationMessage) {
-        this.messageService.add({ severity: 'warn', summary: 'Invalid staff update', detail: validationMessage });
-        return;
-      }
-      const staffRequest: StaffUpdateRequest = {
-        fullName: String(payload.fullName).trim(),
-        phone: String(payload.phone || '').trim() || null,
-        password: String(payload.password || '') || null,
-        roleIds: payload.roleIds,
-        hotelId: payload.hotelId,
-        assignmentReason: String(payload.assignmentReason || '').trim() || null,
-        expectedVersion: payload.expectedVersion,
-        changeReason: String(payload.changeReason || '').trim(),
-      };
-      request = this.userService.updateStaff(this.userForm.id, staffRequest);
-    } else {
-      request = this.userDialogMode === 'create'
-        ? this.userService.createUser(payload)
-        : this.userService.updateUser(this.userForm.id, payload);
-    }
-=======
     const request = this.userType === 'CUSTOMER'
       ? (this.userDialogMode === 'create'
         ? this.userService.createCustomer(payload)
@@ -223,7 +189,6 @@ export class UserManagement implements OnInit {
       : (this.userDialogMode === 'create'
         ? this.userService.createUser(payload)
         : this.userService.updateUser(this.userForm.id, payload));
->>>>>>> codex/ui-functional-audit-polish
 
     this.saving = true;
     request.pipe(
@@ -242,41 +207,6 @@ export class UserManagement implements OnInit {
         this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
       }
     });
-  }
-
-  private staffCreateValidationMessage(): string | null {
-    if (!String(this.userForm.username || '').trim()) return 'Username is required.';
-    if (!String(this.userForm.email || '').trim()) return 'Email is required.';
-    if (!String(this.userForm.fullName || '').trim()) return 'Full name is required.';
-    const password = String(this.userForm.password || '');
-    if (password.length < 8 || password.length > 256) {
-      return 'Initial password must be between 8 and 256 characters.';
-    }
-    if (!Array.isArray(this.userForm.roleIds) || this.userForm.roleIds.length === 0) {
-      return 'Select at least one staff role.';
-    }
-    if (!this.userForm.hotelId) return 'Select a property.';
-    return null;
-  }
-
-  private staffUpdateValidationMessage(): string | null {
-    if (!String(this.userForm.fullName || '').trim()) return 'Full name is required.';
-    const password = String(this.userForm.password || '');
-    if (password && (password.length < 8 || password.length > 256)) {
-      return 'A replacement password must be between 8 and 256 characters.';
-    }
-    if (!Array.isArray(this.userForm.roleIds) || this.userForm.roleIds.length === 0) {
-      return 'Select at least one staff role.';
-    }
-    if (!this.userForm.hotelId) return 'Select a property.';
-    if (String(this.userForm.changeReason || '').trim().length < 3) {
-      return 'Enter a change reason of at least 3 characters.';
-    }
-    if (this.userForm.hotelId !== this.userForm.originalHotelId
-        && String(this.userForm.assignmentReason || '').trim().length < 3) {
-      return 'Enter a property move reason of at least 3 characters.';
-    }
-    return null;
   }
 
   openLifecycle(user: User, mode: 'deactivate' | 'reactivate'): void {
@@ -309,16 +239,8 @@ export class UserManagement implements OnInit {
     }
 
     const request = this.lifecycleMode === 'deactivate'
-      ? this.userService.deactivateStaff(this.lifecycleUser.id, {
-          hotelId: this.lifecycleHotelId,
-          reason,
-          expectedVersion: this.lifecycleUser.version
-        })
-      : this.userService.reactivateStaff(this.lifecycleUser.id, {
-          hotelId: this.lifecycleHotelId,
-          reason,
-          expectedVersion: this.lifecycleUser.version
-        });
+      ? this.userService.deactivateStaff(this.lifecycleUser.id, { hotelId: this.lifecycleHotelId, reason })
+      : this.userService.reactivateStaff(this.lifecycleUser.id, { hotelId: this.lifecycleHotelId, reason });
 
     this.saving = true;
     request.pipe(
@@ -368,17 +290,9 @@ export class UserManagement implements OnInit {
     return roles.map(r => r.name).join(', ');
   }
 
-  openHistory(user: User): void {
-    const base = this.router.url.startsWith('/management') ? '/management/audit-log' : '/admin/audit-log';
-    this.router.navigate([base], {
-      queryParams: { domain: 'STAFF', aggregateType: 'USER', aggregateId: user.id }
-    });
-  }
-
   private createEmptyForm(): any {
     return {
       id: null,
-      expectedVersion: 0,
       username: '',
       email: '',
       password: '',
@@ -386,10 +300,7 @@ export class UserManagement implements OnInit {
       phone: '',
       status: 'ACTIVE',
       roleIds: [],
-      hotelId: null,
-      originalHotelId: null,
-      assignmentReason: '',
-      changeReason: '',
+      hotelId: null
     };
   }
 }

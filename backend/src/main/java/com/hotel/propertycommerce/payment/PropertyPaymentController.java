@@ -1,11 +1,13 @@
 package com.hotel.propertycommerce.payment;
 
 import com.hotel.paymentprovider.config.PaymentEnvironmentGuard.PaymentEnvironment;
+import com.hotel.paymentprovider.vnpay.VnpayCheckoutUrlService;
 import com.hotel.paymentprovider.domain.FinancialStates.BookingFinancialState;
 import com.hotel.paymentprovider.domain.FinancialStates.PaymentState;
 import com.hotel.propertycommerce.booking.BookingFinancialSummaryService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,16 +27,28 @@ public class PropertyPaymentController {
     private final ManualTransferConfirmationService manualConfirmationService;
     private final PropertyPaymentCallbackService callbackService;
     private final PropertyPaymentCallbackCredentialsResolver callbackCredentialsResolver;
+    private final VnpayCheckoutUrlService vnpayCheckoutUrlService;
+
+    @Autowired
+    public PropertyPaymentController(
+            PropertyPaymentAttemptService attemptService,
+            ManualTransferConfirmationService manualConfirmationService,
+            PropertyPaymentCallbackService callbackService,
+            PropertyPaymentCallbackCredentialsResolver callbackCredentialsResolver,
+            VnpayCheckoutUrlService vnpayCheckoutUrlService) {
+        this.attemptService = attemptService;
+        this.manualConfirmationService = manualConfirmationService;
+        this.callbackService = callbackService;
+        this.callbackCredentialsResolver = callbackCredentialsResolver;
+        this.vnpayCheckoutUrlService = vnpayCheckoutUrlService;
+    }
 
     public PropertyPaymentController(
             PropertyPaymentAttemptService attemptService,
             ManualTransferConfirmationService manualConfirmationService,
             PropertyPaymentCallbackService callbackService,
             PropertyPaymentCallbackCredentialsResolver callbackCredentialsResolver) {
-        this.attemptService = attemptService;
-        this.manualConfirmationService = manualConfirmationService;
-        this.callbackService = callbackService;
-        this.callbackCredentialsResolver = callbackCredentialsResolver;
+        this(attemptService, manualConfirmationService, callbackService, callbackCredentialsResolver, null);
     }
 
     @GetMapping("/api/reservations/{reservationId}/financial-summary")
@@ -55,7 +69,8 @@ public class PropertyPaymentController {
                         request == null ? null : request.method(),
                         idempotencyKey,
                         correlationId));
-        return ResponseEntity.status(HttpStatus.CREATED).body(PaymentAttemptResponse.from(result));
+        String redirect = vnpayCheckoutUrlService == null ? null : vnpayCheckoutUrlService.create(result);
+        return ResponseEntity.status(HttpStatus.CREATED).body(PaymentAttemptResponse.from(result, redirect));
     }
 
     @GetMapping("/api/payment-attempts/{attemptId}")
@@ -174,6 +189,9 @@ public class PropertyPaymentController {
             boolean replayed) {
 
         static PaymentAttemptResponse from(PropertyPaymentAttemptService.AttemptResponse result) {
+            return from(result, null);
+        }
+        static PaymentAttemptResponse from(PropertyPaymentAttemptService.AttemptResponse result, String redirectUrl) {
             return new PaymentAttemptResponse(
                     result.publicId(),
                     result.reservationId(),
@@ -187,7 +205,7 @@ public class PropertyPaymentController {
                     result.provider(),
                     result.receiver(),
                     result.uniqueTransferContent(),
-                    null,
+                    redirectUrl,
                     null,
                     result.replayed());
         }

@@ -9,26 +9,11 @@ import {
   SocialAuthServiceConfig,
   SocialUser,
 } from '@abacritt/angularx-social-login';
-import { Subscription } from 'rxjs';
+import { retry, Subscription, throwError, timer } from 'rxjs';
 
 import { AuthResponse, AuthService } from '@app/core/services/auth';
 import { AuthLegalCopyService } from '../legal-support/auth-legal-copy.service';
 import { SharedModule } from '@app/shared/shared.module';
-<<<<<<< HEAD
-import { AuthService } from '@app/core/services/auth';
-import { Router, RouterModule, ActivatedRoute } from '@angular/router';
-import {
-  ACCOUNT_DISABLED_CODE,
-  ACCOUNT_DISABLED_MESSAGE,
-  authenticationErrorMessage,
-} from '@app/core/auth/account-status-error';
-import { isBookingReturnUrl, safeClientReturnUrl } from '@app/core/auth/client-return-url';
-import { FocusOnErrorDirective } from '../../../shared/directives/focus-management.directive';
-
-@Component({
-  standalone: true,
-  imports: [SharedModule, RouterModule, FocusOnErrorDirective],
-=======
 import { environment } from '../../../../environments/environment';
 
 // Keep the SDK on a currently supported Graph API version; the package default is v10.0.
@@ -57,7 +42,15 @@ const loginSocialAuthConfig: SocialAuthServiceConfig = {
   providers: loginSocialProviders,
 };
 
-const adminPortalRoles = new Set(['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST', 'ACCOUNTANT', 'HOUSEKEEPING']);
+const managementPortalRoles = new Set(['PROPERTY_OWNER']);
+const adminPortalRoles = new Set([
+  'SUPER_ADMIN',
+  'ADMIN',
+  'HOTEL_ADMIN',
+  'HOTEL_MANAGER',
+  'RECEPTIONIST',
+  'ACCOUNTANT',
+]);
 
 @Component({
   standalone: true,
@@ -66,13 +59,13 @@ const adminPortalRoles = new Set(['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST', 'ACCOU
     SocialAuthService,
     { provide: SOCIAL_AUTH_CONFIG, useValue: loginSocialAuthConfig },
   ],
->>>>>>> codex/ui-functional-audit-polish
   selector: 'app-login',
   templateUrl: './login.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./login.component.css'],
 })
 export class LoginComponent implements OnInit, OnDestroy {
+  legalModal: 'TERMS' | 'PRIVACY' | 'SUPPORT' | null = null;
   loginObj = {
     username: '',
     password: ''
@@ -95,19 +88,23 @@ export class LoginComponent implements OnInit, OnDestroy {
   private socialAuthSubscription?: Subscription;
   private lastSocialIdentity = '';
 
-<<<<<<< HEAD
-  ngOnInit() {
-    this.returnUrl = safeClientReturnUrl(this.route.snapshot.queryParams['returnUrl']);
-    if (this.route.snapshot.queryParams['reason'] === ACCOUNT_DISABLED_CODE) {
-      this.errorMessage = ACCOUNT_DISABLED_MESSAGE;
-=======
   returnUrl = '/';
+
+  openLegal(event: Event, kind: 'TERMS' | 'PRIVACY' | 'SUPPORT'): void {
+    event.preventDefault();
+    this.legalModal = kind;
+    this.cdr.markForCheck();
+  }
+
+  closeLegal(): void {
+    this.legalModal = null;
+    this.cdr.markForCheck();
+  }
 
   ngOnInit(): void {
     this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
     if (this.route.snapshot.queryParams['reason'] === 'ACCOUNT_DISABLED') {
       this.errorMessage = 'Tài khoản đã bị tạm ngưng hoặc vô hiệu hóa. Vui lòng liên hệ bộ phận hỗ trợ. / This account is suspended or disabled.';
->>>>>>> codex/ui-functional-audit-polish
     }
     this.updateGoogleButtonWidth();
     this.socialAuthSubscription = this.socialAuthService.authState.subscribe((user) => {
@@ -120,15 +117,7 @@ export class LoginComponent implements OnInit, OnDestroy {
       if (userStr) username = JSON.parse(userStr).username;
 
       const roles = this.authService.getRoles();
-<<<<<<< HEAD
-      this.navigateAfterAuthentication(username, roles);
-=======
-      if (this.isAdminPortalAccount(username, roles)) {
-        void this.router.navigate([roles.includes('HOUSEKEEPING') ? '/management/housekeeping' : '/admin/dashboard']);
-      } else {
-        void this.router.navigate(['/']);
-      }
->>>>>>> codex/ui-functional-audit-polish
+      void this.router.navigateByUrl(this.resolveLandingUrl(username, roles, '/'));
     }
   }
 
@@ -191,52 +180,23 @@ export class LoginComponent implements OnInit, OnDestroy {
 
     this.authService.login(this.loginObj).subscribe({
       next: (res) => {
-<<<<<<< HEAD
-        if (res && res.accessToken) {
-          this.authService.setSession(res.accessToken, {
-            username: res.username,
-            roles: res.roles,
-            permissions: res.permissions
-          });
-          
-          this.navigateAfterAuthentication(res.username, res.roles);
-        }
-=======
         this.applySession(res);
->>>>>>> codex/ui-functional-audit-polish
         this.isLoading = false;
         this.cdr.markForCheck();
       },
       error: (error) => {
-<<<<<<< HEAD
-        this.errorMessage = authenticationErrorMessage(error, 'Sai tài khoản hoặc mật khẩu.');
-=======
-        this.errorMessage = error?.error?.code === 'ACCOUNT_DISABLED'
+        const code = error?.error?.code;
+        this.errorMessage = code === 'ACCOUNT_DISABLED'
           ? 'Tài khoản đã bị tạm ngưng hoặc vô hiệu hóa. Vui lòng liên hệ bộ phận hỗ trợ. / This account is suspended or disabled.'
-          : 'Sai email hoặc mật khẩu.';
->>>>>>> codex/ui-functional-audit-polish
+          : code === 'EMAIL_NOT_VERIFIED'
+            ? 'Email chưa được xác thực. Vui lòng mở liên kết LuxeStay đã gửi đến email của bạn trước khi đăng nhập.'
+            : 'Sai email hoặc mật khẩu.';
         this.isLoading = false;
         this.cdr.markForCheck();
       }
     });
   }
 
-<<<<<<< HEAD
-  private navigateAfterAuthentication(username: string, roles: string[]): void {
-    if (isBookingReturnUrl(this.returnUrl) && !roles.includes('CUSTOMER')) {
-      this.router.navigate(['/403'], { queryParams: { reason: 'CUSTOMER_REQUIRED' } });
-      return;
-    }
-    if (username === 'admin' || roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) {
-      this.router.navigate(['/admin/dashboard']);
-      return;
-    }
-    if (this.returnUrl !== '/') {
-      this.router.navigateByUrl(this.returnUrl);
-      return;
-    }
-    this.router.navigate(['/']);
-=======
   private completeSocialLogin(user: SocialUser): void {
     const provider = user.provider;
     const identity = `${provider}:${user.id || user.email || ''}`;
@@ -255,7 +215,14 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
     this.cdr.markForCheck();
 
-    request.subscribe({
+    request.pipe(
+      retry({
+        count: 2,
+        delay: (error, retryCount) => this.isRetryableSocialProvisioningConflict(error)
+          ? timer(200 * retryCount)
+          : throwError(() => error),
+      }),
+    ).subscribe({
       next: (res) => {
         this.applySession(res);
         this.socialProviderLoading = '';
@@ -266,12 +233,19 @@ export class LoginComponent implements OnInit, OnDestroy {
         this.socialProviderLoading = '';
         this.errorMessage = error?.error?.code === 'ACCOUNT_DISABLED'
           ? 'Tài khoản đã bị tạm ngưng hoặc vô hiệu hóa. Vui lòng liên hệ bộ phận hỗ trợ. / This account is suspended or disabled.'
+          : this.isRetryableSocialProvisioningConflict(error)
+            ? 'Đăng nhập Google đang bị trùng yêu cầu. Vui lòng chờ giây lát rồi thử lại.'
           : error?.error?.message
             || error?.error
             || 'Đăng nhập qua nền tảng bên ngoài chưa thành công.';
         this.cdr.markForCheck();
       }
     });
+  }
+
+  private isRetryableSocialProvisioningConflict(error: any): boolean {
+    return error?.error?.code === 'SOCIAL_PROVISIONING_CONFLICT'
+      && error?.error?.retryable !== false;
   }
 
   private applySession(response: AuthResponse): void {
@@ -286,8 +260,9 @@ export class LoginComponent implements OnInit, OnDestroy {
       permissions
     });
 
-    if (this.isAdminPortalAccount(response.username, roles)) {
-      void this.router.navigate([roles.includes('HOUSEKEEPING') ? '/management/housekeeping' : '/admin/dashboard']);
+    const portalLandingUrl = this.resolvePortalLandingUrl(response.username, roles);
+    if (portalLandingUrl) {
+      void this.router.navigateByUrl(portalLandingUrl);
       return;
     }
 
@@ -296,7 +271,21 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   private isAdminPortalAccount(username: string, roles: string[]): boolean {
     return username === 'admin' || roles.some(role => adminPortalRoles.has(role));
->>>>>>> codex/ui-functional-audit-polish
+  }
+
+  private resolvePortalLandingUrl(username: string, roles: string[]): string | null {
+    if (username === 'admin' || roles.some(role => role === 'SUPER_ADMIN' || role === 'ADMIN')) {
+      return '/admin/dashboard';
+    }
+    if (roles.includes('HOUSEKEEPING')) return '/management/housekeeping';
+    if (roles.some(role => managementPortalRoles.has(role))) return '/management/dashboard';
+    if (this.isAdminPortalAccount(username, roles)) return '/admin/dashboard';
+    return null;
+  }
+
+  private resolveLandingUrl(username: string, roles: string[], clientReturnUrl: string): string {
+    return this.resolvePortalLandingUrl(username, roles)
+      ?? this.resolveClientReturnUrl(clientReturnUrl);
   }
 
   private resolveClientReturnUrl(returnUrl: string): string {

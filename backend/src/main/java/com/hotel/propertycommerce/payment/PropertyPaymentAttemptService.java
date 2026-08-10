@@ -14,7 +14,6 @@ import com.hotel.paymentprovider.error.FinancialErrorCode;
 import com.hotel.paymentprovider.error.FinancialException;
 import com.hotel.paymentprovider.idempotency.FinancialIdempotencyService;
 import com.hotel.propertycommerce.booking.BookingFinancialSummaryService;
-import com.hotel.propertycommerce.booking.ReservationAmendment;
 import com.hotel.propertycommerce.config.PropertyPaymentConfiguration;
 import com.hotel.propertycommerce.config.PropertyPaymentConfigurationMethod;
 import com.hotel.propertycommerce.config.PropertyPaymentConfigurationRepository;
@@ -171,112 +170,6 @@ public class PropertyPaymentAttemptService {
         }
         attempt.transitionTo(initialState(method), now, null, null);
         attempt = attemptRepository.saveAndFlush(attempt);
-        idempotencyService.complete(acquired.recordId(), 201, attempt.getPublicId());
-        return response(attempt, false);
-    }
-
-    @Transactional
-    public AttemptResponse createAmendmentDelta(CreateAmendmentCommand command) {
-        if (command == null || command.amendment() == null) {
-            throw new IllegalArgumentException("Amendment quote is required.");
-        }
-        ReservationAmendment amendment = command.amendment();
-        LocalDateTime now = LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
-        amendment.markExpired(now);
-        if (amendment.getStatus() != ReservationAmendment.Status.AWAITING_PAYMENT
-                && amendment.getStatus() != ReservationAmendment.Status.PAYMENT_PENDING) {
-            throw new FinancialException(FinancialErrorCode.INVALID_STATE_TRANSITION,
-                    "This amendment quote is not awaiting payment.");
-        }
-        if (amendment.getPriceDelta().signum() <= 0) {
-            throw new FinancialException(FinancialErrorCode.INVALID_AMOUNT);
-        }
-        Reservation reservation = amendment.getReservation();
-        User actor = propertyAccessService.currentUser();
-        authorize(reservation, actor);
-        ReservationStatus status = ReservationStatus.fromStorage(reservation.getStatus());
-        if (status != ReservationStatus.PENDING_PAYMENT && status != ReservationStatus.CONFIRMED) {
-            throw new FinancialException(FinancialErrorCode.INVALID_STATE_TRANSITION);
-        }
-
-        PropertyPaymentAttempt current = amendment.getPaymentAttempt();
-        if (current != null && (current.getStatus() == PaymentState.SUCCESS || isActive(current.getStatus()))) {
-            return response(current, true);
-        }
-
-        String method = normalizeCode(command.method(), "method");
-        String idempotencyKey = normalizeIdempotencyKey(command.idempotencyKey());
-        AmendmentAttemptRequestIdentity payload = new AmendmentAttemptRequestIdentity(
-                amendment.getPublicId(), amendment.getRequestHash(), amendment.getPriceDelta(), method);
-        FinancialIdempotencyService.BeginResult begin = idempotencyService.begin(
-                new FinancialIdempotencyService.BeginCommand(
-                        "PROPERTY_COMMERCE",
-                        "CREATE_AMENDMENT_PAYMENT_ATTEMPT",
-                        "AMENDMENT:" + amendment.getPublicId(),
-                        idempotencyKey,
-                        payload,
-                        amendment.getHotel().getId(),
-                        actor.getId(),
-                        command.correlationId()));
-        if (begin instanceof FinancialIdempotencyService.Replay replay) {
-            PropertyPaymentAttempt replayed = findReplay(replay.responseBody());
-            requireAttemptForAmendment(replayed, amendment);
-            amendment.bindPaymentAttempt(replayed);
-            return response(replayed, true);
-        }
-        if (begin instanceof FinancialIdempotencyService.InProgress) {
-            PropertyPaymentAttempt replayed = attemptRepository.findByHotelIdAndIdempotencyKeyForUpdate(
-                            amendment.getHotel().getId(), idempotencyKey)
-                    .orElseThrow(() -> new FinancialException(FinancialErrorCode.CONCURRENT_MODIFICATION));
-            requireAttemptForAmendment(replayed, amendment);
-            amendment.bindPaymentAttempt(replayed);
-            return response(replayed, true);
-        }
-        if (begin instanceof FinancialIdempotencyService.RetryableFailure) {
-            throw new FinancialException(FinancialErrorCode.CONCURRENT_MODIFICATION);
-        }
-
-        FinancialIdempotencyService.Acquired acquired = (FinancialIdempotencyService.Acquired) begin;
-        PropertyPaymentConfiguration configuration = requireConfiguration(amendment.getHotel().getId());
-        PropertyPaymentConfigurationMethod selectedMethod = requireMethod(configuration, method);
-        validateEnvironment(configuration, selectedMethod, method);
-        LocalDateTime expiresAt = now.plusMinutes(configuration.getPaymentExpiryMinutes());
-        if (expiresAt.isAfter(amendment.getExpiresAt())) {
-            expiresAt = amendment.getExpiresAt();
-        }
-        String publicId = UUID.randomUUID().toString();
-        String transferContent = transferContent(configuration, method, reservation.getId(), publicId);
-        ReceiverSnapshot receiver = receiverSnapshot(configuration, selectedMethod);
-        PaymentEnvironment environment = PaymentEnvironment.valueOf(configuration.getEnvironment());
-        String configuredProvider = selectedMethod.getProvider() == null || selectedMethod.getProvider().isBlank()
-                ? method
-                : normalizeCode(selectedMethod.getProvider(), "provider");
-        String provider = environment == PaymentEnvironment.SIMULATOR && !MANUAL_METHODS.contains(method)
-                ? "SIMULATOR"
-                : configuredProvider;
-        PropertyPaymentAttempt attempt = PropertyPaymentAttempt.create(
-                publicId,
-                amendment.getHotel(),
-                reservation,
-                configuration,
-                reservation.getUser(),
-                amendment,
-                PropertyPaymentAttempt.Purpose.AMENDMENT_DELTA,
-                method,
-                provider,
-                environment,
-                VndMoney.of(amendment.getPriceDelta()),
-                transferContent,
-                writeReceiver(receiver),
-                idempotencyKey,
-                acquired.record().getRequestHash(),
-                expiresAt);
-        if (!MANUAL_METHODS.contains(method)) {
-            attempt.bindProviderOrderReference(publicId);
-        }
-        attempt.transitionTo(initialState(method), now, null, null);
-        attempt = attemptRepository.saveAndFlush(attempt);
-        amendment.bindPaymentAttempt(attempt);
         idempotencyService.complete(acquired.recordId(), 201, attempt.getPublicId());
         return response(attempt, false);
     }
@@ -607,16 +500,6 @@ public class PropertyPaymentAttemptService {
         }
     }
 
-    private void requireAttemptForAmendment(
-            PropertyPaymentAttempt attempt,
-            ReservationAmendment amendment) {
-        if (attempt.getPurpose() != PropertyPaymentAttempt.Purpose.AMENDMENT_DELTA
-                || attempt.getReservationAmendment() == null
-                || !java.util.Objects.equals(attempt.getReservationAmendment().getId(), amendment.getId())) {
-            throw new FinancialException(FinancialErrorCode.IDEMPOTENCY_KEY_REUSED);
-        }
-    }
-
     private String normalizeIdempotencyKey(String value) {
         String normalized = requireRequestText(value, "idempotencyKey");
         if (normalized.length() > 160) {
@@ -650,26 +533,12 @@ public class PropertyPaymentAttemptService {
             String method) {
     }
 
-    private record AmendmentAttemptRequestIdentity(
-            String amendmentPublicId,
-            String amendmentRequestHash,
-            BigDecimal exactAmount,
-            String method) {
-    }
-
     private record CancelRequestIdentity(String attemptPublicId) {
     }
 
     public record CreateCommand(
             Long reservationId,
             PropertyPaymentAttempt.Purpose purpose,
-            String method,
-            String idempotencyKey,
-            String correlationId) {
-    }
-
-    public record CreateAmendmentCommand(
-            ReservationAmendment amendment,
             String method,
             String idempotencyKey,
             String correlationId) {

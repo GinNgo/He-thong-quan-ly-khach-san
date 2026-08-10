@@ -2,11 +2,6 @@ package com.hotel.controllers;
 
 import com.hotel.entities.User;
 import com.hotel.dtos.ProfileUpdateRequest;
-import com.hotel.dtos.PropertyOptionDto;
-import com.hotel.dtos.StaffCreateRequest;
-import com.hotel.dtos.StaffListItemDto;
-import com.hotel.dtos.StaffRoleOptionDto;
-import com.hotel.dtos.StaffUpdateRequest;
 import com.hotel.dtos.UserDto;
 import com.hotel.services.UserService;
 import jakarta.validation.Valid;
@@ -35,42 +30,16 @@ public class UserController {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
-<<<<<<< HEAD
-    @GetMapping("/staff")
-    @Permission(function = FunctionCode.USER, action = ActionCode.VIEW)
-    public ResponseEntity<List<StaffListItemDto>> getStaff() {
-        return ResponseEntity.ok(userService.getStaff());
-    }
-
-    @GetMapping("/staff/properties")
-    @Permission(function = FunctionCode.USER, action = ActionCode.VIEW)
-    public ResponseEntity<List<PropertyOptionDto>> getStaffPropertyOptions() {
-        return ResponseEntity.ok(userService.getStaffPropertyOptions());
-    }
-
-    @GetMapping("/staff/roles")
-    @Permission(function = FunctionCode.USER, action = ActionCode.VIEW)
-    public ResponseEntity<List<StaffRoleOptionDto>> getAssignableStaffRoles() {
-        return ResponseEntity.ok(userService.getAssignableStaffRoles());
-    }
-
-    @PostMapping("/staff")
-    @Permission(function = FunctionCode.USER, action = ActionCode.CREATE)
-    public ResponseEntity<UserDto> createStaff(@Valid @RequestBody StaffCreateRequest request) {
-        return ResponseEntity.ok(userService.createStaff(request));
-    }
-
-    @PutMapping("/staff/{id}")
-    @Permission(function = FunctionCode.USER, action = ActionCode.UPDATE)
-    public ResponseEntity<UserDto> updateStaff(
-            @PathVariable Long id,
-            @Valid @RequestBody StaffUpdateRequest request) {
-        return ResponseEntity.ok(userService.updateStaff(id, request));
-=======
     @GetMapping("/customers")
     @Permission(function = FunctionCode.CUSTOMER, action = ActionCode.VIEW)
     public ResponseEntity<List<UserDto>> getCustomers() {
         return ResponseEntity.ok(userService.getCustomers());
+    }
+
+    @GetMapping("/property-guests")
+    @Permission(function = FunctionCode.CUSTOMER, action = ActionCode.VIEW)
+    public ResponseEntity<List<com.hotel.dtos.PropertyGuestDTO>> getPropertyGuests() {
+        return ResponseEntity.ok(userService.getPropertyGuests());
     }
 
     @PostMapping("/customers")
@@ -98,7 +67,6 @@ public class UserController {
         user.setStatus(request.getStatus());
         user.setPasswordHash(request.getPassword());
         return ResponseEntity.ok(userService.updateCustomer(id, user));
->>>>>>> codex/ui-functional-audit-polish
     }
 
     @GetMapping("/{id}")
@@ -111,9 +79,6 @@ public class UserController {
     @PostMapping
     @Permission(function = FunctionCode.USER, action = ActionCode.CREATE)
     public ResponseEntity<UserDto> createUser(@RequestBody com.hotel.dtos.UserRequest request) {
-        if (request.getHotelId() != null) {
-            throw new IllegalArgumentException("Use the dedicated staff endpoint for property assignments.");
-        }
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
@@ -122,7 +87,7 @@ public class UserController {
         user.setPhone(request.getPhone());
         user.setStatus(request.getStatus() != null ? request.getStatus() : "ACTIVE");
         
-        return ResponseEntity.ok(userService.createUser(user, request.getRoleIds(), null));
+        return ResponseEntity.ok(userService.createUser(user, request.getRoleIds(), request.getHotelId()));
     }
 
     @PutMapping("/{id}")
@@ -141,7 +106,7 @@ public class UserController {
     @Permission(function = FunctionCode.USER, action = ActionCode.DELETE)
     public ResponseEntity<UserDto> deactivateStaff(
             @PathVariable Long id,
-            @Valid @RequestBody com.hotel.dtos.StaffLifecycleRequest request) {
+            @RequestBody com.hotel.dtos.StaffLifecycleRequest request) {
         return ResponseEntity.ok(userService.deactivateStaff(id, request));
     }
 
@@ -149,7 +114,7 @@ public class UserController {
     @Permission(function = FunctionCode.USER, action = ActionCode.UPDATE)
     public ResponseEntity<UserDto> reactivateStaff(
             @PathVariable Long id,
-            @Valid @RequestBody com.hotel.dtos.StaffLifecycleRequest request) {
+            @RequestBody com.hotel.dtos.StaffLifecycleRequest request) {
         return ResponseEntity.ok(userService.reactivateStaff(id, request));
     }
 

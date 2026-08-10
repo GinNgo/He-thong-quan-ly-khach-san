@@ -152,14 +152,6 @@ class NotificationControllerIntegrationTest {
     }
 
     @Test
-<<<<<<< HEAD
-    void userCannotProbeOrMarkAnotherUsersNotificationAsRead() throws Exception {
-        Notification notification = saveNotification(8L, "foreign");
-
-        mockMvc.perform(post("/api/notifications/{id}/read", notification.getId())
-                        .with(user(principal(7L, Map.of(FunctionCode.REPORT, ActionCode.VIEW)))))
-                .andExpect(status().isNotFound());
-=======
     void userCannotMarkAnotherUsersNotificationAsRead() throws Exception {
         Notification notification = saveNotification(8L, "foreign", LocalDateTime.now());
 
@@ -170,7 +162,6 @@ class NotificationControllerIntegrationTest {
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
 
         assertFalse(notificationRepository.findById(notification.getId()).orElseThrow().isRead());
->>>>>>> codex/ui-functional-audit-polish
     }
 
     @Test

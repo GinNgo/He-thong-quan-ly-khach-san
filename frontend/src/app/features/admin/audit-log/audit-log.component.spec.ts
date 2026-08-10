@@ -1,5 +1,4 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuditLogComponent } from './audit-log.component';
 import { OperationalAuditService } from '../../../core/services/operational-audit.service';
@@ -16,29 +15,13 @@ describe('AuditLogComponent', () => {
     }], totalElements: 1, totalPages: 1, number: 0, size: 25 })),
     export: vi.fn(() => of(new Blob(['id\n1'])))
   };
-  const route = {
-    snapshot: {
-      queryParamMap: convertToParamMap({
-        domain: 'STAFF',
-        aggregateType: 'USER',
-        aggregateId: '42',
-      }),
-    },
-  };
 
   beforeEach(async () => {
-    vi.clearAllMocks();
-    auditService.search.mockReturnValue(of({ content: [{
-      id: 1, scope: 'TENANT', hotelId: 12, domain: 'ROOM', eventType: 'ROOM_UPDATED', aggregateType: 'ROOM',
-      aggregateId: '10', actorType: 'USER', actorId: 7, reason: 'Updated', beforeState: '{"status":"DIRTY"}',
-      afterState: '{"status":"AVAILABLE"}', correlationId: 'corr-1', occurredAt: '2026-08-03T04:00:00Z',
-    }], totalElements: 1, totalPages: 1, number: 0, size: 25 }));
     await TestBed.configureTestingModule({
       imports: [AuditLogComponent],
       providers: [
         { provide: OperationalAuditService, useValue: auditService },
         { provide: AuthService, useValue: { getRoles: () => ['HOTEL_MANAGER'] } },
-        { provide: ActivatedRoute, useValue: route },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(AuditLogComponent);
@@ -59,20 +42,5 @@ describe('AuditLogComponent', () => {
     component.load();
     fixture.detectChanges();
     expect(component.error).toContain('Không thể tải nhật ký');
-  });
-
-  it('applies safe aggregate filters from targeted history links', () => {
-    expect(component.filters).toEqual({
-      domain: 'STAFF',
-      aggregateType: 'USER',
-      aggregateId: '42',
-    });
-    expect(auditService.search).toHaveBeenCalledWith({
-      domain: 'STAFF',
-      aggregateType: 'USER',
-      aggregateId: '42',
-      page: 0,
-      size: 25,
-    });
   });
 });

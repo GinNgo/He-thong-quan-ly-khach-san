@@ -9,7 +9,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
-import org.springframework.data.domain.Pageable;
 
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsername(String username);
@@ -56,21 +55,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("hotelIds") Collection<Long> hotelIds);
 
     @Query("""
-<<<<<<< HEAD
-            select distinct user
-            from User user join user.roles role
-            where role.code = 'CUSTOMER'
-              and upper(user.status) = 'ACTIVE'
-              and (:query = '' or lower(user.fullName) like lower(concat('%', :query, '%'))
-                   or lower(user.username) like lower(concat('%', :query, '%'))
-                   or lower(user.email) like lower(concat('%', :query, '%')))
-            order by user.fullName, user.id
-            """)
-    List<User> searchActiveCustomers(@Param("query") String query, Pageable pageable);
-
-    @Query("""
-=======
->>>>>>> codex/ui-functional-audit-polish
             select distinct user.username
             from User user
             left join UserProperty up
@@ -83,14 +67,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
                    or role.code = 'SUPER_ADMIN')
             """)
     List<String> findSupportRecipientUsernames(@Param("hotelId") Long hotelId);
-<<<<<<< HEAD
 
     @Query("""
             select distinct user.username
-            from User user join user.roles role
-            where user.status = 'ACTIVE' and role.code = 'SUPER_ADMIN'
+            from User user
+            join user.roles role
+            where user.status = 'ACTIVE'
+              and role.code in ('SUPER_ADMIN', 'ADMIN')
             """)
-    List<String> findSystemAdministratorUsernames();
-=======
->>>>>>> codex/ui-functional-audit-polish
+    List<String> findSystemSupportRecipientUsernames();
 }

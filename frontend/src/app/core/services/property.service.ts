@@ -1,11 +1,16 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
-import { PropertyProfile, PropertyProfileUpdateRequest } from '../models/property-profile.model';
 import { Hotel } from './client-api.service';
 
-export type AdminProperty = PropertyProfile & Partial<Hotel>;
+export interface AdminProperty extends Hotel {
+  nameVi?: string;
+  nameEn?: string;
+  status?: string;
+  operationStatus?: string;
+}
 
 export interface PropertyLocation {
   id: number;
@@ -13,6 +18,9 @@ export interface PropertyLocation {
   nameEn?: string;
   locationType: 'PROVINCE' | 'WARD';
   parent?: { id: number };
+  fullPath?: string;
+  legacyParentName?: string;
+  displayName?: string;
 }
 
 export interface CreatePropertyRequest {
@@ -40,93 +48,6 @@ export interface CreatePropertyRequest {
   dataSource: 'ADMIN';
 }
 
-export interface PropertyApprovalQueueItem extends Record<string, unknown> {
-  propertyId: number;
-  code: string;
-  name: string;
-  address: string;
-  propertyType: string;
-  status: 'PENDING_APPROVAL';
-  approvalStatus: 'PENDING_APPROVAL';
-  operationStatus: 'INACTIVE';
-  ownershipStatus: 'PENDING';
-  ownerId: number;
-  ownerName: string;
-  ownerEmail: string;
-  submittedByUserId: number | null;
-  submittedAt: string | null;
-  reviewedByUserId: number | null;
-  reviewedAt: string | null;
-  reason: string | null;
-}
-
-export interface PropertyApprovalDecisionResponse {
-  propertyId: number;
-  status: 'ACTIVE' | 'REJECTED';
-  approvalStatus: 'APPROVED' | 'REJECTED';
-  operationStatus: 'ACTIVE' | 'INACTIVE';
-  ownershipStatus: 'ACTIVE' | 'INACTIVE';
-  reviewedByUserId: number;
-  reviewedAt: string;
-  reason?: string | null;
-}
-
-export type PropertyLifecycleAction = 'SUSPEND' | 'REACTIVATE' | 'CLOSE';
-
-export interface PropertyLifecycleSummary {
-  propertyId: number;
-  code: string;
-  name: string;
-  address: string;
-  propertyType: string;
-  status: string;
-  approvalStatus: string;
-  operationStatus: string;
-  lifecycleAction: PropertyLifecycleAction | null;
-  lifecycleReason: string | null;
-  lifecycleChangedByUserId: number | null;
-  lifecycleChangedAt: string | null;
-  allowedTransitions: PropertyLifecycleAction[];
-}
-
-export interface PropertyLifecycleDecisionResponse {
-  propertyId: number;
-  action: PropertyLifecycleAction;
-  changed: boolean;
-  actorUserId: number;
-  changedAt: string;
-  reason: string;
-  status: string;
-  approvalStatus: string;
-  operationStatus: string;
-}
-
-export interface PropertyReviewState {
-  status: string | null;
-  approvalStatus: string | null;
-  operationStatus: string | null;
-  ownershipStatus: string | null;
-}
-
-export type PropertyReviewEventType =
-  | 'PROPERTY_SUBMITTED_FOR_APPROVAL'
-  | 'PROPERTY_APPROVED'
-  | 'PROPERTY_REJECTED'
-  | 'PROPERTY_SUSPENDED'
-  | 'PROPERTY_REACTIVATED'
-  | 'PROPERTY_CLOSED';
-
-export interface PropertyReviewHistoryEvent {
-  eventId: number;
-  propertyId: number;
-  eventType: PropertyReviewEventType;
-  actorKind: 'OWNER' | 'ADMIN';
-  note: string | null;
-  beforeState: PropertyReviewState | null;
-  afterState: PropertyReviewState | null;
-  occurredAt: string;
-}
-
 @Injectable({
   providedIn: 'root'
 })
@@ -143,28 +64,29 @@ export class PropertyService {
   }
 
   getWards(provinceId: number): Observable<PropertyLocation[]> {
-    return this.http.get<PropertyLocation[]>(`${environment.apiUrl}/public/locations/provinces/${provinceId}/wards`);
+    return this.http.get<PropertyLocation[]>(`${environment.apiUrl}/public/locations/provinces/${provinceId}/wards`).pipe(
+      map((wards) => wards
+        .map((ward) => ({
+          ...ward,
+          displayName: ward.legacyParentName
+            ? `${ward.nameVi} — ${ward.legacyParentName}`
+            : ward.nameVi,
+        }))
+        .sort((left, right) => (left.displayName ?? left.nameVi).localeCompare(
+          right.displayName ?? right.nameVi,
+          'vi',
+          { numeric: true },
+        )),
+      ),
+    );
   }
 
-  createProperty(property: PropertyProfile): Observable<AdminProperty> {
+  createProperty(property: CreatePropertyRequest): Observable<AdminProperty> {
     return this.http.post<AdminProperty>(this.apiUrl, property);
   }
 
-  updateProperty(id: number, property: PropertyProfileUpdateRequest): Observable<AdminProperty> {
+  updateProperty(id: number, property: Partial<CreatePropertyRequest>): Observable<AdminProperty> {
     return this.http.put<AdminProperty>(`${this.apiUrl}/${id}`, property);
-  }
-
-  closeProperty(id: number, reason: string): Observable<AdminProperty>;
-  closeProperty(id: number, reason: string, idempotencyKey: string): Observable<PropertyLifecycleDecisionResponse>;
-  closeProperty(
-    id: number,
-    reason: string,
-    idempotencyKey?: string
-  ): Observable<AdminProperty | PropertyLifecycleDecisionResponse> {
-    if (!idempotencyKey) {
-      return this.http.post<AdminProperty>(`${this.apiUrl}/${id}/close`, { reason });
-    }
-    return this.propertyLifecycleTransition(id, 'close', reason, idempotencyKey);
   }
 
   submitProperty(id: number): Observable<AdminProperty> {
@@ -177,54 +99,5 @@ export class PropertyService {
 
   rejectProperty(id: number): Observable<AdminProperty> {
     return this.http.post<AdminProperty>(`${this.apiUrl}/${id}/reject`, {});
-  }
-
-  getPropertyApprovalQueue(): Observable<PropertyApprovalQueueItem[]> {
-    return this.http.get<PropertyApprovalQueueItem[]>(`${environment.apiUrl}/admin/property-approvals`);
-  }
-
-  approvePropertyReview(id: number, note?: string): Observable<PropertyApprovalDecisionResponse> {
-    const normalizedNote = note?.trim();
-    return this.http.post<PropertyApprovalDecisionResponse>(
-      `${environment.apiUrl}/admin/property-approvals/${id}/approve`,
-      normalizedNote ? { note: normalizedNote } : {}
-    );
-  }
-
-  rejectPropertyReview(id: number, reason: string): Observable<PropertyApprovalDecisionResponse> {
-    return this.http.post<PropertyApprovalDecisionResponse>(
-      `${environment.apiUrl}/admin/property-approvals/${id}/reject`,
-      { reason }
-    );
-  }
-
-  getPropertyLifecycleSummaries(): Observable<PropertyLifecycleSummary[]> {
-    return this.http.get<PropertyLifecycleSummary[]>(`${environment.apiUrl}/admin/properties/lifecycle`);
-  }
-
-  getAdminPropertyHistory(id: number): Observable<PropertyReviewHistoryEvent[]> {
-    return this.http.get<PropertyReviewHistoryEvent[]>(`${environment.apiUrl}/admin/properties/${id}/history`);
-  }
-
-  suspendProperty(id: number, reason: string, idempotencyKey: string): Observable<PropertyLifecycleDecisionResponse> {
-    return this.propertyLifecycleTransition(id, 'suspend', reason, idempotencyKey);
-  }
-
-  reactivateProperty(id: number, reason: string, idempotencyKey: string): Observable<PropertyLifecycleDecisionResponse> {
-    return this.propertyLifecycleTransition(id, 'reactivate', reason, idempotencyKey);
-  }
-
-  private propertyLifecycleTransition(
-    id: number,
-    action: 'suspend' | 'reactivate' | 'close',
-    reason: string,
-    idempotencyKey: string
-  ): Observable<PropertyLifecycleDecisionResponse> {
-    const headers = new HttpHeaders({ 'Idempotency-Key': idempotencyKey });
-    return this.http.post<PropertyLifecycleDecisionResponse>(
-      `${environment.apiUrl}/admin/properties/${id}/${action}`,
-      { reason },
-      { headers }
-    );
   }
 }

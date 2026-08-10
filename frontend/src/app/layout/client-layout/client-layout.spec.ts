@@ -1,34 +1,21 @@
 import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { BehaviorSubject, Subject, of } from 'rxjs';
 import { provideTranslateService } from '@ngx-translate/core';
 
 import { AuthService, AuthState } from '../../core/services/auth';
 import { ChatService } from '../../core/services/chat.service';
-<<<<<<< HEAD
-import { ClientApiService } from '../../core/services/client-api.service';
-import { CustomerNotificationService } from '../../core/services/customer-notification.service';
-=======
 import { ClientApiService, UserContext } from '../../core/services/client-api.service';
->>>>>>> codex/ui-functional-audit-polish
 import { ClientLayout } from './client-layout';
 
 describe('ClientLayout', () => {
   let currentUser$: BehaviorSubject<AuthState>;
-<<<<<<< HEAD
-  let getProfile: ReturnType<typeof vi.fn>;
-  let updateCurrentUser: ReturnType<typeof vi.fn>;
-
-  beforeEach(async () => {
-    localStorage.clear();
-=======
   const getProfile = vi.fn();
 
   beforeEach(async () => {
     localStorage.clear();
     getProfile.mockReset();
->>>>>>> codex/ui-functional-audit-polish
     currentUser$ = new BehaviorSubject<AuthState>({
       isAuthenticated: false,
       username: '',
@@ -36,15 +23,6 @@ describe('ClientLayout', () => {
       avatarUrl: '',
       roles: [],
       permissions: [],
-    });
-    getProfile = vi.fn();
-    updateCurrentUser = vi.fn((user: { username?: string; fullName?: string; avatarUrl?: string }) => {
-      currentUser$.next({
-        ...currentUser$.value,
-        username: user.username ?? currentUser$.value.username,
-        fullName: user.fullName ?? currentUser$.value.fullName,
-        avatarUrl: user.avatarUrl ?? currentUser$.value.avatarUrl
-      });
     });
 
     await TestBed.configureTestingModule({
@@ -61,24 +39,10 @@ describe('ClientLayout', () => {
             getCurrentUserId: vi.fn(() => null),
             getAccessToken: vi.fn(() => null),
             logout: vi.fn(),
-            updateCurrentUser,
+            updateCurrentUser: vi.fn(),
           },
         },
         { provide: ClientApiService, useValue: { getProfile } },
-        {
-          provide: CustomerNotificationService,
-          useValue: {
-            notifications$: new Subject(),
-            reconciliation$: new Subject(),
-            connect: vi.fn(),
-            disconnect: vi.fn(),
-            getUnreadCount: vi.fn(() => of({ unreadCount: 0 })),
-          },
-        },
-<<<<<<< HEAD
-=======
-        { provide: ClientApiService, useValue: { getProfile } },
->>>>>>> codex/ui-functional-audit-polish
         {
           provide: ChatService,
           useValue: {
@@ -96,13 +60,7 @@ describe('ClientLayout', () => {
     }).compileComponents();
   });
 
-<<<<<<< HEAD
-  afterEach(() => vi.restoreAllMocks());
-
-  it('renders the fixed Vietnamese locale and VND currency as non-interactive status', () => {
-=======
   it('renders an accessible VI/EN control while keeping VND fixed', () => {
->>>>>>> codex/ui-functional-audit-polish
     const fixture = TestBed.createComponent(ClientLayout);
     fixture.detectChanges();
 
@@ -187,74 +145,36 @@ describe('ClientLayout', () => {
     expect(element.querySelector('.public-header')?.classList.contains('account-menu-open')).toBe(false);
   });
 
-  it('shows owner navigation after refreshed claim approval and targets the assigned property', async () => {
-    const approvedOwner = {
+  it('loads the user context once when authenticated state details are refreshed', () => {
+    const context: UserContext = {
       id: 42,
-      username: 'owner',
-      email: 'owner@example.com',
-      fullName: 'Approved Owner',
-      roles: ['PROPERTY_OWNER'],
-      assignedProperties: [{ id: 17, name: 'Claimed Hotel' }],
-      partnerRegistrationStatus: 'APPROVED' as const
+      username: 'customer@example.test',
+      email: 'customer@example.test',
+      fullName: 'Nguyen Van An',
+      roles: ['CUSTOMER'],
     };
-    getProfile.mockReturnValue(of(approvedOwner));
-    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    getProfile.mockReturnValue(of(context));
+
     const fixture = TestBed.createComponent(ClientLayout);
     fixture.detectChanges();
 
     currentUser$.next({
       isAuthenticated: true,
-      username: 'owner',
-      fullName: 'Approved Owner',
+      username: context.username,
+      fullName: '',
       avatarUrl: '',
-      roles: ['PROPERTY_OWNER'],
-      permissions: []
+      roles: ['CUSTOMER'],
+      permissions: [],
     });
-    await fixture.whenStable();
+    currentUser$.next({
+      isAuthenticated: true,
+      username: context.username,
+      fullName: context.fullName || '',
+      avatarUrl: '',
+      roles: ['CUSTOMER'],
+      permissions: [],
+    });
 
     expect(getProfile).toHaveBeenCalledTimes(1);
-    expect(updateCurrentUser).toHaveBeenCalled();
-    expect(fixture.componentInstance.isPropertyOwner).toBe(true);
-    expect(fixture.componentInstance.partnerLabel).toBe('Quản lý cơ sở');
-    expect(fixture.componentInstance.managementQueryParams).toEqual({ propertyId: 17 });
-
-    fixture.componentInstance.navigatePartner();
-    expect(navigate).toHaveBeenCalledWith(['/management/dashboard'], {
-      queryParams: { propertyId: 17 }
-    });
-    expect(getProfile).toHaveBeenCalledTimes(1);
-  });
-
-  it('keeps a pending claimant in registration status even when a stale assignment is present', () => {
-    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
-    const fixture = TestBed.createComponent(ClientLayout);
-    fixture.componentInstance.isLoggedIn = true;
-    fixture.componentInstance.userContext = {
-      id: 42,
-      username: 'claimant',
-      email: 'claimant@example.com',
-      roles: [],
-      assignedProperties: [{ id: 17, name: 'Pending Import' }],
-      partnerRegistrationStatus: 'PENDING'
-    };
-
-    expect(fixture.componentInstance.isPropertyOwner).toBe(false);
-    expect(fixture.componentInstance.partnerLabel).toBe('Hồ sơ đang duyệt');
-    fixture.componentInstance.navigatePartner();
-    expect(navigate).toHaveBeenCalledWith(['/partner/registration-status']);
-  });
-
-  it('does not choose a replacement property when multiple assignments are returned', () => {
-    const fixture = TestBed.createComponent(ClientLayout);
-    fixture.componentInstance.isLoggedIn = true;
-    fixture.componentInstance.userContext = {
-      id: 42,
-      username: 'owner',
-      email: 'owner@example.com',
-      roles: ['PROPERTY_OWNER'],
-      assignedProperties: [{ id: 17, name: 'First' }, { id: 18, name: 'Second' }]
-    };
-
-    expect(fixture.componentInstance.managementQueryParams).toBeNull();
   });
 });

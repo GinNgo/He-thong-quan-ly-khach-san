@@ -28,15 +28,10 @@ class TenantFilterArchitectureTest {
                 "financialAuditTenantFilter",
                 "housekeepingTaskTenantFilter",
                 "hotelServiceTenantFilter",
-                "propertyMediaTenantFilter",
                 "propertyImageTenantFilter",
-                "propertyAmenityTenantFilter",
-                "roomTypeAmenityTenantFilter",
-                "propertyPolicyTenantFilter",
                 "roomTenantFilter",
                 "roomTypeTenantFilter",
                 "reservationTenantFilter",
-                "reservationAmendmentTenantFilter",
                 "propertyPaymentConfigurationTenantFilter",
                 "propertyPaymentMethodTenantFilter",
                 "propertyPaymentAttemptTenantFilter",
@@ -57,11 +52,7 @@ class TenantFilterArchitectureTest {
         Map<String, String> entityFilters = Map.ofEntries(
                 Map.entry("HousekeepingTask.java", "housekeepingTaskTenantFilter"),
                 Map.entry("HotelService.java", "hotelServiceTenantFilter"),
-                Map.entry("PropertyMedia.java", "propertyMediaTenantFilter"),
                 Map.entry("PropertyImage.java", "propertyImageTenantFilter"),
-                Map.entry("PropertyAmenity.java", "propertyAmenityTenantFilter"),
-                Map.entry("RoomTypeAmenity.java", "roomTypeAmenityTenantFilter"),
-                Map.entry("OperationalPolicyVersion.java", "propertyPolicyTenantFilter"),
                 Map.entry("Room.java", "roomTenantFilter"),
                 Map.entry("RoomType.java", "roomTypeTenantFilter"),
                 Map.entry("Reservation.java", "reservationTenantFilter"));
@@ -87,12 +78,6 @@ class TenantFilterArchitectureTest {
                 StandardCharsets.UTF_8);
         assertTrue(checkoutOverride.contains("checkoutOverrideTenantFilter"));
         assertTrue(checkoutOverride.contains("hotel_id"));
-
-        String reservationAmendment = Files.readString(
-                Path.of("src/main/java/com/hotel/propertycommerce/booking/ReservationAmendment.java"),
-                StandardCharsets.UTF_8);
-        assertTrue(reservationAmendment.contains("reservationAmendmentTenantFilter"));
-        assertTrue(reservationAmendment.contains("hotel_id"));
 
         Map<String, String> invoiceFilters = Map.of(
                 "PropertyInvoice.java", "propertyInvoiceTenantFilter",

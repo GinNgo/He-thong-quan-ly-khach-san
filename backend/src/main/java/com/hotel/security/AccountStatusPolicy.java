@@ -18,6 +18,14 @@ public final class AccountStatusPolicy {
         return user;
     }
 
+    public static User requireLoginAllowed(User user) {
+        requireActive(user);
+        if (user.getEmailVerifiedAt() == null) {
+            throw new EmailNotVerifiedAuthenticationException();
+        }
+        return user;
+    }
+
     public static boolean isActive(String status) {
         return ACTIVE.equals(normalize(status));
     }

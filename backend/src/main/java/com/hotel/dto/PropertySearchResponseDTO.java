@@ -30,7 +30,6 @@ public class PropertySearchResponseDTO {
     private List<String> galleryUrls;
     private Integer imageCount;
     private String imageAltText;
-    private String imageProvenance;
     private List<String> amenities;
     private Double reviewScore;
     private Integer reviewCount;

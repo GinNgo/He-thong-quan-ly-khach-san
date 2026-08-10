@@ -2,9 +2,6 @@ package com.hotel.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hotel.dtos.AssignRoomsRequest;
-import com.hotel.dtos.RoomAssignmentMutationRequest;
-import com.hotel.dtos.RoomAssignmentReleaseRequest;
-import jakarta.servlet.http.HttpServletRequest;
 import com.hotel.paymentprovider.idempotency.MutationIdempotencyService;
 import com.hotel.security.ActionCode;
 import com.hotel.security.CustomUserDetails;
@@ -21,7 +18,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.method.HandlerMethod;
@@ -33,7 +29,6 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -61,16 +56,7 @@ class ReservationLifecyclePermissionMatrixTest {
         assertPermission("assignRooms", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.UPDATE,
                 Long.class, AssignRoomsRequest.class);
         assertPermission("availableRooms", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.VIEW, Long.class);
-        assertPermission("availableRoomContext", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.VIEW, Long.class);
-        assertPermission("updateRoomAssignment", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.UPDATE,
-                Authentication.class, Long.class, RoomAssignmentMutationRequest.class, String.class,
-                HttpServletRequest.class);
-        assertPermission("releaseRoomAssignment", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.UPDATE,
-                Authentication.class, Long.class, RoomAssignmentReleaseRequest.class, String.class,
-                HttpServletRequest.class);
-        assertPermission("checkInReadiness", FunctionCode.CHECKIN, ActionCode.VIEW, Long.class);
-        assertPermission("checkIn", FunctionCode.CHECKIN, ActionCode.UPDATE,
-                Authentication.class, Long.class, String.class, HttpServletRequest.class);
+        assertPermission("checkIn", FunctionCode.CHECKIN, ActionCode.TASK_EXECUTE, Long.class);
         assertPermission("cancelOperational", FunctionCode.RESERVATION_CANCEL, ActionCode.UPDATE, Long.class);
         assertPermission("markNoShow", FunctionCode.RESERVATION_NO_SHOW, ActionCode.UPDATE, Long.class);
     }
@@ -115,36 +101,13 @@ class ReservationLifecyclePermissionMatrixTest {
 
     @Test
     void dedicatedControllerCommandsDelegateWithoutGenericStatusMutation() {
-        Authentication authentication = org.mockito.Mockito.mock(Authentication.class);
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        when(authentication.getName()).thenReturn("receptionist");
-        when(mutationIdempotencyService.execute(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq(200),
-                org.mockito.ArgumentMatchers.eq(com.hotel.dtos.ReservationDTO.class),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any()))
-                .thenAnswer(invocation -> ((java.util.function.Supplier<?>) invocation.getArgument(3)).get());
-
-        controller.checkIn(authentication, 11L, "check-in-key", request);
+        controller.checkIn(11L);
         controller.cancelOperational(12L);
         controller.markNoShow(13L);
 
         verify(reservationService).checkIn(11L);
         verify(reservationService).cancelOperational(12L);
         verify(reservationService).markNoShow(13L);
-    }
-
-    @Test
-    void legacyAssignmentRoutesAreRetiredWithoutBypassingReasonAndIdempotency() {
-        var putResponse = controller.assignRooms(11L, new AssignRoomsRequest());
-        var postResponse = controller.assignRoomsPost(11L, new AssignRoomsRequest());
-
-        assertThat(putResponse.getStatusCode().value()).isEqualTo(410);
-        assertThat(postResponse.getStatusCode().value()).isEqualTo(410);
-        assertThat(putResponse.getHeaders().getFirst("Deprecation")).isEqualTo("true");
-        assertThat(putResponse.getHeaders().getFirst("Link")).contains("/room-assignment");
-        verify(reservationService, never()).assignRooms(11L, new AssignRoomsRequest());
     }
 
     private void assertPermission(
@@ -164,17 +127,7 @@ class ReservationLifecyclePermissionMatrixTest {
         return List.of(
                 endpoint("assignRooms", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.UPDATE,
                         Long.class, AssignRoomsRequest.class),
-                endpoint("availableRoomContext", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.VIEW,
-                        Long.class),
-                endpoint("updateRoomAssignment", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.UPDATE,
-                        Authentication.class, Long.class, RoomAssignmentMutationRequest.class, String.class,
-                        HttpServletRequest.class),
-                endpoint("releaseRoomAssignment", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.UPDATE,
-                        Authentication.class, Long.class, RoomAssignmentReleaseRequest.class, String.class,
-                        HttpServletRequest.class),
-                endpoint("checkInReadiness", FunctionCode.CHECKIN, ActionCode.VIEW, Long.class),
-                endpoint("checkIn", FunctionCode.CHECKIN, ActionCode.UPDATE,
-                        Authentication.class, Long.class, String.class, HttpServletRequest.class),
+                endpoint("checkIn", FunctionCode.CHECKIN, ActionCode.TASK_EXECUTE, Long.class),
                 endpoint("cancelOperational", FunctionCode.RESERVATION_CANCEL, ActionCode.UPDATE, Long.class),
                 endpoint("markNoShow", FunctionCode.RESERVATION_NO_SHOW, ActionCode.UPDATE, Long.class));
     }

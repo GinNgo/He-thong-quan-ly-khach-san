@@ -26,6 +26,7 @@ import java.util.Map;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(
@@ -56,28 +57,6 @@ class FeatureGateIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
-<<<<<<< HEAD
-    // Property listing remains available so an owner can select a property and manage its plan.
-    @Test
-    void whenTokenLacksAccountWideFeature_thenPropertyListingRemainsAvailable() throws Exception {
-        CustomUserDetails user = new CustomUserDetails(
-                "user1", "pass",
-                List.of(new SimpleGrantedAuthority("PROPERTY_OWNER")),
-                Collections.emptyMap(), 1L, null, Collections.emptyMap() // No feature limits
-        );
-
-        mockMvc.perform(get("/api/v1/hotels/my-hotels").with(user(user)))
-                .andExpect(status().isOk());
-    }
-
-    // Legacy account-wide feature data must not change access to this read-only endpoint.
-    @Test
-    void whenTokenHasFeature_thenReturns200() throws Exception {
-        CustomUserDetails user = new CustomUserDetails(
-                "user2", "pass",
-                List.of(new SimpleGrantedAuthority("PROPERTY_OWNER")),
-                Collections.emptyMap(), 1L, null, Map.of("HOTEL", 1) // limit = 1
-=======
     // Read-only property discovery remains available even when the plan has no growth quota.
     @Test
     void whenReadOnlyPropertyListHasNoFeature_thenReturns200() throws Exception {
@@ -85,7 +64,6 @@ class FeatureGateIntegrationTest {
                 "user1", "pass",
                 List.of(new SimpleGrantedAuthority("PROPERTY_OWNER")),
                 Collections.emptyMap(), 1L, null, Collections.emptyMap()
->>>>>>> codex/ui-functional-audit-polish
         );
 
         mockMvc.perform(get("/api/v1/hotels/my-hotels").with(user(user)))

@@ -9,116 +9,28 @@ import { ClientObservabilityService } from './client-observability.service';
 
 export interface ChatMessage {
   id?: number;
-<<<<<<< HEAD
-  conversationId?: number;
-  hotelId?: number;
-  clientMessageId?: string;
-=======
   conversationId: number;
   hotelId: number;
->>>>>>> codex/ui-functional-audit-polish
   senderId: number;
   receiverId: number;
   content: string;
   timestamp?: string;
   isRead?: boolean;
-  deliveryStatus?: 'PERSISTED' | 'DELIVERED' | 'READ';
-  deliveredAt?: string;
-  readAt?: string;
 }
 
 export interface ChatConversation {
   conversationId: number;
   customerId: number;
   customerName: string;
-<<<<<<< HEAD
-  subject: string;
-  hotelId?: number;
-  hotelName?: string;
-  reservationId?: number;
-  assignedAgentId?: number;
-  assignedAgentName?: string;
-  status?: 'OPEN' | 'ASSIGNED' | 'ESCALATED' | 'CLOSED';
-  version?: number;
-  slaDeadlineAt?: string;
-  slaState?: 'BREACHED' | 'AT_RISK' | 'ON_TRACK' | 'NO_PENDING_RESPONSE';
-  createdAt?: string;
-  lastActivityAt?: string;
-  assignedAt?: string;
-  escalatedAt?: string;
-  closedAt?: string;
-  firstResponseAt?: string;
-  lastCustomerMessageAt?: string;
-  lastSupportReplyAt?: string;
-  closedReason?: string;
-  reopenedAt?: string;
-  reopenReason?: string;
-=======
   hotelId: number;
   hotelName: string;
   reservationId?: number;
   assignedAgentId?: number;
+  channel: 'IN_APP' | 'TENANT_ADMIN';
+  subject: string;
   status: 'OPEN' | 'ASSIGNED' | 'ESCALATED' | 'CLOSED';
->>>>>>> codex/ui-functional-audit-polish
   lastMessage: string;
   lastMessageAt?: string;
-}
-
-export interface ChatPage<T> {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
-  number: number;
-  size: number;
-  first: boolean;
-  last: boolean;
-  retentionDays: number;
-}
-
-export interface SupportQueueFilters {
-  status?: 'ALL' | 'OPEN' | 'ASSIGNED' | 'ESCALATED' | 'CLOSED';
-  assignment?: 'ALL' | 'UNASSIGNED' | 'MINE';
-  sla?: 'ALL' | 'BREACHED' | 'AT_RISK' | 'ON_TRACK' | 'NO_PENDING_RESPONSE';
-  hotelId?: number;
-  query?: string;
-}
-
-export interface SupportAttachment {
-  id: number;
-  conversationId: number;
-  filename: string;
-  contentType: string;
-  sizeBytes: number;
-  checksumSha256: string;
-  uploadedByUserId: number;
-  uploadedAt: string;
-}
-
-export interface SupportConversationEvent {
-  id: number;
-  conversationId: number;
-  hotelId?: number;
-  actorUserId?: number;
-  eventType: string;
-  details: string;
-  occurredAt: string;
-}
-
-export interface SupportConversationAuditPolicy {
-  appendOnly: boolean;
-  retentionDays: number;
-  pageMaxRows: number;
-  events: string[];
-}
-
-export interface SupportConversationEventPage {
-  content: SupportConversationEvent[];
-  totalElements: number;
-  totalPages: number;
-  number: number;
-  size: number;
-  first: boolean;
-  last: boolean;
 }
 
 export type ChatMode = 'customer' | 'support';
@@ -214,173 +126,40 @@ export class ChatService {
     }
   }
 
-<<<<<<< HEAD
-  sendCustomerMessage(content: string, conversationId?: number, clientMessageId?: string): boolean {
-    return this.publish('/app/chat.support.send', { content, conversationId, clientMessageId });
-  }
-
-  sendSupportReply(conversationId: number, content: string, clientMessageId?: string): boolean {
-    return this.publish('/app/chat.support.reply', { conversationId, content, clientMessageId });
-=======
   sendCustomerMessage(content: string, hotelId?: number, reservationId?: number): boolean {
     return this.publish('/app/chat.support.send', { content, hotelId, reservationId });
   }
 
+  sendTenantMessage(content: string, hotelId: number): boolean {
+    return this.publish('/app/chat.tenant.send', { content, hotelId });
+  }
+
   sendSupportReply(conversationId: number, content: string): boolean {
     return this.publish('/app/chat.support.reply', { conversationId, content });
->>>>>>> codex/ui-functional-audit-polish
   }
 
   getMyHistory(): Observable<ChatMessage[]> {
     return this.http.get<ChatMessage[]>(`${this.apiUrl}/me/history`);
   }
 
-  getMyConversations(page = 0, size = 20): Observable<ChatPage<ChatConversation>> {
-    return this.http.get<ChatPage<ChatConversation>>(`${this.apiUrl}/me/conversations`, {
-      params: { page, size },
-    });
+  getMyTenantSupportHistory(): Observable<ChatMessage[]> {
+    return this.http.get<ChatMessage[]>(`${this.apiUrl}/tenant/history`);
   }
 
-<<<<<<< HEAD
-  createMyConversation(subject: string, hotelId?: number, reservationId?: number): Observable<ChatConversation> {
-    return this.http.post<ChatConversation>(`${this.apiUrl}/me/conversations`, {
-      subject,
-      ...(hotelId ? { hotelId } : {}),
-      ...(reservationId ? { reservationId } : {}),
-    });
+  getSupportConversations(): Observable<ChatConversation[]> {
+    return this.http.get<ChatConversation[]>(`${this.apiUrl}/support/conversations`);
   }
 
-  getMyConversationMessages(conversationId: number, page = 0, size = 50): Observable<ChatPage<ChatMessage>> {
-    return this.http.get<ChatPage<ChatMessage>>(
-      `${this.apiUrl}/me/conversations/${conversationId}/messages`, { params: { page, size } });
-  }
-
-  sendMyConversationMessage(
-    conversationId: number, content: string, clientMessageId?: string
-  ): Observable<ChatMessage> {
-    return this.http.post<ChatMessage>(
-      `${this.apiUrl}/me/conversations/${conversationId}/messages`, {
-        content,
-        ...(clientMessageId ? { clientMessageId } : {}),
-      });
-  }
-
-  getMyAttachments(conversationId: number): Observable<SupportAttachment[]> {
-    return this.http.get<SupportAttachment[]>(
-      `${this.apiUrl}/me/conversations/${conversationId}/attachments`);
-  }
-
-  uploadMyAttachment(conversationId: number, file: File): Observable<SupportAttachment> {
-    const form = new FormData();
-    form.append('file', file, file.name);
-    return this.http.post<SupportAttachment>(
-      `${this.apiUrl}/me/conversations/${conversationId}/attachments`, form);
-  }
-
-  getSupportConversations(filters: SupportQueueFilters = {}): Observable<ChatConversation[]> {
-    const params: Record<string, string | number> = {};
-    if (filters.status && filters.status !== 'ALL') params['status'] = filters.status;
-    if (filters.assignment && filters.assignment !== 'ALL') params['assignment'] = filters.assignment;
-    if (filters.sla && filters.sla !== 'ALL') params['sla'] = filters.sla;
-    if (filters.hotelId) params['hotelId'] = filters.hotelId;
-    if (filters.query?.trim()) params['query'] = filters.query.trim();
-    return this.http.get<ChatConversation[]>(`${this.apiUrl}/support/conversations`, { params });
-  }
-
-=======
->>>>>>> codex/ui-functional-audit-polish
   getSupportHistory(conversationId: number): Observable<ChatMessage[]> {
     return this.http.get<ChatMessage[]>(`${this.apiUrl}/support/conversations/${conversationId}`);
   }
 
-<<<<<<< HEAD
-  getSupportConversationMessages(conversationId: number, page = 0, size = 50): Observable<ChatPage<ChatMessage>> {
-    return this.http.get<ChatPage<ChatMessage>>(
-      `${this.apiUrl}/support/conversations/${conversationId}/messages`, { params: { page, size } });
-  }
-
-  getSupportConversationEvents(
-    conversationId: number, page = 0, size = 20
-  ): Observable<SupportConversationEventPage> {
-    return this.http.get<SupportConversationEventPage>(
-      `${this.apiUrl}/support/conversations/${conversationId}/events`, { params: { page, size } });
-  }
-
-  getSupportAuditPolicy(): Observable<SupportConversationAuditPolicy> {
-    return this.http.get<SupportConversationAuditPolicy>(`${this.apiUrl}/support/audit-policy`);
-  }
-
-  sendSupportConversationMessage(
-    conversationId: number, content: string, expectedVersion?: number, clientMessageId?: string
-  ): Observable<ChatMessage> {
-    return this.http.post<ChatMessage>(
-      `${this.apiUrl}/support/conversations/${conversationId}/messages`, {
-        conversationId,
-        content,
-        ...(expectedVersion === undefined ? {} : { expectedVersion }),
-        ...(clientMessageId ? { clientMessageId } : {}),
-      });
-  }
-
-  acknowledgeMessage(
-    messageId: number, state: 'DELIVERED' | 'READ'
-  ): Observable<ChatMessage> {
-    return this.http.post<ChatMessage>(`${this.apiUrl}/messages/${messageId}/state`, null, {
-      params: { state },
-    });
-  }
-
-  createClientMessageId(): string {
-    if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
-    return `chat-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  }
-
-  claimSupportConversation(conversationId: number, expectedVersion?: number): Observable<ChatConversation> {
-    return this.mutateConversation(conversationId, 'assign', expectedVersion);
-  }
-
-  unassignSupportConversation(conversationId: number, expectedVersion?: number): Observable<ChatConversation> {
-    return this.mutateConversation(conversationId, 'unassign', expectedVersion);
-  }
-
-  escalateSupportConversation(conversationId: number, expectedVersion?: number): Observable<ChatConversation> {
-    return this.mutateConversation(conversationId, 'escalate', expectedVersion);
-  }
-
-  closeSupportConversation(
-    conversationId: number, reason: string, expectedVersion?: number
-  ): Observable<ChatConversation> {
-    return this.mutateConversation(conversationId, 'close', expectedVersion, reason);
-  }
-
-  reopenSupportConversation(
-    conversationId: number, reason: string, expectedVersion?: number
-  ): Observable<ChatConversation> {
-    return this.mutateConversation(conversationId, 'reopen', expectedVersion, reason);
-  }
-
-  getSupportAttachments(conversationId: number): Observable<SupportAttachment[]> {
-    return this.http.get<SupportAttachment[]>(
-      `${this.apiUrl}/support/conversations/${conversationId}/attachments`);
-  }
-
-  uploadSupportAttachment(conversationId: number, file: File): Observable<SupportAttachment> {
-    const form = new FormData();
-    form.append('file', file, file.name);
-    return this.http.post<SupportAttachment>(
-      `${this.apiUrl}/support/conversations/${conversationId}/attachments`, form);
-  }
-
-  downloadAttachment(attachmentId: number): Observable<Blob> {
-    return this.http.get(`${this.apiUrl}/attachments/${attachmentId}`, { responseType: 'blob' });
-=======
   assignConversation(conversationId: number): Observable<ChatConversation> {
     return this.http.post<ChatConversation>(`${this.apiUrl}/support/conversations/${conversationId}/assign`, {});
   }
 
   escalateConversation(conversationId: number): Observable<ChatConversation> {
     return this.http.post<ChatConversation>(`${this.apiUrl}/support/conversations/${conversationId}/escalate`, {});
->>>>>>> codex/ui-functional-audit-polish
   }
 
   isConnected(): boolean {
@@ -405,19 +184,6 @@ export class ChatService {
       this.setConnectionState('error', 'Không thể gửi tin nhắn. Hãy thử lại.');
       return false;
     }
-  }
-
-  private mutateConversation(
-    conversationId: number,
-    action: 'assign' | 'unassign' | 'escalate' | 'close' | 'reopen',
-    expectedVersion?: number,
-    reason?: string,
-  ): Observable<ChatConversation> {
-    const params: Record<string, number> = {};
-    if (expectedVersion !== undefined) params['expectedVersion'] = expectedVersion;
-    return this.http.post<ChatConversation>(
-      `${this.apiUrl}/support/conversations/${conversationId}/${action}`,
-      reason === undefined ? null : { reason }, { params });
   }
 
   private publishIncoming(message: Message): void {

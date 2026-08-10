@@ -32,6 +32,12 @@ public class PropertyAccessService {
         return hotel;
     }
 
+    public Hotel requireTenantManagedHotel(Long requestedHotelId) {
+        Hotel hotel = requireTenantAssignedHotel(requestedHotelId);
+        requireOperational(hotel);
+        return hotel;
+    }
+
     public Hotel requireAssignedHotel(Long requestedHotelId) {
         if (requestedHotelId == null) {
             throw new IllegalArgumentException("Vui lòng chọn cơ sở đang quản lý.");
@@ -42,6 +48,34 @@ public class PropertyAccessService {
             throw new ResourceNotFoundException("Không tìm thấy cơ sở.");
         }
         return hotel;
+    }
+
+    public Hotel requireTenantAssignedHotel(Long requestedHotelId) {
+        if (requestedHotelId == null) {
+            throw new IllegalArgumentException("Vui lòng chọn cơ sở đang quản lý.");
+        }
+        Hotel hotel = hotelRepository.findById(requestedHotelId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cơ sở."));
+        if (!assignedHotelIds().contains(requestedHotelId)) {
+            throw new ResourceNotFoundException("Không tìm thấy cơ sở.");
+        }
+        return hotel;
+    }
+
+    public void requireTenantCanManage(Long hotelId) {
+        requireTenantManagedHotel(hotelId);
+    }
+
+    public void requireTenantAccessibleOrNotFound(Long hotelId, String entityName) {
+        if (hotelId == null) {
+            throw new ResourceNotFoundException("Không tìm thấy " + entityName + ".");
+        }
+        Hotel hotel = hotelRepository.findById(hotelId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy " + entityName + "."));
+        if (!assignedHotelIds().contains(hotelId)) {
+            throw new ResourceNotFoundException("Không tìm thấy " + entityName + ".");
+        }
+        requireOperational(hotel);
     }
 
     public void requireCanManage(Long hotelId) {
@@ -94,7 +128,6 @@ public class PropertyAccessService {
 
     public boolean isOperational(Hotel hotel) {
         return hotel != null
-                && "ACTIVE".equals(normalizeStatus(hotel.getStatus()))
                 && "APPROVED".equals(normalizeStatus(hotel.getApprovalStatus()))
                 && "ACTIVE".equals(normalizeStatus(hotel.getOperationStatus()));
     }

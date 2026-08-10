@@ -43,7 +43,7 @@ export class HotelServiceService {
     return this.http.put<HotelServiceDTO>(`${this.apiUrl}/${id}`, service);
   }
 
-  deleteService(id: number, reason: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`, { params: { reason } });
+  deleteService(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 }

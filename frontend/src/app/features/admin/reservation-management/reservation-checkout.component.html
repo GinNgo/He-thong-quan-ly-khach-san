@@ -261,33 +261,10 @@
           </div>
         </section>
 
-        <form
-          *ngIf="needsDebtOverride()"
-          [formGroup]="overrideForm"
-          (ngSubmit)="authorizeDebtOverride()"
-          class="override-panel"
-        >
-          <div>
-            <strong><i class="pi pi-lock" aria-hidden="true"></i> Cần quyền công nợ</strong>
-            <p>Checkout đang thiếu tiền. Chỉ người có quyền riêng mới có thể xác nhận ngoại lệ.</p>
-          </div>
-          <label class="field">
-            <span>Lý do phê duyệt</span>
-            <textarea formControlName="reason" rows="2" placeholder="Ít nhất 10 ký tự"></textarea>
-            <small *ngIf="overrideForm.controls.reason.touched && overrideForm.controls.reason.invalid">
-              Nhập lý do rõ ràng để tiếp tục.
-            </small>
-          </label>
-          <button
-            pButton
-            type="submit"
-            label="Xin quyền trả phòng công nợ"
-            icon="pi pi-shield"
-            class="override-action"
-            [loading]="busyAction() === 'OVERRIDE'"
-            [disabled]="busyAction() !== null"
-          ></button>
-        </form>
+        <div class="blocking-message" *ngIf="hasOutstandingBalance()">
+          <i class="pi pi-wallet" aria-hidden="true"></i>
+          <span>Khách cần thanh toán đủ số dư trước khi trả phòng. Hệ thống không cho ghi nợ khi checkout.</span>
+        </div>
 
         <div class="blocking-message" *ngIf="isOverpaid()">
           <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>

@@ -3,14 +3,11 @@ package com.hotel.integration;
 import com.hotel.BackendApplication;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.Location;
-import com.hotel.entities.PropertyImage;
 import com.hotel.entities.RoomType;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.LocationRepository;
-import com.hotel.repositories.PropertyImageRepository;
 import com.hotel.repositories.RoomTypeRepository;
 import com.hotel.repositories.RoomRepository;
-import com.hotel.services.impl.PropertySearchServiceImpl;
 import com.jayway.jsonpath.JsonPath;
 import com.hotel.entities.Room;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,21 +15,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
 
 import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -60,23 +50,15 @@ public class PropertySearchControllerIntegrationTest {
     @Autowired
     private LocationRepository locationRepository;
 
-    @Autowired
-    private PropertyImageRepository propertyImageRepository;
-
-    @Autowired
-    private PropertySearchServiceImpl propertySearchService;
-
     private Location primaryProvince;
     private Location legacyPrimaryProvince;
-    private Location secondaryProvince;
     private Location landmark;
-    private Hotel primaryHotel;
 
     @BeforeEach
     void setUp() {
         primaryProvince = saveLocation("TEST-P-SEARCH", "VN34-48", "Thành phố Đà Nẵng", "PROVINCE", null);
         legacyPrimaryProvince = saveLocation("TEST-P-SEARCH-LEGACY", "48", "Đà Nẵng", "PROVINCE", null);
-        secondaryProvince = saveLocation("TEST-P-SEARCH-2", "VN34-68", "Da Lat", "PROVINCE", null);
+        Location secondaryProvince = saveLocation("TEST-P-SEARCH-2", "Da Lat", "PROVINCE", null);
         landmark = saveLocation("TEST-LM-SEARCH", "Cau Rong", "LANDMARK", primaryProvince);
         landmark.setCategory("CULTURE");
         landmark.setLatitude(16.0611);
@@ -96,7 +78,7 @@ public class PropertySearchControllerIntegrationTest {
         hotel.setOperationStatus("ACTIVE");
         hotel.setLatitude(16.0612);
         hotel.setLongitude(108.2278);
-        primaryHotel = hotelRepository.saveAndFlush(hotel);
+        hotelRepository.saveAndFlush(hotel);
 
         RoomType roomType = new RoomType();
         roomType.setHotel(hotel);
@@ -141,7 +123,6 @@ public class PropertySearchControllerIntegrationTest {
         room.setRoomNumber(number);
         room.setFloor(1);
         room.setStatus("AVAILABLE");
-        room.setHousekeepingStatus("CLEAN");
         room.setMaintenanceStatus("NONE");
         roomRepository.saveAndFlush(room);
     }
@@ -155,13 +136,6 @@ public class PropertySearchControllerIntegrationTest {
                 .andExpect(jsonPath("$.content", hasSize(greaterThanOrEqualTo(1))))
                 .andExpect(jsonPath("$.content[0].name", is("Ocean View Hotel")))
                 .andExpect(jsonPath("$.content[0].provinceName", is("Thành phố Đà Nẵng")));
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("provinceId", legacyPrimaryProvince.getId().toString())
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].name", is("Ocean View Hotel")))
-                .andExpect(jsonPath("$.content[0].provinceName", is("Thành phố Đà Nẵng")));
     }
 
     @Test
@@ -173,130 +147,11 @@ public class PropertySearchControllerIntegrationTest {
     }
 
     @Test
-    void searchProperties_RequiresApprovedActiveInventoryAndAllowsDemoOutsideProduction() throws Exception {
-        Hotel visible = saveEligibilityHotel("Visible T274", primaryProvince, "APPROVED", "ACTIVE", false);
-        Hotel demo = saveEligibilityHotel("Demo T274", primaryProvince, "APPROVED", "ACTIVE", true);
-        saveEligibilityHotel("Pending T274", primaryProvince, "PENDING", "ACTIVE", false);
-        saveEligibilityHotel("Rejected T274", primaryProvince, "REJECTED", "ACTIVE", false);
-        saveEligibilityHotel("Suspended T274", primaryProvince, "APPROVED", "SUSPENDED", false);
-        saveEligibilityHotel("Inactive T274", primaryProvince, "APPROVED", "INACTIVE", false);
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("keyword", "T274")
-                        .param("pageSize", "20"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(2))
-                .andExpect(jsonPath("$.content[*].id", containsInAnyOrder(
-                        visible.getId().intValue(), demo.getId().intValue())))
-                .andExpect(jsonPath("$.content[*].name", not(hasItems(
-                        "Pending T274", "Rejected T274", "Suspended T274", "Inactive T274"))));
-    }
-
-    @Test
-    void searchProperties_CurrentAndLegacyProvinceIdsReturnTheSameCompatibilityScope() throws Exception {
-        Hotel currentStored = saveEligibilityHotel(
-                "Current Province T274", primaryProvince, "APPROVED", "ACTIVE", false);
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("provinceId", primaryProvince.getId().toString())
-                        .param("pageSize", "20"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[*].id", hasItems(
-                        primaryHotel.getId().intValue(), currentStored.getId().intValue())));
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("provinceId", legacyPrimaryProvince.getId().toString())
-                        .param("pageSize", "20"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[*].id", hasItems(
-                        primaryHotel.getId().intValue(), currentStored.getId().intValue())));
-    }
-
-    @Test
-    void searchProperties_RejectsInvalidMissingAndInvertedDateRanges() throws Exception {
-        String futureCheckIn = LocalDate.now().plusDays(2).toString();
-        String futureCheckOut = LocalDate.now().plusDays(4).toString();
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("checkInDate", "04-08-2026")
-                        .param("checkOutDate", futureCheckOut))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("checkInDate", futureCheckIn))
-                .andExpect(status().isBadRequest());
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("checkOutDate", futureCheckOut))
-                .andExpect(status().isBadRequest());
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("checkInDate", futureCheckIn)
-                        .param("checkOutDate", futureCheckIn))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Ngày trả phòng phải sau ngày nhận phòng."));
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("checkInDate", futureCheckOut)
-                        .param("checkOutDate", futureCheckIn))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Ngày trả phòng phải sau ngày nhận phòng."));
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("checkInDate", "2000-01-01")
-                        .param("checkOutDate", "2000-01-02"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("checkInDate cannot be in the past."));
-
-        mockMvc.perform(get("/api/public/properties/search"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void searchProperties_RejectsUnknownAndUnavailableFiltersWhileAcceptingAmenities() throws Exception {
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("displayLocation", "Da Nang"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("legacyAddressKeyword", "Bạch Đằng"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("stayType", "DAY_USE"))
-                .andExpect(status().isBadRequest());
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("amenityIds", "1"))
-                .andExpect(status().isOk());
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("freeCancellation", "true"))
-                .andExpect(status().isBadRequest());
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("payAtProperty", "true"))
-                .andExpect(status().isBadRequest());
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("breakfastIncluded", "true"))
-                .andExpect(status().isBadRequest());
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("stayType", "OVERNIGHT")
-                        .param("freeCancellation", "false")
-                        .param("payAtProperty", "false")
-                        .param("breakfastIncluded", "false"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
     void searchProperties_WithRoomQuantity_ShouldCalculateStayPricing() throws Exception {
-        String checkInDate = LocalDate.now().plusDays(10).toString();
-        String checkOutDate = LocalDate.now().plusDays(12).toString();
         mockMvc.perform(get("/api/public/properties/search")
                         .param("provinceId", primaryProvince.getId().toString())
-                        .param("checkInDate", checkInDate)
-                        .param("checkOutDate", checkOutDate)
+                        .param("checkInDate", "2026-08-01")
+                        .param("checkOutDate", "2026-08-03")
                         .param("adultCount", "2")
                         .param("roomCount", "2")
                         .param("minPrice", "400000")
@@ -315,294 +170,9 @@ public class PropertySearchControllerIntegrationTest {
     }
 
     @Test
-    void searchProperties_RejectsInvalidPriceBounds() throws Exception {
-        for (String field : List.of("minPrice", "maxPrice")) {
-            for (String invalid : List.of("-1", "NaN", "Infinity")) {
-                mockMvc.perform(get("/api/public/properties/search").param(field, invalid))
-                        .andExpect(status().isBadRequest())
-                        .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
-            }
-        }
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("minPrice", "600000")
-                        .param("maxPrice", "500000"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
-    }
-
-    @Test
-    void searchProperties_RequiresOneRoomTypeToSatisfyBothInclusiveBounds() throws Exception {
-        savePriceHotel("Split Bounds",
-                priceRoom("LOW", "300000", true),
-                priceRoom("HIGH", "900000", true));
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("keyword", "T278 Split Bounds")
-                        .param("minPrice", "400000")
-                        .param("maxPrice", "600000"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(0))
-                .andExpect(jsonPath("$.content", hasSize(0)));
-
-        PriceHotelFixture matching = savePriceHotel("Inclusive Bounds",
-                priceRoom("LOW", "300000", true),
-                priceRoom("MATCH", "500000", true),
-                priceRoom("HIGH", "900000", true));
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("keyword", "T278 Inclusive Bounds")
-                        .param("minPrice", "500000")
-                        .param("maxPrice", "500000"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.content[0].id").value(matching.hotel().getId().intValue()))
-                .andExpect(jsonPath("$.content[0].startingPrice").value(500000.0))
-                .andExpect(jsonPath("$.content[0].pricing.nightlyPrice").value(500000))
-                .andExpect(jsonPath("$.content[0].lowestRoomType.id")
-                        .value(matching.roomTypes().get(1).getId().intValue()));
-    }
-
-    @Test
-    void searchProperties_UsesTheBoundedRoomForAvailabilityAndOneSidedFilters() throws Exception {
-        savePriceHotel("Unavailable Match",
-                priceRoom("AVAILABLE-LOW", "300000", true),
-                priceRoom("NO-INVENTORY-MATCH", "500000", false));
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("keyword", "T278 Unavailable Match")
-                        .param("minPrice", "400000")
-                        .param("maxPrice", "600000"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(0));
-
-        savePriceHotel("One Sided",
-                priceRoom("LOW", "300000", true),
-                priceRoom("MID", "500000", true),
-                priceRoom("HIGH", "900000", true));
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("keyword", "T278 One Sided")
-                        .param("minPrice", "500000"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].startingPrice").value(500000.0));
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("keyword", "T278 One Sided")
-                        .param("maxPrice", "500000"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].startingPrice").value(300000.0));
-    }
-
-    @Test
-    void searchProperties_PriceSortUsesTheSameBoundedDisplayedPrice() throws Exception {
-        PriceHotelFixture low = savePriceHotel("Sort Low",
-                priceRoom("OUTSIDE", "100000", true), priceRoom("MATCH", "550000", true));
-        PriceHotelFixture middle = savePriceHotel("Sort Middle",
-                priceRoom("OUTSIDE", "200000", true), priceRoom("MATCH", "650000", true));
-        PriceHotelFixture high = savePriceHotel("Sort High",
-                priceRoom("OUTSIDE", "300000", true), priceRoom("MATCH", "750000", true));
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("keyword", "T278 Sort")
-                        .param("minPrice", "500000")
-                        .param("maxPrice", "800000")
-                        .param("sortBy", "PRICE_ASC")
-                        .param("pageSize", "10"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[*].id", contains(
-                        low.hotel().getId().intValue(), middle.hotel().getId().intValue(), high.hotel().getId().intValue())))
-                .andExpect(jsonPath("$.content[*].startingPrice", contains(550000.0, 650000.0, 750000.0)))
-                .andExpect(jsonPath("$.content[*].pricing.nightlyPrice", contains(550000, 650000, 750000)));
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("keyword", "T278 Sort")
-                        .param("minPrice", "500000")
-                        .param("maxPrice", "800000")
-                        .param("sortBy", "PRICE_DESC")
-                        .param("pageSize", "10"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[*].id", contains(
-                        high.hotel().getId().intValue(), middle.hotel().getId().intValue(), low.hotel().getId().intValue())))
-                .andExpect(jsonPath("$.content[*].startingPrice", contains(750000.0, 650000.0, 550000.0)));
-    }
-
-    @Test
-    void searchProperties_SortsAndPagesDeterministicallyWithoutDuplicatesOrCountDrift() throws Exception {
-        List<Hotel> hotels = List.of(
-                saveSortHotel("A"), saveSortHotel("B"), saveSortHotel("C"),
-                saveSortHotel("D"), saveSortHotel("E"));
-        List<Integer> ascendingIds = hotels.stream().map(Hotel::getId).map(Long::intValue).toList();
-        List<Integer> descendingIds = new java.util.ArrayList<>(ascendingIds);
-        java.util.Collections.reverse(descendingIds);
-
-        for (String sortBy : List.of("POPULAR", "NEAREST", "PRICE_ASC", "PRICE_DESC", "RATING")) {
-            List<Integer> expectedIds = "POPULAR".equals(sortBy) ? descendingIds : ascendingIds;
-            List<Integer> pagedIds = new java.util.ArrayList<>();
-
-            for (int pageNumber = 1; pageNumber <= 3; pageNumber++) {
-                MvcResult page = performSortPage(sortBy, pageNumber, 2)
-                        .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.number").value(pageNumber - 1))
-                        .andExpect(jsonPath("$.size").value(2))
-                        .andExpect(jsonPath("$.totalElements").value(5))
-                        .andExpect(jsonPath("$.totalPages").value(3))
-                        .andReturn();
-                String body = page.getResponse().getContentAsString();
-                pagedIds.addAll(JsonPath.read(body, "$.content[*].id"));
-                if (sortBy.startsWith("PRICE_")) {
-                    List<Number> prices = JsonPath.read(body, "$.content[*].startingPrice");
-                    assertTrue(prices.stream().allMatch(price -> price.doubleValue() == 640000d));
-                }
-            }
-
-            assertEquals(expectedIds, pagedIds, sortBy + " must have a stable page-through order");
-            assertEquals(5, new java.util.HashSet<>(pagedIds).size(), sortBy + " must not duplicate results");
-
-            MvcResult repeatedFirstPage = performSortPage(sortBy, 1, 2)
-                    .andExpect(status().isOk())
-                    .andReturn();
-            List<Integer> repeatedIds = JsonPath.read(
-                    repeatedFirstPage.getResponse().getContentAsString(), "$.content[*].id");
-            assertEquals(expectedIds.subList(0, 2), repeatedIds, sortBy + " must repeat deterministically");
-        }
-    }
-
-    @Test
-    void searchProperties_RejectsInvalidSortAndPaginationInsteadOfClamping() throws Exception {
-        for (String invalidSort : List.of("CHEAPEST", "PRICE", "nearest-first")) {
-            mockMvc.perform(get("/api/public/properties/search").param("sortBy", invalidSort))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
-        }
-        for (String invalidPage : List.of("0", "-1")) {
-            mockMvc.perform(get("/api/public/properties/search").param("pageNumber", invalidPage))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
-        }
-        for (String invalidSize : List.of("0", "-1", "101")) {
-            mockMvc.perform(get("/api/public/properties/search").param("pageSize", invalidSize))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
-        }
-
-        mockMvc.perform(get("/api/public/properties/search").param("sortBy", " price_asc "))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void searchProperties_HighOutOfRangePageIsEmptyAndPreservesAuthoritativeCount() throws Exception {
-        saveSortHotel("A");
-        saveSortHotel("B");
-        saveSortHotel("C");
-
-        performSortPage("PRICE_ASC", 99, 2)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.number").value(98))
-                .andExpect(jsonPath("$.size").value(2))
-                .andExpect(jsonPath("$.numberOfElements").value(0))
-                .andExpect(jsonPath("$.content", hasSize(0)))
-                .andExpect(jsonPath("$.totalElements").value(3))
-                .andExpect(jsonPath("$.totalPages").value(2));
-    }
-
-    @Test
-    void searchProperties_ExcludesLegacyNullRoomPricesFromBoundedCandidates() {
-        RoomType legacyNullPrice = new RoomType();
-        legacyNullPrice.setBasePrice(null);
-
-        Boolean matches = ReflectionTestUtils.invokeMethod(
-                propertySearchService, "isWithinPriceBounds", legacyNullPrice, 0d, 1_000_000d);
-
-        assertFalse(Boolean.TRUE.equals(matches));
-    }
-
-    @Test
-    void searchProperties_NormalizesAndDeduplicatesPropertyTypeAndStarFilters() throws Exception {
-        FilterFixture fixture = seedFilterFixture();
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("keyword", "T276")
-                        .param("propertyTypes", " hotel ,RESORT,hotel")
-                        .param("starRatings", "5,4,5")
-                        .param("pageSize", "20"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(2))
-                .andExpect(jsonPath("$.content[*].id", containsInAnyOrder(
-                        fixture.hotelLeader().getId().intValue(), fixture.resortReviewed().getId().intValue())))
-                .andExpect(jsonPath("$.content[*].propertyType", containsInAnyOrder("HOTEL", "RESORT")))
-                .andExpect(jsonPath("$.content[*].starRating", containsInAnyOrder(5, 4)));
-    }
-
-    @Test
-    void searchProperties_RequiresRealReviewsAndPreservesReviewedZeroScore() throws Exception {
-        FilterFixture fixture = seedFilterFixture();
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("keyword", "T276")
-                        .param("minReviewScore", "8")
-                        .param("pageSize", "20"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(2))
-                .andExpect(jsonPath("$.content[*].id", containsInAnyOrder(
-                        fixture.hotelLeader().getId().intValue(), fixture.resortReviewed().getId().intValue())))
-                .andExpect(jsonPath("$.content[*].name", not(hasItems(
-                        "T276 Zero Count High", "T276 Null Count High", "T276 Null Average Count"))));
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("keyword", "T276")
-                        .param("minReviewScore", "0")
-                        .param("pageSize", "20"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(4))
-                .andExpect(jsonPath("$.content[*].id", containsInAnyOrder(
-                        fixture.hotelLeader().getId().intValue(), fixture.resortReviewed().getId().intValue(),
-                        fixture.homestayReviewed().getId().intValue(), fixture.zeroScoreReviewed().getId().intValue())))
-                .andExpect(jsonPath("$.content[?(@.name == 'T276 Zero Reviewed')].reviewScore", contains(0.0)))
-                .andExpect(jsonPath("$.content[?(@.name == 'T276 Zero Reviewed')].reviewCount", contains(3)));
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("keyword", "T276")
-                        .param("pageSize", "20"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(7))
-                .andExpect(jsonPath("$.content[?(@.name == 'T276 Zero Count High')].reviewScore",
-                        contains(nullValue())))
-                .andExpect(jsonPath("$.content[?(@.name == 'T276 Zero Count High')].reviewCount", contains(0)))
-                .andExpect(jsonPath("$.content[?(@.name == 'T276 Null Count High')].reviewScore",
-                        contains(nullValue())))
-                .andExpect(jsonPath("$.content[?(@.name == 'T276 Null Count High')].reviewCount", contains(0)))
-                .andExpect(jsonPath("$.content[?(@.name == 'T276 Null Average Count')].reviewScore",
-                        contains(nullValue())))
-                .andExpect(jsonPath("$.content[?(@.name == 'T276 Null Average Count')].reviewCount", contains(0)));
-    }
-
-    @Test
-    void searchProperties_RejectsInvalidPropertyTypeStarAndReviewFilters() throws Exception {
-        mockMvc.perform(get("/api/public/properties/search").param("propertyTypes", "CABIN"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
-
-        for (String invalidStar : List.of("0", "6")) {
-            mockMvc.perform(get("/api/public/properties/search").param("starRatings", invalidStar))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
-        }
-
-        for (String invalidScore : List.of("-0.1", "10.1", "NaN", "Infinity")) {
-            mockMvc.perform(get("/api/public/properties/search").param("minReviewScore", invalidScore))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
-        }
-    }
-
-    @Test
     void searchProperties_ByLandmarkResolvesCoordinatesAndOrdersByDistance() throws Exception {
         mockMvc.perform(get("/api/public/properties/search")
                         .param("landmarkId", landmark.getId().toString())
-                        .param("provinceId", legacyPrimaryProvince.getId().toString())
-                        .param("latitude", "0")
-                        .param("longitude", "0")
                         .param("radiusKm", "5")
                         .param("sortBy", "NEAREST")
                         .param("adultCount", "2")
@@ -629,118 +199,6 @@ public class PropertySearchControllerIntegrationTest {
         mockMvc.perform(get("/api/public/properties/search")
                         .param("landmarkId", invalid.getId().toString()))
                 .andExpect(status().isBadRequest());
-
-        Location coordinateLess = saveLocation("TEST-LM-NO-COORD", "No Coordinate", "LANDMARK", primaryProvince);
-        coordinateLess.setStatus("ACTIVE");
-        coordinateLess = locationRepository.saveAndFlush(coordinateLess);
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("landmarkId", coordinateLess.getId().toString()))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void searchProperties_RejectsProvinceMismatchAndInvalidRadiusOrCoordinates() throws Exception {
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("landmarkId", landmark.getId().toString())
-                        .param("provinceId", secondaryProvince.getId().toString()))
-                .andExpect(status().isBadRequest());
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("landmarkId", landmark.getId().toString())
-                        .param("radiusKm", "0"))
-                .andExpect(status().isBadRequest());
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("landmarkId", landmark.getId().toString())
-                        .param("radiusKm", "51"))
-                .andExpect(status().isBadRequest());
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("landmarkId", landmark.getId().toString())
-                        .param("radiusKm", "NaN"))
-                .andExpect(status().isBadRequest());
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("latitude", "91")
-                        .param("longitude", "108")
-                        .param("radiusKm", "5"))
-                .andExpect(status().isBadRequest());
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("latitude", "NaN")
-                        .param("longitude", "108")
-                        .param("radiusKm", "5"))
-                .andExpect(status().isBadRequest());
-
-        mockMvc.perform(get("/api/public/properties/search")
-                        .param("latitude", "16"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void featuredRatingSearch_IsDeterministicLiveAndReturnsGovernedImageFallbacks() throws Exception {
-        Location featuredProvince = saveLocation(
-                "TEST-P-FEATURED-T273", "VN34-04", "Featured Province T273", "PROVINCE", null);
-        Hotel reviewedLeader = saveSearchableHotel(
-                featuredProvince, "Reviewed Leader T273", 9.7, 200, "/catalog/leader.webp", "LEADER");
-        Hotel reviewedTieA = saveSearchableHotel(
-                featuredProvince, "Reviewed Tie A T273", 9.2, 50, "/catalog/tie-a.webp", "TIE-A");
-        Hotel reviewedTieB = saveSearchableHotel(
-                featuredProvince, "Reviewed Tie B T273", 9.2, 50, "/catalog/tie-b.webp", "TIE-B");
-        Hotel unreviewed = saveSearchableHotel(
-                featuredProvince, "Unreviewed T273", null, 0, "/catalog/unreviewed.webp", "UNREVIEWED");
-        Hotel noImage = saveSearchableHotel(
-                featuredProvince, "No Image T273", null, null, "   ", "NO-IMAGE");
-
-        savePropertyImage(reviewedLeader, "   ", true, 0, "Ignored blank image");
-        savePropertyImage(reviewedLeader, "/media/leader-gallery-first.webp", false, 1, "Gallery first");
-        savePropertyImage(reviewedLeader, "/media/leader-primary.webp", true, 2, "Primary leader alt");
-        savePropertyImage(reviewedTieA, "   ", true, 0, "Ignored blank image");
-
-        MvcResult first = mockMvc.perform(get("/api/public/properties/search")
-                        .param("provinceId", featuredProvince.getId().toString())
-                        .param("sortBy", "RATING")
-                        .param("pageSize", "10")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
-                .andExpect(header().string("X-LuxeStay-Freshness", "LIVE_SEARCH"))
-                .andExpect(jsonPath("$.totalElements").value(5))
-                .andExpect(jsonPath("$.content", hasSize(5)))
-                .andExpect(jsonPath("$.content[*].id", contains(
-                        reviewedLeader.getId().intValue(),
-                        reviewedTieA.getId().intValue(),
-                        reviewedTieB.getId().intValue(),
-                        unreviewed.getId().intValue(),
-                        noImage.getId().intValue())))
-                .andExpect(jsonPath("$.content[0].thumbnailUrl").value("/media/leader-primary.webp"))
-                .andExpect(jsonPath("$.content[0].galleryUrls", contains(
-                        "/media/leader-gallery-first.webp", "/media/leader-primary.webp")))
-                .andExpect(jsonPath("$.content[0].imageCount").value(2))
-                .andExpect(jsonPath("$.content[0].imageAltText").value("Primary leader alt"))
-                .andExpect(jsonPath("$.content[0].imageProvenance").value("PROPERTY_MEDIA"))
-                .andExpect(jsonPath("$.content[1].thumbnailUrl").value("/catalog/tie-a.webp"))
-                .andExpect(jsonPath("$.content[1].galleryUrls", contains("/catalog/tie-a.webp")))
-                .andExpect(jsonPath("$.content[1].imageAltText").value("Reviewed Tie A T273"))
-                .andExpect(jsonPath("$.content[1].imageProvenance").value("PROPERTY_CATALOG_MAIN"))
-                .andExpect(jsonPath("$.content[4].thumbnailUrl").value(nullValue()))
-                .andExpect(jsonPath("$.content[4].mainImageUrl").value(nullValue()))
-                .andExpect(jsonPath("$.content[4].galleryUrls", hasSize(0)))
-                .andExpect(jsonPath("$.content[4].imageCount").value(0))
-                .andExpect(jsonPath("$.content[4].imageAltText").value("No Image T273"))
-                .andExpect(jsonPath("$.content[4].imageProvenance").value("NONE"))
-                .andReturn();
-
-        MvcResult repeated = mockMvc.perform(get("/api/public/properties/search")
-                        .param("provinceId", featuredProvince.getId().toString())
-                        .param("sortBy", "RATING")
-                        .param("pageSize", "10"))
-                .andExpect(status().isOk())
-                .andReturn();
-        List<Integer> firstIds = JsonPath.read(first.getResponse().getContentAsString(), "$.content[*].id");
-        List<Integer> repeatedIds = JsonPath.read(repeated.getResponse().getContentAsString(), "$.content[*].id");
-        assertEquals(firstIds, repeatedIds);
     }
 
     private Location saveLocation(String code, String name, String type, Location parent) {
@@ -758,218 +216,4 @@ public class PropertySearchControllerIntegrationTest {
         location.setStatus("ACTIVE");
         return locationRepository.saveAndFlush(location);
     }
-
-    private Hotel saveSearchableHotel(Location province, String name, Double rating, Integer reviewCount,
-                                      String mainImage, String suffix) {
-        Hotel hotel = new Hotel();
-        hotel.setName(name);
-        hotel.setCode("TEST-FEATURED-" + suffix);
-        hotel.setSlug("test-featured-" + suffix.toLowerCase());
-        hotel.setProvinceId(province.getId());
-        hotel.setAddressLine("1 Featured Street " + suffix);
-        hotel.setCity(province.getNameVi());
-        hotel.setCountry("Vietnam");
-        hotel.setStatus("ACTIVE");
-        hotel.setApprovalStatus("APPROVED");
-        hotel.setOperationStatus("ACTIVE");
-        hotel.setPropertyType("HOTEL");
-        hotel.setAverageRating(rating);
-        hotel.setReviewCount(reviewCount);
-        hotel.setMainImage(mainImage);
-        hotel = hotelRepository.saveAndFlush(hotel);
-
-        RoomType roomType = new RoomType();
-        roomType.setHotel(hotel);
-        roomType.setNameEn("Featured room " + suffix);
-        roomType.setNameVi("Featured room " + suffix);
-        roomType.setCode("FEATURED-ROOM-" + suffix);
-        roomType.setBasePrice(new BigDecimal("600000"));
-        roomType.setMaxGuest(2);
-        roomType.setStatus("ACTIVE");
-        roomType = roomTypeRepository.saveAndFlush(roomType);
-        saveRoom(hotel, roomType, "FEATURED-" + suffix);
-        return hotel;
-    }
-
-    private Hotel saveEligibilityHotel(String name, Location province, String approvalStatus,
-                                       String operationStatus, boolean demo) {
-        String suffix = name.replaceAll("[^A-Za-z0-9]", "-").toLowerCase();
-        Hotel hotel = new Hotel();
-        hotel.setName(name);
-        hotel.setCode("TEST-ELIGIBILITY-" + suffix);
-        hotel.setSlug("test-eligibility-" + suffix);
-        hotel.setNormalizedName(name.toLowerCase());
-        hotel.setProvinceId(province.getId());
-        hotel.setAddressLine("1 Eligibility Street");
-        hotel.setCity(province.getNameVi());
-        hotel.setCountry("Vietnam");
-        hotel.setStatus("ACTIVE");
-        hotel.setApprovalStatus(approvalStatus);
-        hotel.setOperationStatus(operationStatus);
-        hotel.setPropertyType("HOTEL");
-        hotel.setIsDemo(demo);
-        hotel = hotelRepository.saveAndFlush(hotel);
-
-        RoomType roomType = new RoomType();
-        roomType.setHotel(hotel);
-        roomType.setNameEn("Eligibility room " + suffix);
-        roomType.setNameVi("Eligibility room " + suffix);
-        roomType.setCode("ELIGIBILITY-ROOM-" + suffix);
-        roomType.setBasePrice(new BigDecimal("550000"));
-        roomType.setMaxGuest(2);
-        roomType.setStatus("ACTIVE");
-        roomType = roomTypeRepository.saveAndFlush(roomType);
-        saveRoom(hotel, roomType, "ELIGIBILITY-" + hotel.getId());
-        return hotel;
-    }
-
-    private FilterFixture seedFilterFixture() {
-        return new FilterFixture(
-                saveFilterHotel("Hotel Leader", "HOTEL", 5, 9.2, 20),
-                saveFilterHotel("Resort Reviewed", "RESORT", 4, 8.3, 10),
-                saveFilterHotel("Homestay Reviewed", "HOMESTAY", 3, 7.0, 1),
-                saveFilterHotel("Zero Reviewed", "HOTEL", 0, 0.0, 3),
-                saveFilterHotel("Zero Count High", "VILLA", null, 9.9, 0),
-                saveFilterHotel("Null Average Count", "APARTMENT", 5, null, 12),
-                saveFilterHotel("Null Count High", "MOTEL", 4, 9.7, null));
-    }
-
-    private Hotel saveFilterHotel(String suffix, String propertyType, Integer starRating,
-                                  Double averageRating, Integer reviewCount) {
-        String key = suffix.replaceAll("[^A-Za-z0-9]", "-").toUpperCase();
-        Hotel hotel = new Hotel();
-        hotel.setName("T276 " + suffix);
-        hotel.setCode("TEST-T276-" + key);
-        hotel.setSlug("test-t276-" + key.toLowerCase());
-        hotel.setNormalizedName(("T276 " + suffix).toLowerCase());
-        hotel.setProvinceId(secondaryProvince.getId());
-        hotel.setAddressLine("276 Filter Street " + suffix);
-        hotel.setCity(secondaryProvince.getNameVi());
-        hotel.setCountry("Vietnam");
-        hotel.setStatus("ACTIVE");
-        hotel.setApprovalStatus("APPROVED");
-        hotel.setOperationStatus("ACTIVE");
-        hotel.setPropertyType(propertyType);
-        hotel.setStarRating(starRating);
-        hotel.setAverageRating(averageRating);
-        hotel.setReviewCount(reviewCount);
-        hotel = hotelRepository.saveAndFlush(hotel);
-
-        RoomType roomType = new RoomType();
-        roomType.setHotel(hotel);
-        roomType.setNameEn("T276 filter room " + suffix);
-        roomType.setNameVi("T276 filter room " + suffix);
-        roomType.setCode("T276-ROOM-" + key);
-        roomType.setBasePrice(new BigDecimal("600000"));
-        roomType.setMaxGuest(2);
-        roomType.setStatus("ACTIVE");
-        roomType = roomTypeRepository.saveAndFlush(roomType);
-        saveRoom(hotel, roomType, "T276-" + hotel.getId());
-        return hotel;
-    }
-
-    private PriceHotelFixture savePriceHotel(String suffix, PriceRoomSeed... seeds) {
-        String key = suffix.replaceAll("[^A-Za-z0-9]", "-").toUpperCase();
-        Hotel hotel = new Hotel();
-        hotel.setName("T278 " + suffix);
-        hotel.setCode("TEST-T278-" + key);
-        hotel.setSlug("test-t278-" + key.toLowerCase());
-        hotel.setNormalizedName(("T278 " + suffix).toLowerCase());
-        hotel.setProvinceId(secondaryProvince.getId());
-        hotel.setAddressLine("278 Price Street " + suffix);
-        hotel.setCity(secondaryProvince.getNameVi());
-        hotel.setCountry("Vietnam");
-        hotel.setStatus("ACTIVE");
-        hotel.setApprovalStatus("APPROVED");
-        hotel.setOperationStatus("ACTIVE");
-        hotel.setPropertyType("HOTEL");
-        hotel = hotelRepository.saveAndFlush(hotel);
-
-        List<RoomType> roomTypes = new java.util.ArrayList<>();
-        for (PriceRoomSeed seed : seeds) {
-            RoomType roomType = new RoomType();
-            roomType.setHotel(hotel);
-            roomType.setNameEn("T278 " + suffix + " " + seed.code());
-            roomType.setNameVi("T278 " + suffix + " " + seed.code());
-            roomType.setCode("T278-" + key + "-" + seed.code());
-            roomType.setBasePrice(seed.price());
-            roomType.setMaxGuest(2);
-            roomType.setStatus("ACTIVE");
-            roomType = roomTypeRepository.saveAndFlush(roomType);
-            roomTypes.add(roomType);
-            if (seed.hasInventory()) {
-                saveRoom(hotel, roomType, "T278-" + hotel.getId() + "-" + seed.code());
-            }
-        }
-        return new PriceHotelFixture(hotel, List.copyOf(roomTypes));
-    }
-
-    private PriceRoomSeed priceRoom(String code, String price, boolean hasInventory) {
-        return new PriceRoomSeed(code, new BigDecimal(price), hasInventory);
-    }
-
-    private Hotel saveSortHotel(String suffix) {
-        String key = suffix.replaceAll("[^A-Za-z0-9]", "-").toUpperCase();
-        Hotel hotel = new Hotel();
-        hotel.setName("T279 Matrix " + suffix);
-        hotel.setCode("TEST-T279-" + key);
-        hotel.setSlug("test-t279-" + key.toLowerCase());
-        hotel.setNormalizedName(("T279 Matrix " + suffix).toLowerCase());
-        hotel.setProvinceId(secondaryProvince.getId());
-        hotel.setAddressLine("279 Stable Street " + suffix);
-        hotel.setCity(secondaryProvince.getNameVi());
-        hotel.setCountry("Vietnam");
-        hotel.setStatus("ACTIVE");
-        hotel.setApprovalStatus("APPROVED");
-        hotel.setOperationStatus("ACTIVE");
-        hotel.setPropertyType("HOTEL");
-        hotel.setAverageRating(8.5);
-        hotel.setReviewCount(25);
-        hotel.setLatitude(16.05);
-        hotel.setLongitude(108.2);
-        hotel = hotelRepository.saveAndFlush(hotel);
-
-        RoomType roomType = new RoomType();
-        roomType.setHotel(hotel);
-        roomType.setNameEn("T279 stable room " + suffix);
-        roomType.setNameVi("T279 stable room " + suffix);
-        roomType.setCode("T279-ROOM-" + key);
-        roomType.setBasePrice(new BigDecimal("640000"));
-        roomType.setMaxGuest(2);
-        roomType.setStatus("ACTIVE");
-        roomType = roomTypeRepository.saveAndFlush(roomType);
-        saveRoom(hotel, roomType, "T279-" + hotel.getId());
-        return hotel;
-    }
-
-    private org.springframework.test.web.servlet.ResultActions performSortPage(
-            String sortBy, int pageNumber, int pageSize) throws Exception {
-        var request = get("/api/public/properties/search")
-                .param("keyword", "T279 Matrix")
-                .param("sortBy", sortBy)
-                .param("pageNumber", Integer.toString(pageNumber))
-                .param("pageSize", Integer.toString(pageSize));
-        if ("NEAREST".equals(sortBy)) {
-            request.param("latitude", "16.0500").param("longitude", "108.2000");
-        }
-        return mockMvc.perform(request);
-    }
-
-    private void savePropertyImage(Hotel hotel, String imageUrl, boolean primary, int sortOrder, String altText) {
-        PropertyImage image = new PropertyImage();
-        image.setHotel(hotel);
-        image.setImageUrl(imageUrl);
-        image.setIsPrimary(primary);
-        image.setSortOrder(sortOrder);
-        image.setAltTextVi(altText);
-        propertyImageRepository.saveAndFlush(image);
-    }
-
-    private record FilterFixture(Hotel hotelLeader, Hotel resortReviewed, Hotel homestayReviewed,
-                                 Hotel zeroScoreReviewed, Hotel zeroCountHigh, Hotel nullAverageCount,
-                                 Hotel nullCountHigh) { }
-
-    private record PriceRoomSeed(String code, BigDecimal price, boolean hasInventory) { }
-
-    private record PriceHotelFixture(Hotel hotel, List<RoomType> roomTypes) { }
 }

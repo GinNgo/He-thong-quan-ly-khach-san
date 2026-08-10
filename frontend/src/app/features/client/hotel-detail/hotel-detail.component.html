@@ -1,13 +1,9 @@
 <main class="detail-page">
-<<<<<<< HEAD
-  <div *ngIf="isLoading" class="loading" data-availability-loading aria-live="polite"><i class="pi pi-spin pi-spinner"></i><span>Đang kiểm tra phòng trống...</span></div>
-=======
   <div *ngIf="isLoading" class="loading">
     <i class="pi pi-spin pi-spinner"></i>
     <span>{{ i18n.text('PUBLIC.DETAIL.LOADING') }}</span>
   </div>
 
->>>>>>> codex/ui-functional-audit-polish
   <section *ngIf="!isLoading && !hotel && pageError" class="detail-state" role="alert" aria-live="polite">
     <span class="state-icon" aria-hidden="true"><i class="pi pi-map-marker"></i></span>
     <p class="eyebrow">{{ i18n.text('PUBLIC.DETAIL.NOT_FOUND_KICKER') }}</p>
@@ -26,9 +22,6 @@
   <ng-container *ngIf="!isLoading && hotel">
     <header class="property-hero">
       <img [src]="hotel.mainImageUrl || hotel.mainImage || fallback.property(hotel.propertyType)" [alt]="hotel.name" (error)="handleHotelImageError($event)">
-<<<<<<< HEAD
-      <div class="hero-overlay"><span>{{ hotel.propertyType || 'Cơ sở lưu trú' }}</span><h1>{{ hotel.name }}</h1><p><i class="pi pi-map-marker"></i> {{ hotel.addressLine }}<ng-container *ngIf="hotel.wardName">, {{ hotel.wardName }}</ng-container><ng-container *ngIf="hotel.provinceName">, {{ hotel.provinceName }}</ng-container></p><button #claimCta *ngIf="hotel.approvalStatus==='IMPORTED_PENDING_REVIEW'" type="button" class="claim-button" [attr.aria-disabled]="claimSubmittedPropertyId===hotel.id ? 'true' : null" (click)="openClaimModal($event)">{{ claimSubmittedPropertyId===hotel.id ? 'Yêu cầu đã gửi' : 'Xác nhận là chủ sở hữu' }}</button></div>
-=======
       <div class="hero-overlay">
         <span>{{ hotel.propertyType || i18n.text('PUBLIC.DETAIL.PROPERTY_TYPE_DEFAULT') }}</span>
         <span *ngIf="hotel.sponsoredPlacement" class="placement-disclosure sponsored-placement" data-sponsored="true">
@@ -41,36 +34,9 @@
           {{ i18n.text('PUBLIC.DETAIL.CLAIM') }}
         </button>
       </div>
->>>>>>> codex/ui-functional-audit-polish
     </header>
 
     <div class="detail-container">
-<<<<<<< HEAD
-      <section class="description"><h2>Thông tin chỗ nghỉ</h2><p>{{ hotel.description || 'Cơ sở chưa cập nhật mô tả chi tiết.' }}</p></section>
-      <section *ngIf="operationalPolicy" class="description policy-details" aria-labelledby="policy-details-title">
-        <h2 id="policy-details-title">Chính sách lưu trú</h2>
-        <dl><div><dt>Nhận phòng</dt><dd>{{ operationalPolicy.checkIn }}</dd></div><div><dt>Trả phòng</dt><dd>{{ operationalPolicy.checkOut }}</dd></div><div><dt>Hủy đặt phòng</dt><dd>{{ operationalPolicy.cancellation }}</dd></div><div><dt>Trẻ em</dt><dd>{{ operationalPolicy.childPolicy }}</dd></div><div><dt>Thú cưng</dt><dd>{{ operationalPolicy.petPolicy }}</dd></div><div><dt>Hút thuốc</dt><dd>{{ operationalPolicy.smokingPolicy }}</dd></div><div><dt>Nội quy</dt><dd>{{ operationalPolicy.houseRules }}</dd></div></dl>
-        <small>Phiên bản {{ operationalPolicy.version }} · hiệu lực từ {{ operationalPolicy.effectiveFrom | date:'dd/MM/yyyy HH:mm' }}</small>
-      </section>
-      <section id="rooms" class="rooms-section">
-        <header><div><span class="eyebrow">Availability theo thời gian thực</span><h2>Chọn phòng</h2><p>{{ bookingQueryParams.checkIn }} - {{ bookingQueryParams.checkOut }} · {{ guests }} khách · cần {{ bookingQueryParams.roomCount }} phòng</p></div></header>
-        <div *ngIf="isRoomLoading" class="message availability-refresh" data-availability-refresh aria-live="polite"><i class="pi pi-spin pi-spinner"></i> Đang làm mới tình trạng phòng...</div>
-        <div *ngIf="!isRoomLoading && roomError" class="message error" data-availability-error role="alert">{{ roomError }} <button type="button" data-room-retry (click)="retryRooms()"><i class="pi pi-refresh"></i> Thử lại</button></div>
-        <div *ngIf="!isRoomLoading && !roomError && !roomTypes.length" class="message" data-availability-empty>Không còn loại phòng phù hợp với ngày và số khách đã chọn.</div>
-        <div class="booking-layout" *ngIf="!isRoomLoading && roomTypes.length">
-          <div class="room-list">
-            <article *ngFor="let room of roomTypes" class="room-card" [class.selected]="selectedRoomType?.id===room.id">
-              <img [src]="roomImage(room)" [alt]="room.nameVi" loading="lazy" (error)="handleRoomImageError($event,room)">
-              <div class="room-content"><div class="room-title"><div><p>{{ room.code }}</p><h3>{{ room.nameVi }}</h3></div>
-                <span *ngIf="isRoomAvailable(room)" [id]="'availability-'+room.id"
-                  data-room-availability-count [attr.data-room-id]="room.id" [attr.data-availability-value]="availabilityCount(room)">Còn {{ availabilityCount(room) }} phòng</span>
-                <span *ngIf="availabilityCount(room) === 0" [id]="'availability-'+room.id" data-room-availability-unavailable [attr.data-room-id]="room.id">Hết phòng</span>
-                <span *ngIf="availabilityCount(room) === null" [id]="'availability-'+room.id" data-room-availability-missing [attr.data-room-id]="room.id">Chưa có dữ liệu phòng trống</span></div>
-                <p class="description-text">{{ room.descriptionVi || 'Loại phòng được cấu hình theo tiêu chuẩn của cơ sở.' }}</p>
-                <div class="room-facts"><span><i class="pi pi-users"></i> {{ room.maxAdults || room.maxGuests || room.maxGuest }} người lớn</span><span><i class="pi pi-user"></i> {{ room.maxChildren || 0 }} trẻ em</span><span><i class="pi pi-bed"></i> {{ bedLabel(room.bedType) }}</span></div>
-              </div>
-              <div class="room-choice"><small>Giá mỗi đêm</small><strong>{{ formatVnd(room.basePrice) }}</strong><label [for]="'qty-'+room.id">Số lượng phòng</label><select *ngIf="isRoomAvailable(room); else unavailableQuantity" [id]="'qty-'+room.id" [attr.data-room-quantity]="room.id" [attr.aria-describedby]="'availability-'+room.id" [ngModel]="selectedRoomType?.id===room.id ? selectedQuantity : 0" (ngModelChange)="selectQuantity(room,$event)"><option *ngFor="let q of quantities(room)" [ngValue]="q">{{ q }}</option></select><ng-template #unavailableQuantity><select [id]="'qty-'+room.id" [attr.data-room-quantity]="room.id" [attr.aria-describedby]="'availability-'+room.id" aria-disabled="true" disabled><option>0</option></select></ng-template><em *ngIf="availabilityCount(room) === 0">Hết phòng</em><em *ngIf="availabilityCount(room) === null">Chưa xác định tồn phòng</em></div>
-=======
       <section class="description">
         <h2>{{ i18n.text('PUBLIC.DETAIL.DESCRIPTION_TITLE') }}</h2>
         <p>{{ hotel.description || i18n.text('PUBLIC.DETAIL.DESCRIPTION_FALLBACK') }}</p>
@@ -108,13 +74,12 @@
                 <small>{{ i18n.text('PUBLIC.DETAIL.NIGHTLY_RATE') }}</small>
                 <strong>{{ formatVnd(room.basePrice) }}</strong>
                 <label [for]="'qty-'+room.id">{{ i18n.text('PUBLIC.DETAIL.ROOM_QUANTITY') }}</label>
-                <select [id]="'qty-'+room.id" [ngModel]="selectedRoomType?.id===room.id ? selectedQuantity : 0" (ngModelChange)="selectQuantity(room,$event)" [disabled]="!room.availableRooms">
+                <select class="room-quantity-select" [id]="'qty-'+room.id" [ngModel]="selectedRoomType?.id===room.id ? selectedQuantity : 0" (ngModelChange)="selectQuantity(room,$event)" [disabled]="!room.availableRooms">
                   <option *ngFor="let q of quantities(room)" [ngValue]="q">{{ q }}</option>
                 </select>
                 <em *ngIf="!room.availableRooms">{{ i18n.text('PUBLIC.DETAIL.SOLD_OUT') }}</em>
                 <small *ngIf="selectedRoomType?.id===room.id && quoteLoading" aria-live="polite">{{ i18n.text('PUBLIC.DETAIL.LOADING') }}</small>
               </div>
->>>>>>> codex/ui-functional-audit-polish
             </article>
           </div>
 
@@ -138,10 +103,11 @@
                 <strong *ngIf="memberTierLabel">{{ i18n.text('PUBLIC.DETAIL.MEMBER_PRICE', { tier: memberTierLabel }) }}</strong>
               </div>
               <div *ngIf="!capacityValid" class="capacity-error">{{ i18n.text('PUBLIC.DETAIL.CAPACITY_ERROR') }}</div>
-              <div class="summary-total">
+              <div class="summary-total" aria-live="polite">
                 <span>{{ i18n.text('PUBLIC.DETAIL.TOTAL') }}</span>
-                <strong>{{ selectedQuote ? formatVnd(roomTotal) : '—' }}</strong>
-                <small>{{ i18n.text('PUBLIC.DETAIL.BACKEND_NOTE') }}</small>
+                <strong>{{ formatVnd(displayedRoomTotal) }}</strong>
+                <small *ngIf="selectedQuote">{{ i18n.text('PUBLIC.DETAIL.BACKEND_NOTE') }}</small>
+                <small *ngIf="!selectedQuote">{{ i18n.text(hasStayDates ? 'PUBLIC.DETAIL.QUOTE_PENDING_NOTE' : 'PUBLIC.DETAIL.ONE_NIGHT_ESTIMATE_NOTE') }}</small>
               </div>
             </ng-container>
             <ng-template #selectHint><p class="hint">{{ i18n.text('PUBLIC.DETAIL.SELECT_HINT') }}</p></ng-template>
@@ -151,28 +117,6 @@
       </section>
     </div>
   </ng-container>
-<<<<<<< HEAD
-  <div *ngIf="showClaimModal" class="claim-backdrop">
-    <form #claimDialog #claimRequestForm="ngForm" class="claim-dialog" role="dialog" aria-modal="true" aria-labelledby="claim-title" aria-describedby="claim-help" (keydown)="handleClaimDialogKeydown($event)" (ngSubmit)="submitClaim(claimRequestForm)">
-      <header><h2 id="claim-title">Xác nhận quyền sở hữu</h2><button type="button" [disabled]="claimSubmitting" (click)="closeClaimModal()" aria-label="Đóng"><i class="pi pi-times"></i></button></header>
-      <p id="claim-help">Cung cấp thông tin để đội ngũ LuxeStay xét duyệt quyền quản lý cơ sở. Không gửi mật khẩu hoặc thông tin nhạy cảm.</p>
-      <label for="claim-method">Phương thức</label>
-      <select id="claim-method" data-claim-initial-focus [(ngModel)]="claimForm.verificationMethod" name="method" [disabled]="claimSubmitting||claimSubmitted" required>
-        <option value="BUSINESS_LICENSE">Giấy phép kinh doanh</option><option value="EMAIL">Email doanh nghiệp</option><option value="PHONE">Điện thoại</option>
-      </select>
-      <label for="claim-verification">Thông tin xác minh</label>
-      <input #verificationControl="ngModel" id="claim-verification" [(ngModel)]="claimForm.verificationData" name="verification" [disabled]="claimSubmitting||claimSubmitted" required maxlength="1000" aria-describedby="claim-verification-help claim-verification-error">
-      <small id="claim-verification-help" class="field-help">Email, số điện thoại hoặc thông tin giấy phép có thể đối chiếu; tối đa 1000 ký tự.</small>
-      <small *ngIf="verificationControl.touched&&verificationControl.invalid" id="claim-verification-error" class="field-error">Vui lòng nhập thông tin xác minh hợp lệ.</small>
-      <label for="claim-note">Ghi chú <span>(không bắt buộc)</span></label>
-      <textarea #noteControl="ngModel" id="claim-note" [(ngModel)]="claimForm.note" name="note" [disabled]="claimSubmitting||claimSubmitted" rows="3" maxlength="500" aria-describedby="claim-note-help claim-note-error"></textarea>
-      <small id="claim-note-help" class="field-help">Tối đa 500 ký tự.</small>
-      <small *ngIf="noteControl.touched&&noteControl.invalid" id="claim-note-error" class="field-error">Ghi chú không được vượt quá 500 ký tự.</small>
-      <div *ngIf="claimRequestError" class="claim-message error" role="alert" aria-live="assertive">{{ claimRequestError }}</div>
-      <div *ngIf="claimRequestSuccess" class="claim-message success" role="status" aria-live="polite">{{ claimRequestSuccess }}</div>
-      <button *ngIf="!claimSubmitted" class="submit-claim" type="submit" [disabled]="claimSubmitting||claimRequestForm.invalid">{{ claimSubmitting ? 'Đang gửi...' : 'Gửi yêu cầu' }}</button>
-      <button *ngIf="claimSubmitted" class="submit-claim" type="button" (click)="closeClaimModal()">Đóng</button>
-=======
 
   <div *ngIf="showClaimModal" class="claim-backdrop">
     <form class="claim-dialog" (ngSubmit)="submitClaim()">
@@ -191,7 +135,6 @@
       <label>{{ i18n.text('PUBLIC.DETAIL.VERIFICATION_INFO') }}<input [(ngModel)]="claimForm.verificationData" name="verification" required></label>
       <label>{{ i18n.text('PUBLIC.DETAIL.NOTE') }}<textarea [(ngModel)]="claimForm.note" name="note" rows="3"></textarea></label>
       <button class="submit-claim" type="submit">{{ i18n.text('PUBLIC.DETAIL.SUBMIT_CLAIM') }}</button>
->>>>>>> codex/ui-functional-audit-polish
     </form>
   </div>
 </main>

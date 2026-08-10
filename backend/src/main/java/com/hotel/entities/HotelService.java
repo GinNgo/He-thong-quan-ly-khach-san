@@ -25,6 +25,10 @@ public class HotelService extends AuditableEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @Column(nullable = false)
     private String code;
 
@@ -52,10 +56,6 @@ public class HotelService extends AuditableEntity {
 
     @Column(name = "is_system", nullable = false)
     private Boolean systemService = false;
-
-    @Version
-    @Column(nullable = false)
-    private Long version;
 
     @PrePersist
     @PreUpdate

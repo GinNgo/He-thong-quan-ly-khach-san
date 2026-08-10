@@ -2,6 +2,7 @@ package com.hotel.dtos;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public class ReservationDTO {
@@ -16,17 +17,14 @@ public class ReservationDTO {
     private String status;
     private String paymentMethod;
     private String specialRequests;
-    private DepositPolicySnapshotDTO depositPolicySnapshot;
+    private String cancellationReasonCode;
+    private String cancellationReason;
+    private LocalDateTime cancelledAt;
     private List<ReservationDetailDTO> details;
-<<<<<<< HEAD
-    private Long operationalPolicyVersion;
-    private String operationalPolicySnapshot;
-    private List<ReservationEventDTO> events;
-=======
     private PaymentLifecycleSummaryDTO payment;
     private List<RefundSummaryDTO> refunds;
     private PromotionQuoteDTO quote;
->>>>>>> codex/ui-functional-audit-polish
+    private PropertyContactDTO property;
 
     public Long getId() {
         return id;
@@ -116,13 +114,12 @@ public class ReservationDTO {
         this.specialRequests = specialRequests;
     }
 
-    public DepositPolicySnapshotDTO getDepositPolicySnapshot() {
-        return depositPolicySnapshot;
-    }
-
-    public void setDepositPolicySnapshot(DepositPolicySnapshotDTO depositPolicySnapshot) {
-        this.depositPolicySnapshot = depositPolicySnapshot;
-    }
+    public String getCancellationReasonCode() { return cancellationReasonCode; }
+    public void setCancellationReasonCode(String cancellationReasonCode) { this.cancellationReasonCode = cancellationReasonCode; }
+    public String getCancellationReason() { return cancellationReason; }
+    public void setCancellationReason(String cancellationReason) { this.cancellationReason = cancellationReason; }
+    public LocalDateTime getCancelledAt() { return cancelledAt; }
+    public void setCancelledAt(LocalDateTime cancelledAt) { this.cancelledAt = cancelledAt; }
 
     public List<ReservationDetailDTO> getDetails() {
         return details;
@@ -132,19 +129,6 @@ public class ReservationDTO {
         this.details = details;
     }
 
-<<<<<<< HEAD
-    public Long getOperationalPolicyVersion() { return operationalPolicyVersion; }
-    public void setOperationalPolicyVersion(Long operationalPolicyVersion) { this.operationalPolicyVersion = operationalPolicyVersion; }
-    public String getOperationalPolicySnapshot() { return operationalPolicySnapshot; }
-    public void setOperationalPolicySnapshot(String operationalPolicySnapshot) { this.operationalPolicySnapshot = operationalPolicySnapshot; }
-
-    public List<ReservationEventDTO> getEvents() {
-        return events;
-    }
-
-    public void setEvents(List<ReservationEventDTO> events) {
-        this.events = events;
-=======
     public PaymentLifecycleSummaryDTO getPayment() {
         return payment;
     }
@@ -167,6 +151,30 @@ public class ReservationDTO {
 
     public void setQuote(PromotionQuoteDTO quote) {
         this.quote = quote;
->>>>>>> codex/ui-functional-audit-polish
+    }
+
+    public PropertyContactDTO getProperty() { return property; }
+    public void setProperty(PropertyContactDTO property) { this.property = property; }
+
+    public static class PropertyContactDTO {
+        private Long id;
+        private String name;
+        private String address;
+        private String phone;
+        private String email;
+        private String contactName;
+
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getAddress() { return address; }
+        public void setAddress(String address) { this.address = address; }
+        public String getPhone() { return phone; }
+        public void setPhone(String phone) { this.phone = phone; }
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+        public String getContactName() { return contactName; }
+        public void setContactName(String contactName) { this.contactName = contactName; }
     }
 }

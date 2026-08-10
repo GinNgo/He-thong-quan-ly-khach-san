@@ -18,11 +18,7 @@ const PRIME_LOCALE: Record<SupportedLocale, Record<string, string | string[] | n
     today: 'Hôm nay',
     clear: 'Xóa',
     dateFormat: 'dd/mm/yy',
-<<<<<<< HEAD
-    weekHeader: 'Tuần',
-=======
     weekHeader: 'Tuần'
->>>>>>> codex/ui-functional-audit-polish
   },
   en: {
     firstDayOfWeek: 0,
@@ -34,13 +30,8 @@ const PRIME_LOCALE: Record<SupportedLocale, Record<string, string | string[] | n
     today: 'Today',
     clear: 'Clear',
     dateFormat: 'mm/dd/yy',
-<<<<<<< HEAD
-    weekHeader: 'Wk',
-  },
-=======
     weekHeader: 'Wk'
   }
->>>>>>> codex/ui-functional-audit-polish
 };
 
 @Injectable({ providedIn: 'root' })
@@ -59,25 +50,16 @@ export class LocaleService {
     const locale = this.localeSignal();
     this.applyDocumentLocale(locale);
     if (!this.translate) return Promise.resolve();
-<<<<<<< HEAD
-    return firstValueFrom(this.translate.use(locale)).then(() => undefined).catch(() => undefined);
-=======
     return firstValueFrom(this.translate.use(locale))
       .then(() => undefined)
       .catch(() => undefined);
->>>>>>> codex/ui-functional-audit-polish
   }
 
   setLocale(locale: SupportedLocale): void {
     if (locale === this.localeSignal()) return;
     this.localeSignal.set(locale);
     this.persistLocale(locale);
-<<<<<<< HEAD
-    this.applyDocumentLocale(locale);
-    this.translate?.use(locale).subscribe({ error: () => undefined });
-=======
     this.applyLocale(locale);
->>>>>>> codex/ui-functional-audit-polish
   }
 
   toggle(): void {
@@ -88,14 +70,11 @@ export class LocaleService {
     return PRIME_LOCALE[locale];
   }
 
-<<<<<<< HEAD
-=======
   private applyLocale(locale: SupportedLocale): void {
     this.applyDocumentLocale(locale);
     this.translate?.use(locale).subscribe({ error: () => undefined });
   }
 
->>>>>>> codex/ui-functional-audit-polish
   private applyDocumentLocale(locale: SupportedLocale): void {
     this.primeNg?.setTranslation(PRIME_LOCALE[locale]);
     globalThis.document?.documentElement.setAttribute('lang', locale);
@@ -113,11 +92,7 @@ export class LocaleService {
     try {
       globalThis.localStorage?.setItem(STORAGE_KEY, locale);
     } catch {
-<<<<<<< HEAD
-      // Storage-disabled browsers retain the in-memory locale for this session.
-=======
       // Private browsing/storage-disabled environments still keep in-memory state.
->>>>>>> codex/ui-functional-audit-polish
     }
   }
 }

@@ -1,12 +1,11 @@
 package com.hotel.controllers;
 
 import com.hotel.exceptions.ApiErrorResponse;
+import com.hotel.exceptions.AiServiceUnavailableException;
 import com.hotel.exceptions.CorrelationIdSupport;
-import com.hotel.exceptions.ChatMessageConflictException;
 import com.hotel.exceptions.PropertyNotOperationalException;
 import com.hotel.exceptions.RegistrationConflictException;
 import com.hotel.exceptions.ResourceNotFoundException;
-import com.hotel.exceptions.SupportAttachmentException;
 import com.hotel.paymentprovider.error.FinancialException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -120,6 +119,14 @@ public class GlobalExceptionHandler {
                 request, Map.of(), false, null);
     }
 
+    @ExceptionHandler(AiServiceUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleAiUnavailable(
+            AiServiceUnavailableException ex,
+            HttpServletRequest request) {
+        return response(HttpStatus.SERVICE_UNAVAILABLE, "AI_UNAVAILABLE", ex.getMessage(),
+                request, Map.of(), true, null);
+    }
+
     @ExceptionHandler(PropertyNotOperationalException.class)
     public ResponseEntity<ApiErrorResponse> handlePropertyNotOperational(
             PropertyNotOperationalException ex,
@@ -153,22 +160,6 @@ public class GlobalExceptionHandler {
                 ex.fieldErrors(), false, null);
     }
 
-    @ExceptionHandler(ChatMessageConflictException.class)
-    public ResponseEntity<ApiErrorResponse> handleChatMessageConflict(
-            ChatMessageConflictException ex,
-            HttpServletRequest request) {
-        return response(HttpStatus.CONFLICT, ChatMessageConflictException.ERROR_CODE,
-                ex.getMessage(), request, Map.of(), false, null);
-    }
-
-    @ExceptionHandler(SupportAttachmentException.class)
-    public ResponseEntity<ApiErrorResponse> handleSupportAttachment(
-            SupportAttachmentException ex,
-            HttpServletRequest request) {
-        return response(ex.status(), ex.code(), ex.getMessage(), request,
-                Map.of(), false, null);
-    }
-
     @ExceptionHandler(PasswordChangeException.class)
     public ResponseEntity<ApiErrorResponse> handlePasswordChange(
             PasswordChangeException ex,
@@ -181,7 +172,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleForbidden(
             RuntimeException ex,
             HttpServletRequest request) {
-        return response(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Access is denied.",
+        return response(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Bạn không có quyền thực hiện thao tác này.",
                 request, Map.of(), false, null);
     }
 

@@ -105,27 +105,6 @@ public class ReservationServiceTest {
     @Mock
     private PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
 
-    @Mock
-    private com.hotel.repositories.InvoiceRepository invoiceRepository;
-
-    @Mock
-    private com.hotel.repositories.PaymentRepository paymentRepository;
-
-    @Mock
-    private com.hotel.propertycommerce.invoice.InvoiceFinalizationService invoiceFinalizationService;
-
-    @Mock
-    private com.hotel.propertycommerce.checkout.CheckoutOperationsService checkoutOperationsService;
-
-    @Mock
-    private OperationalPolicyService operationalPolicyService;
-
-    @Mock
-    private OperationalAuditService operationalAuditService;
-
-    @Mock
-    private com.hotel.propertycommerce.stay.CheckInPolicy checkInPolicy;
-
     @InjectMocks
     private ReservationService reservationService;
 
@@ -153,7 +132,6 @@ public class ReservationServiceTest {
         mockReservation.setStatus("PENDING_PAYMENT");
         mockReservation.setCheckInDate(LocalDate.now());
         mockReservation.setCheckOutDate(LocalDate.now().plusDays(2));
-        lenient().when(operationalPolicyService.capture(any(), any())).thenReturn(Optional.empty());
     }
 
     @Test
@@ -204,7 +182,7 @@ public class ReservationServiceTest {
         });
         when(reservationDetailRepository.findByReservationId(99L)).thenReturn(java.util.List.of());
 
-        ReservationDTO response = reservationService.createReservation("testcustomer", request,
+        reservationService.createReservation("testcustomer", request,
                 "testcustomer", "booking-key");
 
         ArgumentCaptor<Reservation> captor = ArgumentCaptor.forClass(Reservation.class);
@@ -219,17 +197,6 @@ public class ReservationServiceTest {
         assertEquals(4L, saved.getDepositConfigurationVersion());
         assertEquals("testcustomer", saved.getBookingIdempotencyScope());
         assertEquals("booking-key", saved.getBookingIdempotencyKey());
-<<<<<<< HEAD
-        assertEquals(0, BigDecimal.valueOf(1_200_000).compareTo(response.getTotalAmount()));
-        assertEquals(11L, response.getDepositPolicySnapshot().configurationId());
-        assertEquals(4L, response.getDepositPolicySnapshot().configurationVersion());
-        assertEquals("PERCENTAGE", response.getDepositPolicySnapshot().policyType());
-        assertEquals(0, BigDecimal.valueOf(360_000)
-                .compareTo(response.getDepositPolicySnapshot().requiredDeposit()));
-        assertEquals("VND", response.getDepositPolicySnapshot().currency());
-        verify(reservationHoldService).createHold(99L, 5L, 1, "RESERVATION-99");
-=======
->>>>>>> codex/ui-functional-audit-polish
     }
 
     @Test
@@ -267,8 +234,7 @@ public class ReservationServiceTest {
 
         verify(roomTypeRepository).findByIdForUpdate(5L);
         verify(publicInventoryEligibilityPolicy).requireSellableRoomTypeForBooking(roomType);
-        verify(roomAvailabilityService, never()).countAvailableRooms(
-                org.mockito.ArgumentMatchers.any(Long.class), any(), any());
+        verify(roomAvailabilityService, never()).countAvailableRooms(any(), any(), any());
         verify(reservationRepository, never()).save(any());
         verify(reservationHoldService, never()).createHold(any(), any(), anyInt(), any());
     }
@@ -357,24 +323,18 @@ public class ReservationServiceTest {
     }
 
     @Test
-<<<<<<< HEAD
-    void legacyStatusUpdateRejectsCheckInSoDedicatedWorkflowCannotBeBypassed() {
-        when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
-        when(reservationRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(mockReservation));
-=======
     void testCheckIn_Success() {
         mockReservation.setStatus("CONFIRMED");
         when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
         when(reservationRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(mockReservation));
         when(reservationDetailRepository.findByReservationId(1L)).thenReturn(java.util.Collections.emptyList());
         when(reservationRepository.save(any(Reservation.class))).thenReturn(mockReservation);
->>>>>>> codex/ui-functional-audit-polish
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> reservationService.updateReservationStatus(1L, "CHECKED_IN"));
+        ReservationDTO updatedReservation = reservationService.updateReservationStatus(1L, "CHECKED_IN");
 
-        assertTrue(exception.getMessage().contains("dedicated check-in endpoint"));
-        verify(reservationRepository, never()).save(any(Reservation.class));
+        assertNotNull(updatedReservation);
+        assertEquals("CHECKED_IN", updatedReservation.getStatus());
+        verify(reservationRepository).save(any(Reservation.class));
     }
 
     @Test

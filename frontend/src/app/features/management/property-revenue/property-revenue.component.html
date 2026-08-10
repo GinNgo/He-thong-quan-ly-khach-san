@@ -10,24 +10,8 @@
         <span>Đồng bộ đến</span>
         <strong>{{ current.sourceWatermark }}</strong>
       </div>
-      <div class="export-actions" aria-label="Xuất báo cáo cơ sở">
-        @if (canExport) {
-        <button type="button" (click)="export('CSV')" [disabled]="!!exportLoading()">CSV</button>
-        <button type="button" (click)="export('EXCEL')" [disabled]="!!exportLoading()">Excel</button>
-        <button type="button" (click)="export('PDF')" [disabled]="!!exportLoading()">PDF</button>
-        } @else {
-          <span class="export-permission-note">Ban khong co quyen xuat bao cao.</span>
-        }
-      </div>
     }
   </header>
-
-  @if (exportMessage()) {
-    <p class="export-feedback" role="status" aria-live="polite">
-      {{ exportMessage() }}
-      @if (exportChecksum()) { <code>SHA-256 {{ exportChecksum() }}</code> }
-    </p>
-  }
 
   <form class="report-filters" (ngSubmit)="applyFilters()" aria-label="Bộ lọc báo cáo doanh thu">
     <div class="filter-grid">
@@ -171,12 +155,11 @@
     </section>
 
     <section class="panel transactions-panel" aria-labelledby="transactions-title">
-      <div class="panel-heading"><div><p class="eyebrow">Sổ giao dịch</p><h3 id="transactions-title">Dòng dữ liệu đã chuẩn hóa</h3></div><span class="panel-meta">Trang {{ page() + 1 }} / {{ totalPages() }} · {{ current.totalRowCount }} dòng</span></div>
+      <div class="panel-heading"><div><p class="eyebrow">Sổ giao dịch</p><h3 id="transactions-title">Dòng dữ liệu đã chuẩn hóa</h3></div><span class="panel-meta">Hiển thị {{ visibleRows().length }} / {{ current.totalRowCount }}</span></div>
       @if (visibleRows().length) {
         <div class="table-scroll"><table><thead><tr><th>Thời gian</th><th>Mã chứng từ</th><th>Loại</th><th>Phương thức</th><th class="number">Ròng</th><th>Đối soát</th></tr></thead><tbody>
           @for (row of visibleRows(); track trackRow($index, row)) { <tr><td>{{ formatDateTime(row.occurredAt) }}</td><td><code>{{ row.publicId }}</code></td><td>{{ row.transactionType }}</td><td>{{ row.method || row.provider || '—' }}</td><td class="number emphasis">{{ formatMoney(row.netAmount) }}</td><td><span class="status-pill" [class.status-pill--danger]="row.reconciliationStatus !== 'RECONCILED'" [class.status-pill--success]="row.reconciliationStatus === 'RECONCILED'">{{ statusLabel(row.reconciliationStatus) }}</span></td></tr> }
         </tbody></table></div>
-        <div class="pagination" aria-label="Phân trang giao dịch"><button type="button" (click)="previousPage()" [disabled]="page() === 0">Trang trước</button><span>{{ page() + 1 }} / {{ totalPages() }}</span><button type="button" (click)="nextPage()" [disabled]="page() + 1 >= totalPages()">Trang sau</button></div>
       } @else { <p class="inline-empty">Không có giao dịch phù hợp với bộ lọc. Hãy thử mở rộng khoảng ngày.</p> }
     </section>
   }

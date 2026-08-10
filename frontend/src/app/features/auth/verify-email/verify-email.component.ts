@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 
 import { EmailVerificationService } from '@app/core/services/email-verification.service';
 
@@ -15,6 +15,7 @@ import { EmailVerificationService } from '@app/core/services/email-verification.
 export class VerifyEmailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly verification = inject(EmailVerificationService);
+  private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
 
   loading = true;
@@ -36,6 +37,17 @@ export class VerifyEmailComponent implements OnInit {
           ? 'Email mới đã được cập nhật. / Your new email was updated.'
           : 'Email đã được xác minh. / Your email was verified.';
         this.cdr.markForCheck();
+        const returnUrl = this.resolveClientReturnUrl(
+          this.route.snapshot.queryParamMap.get('returnUrl')
+          || (typeof localStorage !== 'undefined' ? localStorage.getItem('postVerificationReturnUrl') : null)
+          || '/',
+        );
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('postVerificationReturnUrl');
+        }
+        setTimeout(() => {
+          void this.router.navigate(['/login'], { queryParams: { returnUrl, verified: 'true' } });
+        }, 1500);
       },
       error: (error) => {
         this.loading = false;
@@ -44,5 +56,13 @@ export class VerifyEmailComponent implements OnInit {
         this.cdr.markForCheck();
       },
     });
+  }
+
+  private resolveClientReturnUrl(returnUrl: string): string {
+    if (!returnUrl.startsWith('/') || returnUrl.startsWith('//')) return '/';
+    const blockedRoutes = ['/admin', '/management', '/403', '/login', '/register', '/verify-email'];
+    return blockedRoutes.some(route => returnUrl === route || returnUrl.startsWith(`${route}/`) || returnUrl.startsWith(`${route}?`))
+      ? '/'
+      : returnUrl;
   }
 }

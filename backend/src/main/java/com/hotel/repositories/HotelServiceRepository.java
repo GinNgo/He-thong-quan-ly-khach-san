@@ -8,22 +8,20 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 import java.util.List;
-import jakarta.persistence.LockModeType;
-import org.springframework.data.jpa.repository.Lock;
 
 @Repository
 public interface HotelServiceRepository extends JpaRepository<HotelService, Long> {
     Optional<HotelService> findByHotelIdAndCodeIgnoreCase(Long hotelId, String code);
 
-    @Query(value = "SELECT * FROM services WHERE (hotel_id = :hotelId AND is_system = 0) OR (hotel_id IS NULL AND is_system = 1) ORDER BY is_system DESC, code", nativeQuery = true)
+    // Use JPQL so Boolean/bit storage is handled by the configured JPA dialect.
+    @Query("SELECT service FROM HotelService service " +
+            "WHERE (service.hotel.id = :hotelId AND service.systemService = false) " +
+            "OR (service.hotel IS NULL AND service.systemService = true) " +
+            "ORDER BY service.systemService DESC, service.code")
     List<HotelService> findVisibleByHotelId(@Param("hotelId") Long hotelId);
 
     @Query(value = "SELECT * FROM services WHERE id = :id", nativeQuery = true)
     Optional<HotelService> findUnfilteredById(@Param("id") Long id);
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select service from HotelService service where service.id = :id")
-    Optional<HotelService> findByIdForUpdate(@Param("id") Long id);
 
     @Query(value = "SELECT COUNT(*) FROM services WHERE hotel_id = :hotelId AND LOWER(code) = LOWER(:code)", nativeQuery = true)
     long countByHotelIdAndCodeIgnoreCase(@Param("hotelId") Long hotelId, @Param("code") String code);

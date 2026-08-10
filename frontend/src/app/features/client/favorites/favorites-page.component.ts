@@ -4,6 +4,7 @@ import { Router, RouterModule } from '@angular/router';
 import { FavoriteButtonComponent } from './favorite-button.component';
 import { FavoriteProperty, FavoriteService } from '../../../core/services/favorite.service';
 import { ImageFallbackService } from '../../../core/services/image-fallback.service';
+import { PublicI18nService } from '../../../core/i18n/public-i18n.service';
 
 @Component({
   selector: 'app-favorites-page',
@@ -14,38 +15,38 @@ import { ImageFallbackService } from '../../../core/services/image-fallback.serv
       <div class="favorites-shell">
         <header class="favorites-heading">
           <div>
-            <p class="eyebrow">Saved stays</p>
-            <h1>Your wishlist</h1>
-            <p>Keep the properties you want to revisit in one place.</p>
+            <p class="eyebrow">{{ i18n.text('PUBLIC.FAVORITES.EYEBROW') }}</p>
+            <h1>{{ i18n.text('PUBLIC.FAVORITES.TITLE') }}</h1>
+            <p>{{ i18n.text('PUBLIC.FAVORITES.DESCRIPTION') }}</p>
           </div>
-          <a routerLink="/search" class="browse-link">Browse stays <i class="pi pi-arrow-right" aria-hidden="true"></i></a>
+          <a routerLink="/search" class="browse-link">{{ i18n.text('PUBLIC.FAVORITES.BROWSE') }} <i class="pi pi-arrow-right" aria-hidden="true"></i></a>
         </header>
 
         <div *ngIf="favoriteService.loading()" class="state-panel" aria-busy="true" role="status">
-          <i class="pi pi-spin pi-spinner" aria-hidden="true"></i><h2>Loading saved stays</h2><p>Please wait while your wishlist is refreshed.</p>
+          <i class="pi pi-spin pi-spinner" aria-hidden="true"></i><h2>{{ i18n.text('PUBLIC.FAVORITES.LOADING_TITLE') }}</h2><p>{{ i18n.text('PUBLIC.FAVORITES.LOADING_BODY') }}</p>
         </div>
 
         <div *ngIf="!favoriteService.loading() && favoriteService.error()" class="state-panel error-state" role="alert">
-          <i class="pi pi-exclamation-circle" aria-hidden="true"></i><h2>Could not load saved stays</h2><p>{{ favoriteService.error() }}</p>
-          <button type="button" (click)="retry()">Try again</button>
+          <i class="pi pi-exclamation-circle" aria-hidden="true"></i><h2>{{ i18n.text('PUBLIC.FAVORITES.ERROR_TITLE') }}</h2><p>{{ favoriteService.error() }}</p>
+          <button type="button" (click)="retry()">{{ i18n.text('PUBLIC.FAVORITES.RETRY') }}</button>
         </div>
 
         <div *ngIf="!favoriteService.loading() && !favoriteService.error() && !favoriteService.favorites().length" class="state-panel" data-empty-state>
-          <i class="pi pi-heart" aria-hidden="true"></i><h2>Your wishlist is empty</h2><p>Tap the heart on a property card or detail page to save it here.</p>
-          <a routerLink="/search" class="primary-link">Find a stay</a>
+          <i class="pi pi-heart" aria-hidden="true"></i><h2>{{ i18n.text('PUBLIC.FAVORITES.EMPTY_TITLE') }}</h2><p>{{ i18n.text('PUBLIC.FAVORITES.EMPTY_BODY') }}</p>
+          <a routerLink="/search" class="primary-link">{{ i18n.text('PUBLIC.FAVORITES.FIND_STAY') }}</a>
         </div>
 
         <section *ngIf="!favoriteService.loading() && !favoriteService.error() && favoriteService.favorites().length" class="favorites-grid" aria-live="polite">
           <article *ngFor="let favorite of favoriteService.favorites(); trackBy: trackFavorite" class="favorite-card">
-            <button type="button" class="favorite-media" (click)="open(favorite.hotelId)" [attr.aria-label]="'View ' + favorite.name">
+            <button type="button" class="favorite-media" (click)="open(favorite.hotelId)" [attr.aria-label]="i18n.text('PUBLIC.FAVORITES.VIEW_PROPERTY', { name: favorite.name })">
               <img [src]="favorite.imageUrl || fallback.property(favorite.propertyType)" [alt]="favorite.name" loading="lazy" (error)="handleImageError($event, favorite)">
             </button>
             <div class="favorite-copy">
               <div class="favorite-title"><h2>{{ favorite.name }}</h2><app-favorite-button [hotelId]="favorite.hotelId" [showLabel]="true"></app-favorite-button></div>
               <p class="address"><i class="pi pi-map-marker" aria-hidden="true"></i>{{ favorite.addressLine }}<span *ngIf="favorite.city">, {{ favorite.city }}</span></p>
-              <p *ngIf="favorite.averageRating" class="rating"><i class="pi pi-star-fill" aria-hidden="true"></i>{{ favorite.averageRating | number:'1.1-1' }} <small>({{ favorite.reviewCount || 0 }} reviews)</small></p>
-              <p *ngIf="favorite.minPrice" class="price">From <strong>{{ formatVnd(favorite.minPrice) }}</strong> / night</p>
-              <button type="button" class="open-link" (click)="open(favorite.hotelId)">View details <i class="pi pi-arrow-right" aria-hidden="true"></i></button>
+              <p *ngIf="favorite.averageRating" class="rating"><i class="pi pi-star-fill" aria-hidden="true"></i>{{ favorite.averageRating | number:'1.1-1' }} <small>({{ i18n.text('PUBLIC.FAVORITES.REVIEWS', { count: favorite.reviewCount || 0 }) }})</small></p>
+              <p *ngIf="favorite.minPrice" class="price">{{ i18n.text('PUBLIC.FAVORITES.FROM') }} <strong>{{ formatVnd(favorite.minPrice) }}</strong> {{ i18n.text('PUBLIC.FAVORITES.PER_NIGHT') }}</p>
+              <button type="button" class="open-link" (click)="open(favorite.hotelId)">{{ i18n.text('PUBLIC.FAVORITES.VIEW_DETAILS') }} <i class="pi pi-arrow-right" aria-hidden="true"></i></button>
             </div>
           </article>
         </section>
@@ -59,6 +60,7 @@ import { ImageFallbackService } from '../../../core/services/image-fallback.serv
 export class FavoritesPageComponent implements OnInit {
   readonly favoriteService = inject(FavoriteService);
   readonly fallback = inject(ImageFallbackService);
+  readonly i18n = inject(PublicI18nService);
   private readonly router = inject(Router);
 
   ngOnInit(): void { this.favoriteService.ensureLoaded().subscribe({ error: () => undefined }); }
@@ -66,5 +68,5 @@ export class FavoritesPageComponent implements OnInit {
   trackFavorite(_: number, favorite: FavoriteProperty): number { return favorite.favoriteId; }
   open(hotelId: number): void { this.router.navigate(['/hotel', hotelId]); }
   handleImageError(event: Event, favorite: FavoriteProperty): void { this.fallback.replace(event, this.fallback.property(favorite.propertyType)); }
-  formatVnd(value?: number): string { return `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(value || 0)} đ`; }
+  formatVnd(value?: number): string { return `${new Intl.NumberFormat(this.i18n.dateLocale(), { maximumFractionDigits: 0 }).format(value || 0)} đ`; }
 }

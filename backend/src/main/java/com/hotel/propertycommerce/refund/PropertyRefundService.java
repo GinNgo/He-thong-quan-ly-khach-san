@@ -24,8 +24,6 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -66,70 +64,10 @@ public class PropertyRefundService {
                 .orElseThrow(() -> new FinancialException(FinancialErrorCode.RESOURCE_NOT_FOUND));
         authorize(original);
         validateOriginal(original);
-        return requestAgainstOriginal(
-                original,
-                command.amount(),
-                command.reason(),
-                command.idempotencyKey(),
-                command.correlationId());
-    }
-
-    @Transactional
-    public RefundResult requestSingleSource(SingleSourceCommand command) {
-        if (command == null || command.reservationId() == null || command.amount() == null) {
-            throw new IllegalArgumentException("Reservation and refund amount are required.");
-        }
-        VndMoney requested = VndMoney.of(command.amount());
-        if (requested.amount().signum() <= 0) {
-            throw new FinancialException(FinancialErrorCode.INVALID_AMOUNT);
-        }
-        List<PropertyFinancialTransaction> sources = transactionRepository.findBookingDebitsByReservationIdForUpdate(
-                command.reservationId(),
-                PropertyFinancialTransaction.Direction.DEBIT,
-                Set.of(
-                        PropertyFinancialTransaction.TransactionType.BOOKING_DEPOSIT,
-                        PropertyFinancialTransaction.TransactionType.ROOM_PAYMENT));
-        if (sources.isEmpty()) {
-            throw new FinancialException(FinancialErrorCode.REFUND_EXCEEDS_BALANCE);
-        }
-        sources.forEach(source -> {
-            authorize(source);
-            validateOriginal(source);
-        });
-        BigDecimal totalAvailable = sources.stream()
-                .map(this::availableForNewRequest)
-                .map(VndMoney::amount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        if (totalAvailable.compareTo(requested.amount()) < 0) {
-            throw new FinancialException(FinancialErrorCode.REFUND_EXCEEDS_BALANCE);
-        }
-        List<PropertyFinancialTransaction> coveringSources = sources.stream()
-                .filter(source -> availableForNewRequest(source).amount().compareTo(requested.amount()) >= 0)
-                .toList();
-        if (coveringSources.size() != 1) {
-            throw new FinancialException(
-                    FinancialErrorCode.POLICY_NOT_CONFIGURED,
-                    "The refund would require an unapproved source-selection or split policy.");
-        }
-        return requestAgainstOriginal(
-                coveringSources.get(0),
-                requested.amount(),
-                command.reason(),
-                command.idempotencyKey(),
-                command.correlationId());
-    }
-
-    private RefundResult requestAgainstOriginal(
-            PropertyFinancialTransaction original,
-            BigDecimal amount,
-            String reason,
-            String rawIdempotencyKey,
-            String correlationId) {
         Long hotelId = original.getHotel().getId();
-        String idempotencyKey = normalize(rawIdempotencyKey, "idempotencyKey", 160);
-        String normalizedReason = normalize(reason, "reason", 1000);
-        String requestHash = hash(original.getPublicId() + '|' + VndMoney.of(amount).amount().toPlainString()
-                + '|' + normalizedReason);
+        String idempotencyKey = normalize(command.idempotencyKey(), "idempotencyKey", 160);
+        String requestHash = hash(original.getPublicId() + '|' + VndMoney.of(command.amount()).amount().toPlainString()
+                + '|' + normalize(command.reason(), "reason", 1000));
         PropertyRefundRequest existing = requestRepository.findByHotelIdAndIdempotencyKey(hotelId, idempotencyKey)
                 .orElse(null);
         if (existing != null) {
@@ -137,7 +75,7 @@ public class PropertyRefundService {
             return result(existing, refundableBalance(original), true);
         }
 
-        VndMoney requested = VndMoney.of(amount);
+        VndMoney requested = VndMoney.of(command.amount());
         if (requested.amount().signum() <= 0) throw new FinancialException(FinancialErrorCode.INVALID_AMOUNT);
         VndMoney available = availableForNewRequest(original);
         if (requested.amount().compareTo(available.amount()) > 0) {
@@ -145,11 +83,11 @@ public class PropertyRefundService {
         }
         User actor = propertyAccessService.currentUser();
         PropertyRefundRequest refund = PropertyRefundRequest.request(
-                original.getHotel(), original, requested, normalizedReason, actor,
+                original.getHotel(), original, requested, command.reason(), actor,
                 idempotencyKey, requestHash, now());
         refund = requestRepository.saveAndFlush(refund);
         audit(refund, actor, null, RefundState.REQUESTED.name(), "Property refund requested",
-                correlationId, Map.of("amount", requested.amount(), "remaining", available.subtract(requested).amount()));
+                command.correlationId(), Map.of("amount", requested.amount(), "remaining", available.subtract(requested).amount()));
         return result(refund, available.subtract(requested), false);
     }
 
@@ -368,14 +306,6 @@ public class PropertyRefundService {
 
     public record RequestCommand(
             String transactionPublicId,
-            BigDecimal amount,
-            String reason,
-            String idempotencyKey,
-            String correlationId) {
-    }
-
-    public record SingleSourceCommand(
-            Long reservationId,
             BigDecimal amount,
             String reason,
             String idempotencyKey,

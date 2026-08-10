@@ -23,7 +23,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Component
-@Profile({"development", "demo", "test", "e2e"})
+@Profile({"development", "demo", "test"})
 @ConditionalOnProperty(name = "app.demo-data.legacy-seed", havingValue = "true")
 @RequiredArgsConstructor
 public class DemoDataInitializer {
@@ -56,8 +56,6 @@ public class DemoDataInitializer {
                 new PropertySeed("DEMO-DT-03", "Biệt thự Sen Hồng Đồng Tháp", "Dong Thap Lotus Villa", "VILLA", "9 Nguyễn Huệ", 10.4581, 105.6332, 4, 2, 0)
         );
 
-        seedLandmark(provinces.get(2).province());
-
         for (int i = 0; i < properties.size(); i++) {
             PropertySeed seed = properties.get(i);
             ProvinceSeed province = provinces.get(seed.provinceIndex());
@@ -71,15 +69,6 @@ public class DemoDataInitializer {
                     BigDecimal.valueOf(850000L + (i % 6) * 125000L), List.of("301"));
             seedService(hotel);
         }
-
-        seedEligibilitySentinel(
-                new PropertySeed("E2E-T274-DRAFT", "T274 Draft Sentinel", "T274 Draft Sentinel",
-                        "HOTEL", "274 Draft Street", 16.0620, 108.2280, 3, 1, 0),
-                provinces.get(1), "PENDING", "ACTIVE", 100);
-        seedEligibilitySentinel(
-                new PropertySeed("E2E-T274-SUSPENDED", "T274 Suspended Sentinel", "T274 Suspended Sentinel",
-                        "HOTEL", "274 Suspended Street", 16.0630, 108.2290, 3, 1, 0),
-                provinces.get(1), "APPROVED", "SUSPENDED", 101);
     }
 
     private ProvinceSeed province(String sourceCode, String city) {
@@ -89,26 +78,6 @@ public class DemoDataInitializer {
                 .stream().limit(2).toList();
         if (wards.size() < 2) throw new IllegalStateException("Tỉnh demo phải có ít nhất 2 phường/xã: " + city);
         return new ProvinceSeed(province, wards, city);
-    }
-
-    private void seedLandmark(Location province) {
-        Location landmark = locationRepository.findByCode("DEMO-LM-DT-01").orElseGet(Location::new);
-        landmark.setCode("DEMO-LM-DT-01");
-        landmark.setSourceCode("DEMO-LM-DT-01");
-        landmark.setNameVi("Công viên Mỹ Tho");
-        landmark.setNameEn("My Tho Riverside Park");
-        landmark.setLocationType("LANDMARK");
-        landmark.setParent(province);
-        landmark.setFullPath("Công viên Mỹ Tho, " + province.getNameVi());
-        landmark.setLatitude(10.3605);
-        landmark.setLongitude(106.3605);
-        landmark.setCategory("CULTURE");
-        landmark.setDefaultRadiusKm(8d);
-        landmark.setPopularityScore(100);
-        landmark.setDescriptionVi("Điểm tham quan ven sông phục vụ kiểm thử tìm kiếm địa danh.");
-        landmark.setDescriptionEn("Riverside landmark used for deterministic public-search tests.");
-        landmark.setStatus("ACTIVE");
-        locationRepository.saveAndFlush(landmark);
     }
 
     private Hotel upsertHotel(PropertySeed seed, Location province, Location ward, int index) {
@@ -143,23 +112,9 @@ public class DemoDataInitializer {
         hotel.setCheckoutTime("12:00");
         hotel.setPhone(String.format("090100%04d", index));
         hotel.setEmail(seed.code().toLowerCase() + "@demo.local");
-        boolean unrated = index % 4 == 0;
-        hotel.setAverageRating(unrated ? null : 8.0 + (index % 5) * 0.2);
-        hotel.setReviewCount(unrated ? 0 : 20 + index * 11);
-        hotel.setIsDemo(true);
-        hotel.setDataSource("DEMO");
+        hotel.setAverageRating(null);
+        hotel.setReviewCount(0);
         return hotelRepository.saveAndFlush(hotel);
-    }
-
-    private void seedEligibilitySentinel(PropertySeed seed, ProvinceSeed province, String approvalStatus,
-                                         String operationStatus, int index) {
-        Location ward = province.wards().get(seed.wardIndex() % province.wards().size());
-        Hotel hotel = upsertHotel(seed, province.province(), ward, index);
-        hotel.setApprovalStatus(approvalStatus);
-        hotel.setOperationStatus(operationStatus);
-        hotel = hotelRepository.saveAndFlush(hotel);
-        seedRoomType(hotel, "T274-SENTINEL", "Phòng kiểm thử T274", "T274 test room",
-                "DOUBLE", 1, 2, 1, 3, new BigDecimal("500000"), List.of("901"));
     }
 
     private void seedRoomType(Hotel hotel, String code, String nameVi, String nameEn, String bedType,
@@ -189,7 +144,6 @@ public class DemoDataInitializer {
             room.setRoomNumber(roomNumber);
             room.setFloor(Integer.parseInt(roomNumber.substring(0, 1)));
             room.setStatus("AVAILABLE");
-            room.setHousekeepingStatus("CLEAN");
             room.setMaintenanceStatus("NONE");
             room.setMaxGuests(maxGuests);
             room.setDescriptionVi("Phòng " + roomNumber + " thuộc " + nameVi + ".");

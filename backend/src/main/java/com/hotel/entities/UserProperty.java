@@ -33,6 +33,9 @@ public class UserProperty extends AuditableEntity {
     @Column(name = "is_primary_owner")
     private Boolean isPrimaryOwner = false;
 
+    @Column(name = "billing_admin", nullable = false)
+    private Boolean billingAdmin = false;
+
     private String status = "ACTIVE"; // ACTIVE, INACTIVE, SUSPENDED
 
     @Column(name = "start_date")
@@ -50,23 +53,4 @@ public class UserProperty extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "status_changed_by_user_id")
     private User statusChangedBy;
-
-    @Column(name = "accepted_at")
-    private java.time.LocalDateTime acceptedAt;
-
-    @Column(name = "left_at")
-    private java.time.LocalDateTime leftAt;
-
-    @Column(name = "removed_at")
-    private java.time.LocalDateTime removedAt;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "removed_by_user_id")
-    private User removedBy;
-
-    @Column(name = "owner_exit_reason", length = 500)
-    private String ownerExitReason;
-
-    @Column(name = "billing_admin", nullable = false)
-    private Boolean billingAdmin = false;
 }

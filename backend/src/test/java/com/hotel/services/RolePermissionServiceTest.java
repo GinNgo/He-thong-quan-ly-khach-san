@@ -58,6 +58,8 @@ class RolePermissionServiceTest {
         function.setId(7L);
         function.setCode("ROOM");
         function.setModule(module);
+        function.setActive(true);
+        function.setSupportedActionMask(127);
     }
 
     @AfterEach
@@ -85,7 +87,7 @@ class RolePermissionServiceTest {
     }
 
     @Test
-    void rejectsDuplicateUnknownAndUnsupportedEntriesBeforeMutation() {
+    void rejectsDuplicateUnknownInvalidDependencyAndUnsupportedEntriesBeforeMutation() {
         when(roleRepository.findById(3L)).thenReturn(Optional.of(role));
         when(appFunctionRepository.findById(7L)).thenReturn(Optional.of(function));
 
@@ -97,7 +99,39 @@ class RolePermissionServiceTest {
                 () -> service.updateRolePermissions(3L, request(0L, 99L, 1)));
         assertThrows(IllegalArgumentException.class,
                 () -> service.updateRolePermissions(3L, request(0L, 7L, 64)));
+        function.setSupportedActionMask(1);
+        assertThrows(IllegalArgumentException.class,
+                () -> service.updateRolePermissions(3L, request(0L, 7L, 3)));
         verify(rolePermissionRepository, never()).findByRoleId(3L);
+    }
+
+    @Test
+    void acceptsTaskExecuteWhenViewAndFunctionSupportArePresent() throws Exception {
+        when(roleRepository.findById(3L)).thenReturn(Optional.of(role));
+        when(rolePermissionRepository.findByRoleId(3L)).thenReturn(List.of());
+        when(appFunctionRepository.findById(7L)).thenReturn(Optional.of(function));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(roleRepository.saveAndFlush(role)).thenAnswer(invocation -> {
+            role.setVersion(1L);
+            return role;
+        });
+
+        assertEquals(1L, service.updateRolePermissions(3L, request(0L, 7L, 65)));
+    }
+
+    @Test
+    void acceptsInactiveFunctionWhenMatrixClearsItsPermission() throws Exception {
+        function.setActive(false);
+        when(roleRepository.findById(3L)).thenReturn(Optional.of(role));
+        when(rolePermissionRepository.findByRoleId(3L)).thenReturn(List.of());
+        when(appFunctionRepository.findById(7L)).thenReturn(Optional.of(function));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(roleRepository.saveAndFlush(role)).thenAnswer(invocation -> {
+            role.setVersion(1L);
+            return role;
+        });
+
+        assertEquals(1L, service.updateRolePermissions(3L, request(0L, 7L, 0)));
     }
 
     @Test

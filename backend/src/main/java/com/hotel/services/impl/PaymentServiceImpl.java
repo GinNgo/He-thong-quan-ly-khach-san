@@ -8,6 +8,7 @@ import com.hotel.domain.payment.PaymentCompletionResult;
 import com.hotel.dtos.PaymentDTO;
 import com.hotel.services.PaymentService;
 import com.hotel.services.ReservationHoldService;
+import com.hotel.services.EmailService;
 import com.hotel.entities.Payment;
 import com.hotel.entities.Reservation;
 import com.hotel.entities.User;
@@ -15,6 +16,7 @@ import com.hotel.repositories.PaymentRepository;
 import com.hotel.repositories.ReservationRepository;
 import com.hotel.repositories.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,16 +29,29 @@ public class PaymentServiceImpl implements PaymentService {
     private final ReservationRepository reservationRepository;
     private final UserRepository userRepository;
     private final ReservationHoldService reservationHoldService;
+    private final EmailService emailService;
 
+    @Autowired
+    public PaymentServiceImpl(
+            PaymentRepository paymentRepository,
+            ReservationRepository reservationRepository,
+            UserRepository userRepository,
+            ReservationHoldService reservationHoldService,
+            EmailService emailService) {
+        this.paymentRepository = paymentRepository;
+        this.reservationRepository = reservationRepository;
+        this.userRepository = userRepository;
+        this.reservationHoldService = reservationHoldService;
+        this.emailService = emailService;
+    }
+
+    /** Backward-compatible constructor for legacy unit tests and fixtures. */
     public PaymentServiceImpl(
             PaymentRepository paymentRepository,
             ReservationRepository reservationRepository,
             UserRepository userRepository,
             ReservationHoldService reservationHoldService) {
-        this.paymentRepository = paymentRepository;
-        this.reservationRepository = reservationRepository;
-        this.userRepository = userRepository;
-        this.reservationHoldService = reservationHoldService;
+        this(paymentRepository, reservationRepository, userRepository, reservationHoldService, null);
     }
 
     @Override
@@ -108,6 +123,12 @@ public class PaymentServiceImpl implements PaymentService {
         reservationRepository.save(reservation);
         reservationHoldService.consumeActiveHold(reservationId, LocalDateTime.now());
         awardLoyaltyPoints(reservation, payment.getAmount());
+        if (emailService != null && reservation.getUser() != null && reservation.getUser().getEmail() != null
+                && !reservation.getUser().getEmail().isBlank()) {
+            emailService.sendBookingConfirmation(
+                    reservation.getUser().getEmail(), reservation.getUser().getFullName(), reservation.getId(),
+                    reservation.getCheckInDate().toString(), reservation.getCheckOutDate().toString());
+        }
         return PaymentCompletionResult.APPLIED;
     }
 

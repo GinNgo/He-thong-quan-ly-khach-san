@@ -20,16 +20,9 @@ export class FeatureGuard implements CanActivate {
       return true; // No feature required
     }
 
-    const propertyId = Number(route.queryParamMap.get('propertyId'));
-    if (!Number.isInteger(propertyId) || propertyId <= 0) {
-      this.messageService.add({ severity: 'error', summary: 'Chọn cơ sở', detail: 'Chọn một cơ sở trước khi mở chức năng theo gói.' });
-      return false;
-    }
-
-    return this.subscriptionService.getPropertyFeatures(propertyId).pipe(
+    return this.subscriptionService.getMyFeatures().pipe(
       map(features => {
-        const limit = features?.[requiredFeature];
-        if (limit === -1 || (typeof limit === 'number' && limit > 0)) {
+        if (features && features.hasOwnProperty(requiredFeature)) {
           return true;
         }
         
@@ -39,11 +32,11 @@ export class FeatureGuard implements CanActivate {
           detail: `Bạn cần nâng cấp gói để sử dụng chức năng này (${requiredFeature})`
         });
         
-        this.router.navigate(['/management/billing'], { queryParams: { propertyId } });
+        this.router.navigate(['/admin/plans']);
         return false;
       }),
       catchError(() => {
-        this.messageService.add({ severity: 'error', summary: 'Không thể xác minh gói', detail: 'Quyền tính năng của cơ sở chưa thể xác minh. Vui lòng thử lại.' });
+        this.router.navigate(['/auth/login']);
         return of(false);
       })
     );

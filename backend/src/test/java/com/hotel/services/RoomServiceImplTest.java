@@ -2,33 +2,25 @@ package com.hotel.services;
 
 import com.hotel.dtos.BulkRoomRequest;
 import com.hotel.dtos.RoomDTO;
-import com.hotel.dtos.RoomImageDTO;
 import com.hotel.entities.Hotel;
-import com.hotel.entities.PropertyMedia;
 import com.hotel.entities.Room;
-import com.hotel.entities.RoomImage;
 import com.hotel.entities.RoomType;
 import com.hotel.repositories.PropertyImageRepository;
 import com.hotel.repositories.RoomImageRepository;
 import com.hotel.repositories.RoomRepository;
 import com.hotel.repositories.RoomTypeImageRepository;
 import com.hotel.repositories.RoomTypeRepository;
-import com.hotel.repositories.HotelRepository;
-import com.hotel.repositories.ReservationRoomRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -39,15 +31,11 @@ import static org.mockito.Mockito.when;
 class RoomServiceImplTest {
     @Mock private RoomRepository roomRepository;
     @Mock private RoomTypeRepository roomTypeRepository;
-    @Mock private HotelRepository hotelRepository;
-    @Mock private ReservationRoomRepository reservationRoomRepository;
     @Mock private RoomImageRepository roomImageRepository;
     @Mock private PropertyImageRepository propertyImageRepository;
     @Mock private RoomTypeImageRepository roomTypeImageRepository;
     @Mock private PropertyAccessService propertyAccessService;
     @Mock private SubscriptionFeatureService subscriptionFeatureService;
-    @Mock private PropertyMediaService propertyMediaService;
-    @Mock private PropertyMediaPolicy propertyMediaPolicy;
 
     @InjectMocks
     private RoomServiceImpl roomService;
@@ -62,9 +50,6 @@ class RoomServiceImplTest {
         roomType = new RoomType();
         roomType.setId(20L);
         roomType.setHotel(hotel);
-        org.mockito.Mockito.lenient().when(roomTypeRepository.findById(20L)).thenReturn(Optional.of(roomType));
-        org.mockito.Mockito.lenient().when(roomTypeRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(roomType));
-        org.mockito.Mockito.lenient().when(hotelRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(hotel));
     }
 
     @Test
@@ -95,12 +80,8 @@ class RoomServiceImplTest {
         existing.setMaintenanceStatus("NONE");
         RoomDTO request = new RoomDTO();
         request.setRoomTypeId(20L);
-        request.setHotelId(10L);
-        request.setRoomNumber("101");
-        request.setFloor(1);
 
         when(roomRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(existing));
-        when(roomRepository.findById(30L)).thenReturn(Optional.of(existing));
         when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
         doThrow(new RuntimeException("upgrade required"))
                 .when(subscriptionFeatureService).requireFeatureForProperty(10L, "MAX_ROOMS");
@@ -143,7 +124,6 @@ class RoomServiceImplTest {
         request.setStatus("OCCUPIED");
 
         when(roomRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(existing));
-        when(roomRepository.findById(30L)).thenReturn(Optional.of(existing));
 
         assertThrows(IllegalStateException.class, () -> roomService.updateRoom(30L, request));
         verify(roomRepository, never()).save(any(Room.class));
@@ -157,82 +137,13 @@ class RoomServiceImplTest {
         existing.setRoomType(roomType);
         when(roomRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(existing));
         when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(roomImageRepository.findByRoomId(30L)).thenReturn(java.util.List.of());
+
         RoomDTO started = roomService.startMaintenance(30L);
         assertEquals("MAINTENANCE", started.getStatus());
         RoomDTO completed = roomService.completeMaintenance(30L);
         assertEquals("AVAILABLE", completed.getStatus());
         verify(roomRepository, org.mockito.Mockito.times(2)).findByIdForUpdate(30L);
-    }
-
-    @Test
-    void createRoomAssociatesValidatedImagesWithPropertyOwnedMedia() {
-        RoomImageDTO image = new RoomImageDTO();
-        image.setImageUrl("https://cdn.example.com/rooms/101.jpg");
-        image.setAltTextVi("Phòng 101");
-        image.setAltTextEn("Room 101");
-        RoomDTO request = new RoomDTO();
-        request.setRoomTypeId(20L);
-        request.setRoomNumber("101");
-        request.setMaxGuests(2);
-        request.setImages(List.of(image));
-
-        PropertyMedia media = new PropertyMedia();
-        media.setId(40L);
-        media.setHotel(hotel);
-        media.setSourceType("EXTERNAL_HTTPS");
-        media.setPublicUrl(image.getImageUrl());
-        media.setAltTextVi(image.getAltTextVi());
-        media.setAltTextEn(image.getAltTextEn());
-
-        when(roomTypeRepository.findById(20L)).thenReturn(Optional.of(roomType));
-        when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
-        when(roomRepository.findByHotelIdAndRoomNumber(10L, "101")).thenReturn(Optional.empty());
-        when(propertyMediaPolicy.normalizeExternalUrl(image.getImageUrl())).thenReturn(image.getImageUrl());
-        when(propertyMediaPolicy.requireAltTextVi(image.getAltTextVi())).thenReturn(image.getAltTextVi());
-        when(propertyMediaPolicy.normalizeAltTextEn(image.getAltTextEn())).thenReturn(image.getAltTextEn());
-        when(propertyMediaService.createExternal(hotel, image.getImageUrl(), image.getAltTextVi(), image.getAltTextEn()))
-                .thenReturn(media);
-        when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> {
-            Room saved = invocation.getArgument(0);
-            saved.setId(30L);
-            return saved;
-        });
-
-        roomService.createRoom(request);
-
-        ArgumentCaptor<RoomImage> imageCaptor = ArgumentCaptor.forClass(RoomImage.class);
-        verify(roomImageRepository).save(imageCaptor.capture());
-        RoomImage savedImage = imageCaptor.getValue();
-        assertSame(media, savedImage.getMedia());
-        assertEquals(0, savedImage.getSortOrder());
-        assertEquals(true, savedImage.getIsPrimary());
-        assertEquals("Phòng 101", savedImage.getAltTextVi());
-    }
-
-    @Test
-    void deactivateWithActiveBookingLeavesRoomAvailable() {
-        Room existing = room("AVAILABLE", "CLEAN", "NONE");
-        existing.setId(30L); existing.setHotel(hotel); existing.setRoomType(roomType);
-        when(roomRepository.findById(30L)).thenReturn(Optional.of(existing));
-        when(roomRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(existing));
-        when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
-        when(reservationRoomRepository.hasActiveAssignment(
-                30L, RoomAvailabilityService.RELEASED_RESERVATION_STATUSES)).thenReturn(true);
-        assertThrows(IllegalStateException.class, () -> roomService.deleteRoom(30L));
-        assertEquals("AVAILABLE", existing.getStatus());
-        verify(roomRepository, never()).save(existing);
-    }
-
-    @Test
-    void bulkDuplicateRejectsWholeRequestBeforeFirstInsert() {
-        BulkRoomRequest request = new BulkRoomRequest();
-        request.setHotelId(10L); request.setRoomTypeId(20L); request.setFloor(1);
-        request.setPrefix(" a "); request.setFromNumber(101); request.setToNumber(103);
-        when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
-        when(roomRepository.findByHotelIdAndRoomNumber(10L, "A101")).thenReturn(Optional.empty());
-        when(roomRepository.findByHotelIdAndRoomNumber(10L, "A102")).thenReturn(Optional.of(new Room()));
-        assertThrows(IllegalArgumentException.class, () -> roomService.bulkCreate(request));
-        verify(roomRepository, never()).save(any(Room.class));
     }
 
     private Room room(String status, String housekeeping, String maintenance) {

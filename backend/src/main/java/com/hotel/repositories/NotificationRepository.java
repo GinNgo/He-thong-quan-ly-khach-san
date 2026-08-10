@@ -21,20 +21,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     // Lấy tất cả thông báo chung cho admin/staff
     List<Notification> findByUserIdIsNullOrderByCreatedAtDesc();
 
-<<<<<<< HEAD
-    @Query("""
-            select notification
-            from Notification notification
-            where notification.userId = :userId
-              and notification.createdAt >= :cutoff
-              and ((:archived = true and notification.archivedAt is not null)
-                   or (:archived = false and notification.archivedAt is null))
-            order by notification.createdAt desc, notification.id desc
-            """)
-    Page<Notification> findCustomerHistory(
-            @Param("userId") Long userId,
-            @Param("archived") boolean archived,
-=======
     Optional<Notification> findByEventKey(String eventKey);
 
     @Query("""
@@ -45,28 +31,12 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             """)
     Page<Notification> findVisibleToUser(
             @Param("userId") Long userId,
->>>>>>> codex/ui-functional-audit-polish
             @Param("cutoff") LocalDateTime cutoff,
             Pageable pageable);
 
     @Query("""
             select count(notification)
             from Notification notification
-<<<<<<< HEAD
-            where notification.userId = :userId
-              and notification.isRead = false
-              and notification.archivedAt is null
-              and notification.createdAt >= :cutoff
-            """)
-    long countActiveUnread(
-            @Param("userId") Long userId,
-            @Param("cutoff") LocalDateTime cutoff);
-
-    Optional<Notification> findByIdAndUserIdAndCreatedAtGreaterThanEqual(
-            Long id, Long userId, LocalDateTime cutoff);
-
-    Optional<Notification> findByEventKey(String eventKey);
-=======
             where notification.createdAt >= :cutoff
               and notification.isRead = false
               and (notification.userId is null or notification.userId = :userId)
@@ -76,5 +46,4 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             @Param("cutoff") LocalDateTime cutoff);
 
     Optional<Notification> findByIdAndCreatedAtGreaterThanEqual(Long id, LocalDateTime cutoff);
->>>>>>> codex/ui-functional-audit-polish
 }

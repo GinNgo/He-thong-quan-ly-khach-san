@@ -3,7 +3,7 @@ import { provideRouter } from '@angular/router';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { AuthService, AuthState } from '../../core/services/auth';
 import { ManagementApiService, ManagementContext } from '../../core/services/management-api.service';
-import { ActionCode, FunctionCode, PermissionService } from '../../core/services/permission.service';
+import { PermissionService } from '../../core/services/permission.service';
 import { ManagementLayout } from './management-layout';
 
 describe('ManagementLayout', () => {
@@ -24,7 +24,6 @@ describe('ManagementLayout', () => {
         provideRouter([]),
         { provide: AuthService, useValue: { currentUser$: user$, logout: () => undefined } },
         { provide: ManagementApiService, useValue: { context: () => context$ } },
-        { provide: PermissionService, useValue: { hasPermission: vi.fn(() => true) } },
       ],
     }).compileComponents();
 
@@ -32,7 +31,7 @@ describe('ManagementLayout', () => {
     fixture.detectChanges();
 
     context$.next({
-      properties: [{ id: 1, code: 'HOTEL-1', nameVi: 'LuxeStay Hà Nội', propertyType: 'HOTEL', addressLine: 'Hà Nội', provinceId: 1, wardId: 2, approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', isDemo: false }],
+      properties: [{ id: 1, code: 'HOTEL-1', name: 'Grand Palace Hotel', propertyType: 'HOTEL', address: 'Hà Nội', approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', isDemo: false }],
       activePropertyId: 1,
       planCode: 'STANDARD',
       subscriptionStatus: 'ACTIVE',
@@ -46,7 +45,7 @@ describe('ManagementLayout', () => {
     const element: HTMLElement = fixture.nativeElement;
     expect(element.textContent).not.toContain('Đang tải...');
     expect(element.querySelector('#active-property')).not.toBeNull();
-    expect(element.textContent).toContain('LuxeStay Hà Nội');
+    expect(element.textContent).toContain('Grand Palace Hotel');
   });
 
   it('removes the closed mobile sidebar from keyboard navigation', async () => {
@@ -80,7 +79,6 @@ describe('ManagementLayout', () => {
           },
         },
         { provide: ManagementApiService, useValue: { context: () => new Subject<ManagementContext>() } },
-        { provide: PermissionService, useValue: { hasPermission: vi.fn(() => true) } },
       ],
     }).compileComponents();
 
@@ -119,7 +117,13 @@ describe('ManagementLayout', () => {
           },
         },
         { provide: ManagementApiService, useValue: { context: () => context$ } },
-        { provide: PermissionService, useValue: { hasPermission: vi.fn(() => allowed) } },
+        {
+          provide: PermissionService,
+          useValue: {
+            hasPermission: vi.fn(() => allowed),
+            isSuperAdmin: vi.fn(() => false),
+          },
+        },
       ],
     }).compileComponents();
 
@@ -134,7 +138,7 @@ describe('ManagementLayout', () => {
     const allowedFixture = TestBed.createComponent(ManagementLayout);
     allowedFixture.detectChanges();
     context$.next({
-      properties: [{ id: 1, code: 'HOTEL-1', nameVi: 'LuxeStay Hà Nội', propertyType: 'HOTEL', addressLine: 'Hà Nội', provinceId: 1, wardId: 2, approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', operational: true, isDemo: false }],
+      properties: [{ id: 1, code: 'HOTEL-1', nameVi: 'LuxeStay Hà Nội', propertyType: 'HOTEL', address: 'Hà Nội', approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', operational: true, isDemo: false }],
       activePropertyId: 1,
       activePropertyOperational: true,
       planCode: 'STANDARD',
@@ -171,7 +175,13 @@ describe('ManagementLayout', () => {
           },
         },
         { provide: ManagementApiService, useValue: { context: () => context$ } },
-        { provide: PermissionService, useValue: { hasPermission: vi.fn(() => true) } },
+        {
+          provide: PermissionService,
+          useValue: {
+            hasPermission: vi.fn(() => true),
+            isSuperAdmin: vi.fn(() => false),
+          },
+        },
       ],
     }).compileComponents();
 
@@ -183,9 +193,7 @@ describe('ManagementLayout', () => {
         code: 'PENDING-7',
         nameVi: 'Khách sạn đang chờ duyệt',
         propertyType: 'HOTEL',
-        addressLine: 'Đà Nẵng',
-        provinceId: 1,
-        wardId: 2,
+        address: 'Đà Nẵng',
         approvalStatus: 'PENDING_APPROVAL',
         operationStatus: 'INACTIVE',
         operational: false,
@@ -213,25 +221,44 @@ describe('ManagementLayout', () => {
     expect(text).not.toContain('Doanh thu cơ sở');
   });
 
-  it('maps core management navigation to matching view permissions', async () => {
-    const allowed = new Set([`${FunctionCode.HOTEL}:${ActionCode.VIEW}`, `${FunctionCode.ROOM}:${ActionCode.VIEW}`]);
+  it('keeps the housekeeping screen accessible to admin without an operational property', async () => {
     await TestBed.configureTestingModule({
       imports: [ManagementLayout],
       providers: [
         provideRouter([]),
-        { provide: AuthService, useValue: { currentUser$: new BehaviorSubject<AuthState>({ isAuthenticated: true, username: 'manager', fullName: 'Manager', avatarUrl: '', roles: ['HOTEL_MANAGER'], permissions: [] }), logout: () => undefined } },
+        {
+          provide: AuthService,
+          useValue: {
+            currentUser$: new BehaviorSubject<AuthState>({
+              isAuthenticated: true,
+              username: 'admin',
+              fullName: 'Administrator',
+              avatarUrl: '',
+              roles: ['ADMIN'],
+              permissions: [],
+            }),
+            logout: () => undefined,
+          },
+        },
         { provide: ManagementApiService, useValue: { context: () => new Subject<ManagementContext>() } },
-        { provide: PermissionService, useValue: { hasPermission: (fn: FunctionCode, action: ActionCode) => allowed.has(`${fn}:${action}`) } },
+        {
+          provide: PermissionService,
+          useValue: {
+            hasPermission: vi.fn(() => true),
+            isSuperAdmin: vi.fn(() => true),
+          },
+        },
       ],
     }).compileComponents();
-    const fixture = TestBed.createComponent(ManagementLayout);
-    const component = fixture.componentInstance;
-    component.activePropertyOperational = true;
-    const links = component.navigationGroups.flatMap(group => group.links);
 
-    expect(component.canViewLink(links.find(link => link.url.endsWith('/dashboard'))!)).toBe(true);
-    expect(component.canViewLink(links.find(link => link.url.endsWith('/properties'))!)).toBe(true);
-    expect(component.canViewLink(links.find(link => link.url.endsWith('/rooms'))!)).toBe(true);
-    expect(component.canViewLink(links.find(link => link.url.endsWith('/room-types'))!)).toBe(false);
+    const fixture = TestBed.createComponent(ManagementLayout);
+    fixture.detectChanges();
+
+    const housekeepingLink = Array.from(
+      fixture.nativeElement.querySelectorAll('a') as NodeListOf<HTMLAnchorElement>,
+    ).find((link) => link.textContent?.includes('Hàng đợi dọn phòng'));
+
+    expect(housekeepingLink).toBeDefined();
+    expect(housekeepingLink?.getAttribute('href')).toContain('/management/housekeeping');
   });
 });

@@ -1,20 +1,16 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
+import { Component, Input, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { PublicI18nService } from '../../../../../core/i18n/public-i18n.service';
 import { Hotel } from '../../../../../core/services/client-api.service';
 import { ImageFallbackService } from '../../../../../core/services/image-fallback.service';
-<<<<<<< HEAD
-import { FeedbackStateComponent } from '../../../../../shared/components/feedback-state/feedback-state.component';
-=======
 import { HomeSearchStateService } from '../../services/home-search-state.service';
->>>>>>> codex/ui-functional-audit-polish
 
 @Component({
   selector: 'app-featured-properties',
   standalone: true,
-  imports: [CommonModule, FeedbackStateComponent],
+  imports: [CommonModule],
   template: `
     <div class="featured-section">
       <header class="section-intro">
@@ -31,52 +27,6 @@ import { HomeSearchStateService } from '../../services/home-search-state.service
         <div *ngFor="let item of [1,2,3,4]" class="property-skeleton"><span></span><b></b><i></i></div>
       </div>
 
-<<<<<<< HEAD
-      <app-feedback-state
-        *ngIf="!loading && error"
-        state="error"
-        title="Không thể tải cơ sở nổi bật"
-        message="Danh sách cơ sở tạm thời không khả dụng."
-        actionLabel="Thử lại"
-        (actionTriggered)="retry.emit()">
-      </app-feedback-state>
-
-      <app-feedback-state
-        *ngIf="!loading && !error && properties.length === 0"
-        state="empty"
-        title="Chưa có cơ sở nổi bật"
-        message="Các cơ sở đủ điều kiện sẽ hiển thị tại đây.">
-      </app-feedback-state>
-
-      <div *ngIf="!loading && !error && properties.length" class="property-grid">
-        <article *ngFor="let property of properties; trackBy: trackByProperty" class="property-card" tabindex="0"
-          [attr.data-property-id]="property.id"
-          (click)="openProperty(property.id)" (keydown.enter)="openProperty(property.id)">
-          <div class="property-image">
-            <img [src]="displayImage(property)"
-              [alt]="property.imageAltText || property.name"
-              [attr.data-image-provenance]="displayProvenance(property)"
-              loading="lazy" (error)="handleImageError($event, property.propertyType)">
-            <span>{{ propertyTypeLabel(property.propertyType) }}</span>
-          </div>
-          <div class="property-body">
-            <div class="property-title-row">
-              <h3>{{ property.name }}</h3>
-              <strong *ngIf="property.reviewScore && property.reviewCount">{{ property.reviewScore | number:'1.1-1' }}</strong>
-            </div>
-            <p><i class="pi pi-map-marker"></i>{{ property.wardName || property.provinceName || property.addressLine }}</p>
-            <div class="property-meta">
-              <span *ngIf="property.reviewCount; else noReview">{{ property.reviewCount }} đánh giá</span>
-              <ng-template #noReview><span>Chưa có đánh giá</span></ng-template>
-              <span *ngIf="property.availableRoomCount !== undefined">{{ property.availableRoomCount }} phòng phù hợp</span>
-            </div>
-            <div class="property-price" *ngIf="property.pricing; else unavailablePrice">
-              <span>Từ</span><strong>{{ property.pricing.nightlyPrice | currency:'VND':'symbol':'1.0-0' }}</strong><small>/đêm</small>
-            </div>
-            <ng-template #unavailablePrice><p class="unavailable-price">Hết phòng trong ngày đã chọn</p></ng-template>
-          </div>
-        </article>
-=======
       <div *ngIf="!loading && properties.length" class="property-grid">
         <button
           *ngFor="let property of properties; trackBy: trackByProperty"
@@ -108,7 +58,6 @@ import { HomeSearchStateService } from '../../services/home-search-state.service
             <ng-template #unavailablePrice><span class="unavailable-price">{{ i18n.text('PUBLIC.HOME_CARDS.SOLD_OUT') }}</span></ng-template>
           </span>
         </button>
->>>>>>> codex/ui-functional-audit-polish
       </div>
 
       <div *ngIf="!loading && !properties.length" class="empty-state" [class.error-state]="error" [attr.role]="error ? 'alert' : 'status'">
@@ -129,11 +78,7 @@ export class FeaturedPropertiesComponent {
   @Input() properties: Hotel[] = [];
   @Input() loading = false;
   @Input() error = false;
-<<<<<<< HEAD
-  @Output() readonly retry = new EventEmitter<void>();
-=======
 
->>>>>>> codex/ui-functional-audit-polish
   private readonly router = inject(Router);
   private readonly stateService = inject(HomeSearchStateService);
   private readonly imageFallback = inject(ImageFallbackService);
@@ -169,24 +114,11 @@ export class FeaturedPropertiesComponent {
   }
 
   displayImage(property: Hotel): string {
-    return this.apiImage(property) || this.fallbackImage(property.propertyType);
-  }
-
-  displayProvenance(property: Hotel): string {
-    return this.apiImage(property) ? property.imageProvenance || 'API_UNSPECIFIED' : 'FRONTEND_FALLBACK';
+    return property.thumbnailUrl || property.mainImageUrl || property.mainImage || this.fallbackImage(property.propertyType);
   }
 
   handleImageError(event: Event, type?: string): void {
-    const image = event.target as HTMLImageElement;
-    const fallback = this.fallbackImage(type);
-    if (image.src.endsWith(fallback)) return;
-    image.dataset['imageFallback'] = 'true';
-    this.imageFallback.replace(event, fallback);
-  }
-
-  private apiImage(property: Hotel): string | undefined {
-    return [property.thumbnailUrl, property.mainImageUrl, property.mainImage]
-      .find(value => value?.trim())?.trim();
+    this.imageFallback.replace(event, this.fallbackImage(type));
   }
 
   trackByProperty(_index: number, property: Hotel): number {

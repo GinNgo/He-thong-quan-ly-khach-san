@@ -26,10 +26,10 @@ export const HotelPreset = definePreset(Aura, {
         colorScheme: {
             light: {
                 primary: {
-                    color: '{primary.700}',
+                    color: '{primary.500}',
                     inverseColor: '#ffffff',
-                    hoverColor: '{primary.800}',
-                    activeColor: '{primary.900}'
+                    hoverColor: '{primary.600}',
+                    activeColor: '{primary.700}'
                 },
                 highlight: {
                     background: '{primary.100}',

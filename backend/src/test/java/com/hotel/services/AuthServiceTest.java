@@ -100,6 +100,24 @@ public class AuthServiceTest {
     }
 
     @Test
+    void login_RejectsActiveAccountWithUnverifiedEmail() {
+        LoginRequest request = new LoginRequest();
+        request.setUsername("testuser");
+        request.setPassword("password123");
+        mockUser.setEmailVerifiedAt(null);
+
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getName()).thenReturn("testuser");
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(authentication);
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
+
+        assertThrows(
+                com.hotel.security.EmailNotVerifiedAuthenticationException.class,
+                () -> authService.login(request));
+        verify(jwtUtil, never()).generateToken(any(Authentication.class));
+    }
+
+    @Test
     void register_Success() {
         RegisterRequest request = new RegisterRequest();
         request.setUsername("newuser");

@@ -1,20 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
-import { distinctUntilChanged, Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import { AuthService } from '../../core/services/auth';
 import { ClientApiService, UserContext } from '../../core/services/client-api.service';
-import { CustomerNotificationService } from '../../core/services/customer-notification.service';
 import { LayoutStateService } from '../../core/services/layout-state.service';
 import { ChatWidgetComponent } from '../../features/client/chat-widget/chat-widget';
-<<<<<<< HEAD
-import { RouteFocusTargetDirective } from '../../shared/directives/focus-management.directive';
-
-@Component({
-  selector: 'app-client-layout', standalone: true,
-  imports: [CommonModule, RouterModule, ChatWidgetComponent, RouteFocusTargetDirective],
-  templateUrl: './client-layout.html', styleUrls: ['./client-layout.css', './client-layout.notifications.css']
-=======
 import { TranslatePipe } from '@ngx-translate/core';
 import { LocaleService } from '../../core/i18n/locale.service';
 import { PublicI18nService } from '../../core/i18n/public-i18n.service';
@@ -24,17 +15,13 @@ import { PublicI18nService } from '../../core/i18n/public-i18n.service';
   imports: [CommonModule, RouterModule, ChatWidgetComponent, TranslatePipe],
   templateUrl: './client-layout.html',
   styleUrls: ['./client-layout.css', './client-layout.mobile.css']
->>>>>>> codex/ui-functional-audit-polish
 })
 export class ClientLayout implements OnInit, OnDestroy {
-  @ViewChild('accountTrigger') private accountTrigger?: ElementRef<HTMLButtonElement>;
-  @ViewChild('mobileTrigger') private mobileTrigger?: ElementRef<HTMLButtonElement>;
   private readonly authService = inject(AuthService);
   private readonly api = inject(ClientApiService);
   private readonly router = inject(Router);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly changeDetector = inject(ChangeDetectorRef);
-  private readonly customerNotifications = inject(CustomerNotificationService);
   private readonly destroy$ = new Subject<void>();
   readonly layoutState = inject(LayoutStateService);
   readonly localeService = inject(LocaleService);
@@ -47,33 +34,18 @@ export class ClientLayout implements OnInit, OnDestroy {
   username = '';
   fullName = '';
   avatarUrl = '';
-  unreadNotificationCount = 0;
   userContext: UserContext | null = null;
+  showScrollTop = false;
 
   ngOnInit(): void {
-    this.customerNotifications.notifications$.pipe(takeUntil(this.destroy$)).subscribe(notification => {
-      if (!notification.isRead) this.unreadNotificationCount += 1;
-    });
-    this.customerNotifications.reconciliation$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() => this.refreshUnreadCount());
-    this.authService.currentUser$.pipe(
-      distinctUntilChanged((previous, current) =>
-        previous.isAuthenticated === current.isAuthenticated && previous.username === current.username),
-      takeUntil(this.destroy$),
-    ).subscribe(state => {
+    this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(state => {
+      const becameAuthenticated = state.isAuthenticated && !this.isLoggedIn;
       this.isLoggedIn = state.isAuthenticated;
       this.username = state.username;
       this.fullName = state.fullName || state.username;
       this.avatarUrl = state.avatarUrl || '';
-      if (state.isAuthenticated) {
-        this.loadUserContext();
-        this.loadCustomerNotifications();
-      } else {
-        this.userContext = null;
-        this.unreadNotificationCount = 0;
-        this.customerNotifications.disconnect();
-      }
+      if (becameAuthenticated) this.loadUserContext();
+      else if (!state.isAuthenticated) this.userContext = null;
     });
   }
 
@@ -87,18 +59,11 @@ export class ClientLayout implements OnInit, OnDestroy {
   }
 
   get isPropertyOwner(): boolean {
-    return this.roleCodes.includes('PROPERTY_OWNER');
+    return this.roleCodes.includes('PROPERTY_OWNER') || Boolean(this.userContext?.assignedProperties?.length);
   }
 
   get isAdmin(): boolean {
     return this.roleCodes.some(role => ['ADMIN', 'SUPER_ADMIN'].includes(role));
-  }
-
-  get managementQueryParams(): { propertyId: number } | null {
-    const properties = this.userContext?.assignedProperties ?? [];
-    if (properties.length !== 1) return null;
-    const propertyId = properties[0]?.id;
-    return Number.isInteger(propertyId) && propertyId > 0 ? { propertyId } : null;
   }
 
   get partnerLabel(): string {
@@ -109,34 +74,23 @@ export class ClientLayout implements OnInit, OnDestroy {
     return this.publicI18n.text('LAYOUT.LIST_PROPERTY');
   }
 
-  toggleAccountMenu(event: Event): void {
-    event.stopPropagation();
-    const restoreFocus = this.accountMenuOpen;
-    this.accountMenuOpen = !this.accountMenuOpen;
-    if (restoreFocus) queueMicrotask(() => this.accountTrigger?.nativeElement.focus());
-  }
-  closeAccountMenu(restoreFocus = false): void {
-    this.accountMenuOpen = false;
-    if (restoreFocus) queueMicrotask(() => this.accountTrigger?.nativeElement.focus());
-  }
-  toggleMobileMenu(): void {
-    const restoreFocus = this.isMobileMenuOpen;
-    this.isMobileMenuOpen = !this.isMobileMenuOpen;
-    if (restoreFocus) queueMicrotask(() => this.mobileTrigger?.nativeElement.focus());
-  }
+  toggleAccountMenu(event: Event): void { event.stopPropagation(); this.accountMenuOpen = !this.accountMenuOpen; }
+  closeAccountMenu(): void { this.accountMenuOpen = false; }
+  toggleMobileMenu(): void { this.isMobileMenuOpen = !this.isMobileMenuOpen; }
   closeMobileMenu(): void { this.isMobileMenuOpen = false; }
   toggleLocale(): void { this.localeService.toggle(); }
   handleAvatarError(): void { this.avatarUrl = ''; }
+
+  @HostListener('window:scroll')
+  onWindowScroll(): void { this.showScrollTop = window.scrollY > 420; }
+
+  scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
   navigatePartner(): void {
     this.closeAccountMenu();
     if (this.userContext?.status && ['LOCKED', 'BLOCKED', 'INACTIVE'].includes(this.userContext.status)) return;
     if (!this.isLoggedIn) this.router.navigate(['/login'], { queryParams: { returnUrl: '/partner/register' } });
-    else if (this.isPropertyOwner || this.userContext?.partnerRegistrationStatus === 'APPROVED') {
-      const queryParams = this.managementQueryParams;
-      if (queryParams) this.router.navigate(['/management/dashboard'], { queryParams });
-      else this.router.navigate(['/management/dashboard']);
-    }
+    else if (this.isPropertyOwner || this.userContext?.partnerRegistrationStatus === 'APPROVED') this.router.navigate(['/management/dashboard']);
     else if (this.userContext?.partnerRegistrationStatus === 'PENDING') this.router.navigate(['/partner/registration-status']);
     else this.router.navigate(['/partner/register']);
   }
@@ -155,37 +109,9 @@ export class ClientLayout implements OnInit, OnDestroy {
   }
 
   @HostListener('document:keydown.escape')
-  onEscape(): void {
-    const accountWasOpen = this.accountMenuOpen;
-    const mobileWasOpen = this.isMobileMenuOpen;
-    this.accountMenuOpen = false;
-    this.isMobileMenuOpen = false;
-    if (accountWasOpen) queueMicrotask(() => this.accountTrigger?.nativeElement.focus());
-    else if (mobileWasOpen) queueMicrotask(() => this.mobileTrigger?.nativeElement.focus());
-  }
+  onEscape(): void { this.accountMenuOpen = false; this.isMobileMenuOpen = false; }
 
-  ngOnDestroy(): void {
-    this.customerNotifications.disconnect();
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
-  private loadCustomerNotifications(): void {
-    this.customerNotifications.connect();
-    this.refreshUnreadCount();
-  }
-
-  private refreshUnreadCount(): void {
-    this.customerNotifications.getUnreadCount()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: result => {
-          this.unreadNotificationCount = result.unreadCount;
-          this.changeDetector.detectChanges();
-        },
-        error: () => undefined,
-      });
-  }
+  ngOnDestroy(): void { this.destroy$.next(); this.destroy$.complete(); }
 
   private loadUserContext(): void {
     this.contextLoading = true;

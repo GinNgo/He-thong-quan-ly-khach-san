@@ -19,6 +19,8 @@ import com.hotel.propertycommerce.invoice.PropertyInvoice;
 import com.hotel.repositories.HotelServiceRepository;
 import com.hotel.repositories.HousekeepingTaskRepository;
 import com.hotel.repositories.PaymentRepository;
+import com.hotel.repositories.PaymentSessionRepository;
+import com.hotel.repositories.RefundRequestRepository;
 import com.hotel.repositories.ReservationDetailRepository;
 import com.hotel.repositories.ReservationRepository;
 import com.hotel.repositories.ReservationRoomRepository;
@@ -62,13 +64,15 @@ class ReservationCheckoutTransactionTest {
     @Mock private ReservationServiceItemRepository reservationServiceItemRepository;
     @Mock private HotelServiceRepository hotelServiceRepository;
     @Mock private PaymentRepository paymentRepository;
+    @Mock private PaymentSessionRepository paymentSessionRepository;
+    @Mock private RefundRequestRepository refundRequestRepository;
+    @Mock private RefundService refundService;
     @Mock private HousekeepingTaskRepository housekeepingTaskRepository;
     @Mock private PropertyAccessService propertyAccessService;
     @Mock private ReservationHoldService reservationHoldService;
     @Mock private PropertyPaymentConfigurationRepository propertyPaymentConfigurationRepository;
     @Mock private InvoiceFinalizationService invoiceFinalizationService;
     @Mock private CheckoutOperationsService checkoutOperationsService;
-    @Mock private OperationalAuditService operationalAuditService;
 
     @InjectMocks private ReservationService reservationService;
 

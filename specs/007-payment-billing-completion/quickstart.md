@@ -148,6 +148,17 @@ Completion requires:
 
 - No P0/P1 known issue.
 - No mandatory skipped test.
+
+## VNPay sandbox demo run (2026-08-08)
+
+The local environment contains the VNPay sandbox gate and the four required configuration keys (`PAYMENT_SANDBOX_ENABLED`, `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_URL`, and `VNPAY_RETURN_URL`) without recording their values in this artifact. The focused automated verification completed successfully:
+
+```powershell
+Set-Location backend
+.\mvnw.cmd -q '-Dtest=VnpayPaymentGatewayTest,PaymentProviderAdaptersTest,PaymentControllerIntegrationTest' test
+```
+
+The checks cover URL signing, VNPay callback normalization, browser-return display-only behavior, IPN acknowledgement, merchant/signature validation and server-authoritative payment state. The logged-in VNPay SIT page was inspected and currently shows Terminal Code `Z2PFKFYP` with IPN URL `#`; no external configuration was submitted. Before a real browser payment journey, set the SIT IPN URL to the deployed HTTPS endpoint `/api/payments/vnpay-ipn`, then create a real pending booking/payment session in LuxeStay. Production remains fail-closed (`PAYMENT_PRODUCTION_ENABLED=false`, `PAYMENT_PRODUCTION_APPROVED=false`).
 - No remaining in-scope `PARTIAL`, `PLACEHOLDER`, `BROKEN` or `MISSING` inventory item.
 - Reconciliation exact to one VND.
 - No cross-property data access or mutation.

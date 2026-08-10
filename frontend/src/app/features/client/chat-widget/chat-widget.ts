@@ -14,34 +14,49 @@ import {
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FocusTrapModule } from 'primeng/focustrap';
+import { timeout } from 'rxjs';
 
 import {
   ChatConnectionState,
-  ChatConversation,
   ChatMessage,
-  ChatService,
-  SupportAttachment
+  ChatService
 } from '../../../core/services/chat.service';
 import { AuthService } from '../../../core/services/auth';
-<<<<<<< HEAD
-import { FocusOnErrorDirective } from '../../../shared/directives/focus-management.directive';
-=======
 import { PublicI18nService } from '../../../core/i18n/public-i18n.service';
->>>>>>> codex/ui-functional-audit-polish
+import { AiService, ChatHistoryMessage } from '../../../core/services/ai';
+import { ClientApiService, Hotel } from '../../../core/services/client-api.service';
+import { ImageFallbackService } from '../../../core/services/image-fallback.service';
 
 const SEND_ACK_TIMEOUT_MS = 10_000;
+const AI_TIMEOUT_MS = 30_000;
+
+interface AiWidgetMessage {
+  sender: 'user' | 'ai';
+  text: string;
+  time: Date;
+  searchParams?: Record<string, string | number>;
+  suggestedProperties?: Hotel[];
+}
+
+const DESTINATIONS = [
+  'Hà Nội', 'Hồ Chí Minh', 'TP.HCM', 'Sài Gòn', 'Đà Nẵng', 'Đà Lạt',
+  'Nha Trang', 'Phú Quốc', 'Vũng Tàu', 'Hội An', 'Huế', 'Hạ Long',
+  'Cần Thơ', 'Quy Nhơn', 'Sapa', 'Sa Pa', 'Mũi Né', 'Phan Thiết'
+];
 
 @Component({
   selector: 'app-chat-widget',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, FocusTrapModule, FocusOnErrorDirective],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './chat-widget.html',
   styleUrl: './chat-widget.css'
 })
 export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked {
   private readonly chatService = inject(ChatService);
   private readonly authService = inject(AuthService);
+  private readonly aiService = inject(AiService);
+  private readonly clientApi = inject(ClientApiService);
+  private readonly imageFallback = inject(ImageFallbackService);
   private readonly destroyRef = inject(DestroyRef);
   readonly i18n = inject(PublicI18nService);
 
@@ -53,51 +68,35 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
   readonly isLoggedIn = signal(false);
   readonly currentUserId = signal<number | null>(null);
   readonly messages = signal<ChatMessage[]>([]);
-  readonly conversations = signal<ChatConversation[]>([]);
-  readonly selectedConversationId = signal<number | null>(null);
-  readonly conversationState = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
-  readonly hasOlderMessages = signal(false);
-  readonly isLoadingOlder = signal(false);
-  readonly isCreatingConversation = signal(false);
   readonly historyState = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
   readonly historyError = signal('');
   readonly connectionState = signal<ChatConnectionState>('idle');
   readonly connectionError = signal('');
   readonly isSending = signal(false);
   readonly sendError = signal('');
-  readonly attachments = signal<SupportAttachment[]>([]);
-  readonly isUploadingAttachment = signal(false);
-  readonly attachmentError = signal('');
+  readonly mode = signal<'ai' | 'human'>('ai');
+  readonly aiMessages = signal<AiWidgetMessage[]>([]);
+  readonly aiTyping = signal(false);
+  readonly aiError = signal('');
 
   newMessage = '';
-  newSubject = 'Ho tro chung';
-  private messagePage = 0;
   private renderedMessageCount = 0;
-  private skipAutoScrollOnce = false;
   private sendTimeoutId?: ReturnType<typeof setTimeout>;
-  private pendingClientMessageId?: string;
-  private pendingContent?: string;
 
   ngOnInit(): void {
-    const userId = this.authService.getCurrentUserId();
-    const loggedIn = this.authService.isLoggedIn() && userId !== null;
-    this.currentUserId.set(userId);
-    this.isLoggedIn.set(loggedIn);
-
-    if (!loggedIn) return;
-
     this.chatService.message$
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(message => this.handleIncomingMessage(message));
+      .subscribe((message) => this.handleIncomingMessage(message));
     this.chatService.connectionState$
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(state => this.connectionState.set(state));
+      .subscribe((state) => this.connectionState.set(state));
     this.chatService.connectionError$
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(error => this.connectionError.set(error));
+      .subscribe((error) => this.connectionError.set(error));
 
-    this.chatService.connect('customer');
-    this.loadConversations();
+    this.authService.currentUser$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((state) => this.handleAuthChange(state.isAuthenticated));
   }
 
   ngOnDestroy(): void {
@@ -106,11 +105,8 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
   }
 
   ngAfterViewChecked(): void {
-    if (this.messages().length === this.renderedMessageCount) return;
-    this.renderedMessageCount = this.messages().length;
-    if (this.skipAutoScrollOnce) {
-      this.skipAutoScrollOnce = false;
-    } else {
+    if (this.messages().length !== this.renderedMessageCount) {
+      this.renderedMessageCount = this.messages().length;
       this.scrollToBottom();
     }
   }
@@ -121,115 +117,21 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
     container.scrollTop = container.scrollHeight;
   }
 
-  loadConversations(): void {
-    if (!this.isLoggedIn() || this.conversationState() === 'loading') return;
-    this.conversationState.set('loading');
-    this.historyError.set('');
-    this.chatService.getMyConversations().subscribe({
-      next: page => {
-        this.conversations.set(page.content);
-        this.conversationState.set('ready');
-        const selected = page.content.find(item => item.conversationId === this.selectedConversationId());
-        if (selected) return;
-        if (page.content.length) {
-          this.selectConversation(page.content[0]);
-        } else {
-          this.selectedConversationId.set(null);
-          this.messages.set([]);
-          this.historyState.set('ready');
-        }
-      },
-      error: () => {
-        this.conversationState.set('error');
-        this.historyState.set('error');
-        this.historyError.set('Khong the tai danh sach hoi thoai ho tro.');
-      }
-    });
-  }
-
-  createConversation(): void {
-    if (this.isCreatingConversation()) return;
-    const subject = this.newSubject.trim() || 'Ho tro chung';
-    this.isCreatingConversation.set(true);
-    this.historyError.set('');
-    this.chatService.createMyConversation(subject).subscribe({
-      next: conversation => {
-        this.conversations.update(items => [conversation, ...items]);
-        this.newSubject = 'Ho tro chung';
-        this.isCreatingConversation.set(false);
-        this.selectConversation(conversation);
-      },
-      error: () => {
-        this.isCreatingConversation.set(false);
-        this.historyError.set('Khong the tao cuoc tro chuyen moi.');
-      }
-    });
-  }
-
-  selectConversationById(conversationId: number | null): void {
-    const conversation = this.conversations().find(item => item.conversationId === Number(conversationId));
-    if (conversation) this.selectConversation(conversation);
-  }
-
-  selectConversation(conversation: ChatConversation): void {
-    this.selectedConversationId.set(conversation.conversationId);
-    this.messagePage = 0;
-    this.messages.set([]);
-    this.hasOlderMessages.set(false);
+  loadHistory(): void {
+    if (!this.isLoggedIn() || this.historyState() === 'loading') return;
     this.historyState.set('loading');
     this.historyError.set('');
-    this.chatService.getMyConversationMessages(conversation.conversationId, 0, 50).subscribe({
-      next: page => {
-        this.messages.set(page.content);
-        this.acknowledgeVisibleMessages(page.content);
-        this.hasOlderMessages.set(!page.last);
+
+    this.chatService.getMyHistory().subscribe({
+      next: (messages) => {
+        this.messages.set(messages);
         this.historyState.set('ready');
       },
       error: () => {
         this.historyState.set('error');
-<<<<<<< HEAD
-        this.historyError.set('Khong the tai lich su cuoc tro chuyen.');
-=======
         this.historyError.set(this.i18n.text('PUBLIC.SUPPORT.LOADING_HISTORY'));
->>>>>>> codex/ui-functional-audit-polish
       }
     });
-    this.loadAttachments(conversation.conversationId);
-  }
-
-  loadOlderMessages(): void {
-    const conversationId = this.selectedConversationId();
-    if (!conversationId || !this.hasOlderMessages() || this.isLoadingOlder()) return;
-    const nextPage = this.messagePage + 1;
-    const container = this.scrollContainer?.nativeElement;
-    const previousHeight = container?.scrollHeight ?? 0;
-    this.isLoadingOlder.set(true);
-    this.chatService.getMyConversationMessages(conversationId, nextPage, 50).subscribe({
-      next: page => {
-        this.messagePage = nextPage;
-        this.skipAutoScrollOnce = true;
-        this.messages.update(items => [...page.content, ...items]);
-        this.hasOlderMessages.set(!page.last);
-        this.isLoadingOlder.set(false);
-        queueMicrotask(() => {
-          if (container) container.scrollTop += container.scrollHeight - previousHeight;
-        });
-      },
-      error: () => {
-        this.isLoadingOlder.set(false);
-        this.historyError.set('Khong the tai them tin nhan cu.');
-      }
-    });
-  }
-
-  retryHistory(): void {
-    const conversation = this.conversations()
-      .find(item => item.conversationId === this.selectedConversationId());
-    if (conversation) {
-      this.selectConversation(conversation);
-    } else {
-      this.loadConversations();
-    }
   }
 
   toggleChat(): void {
@@ -237,16 +139,17 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
       this.closeChat();
       return;
     }
+
     this.isOpen.set(true);
-    this.acknowledgeVisibleMessages(this.messages());
-    setTimeout(() => this.messageInput?.nativeElement.focus());
+    this.ensureAiGreeting();
+    queueMicrotask(() => this.messageInput?.nativeElement.focus());
   }
 
   @HostListener('document:keydown.escape')
   closeChat(): void {
     if (!this.isOpen()) return;
     this.isOpen.set(false);
-    setTimeout(() => this.triggerButton?.nativeElement.focus());
+    queueMicrotask(() => this.triggerButton?.nativeElement.focus());
   }
 
   retryConnection(): void {
@@ -256,106 +159,42 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
 
   sendMessage(): void {
     const content = this.newMessage.trim();
-    const conversationId = this.selectedConversationId();
     if (!content || this.isSending()) return;
-<<<<<<< HEAD
-    if (!conversationId) {
-      this.sendError.set('Hay tao hoac chon mot cuoc tro chuyen truoc khi gui.');
-=======
+
+    if (this.mode() === 'ai') {
+      this.sendAiMessage(content);
+      return;
+    }
 
     if (!this.chatService.isConnected()) {
       this.sendError.set(this.i18n.text('PUBLIC.SUPPORT.OFFLINE'));
->>>>>>> codex/ui-functional-audit-polish
       return;
     }
+
     this.sendError.set('');
     this.isSending.set(true);
-<<<<<<< HEAD
-=======
     if (!this.chatService.sendCustomerMessage(content)) {
       this.isSending.set(false);
       this.sendError.set(this.i18n.text('PUBLIC.SUPPORT.SEND_ERROR'));
       return;
     }
 
->>>>>>> codex/ui-functional-audit-polish
     this.newMessage = '';
-    const clientMessageId = this.pendingContent === content && this.pendingClientMessageId
-      ? this.pendingClientMessageId
-      : this.chatService.createClientMessageId();
-    this.pendingClientMessageId = clientMessageId;
-    this.pendingContent = content;
     this.clearSendTimeout();
     this.sendTimeoutId = setTimeout(() => {
       if (!this.isSending()) return;
       this.isSending.set(false);
-<<<<<<< HEAD
-      if (!this.newMessage) this.newMessage = content;
-      this.sendError.set('Chua nhan duoc xac nhan gui. Ban co the thu lai.');
-=======
       this.sendError.set(this.i18n.text('PUBLIC.SUPPORT.ACK_TIMEOUT'));
->>>>>>> codex/ui-functional-audit-polish
     }, SEND_ACK_TIMEOUT_MS);
-    this.chatService.sendMyConversationMessage(conversationId, content, clientMessageId).subscribe({
-      next: message => this.handleIncomingMessage(message),
-      error: () => {
-        this.clearSendTimeout();
-        this.isSending.set(false);
-        this.newMessage = content;
-        this.sendError.set('Khong the gui tin nhan. Hay thu lai.');
-      }
-    });
-  }
-
-  uploadAttachment(event: Event): void {
-    const conversationId = this.selectedConversationId();
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (!conversationId || !file || this.isUploadingAttachment()) return;
-    this.isUploadingAttachment.set(true);
-    this.attachmentError.set('');
-    this.chatService.uploadMyAttachment(conversationId, file).subscribe({
-      next: attachment => {
-        this.attachments.update(items => [...items, attachment]);
-        this.isUploadingAttachment.set(false);
-      },
-      error: () => {
-        this.isUploadingAttachment.set(false);
-        this.attachmentError.set('Khong the tai tep. Chi dung PDF, PNG, JPEG hoac TXT toi da 5 MB.');
-      }
-    });
-  }
-
-  downloadAttachment(attachment: SupportAttachment): void {
-    this.chatService.downloadAttachment(attachment.id).subscribe({
-      next: blob => {
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = url;
-        anchor.download = attachment.filename;
-        anchor.click();
-        URL.revokeObjectURL(url);
-      },
-      error: () => this.attachmentError.set('Khong the tai tep dinh kem.')
-    });
   }
 
   connectionLabel(): string {
     switch (this.connectionState()) {
-<<<<<<< HEAD
-      case 'connected': return 'Da ket noi';
-      case 'connecting': return 'Dang ket noi...';
-      case 'reconnecting': return 'Dang ket noi lai...';
-      case 'error': return 'Mat ket noi';
-      default: return 'Chua ket noi';
-=======
       case 'connected': return this.i18n.text('PUBLIC.SUPPORT.CONNECTED');
       case 'connecting': return this.i18n.text('PUBLIC.SUPPORT.CONNECTING');
       case 'reconnecting': return this.i18n.text('PUBLIC.SUPPORT.RECONNECTING');
       case 'error': return this.i18n.text('PUBLIC.SUPPORT.DISCONNECTED');
       default: return this.i18n.text('PUBLIC.SUPPORT.NOT_CONNECTED');
->>>>>>> codex/ui-functional-audit-polish
     }
   }
 
@@ -363,93 +202,257 @@ export class ChatWidgetComponent implements OnInit, OnDestroy, AfterViewChecked 
     return message.senderId === this.currentUserId();
   }
 
-  messageStateLabel(message: ChatMessage): string {
-    if (message.deliveryStatus === 'READ') return 'Da doc';
-    if (message.deliveryStatus === 'DELIVERED') return 'Da nhan';
-    return 'Da gui';
-  }
-
-  isSelectedConversationClosed(): boolean {
-    return this.conversations().some(item =>
-      item.conversationId === this.selectedConversationId() && item.status === 'CLOSED');
-  }
-
   private handleIncomingMessage(message: ChatMessage | null): void {
     if (!message) return;
     const userId = this.currentUserId();
     if (message.senderId !== userId && message.receiverId !== userId) return;
-    if (message.conversationId !== this.selectedConversationId()) {
-      if (message.senderId !== userId) this.acknowledgeIncoming(message, 'DELIVERED');
-      this.loadConversations();
-      return;
-    }
 
-    this.mergeMessage(message);
-    this.conversations.update(items => items.map(item => item.conversationId === message.conversationId
-      ? { ...item, lastMessage: message.content, lastMessageAt: message.timestamp }
-      : item));
+    this.messages.update((messages) => {
+      if (message.id && messages.some((item) => item.id === message.id)) return messages;
+      return [...messages, message];
+    });
 
     if (message.senderId === userId) {
       this.isSending.set(false);
       this.clearSendTimeout();
-      if (!message.clientMessageId || message.clientMessageId === this.pendingClientMessageId) {
-        if (this.newMessage === this.pendingContent) this.newMessage = '';
-        this.pendingClientMessageId = undefined;
-        this.pendingContent = undefined;
-      }
-    } else {
-      this.acknowledgeIncoming(message, 'READ');
     }
   }
 
-  private acknowledgeVisibleMessages(messages: ChatMessage[]): void {
-    const userId = this.currentUserId();
-    const state = this.isOpen() ? 'READ' : 'DELIVERED';
-    messages
-      .filter(message => message.senderId !== userId && message.deliveryStatus !== 'READ')
-      .forEach(message => this.acknowledgeIncoming(message, state));
+  switchMode(mode: 'ai' | 'human'): void {
+    this.mode.set(mode);
+    this.sendError.set('');
+    this.aiError.set('');
+    if (mode === 'ai') this.ensureAiGreeting();
+    queueMicrotask(() => this.messageInput?.nativeElement.focus());
   }
 
-  private acknowledgeIncoming(message: ChatMessage, state: 'DELIVERED' | 'READ'): void {
-    if (!message.id || message.deliveryStatus === 'READ'
-        || (state === 'DELIVERED' && message.deliveryStatus === 'DELIVERED')) return;
-    this.chatService.acknowledgeMessage(message.id, state).subscribe({
-      next: updated => {
-        if (message.conversationId === this.selectedConversationId()
-            && updated.conversationId === message.conversationId) {
-          this.mergeMessage(updated);
+  useSuggestion(message: string): void {
+    if (this.aiTyping()) return;
+    this.newMessage = message;
+    this.sendMessage();
+  }
+
+  formatAiMessage(text: string): string {
+    const escaped = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    const inline = (value: string) => value.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+    return escaped.split(/\r?\n/).map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return '<span class="ai-copy-spacer"></span>';
+
+      const bullet = trimmed.match(/^[-*]\s+(.+)$/);
+      if (bullet) return `<span class="ai-copy-item"><span aria-hidden="true">•</span>${inline(bullet[1])}</span>`;
+
+      const numbered = trimmed.match(/^(\d+[.)])\s+(.+)$/);
+      if (numbered) return `<span class="ai-copy-item"><strong>${numbered[1]}</strong>${inline(numbered[2])}</span>`;
+
+      return `<span class="ai-copy-line">${inline(trimmed)}</span>`;
+    }).join('');
+  }
+
+  propertyImage(property: Hotel): string {
+    return property.thumbnailUrl || property.mainImageUrl || property.mainImage
+      || this.imageFallback.property(property.propertyType);
+  }
+
+  propertyPrice(property: Hotel): number | null {
+    return property.pricing?.discountedNightlyPrice
+      ?? property.pricing?.discountedPrice
+      ?? property.pricing?.nightlyPrice
+      ?? property.startingPrice
+      ?? null;
+  }
+
+  handlePropertyImageError(event: Event, property: Hotel): void {
+    this.imageFallback.replace(event, this.imageFallback.property(property.propertyType));
+  }
+
+  private sendAiMessage(content: string): void {
+    if (this.aiTyping()) return;
+    const existing = this.aiMessages();
+    const firstUserIndex = existing.findIndex((message) => message.sender === 'user');
+    const history = (firstUserIndex >= 0 ? existing.slice(firstUserIndex) : [])
+      .slice(-10)
+      .map<ChatHistoryMessage>((message) => ({ role: message.sender, text: message.text }));
+
+    this.newMessage = '';
+    this.aiError.set('');
+    this.aiTyping.set(true);
+    this.aiMessages.update((messages) => [...messages, { sender: 'user', text: content, time: new Date() }]);
+
+    let receivedChunk = false;
+    const searchParams = this.buildSearchParams([...history, { role: 'user', text: content }]);
+    let suggestedProperties: Hotel[] = [];
+    if (searchParams) this.loadSuggestedProperties(searchParams, (items) => suggestedProperties = items);
+    this.aiService.customerChatStream(content, history, this.authService.getAccessToken()).pipe(
+      timeout(AI_TIMEOUT_MS),
+    ).subscribe({
+      next: (chunk) => {
+        if (!receivedChunk) {
+          receivedChunk = true;
+          this.aiMessages.update((messages) => [
+            ...messages,
+            { sender: 'ai', text: chunk, time: new Date(), searchParams, suggestedProperties }
+          ]);
+          return;
+        }
+        this.aiMessages.update((messages) => messages.map((message, index) =>
+          index === messages.length - 1 ? { ...message, text: message.text + chunk } : message
+        ));
+      },
+      complete: () => {
+        if (receivedChunk) {
+          this.aiTyping.set(false);
+        } else {
+          this.sendAiFallback(content, history, searchParams);
         }
       },
-      error: () => undefined,
-    });
-  }
-
-  private mergeMessage(message: ChatMessage): void {
-    this.messages.update(messages => {
-      const index = message.id ? messages.findIndex(item => item.id === message.id) : -1;
-      if (index < 0) return [...messages, message];
-      return messages.map((item, itemIndex) => itemIndex === index ? { ...item, ...message } : item);
-    });
-  }
-
-  private clearSendTimeout(): void {
-    if (this.sendTimeoutId === undefined) return;
-    clearTimeout(this.sendTimeoutId);
-    this.sendTimeoutId = undefined;
-  }
-
-  private loadAttachments(conversationId: number): void {
-    this.attachments.set([]);
-    this.attachmentError.set('');
-    this.chatService.getMyAttachments(conversationId).subscribe({
-      next: attachments => {
-        if (this.selectedConversationId() === conversationId) this.attachments.set(attachments);
-      },
       error: () => {
-        if (this.selectedConversationId() === conversationId) {
-          this.attachmentError.set('Khong the tai tep dinh kem.');
+        if (receivedChunk) {
+          this.aiTyping.set(false);
+          this.aiError.set('Kết nối AI bị gián đoạn. Bạn có thể gửi lại câu hỏi để tiếp tục.');
+        } else {
+          this.sendAiFallback(content, history, searchParams);
         }
       }
     });
+  }
+
+  private sendAiFallback(
+    content: string,
+    history: ChatHistoryMessage[],
+    searchParams?: Record<string, string | number>
+  ): void {
+    this.aiService.customerChat(content, history).pipe(timeout(AI_TIMEOUT_MS)).subscribe({
+      next: (response) => {
+        const reply = response.reply?.trim();
+        if (reply) {
+          this.aiMessages.update((messages) => [
+            ...messages,
+            { sender: 'ai', text: reply, time: new Date(), searchParams }
+          ]);
+        } else {
+          this.aiError.set('AI chưa thể trả lời lúc này. Bạn có thể chuyển sang gặp nhân viên.');
+        }
+        this.aiTyping.set(false);
+      },
+      error: () => {
+        this.aiTyping.set(false);
+        this.aiError.set('AI đang bận hoặc chưa được cấu hình. Bạn có thể chuyển sang gặp nhân viên.');
+      }
+    });
+  }
+
+  private loadSuggestedProperties(
+    searchParams: Record<string, string | number>,
+    capture: (items: Hotel[]) => void
+  ): void {
+    this.clientApi.searchHotels({ ...searchParams, pageNumber: 1, pageSize: 3 }).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (page) => {
+        const items = page.content.slice(0, 3);
+        capture(items);
+        this.aiMessages.update((messages) => messages.map((message, index) =>
+          index === messages.length - 1 && message.sender === 'ai' && message.searchParams === searchParams
+            ? { ...message, suggestedProperties: items }
+            : message
+        ));
+      },
+      error: () => capture([])
+    });
+  }
+
+  private ensureAiGreeting(): void {
+    if (this.aiMessages().length > 0) return;
+    this.aiMessages.set([{
+      sender: 'ai',
+      text: 'Xin chào! Tôi có thể tư vấn điểm đến, khu vực lưu trú, loại phòng và giúp bạn chuẩn bị thông tin trước khi gặp nhân viên.',
+      time: new Date(),
+    }]);
+  }
+
+  private buildSearchParams(history: ChatHistoryMessage[]): Record<string, string | number> | undefined {
+    const text = history
+      .filter((message) => message.role === 'user')
+      .map((message) => message.text)
+      .join(' ');
+    const normalized = this.normalizeVietnamese(text);
+    const params: Record<string, string | number> = {
+      adultCount: 1,
+      childCount: 0,
+      roomCount: 1,
+      sortBy: 'POPULAR'
+    };
+
+    const guestMatch = normalized.match(/(\d{1,2})\s*(?:nguoi|khach|adult)/i);
+    if (guestMatch) params['adultCount'] = Number(guestMatch[1]);
+
+    const roomMatch = normalized.match(/(\d{1,2})\s*(?:phong|room)/i);
+    if (roomMatch) params['roomCount'] = Number(roomMatch[1]);
+
+    const millionMatch = normalized.match(/(\d+(?:[.,]\d+)?)\s*(?:trieu|tr)/i);
+    const thousandMatch = normalized.match(/(\d+(?:[.,]\d+)?)\s*(?:nghin|ngan|k)\b/i);
+    const plainBudgetMatch = normalized.match(/(?:ngan sach|gia|toi da|max)\D{0,12}(\d{6,9})\b/i);
+    if (millionMatch) {
+      params['maxPrice'] = Math.round(Number(millionMatch[1].replace(',', '.')) * 1_000_000);
+    } else if (thousandMatch) {
+      params['maxPrice'] = Math.round(Number(thousandMatch[1].replace(',', '.')) * 1_000);
+    } else if (plainBudgetMatch) {
+      params['maxPrice'] = Number(plainBudgetMatch[1]);
+    }
+
+    const destination = DESTINATIONS.find((item) => normalized.includes(this.normalizeVietnamese(item)));
+    if (destination) {
+      params['keyword'] = destination;
+      params['displayLocation'] = destination;
+    }
+
+    const hasUsefulCriteria = Boolean(destination || guestMatch || roomMatch || millionMatch || thousandMatch || plainBudgetMatch);
+    return hasUsefulCriteria ? params : undefined;
+  }
+
+  private normalizeVietnamese(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+      .toLowerCase();
+  }
+
+  private handleAuthChange(isAuthenticated: boolean): void {
+    const userId = isAuthenticated ? this.authService.getCurrentUserId() : null;
+    const loggedIn = isAuthenticated && userId !== null;
+
+    if (loggedIn === this.isLoggedIn() && userId === this.currentUserId()) return;
+
+    this.currentUserId.set(userId);
+    this.isLoggedIn.set(loggedIn);
+    this.messages.set([]);
+    this.historyState.set('idle');
+    this.historyError.set('');
+    this.connectionError.set('');
+    this.sendError.set('');
+    this.isSending.set(false);
+    this.clearSendTimeout();
+
+    if (!loggedIn) {
+      this.chatService.disconnect();
+      return;
+    }
+
+    this.chatService.connect('customer');
+    this.loadHistory();
+  }
+
+  private clearSendTimeout(): void {
+    if (this.sendTimeoutId !== undefined) {
+      clearTimeout(this.sendTimeoutId);
+      this.sendTimeoutId = undefined;
+    }
   }
 }

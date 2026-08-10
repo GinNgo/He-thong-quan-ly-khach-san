@@ -170,20 +170,14 @@ public class NationwideDemoDataInitializer {
 
     private void seedPlan(String code, String nameVi, String nameEn, String billingType, BigDecimal price,
                           boolean lifetime, Map<String, Integer> limits) {
-        if (subscriptionPlanRepository.findByCode(code).isPresent()) return;
-        SubscriptionPlan plan = new SubscriptionPlan();
+        SubscriptionPlan plan = subscriptionPlanRepository.findByCode(code).orElseGet(SubscriptionPlan::new);
         plan.setCode(code);
-        plan.setFamilyCode(code);
-        plan.setVersionNumber(1);
         plan.setNameVi(nameVi);
         plan.setNameEn(nameEn);
         plan.setBillingType(billingType);
         plan.setPrice(price);
         plan.setIsLifetime(lifetime);
-        plan.setDurationValue(lifetime ? null : 1);
-        plan.setDurationUnit(lifetime ? "LIFETIME" : "MONTHLY".equals(billingType) ? "MONTH" : "YEAR");
         plan.setStatus("ACTIVE");
-        plan.setActivatedAt(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC));
         plan = subscriptionPlanRepository.save(plan);
         for (Map.Entry<String, Integer> entry : limits.entrySet()) {
             PlanFeature feature = planFeatureRepository.findByPlanIdAndFeatureCode(plan.getId(), entry.getKey()).orElseGet(PlanFeature::new);
@@ -233,9 +227,8 @@ public class NationwideDemoDataInitializer {
         hotel.setPhone(String.format("000-%03d-%04d", sequence % 1000, sequence));
         hotel.setEmail(String.format("property.%04d@example.com", sequence));
         hotel.setWebsite("https://example.com/demo/property-" + sequence);
-        boolean unrated = sequence % 7 == 0;
-        hotel.setAverageRating(unrated ? null : 7.5 + (sequence % 14) / 10.0);
-        hotel.setReviewCount(unrated ? 0 : 10 + sequence % 200);
+        hotel.setAverageRating(null);
+        hotel.setReviewCount(0);
         hotel.setExternalProvider(null);
         hotel.setExternalId(null);
         hotel.setIsDemo(true);

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   PlatformBillingService,
@@ -7,6 +7,7 @@ import {
   PlatformOrderDetails,
   PlatformPaymentAttempt,
 } from '../../../core/services/platform-billing.service';
+import { finalize, timeout } from 'rxjs/operators';
 
 @Component({
   selector: 'app-platform-payment-panel',
@@ -26,7 +27,7 @@ import {
 
       <p class="panel-copy">Máy chủ tạo và xác minh lần thanh toán. Giao diện không thể tự kích hoạt gói.</p>
       <div class="provider-form" *ngIf="!attempt">
-        <label>Nhà cung cấp<select [(ngModel)]="provider"><option value="SIMULATOR">Mô phỏng nội bộ</option><option value="MOMO" disabled>MoMo sandbox - chưa nối trang thanh toán</option><option value="VNPAY" disabled>VNPay sandbox - chưa nối trang thanh toán</option><option value="ZALOPAY" disabled>ZaloPay sandbox - chưa nối trang thanh toán</option></select></label>
+        <label>Nhà cung cấp<select [(ngModel)]="provider"><option value="SIMULATOR">Mô phỏng nội bộ</option><option value="MOMO">MoMo sandbox</option><option value="VNPAY">VNPay sandbox</option><option value="ZALOPAY">ZaloPay sandbox</option></select></label>
         <label>Phương thức<select [(ngModel)]="method"><option [value]="provider">{{ provider }}</option></select></label>
         <button type="button" class="primary" [disabled]="busy" (click)="createAttempt()">{{ busy ? 'Đang tạo...' : 'Tạo lần thanh toán' }}</button>
       </div>
@@ -62,6 +63,7 @@ import {
 })
 export class PlatformPaymentPanelComponent {
   private readonly billing = inject(PlatformBillingService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   @Input({ required: true }) order: PlatformOrder | null = null;
   @Output() orderChanged = new EventEmitter<PlatformOrderDetails>();
@@ -82,14 +84,19 @@ export class PlatformPaymentPanelComponent {
       this.order.publicId,
       { provider: this.provider, method: this.method },
       this.idempotencyKey('platform-attempt'),
+    ).pipe(
+      timeout(15000),
+      finalize(() => {
+        this.busy = false;
+        this.cdr.markForCheck();
+      }),
     ).subscribe({
       next: (attempt) => {
         this.attempt = attempt;
-        this.busy = false;
+        if (attempt.redirectUrl) window.location.assign(attempt.redirectUrl);
       },
       error: (err) => {
         this.error = err?.error?.message || 'Máy chủ không thể tạo lần thanh toán gói.';
-        this.busy = false;
       },
     });
   }

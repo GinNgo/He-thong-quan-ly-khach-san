@@ -12,24 +12,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 class HousekeepingCompletionPermissionTest {
 
     @Test
-    void canonicalCompletionRequiresDedicatedApproveAction() throws Exception {
+    void canonicalCompletionRequiresDedicatedTaskExecuteAction() throws Exception {
         Permission permission = HousekeepingController.class
                 .getMethod("complete", Long.class, HousekeepingCommandRequest.class)
                 .getAnnotation(Permission.class);
 
         assertThat(permission).isNotNull();
         assertThat(permission.function()).isEqualTo(FunctionCode.HOUSEKEEPING);
-        assertThat(permission.action()).isEqualTo(ActionCode.APPROVE);
+        assertThat(permission.action()).isEqualTo(ActionCode.TASK_EXECUTE);
     }
 
     @Test
-    void legacyCompletionCannotBypassDedicatedApproveAction() throws Exception {
+    void legacyCompletionCannotBypassDedicatedTaskExecuteAction() throws Exception {
         Permission permission = ManagementPortalController.class
                 .getMethod("completeHousekeeping", Long.class, HousekeepingCommandRequest.class)
                 .getAnnotation(Permission.class);
 
         assertThat(permission).isNotNull();
         assertThat(permission.function()).isEqualTo(FunctionCode.HOUSEKEEPING);
-        assertThat(permission.action()).isEqualTo(ActionCode.APPROVE);
+        assertThat(permission.action()).isEqualTo(ActionCode.TASK_EXECUTE);
     }
 }

@@ -131,9 +131,9 @@ class SubscriptionUpgradeServiceTest {
         when(entitlementRepository.findByTargetHotelIdForUpdate(20L))
                 .thenReturn(Optional.of(fixture.entitlement()));
         when(planRepository.findByIdForSnapshot(31L)).thenReturn(Optional.of(fixture.targetPlan()));
-        when(usageRepository.currentUsage("MAX_PROPERTIES", 10L, 20L)).thenReturn(1L);
-        when(usageRepository.currentUsage("MAX_ROOM_TYPES", 10L, 20L)).thenReturn(4L);
-        when(usageRepository.currentUsage("MAX_ROOMS", 10L, 20L)).thenReturn(101L);
+        when(usageRepository.countActiveOwnedProperties(10L)).thenReturn(1L);
+        when(usageRepository.countRoomTypes(20L)).thenReturn(4L);
+        when(usageRepository.countRooms(20L)).thenReturn(101L);
 
         FinancialException exception = assertThrows(FinancialException.class, () -> service.createUpgradeOrder(
                 new SubscriptionUpgradeService.UpgradeOrderCommand(20L, 31L, "upgrade-key")));
@@ -223,11 +223,13 @@ class SubscriptionUpgradeServiceTest {
     }
 
     private void arrangeUsage(long properties, long roomTypes, long rooms, long images, long staff) {
-        when(usageRepository.currentUsage("MAX_PROPERTIES", 10L, 20L)).thenReturn(properties);
-        when(usageRepository.currentUsage("MAX_ROOM_TYPES", 10L, 20L)).thenReturn(roomTypes);
-        when(usageRepository.currentUsage("MAX_ROOMS", 10L, 20L)).thenReturn(rooms);
-        when(usageRepository.currentUsage("MAX_IMAGES", 10L, 20L)).thenReturn(images);
-        when(usageRepository.currentUsage("MAX_STAFF", 10L, 20L)).thenReturn(staff);
+        when(usageRepository.countActiveOwnedProperties(10L)).thenReturn(properties);
+        when(usageRepository.countRoomTypes(20L)).thenReturn(roomTypes);
+        when(usageRepository.countRooms(20L)).thenReturn(rooms);
+        when(usageRepository.countPropertyImages(20L)).thenReturn(images / 3);
+        when(usageRepository.countRoomTypeImages(20L)).thenReturn(images / 3);
+        when(usageRepository.countRoomImages(20L)).thenReturn(images - (images / 3) * 2);
+        when(usageRepository.countActiveStaff(20L)).thenReturn(staff);
     }
 
     private Fixture fixture() {

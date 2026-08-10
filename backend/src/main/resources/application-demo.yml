@@ -1,6 +1,0 @@
-app:
-  reservation-amendment:
-    cutoff-minutes: 5
-    quote-ttl-minutes: 2
-    default-arrival-time: 14:00
-    property-zone-id: Asia/Ho_Chi_Minh

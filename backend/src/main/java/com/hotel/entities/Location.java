@@ -74,8 +74,6 @@ public class Location extends AuditableEntity {
     @Column(name = "description_en", columnDefinition = "nvarchar(1000)")
     private String descriptionEn;
 
-<<<<<<< HEAD
-=======
     @Column(name = "source_provider", length = 50)
     private String sourceProvider;
 
@@ -97,7 +95,6 @@ public class Location extends AuditableEntity {
     @Column(name = "manual_override", nullable = false)
     private Boolean manualOverride = false;
 
->>>>>>> codex/ui-functional-audit-polish
     @Column(name = "status")
     private String status = "ACTIVE";
 

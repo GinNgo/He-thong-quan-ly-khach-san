@@ -11,17 +11,6 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface ReservationRoomRepository extends JpaRepository<ReservationRoom, Long> {
-    @Query("""
-            select case when count(assignment) > 0 then true else false end
-            from ReservationRoom assignment
-            join assignment.reservationDetail detail
-            join detail.reservation reservation
-            where assignment.room.id = :roomId
-              and assignment.status = 'ASSIGNED'
-              and reservation.status not in :excludedStatuses
-            """)
-    boolean hasActiveAssignment(@Param("roomId") Long roomId,
-            @Param("excludedStatuses") List<String> excludedStatuses);
     List<ReservationRoom> findByReservationDetailReservationId(Long reservationId);
     List<ReservationRoom> findByReservationDetailIdAndStatus(Long reservationDetailId, String status);
 
@@ -72,8 +61,8 @@ public interface ReservationRoomRepository extends JpaRepository<ReservationRoom
               and assignment.status = 'ASSIGNED'
               and reservation.id <> :reservationId
               and reservation.status not in :excludedStatuses
-              and coalesce(assignment.stayStartDate, reservation.checkInDate) < :checkOut
-              and coalesce(assignment.stayEndDate, reservation.checkOutDate) > :checkIn
+              and reservation.checkInDate < :checkOut
+              and reservation.checkOutDate > :checkIn
             """)
     boolean hasConflictingAssignment(
             @Param("roomId") Long roomId,
@@ -82,21 +71,4 @@ public interface ReservationRoomRepository extends JpaRepository<ReservationRoom
             @Param("checkIn") LocalDate checkIn,
             @Param("checkOut") LocalDate checkOut
     );
-
-    @Query("""
-            select count(distinct assignment.room.id)
-            from ReservationRoom assignment
-            join assignment.room room
-            join room.hotel hotel
-            join assignment.reservationDetail detail
-            join detail.reservation reservation
-            where assignment.status = 'ASSIGNED'
-              and coalesce(assignment.stayStartDate, reservation.checkInDate) <= :stayDate
-              and coalesce(assignment.stayEndDate, reservation.checkOutDate) > :stayDate
-              and reservation.status not in ('CANCELLED','EXPIRED','REJECTED','NO_SHOW')
-              and hotel.approvalStatus = 'APPROVED'
-              and hotel.operationStatus = 'ACTIVE'
-              and hotel.isDemo = false
-            """)
-    long countSystemAssignedOccupiedRoomsOn(@Param("stayDate") LocalDate stayDate);
 }

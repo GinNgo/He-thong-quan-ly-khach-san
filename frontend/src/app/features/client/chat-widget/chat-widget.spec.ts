@@ -1,40 +1,43 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Subject, of, throwError } from 'rxjs';
+import { BehaviorSubject, Subject, of } from 'rxjs';
+import { provideRouter } from '@angular/router';
 
 import { ChatWidgetComponent } from './chat-widget';
-import { ChatConversation, ChatMessage, ChatService } from '../../../core/services/chat.service';
+import { ChatService } from '../../../core/services/chat.service';
 import { AuthService } from '../../../core/services/auth';
+import { AiService } from '../../../core/services/ai';
+import { ClientApiService } from '../../../core/services/client-api.service';
 
 describe('ChatWidget', () => {
   let component: ChatWidgetComponent;
   let fixture: ComponentFixture<ChatWidgetComponent>;
-  let incoming: Subject<ChatMessage | null>;
+  let authState$: BehaviorSubject<{ isAuthenticated: boolean }>;
+  let currentUserId: number | null;
   let chatService: {
-    sendMyConversationMessage: ReturnType<typeof vi.fn>;
-    getMyConversationMessages: ReturnType<typeof vi.fn>;
+    connect: ReturnType<typeof vi.fn>;
+    disconnect: ReturnType<typeof vi.fn>;
+    getMyHistory: ReturnType<typeof vi.fn>;
+    sendCustomerMessage: ReturnType<typeof vi.fn>;
   };
 
-  const conversations: ChatConversation[] = [
-    { conversationId: 11, customerId: 42, customerName: 'Customer', subject: 'Dat phong', lastMessage: '' },
-    { conversationId: 12, customerId: 42, customerName: 'Customer', subject: 'Hoa don', lastMessage: '' },
-  ];
-
   beforeEach(async () => {
-    incoming = new Subject<ChatMessage | null>();
+    authState$ = new BehaviorSubject<{ isAuthenticated: boolean }>({ isAuthenticated: true });
+    currentUserId = 42;
     chatService = {
-      sendMyConversationMessage: vi.fn(() => of({
-        id: 50, conversationId: 11, senderId: 42, receiverId: 0, content: 'hello'
-      })),
-      getMyConversationMessages: vi.fn(() => of(page([]))),
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      getMyHistory: vi.fn(() => of([])),
+      sendCustomerMessage: vi.fn(() => false),
     };
     await TestBed.configureTestingModule({
       imports: [ChatWidgetComponent],
       providers: [
+        provideRouter([]),
         {
           provide: AuthService,
           useValue: {
-            isLoggedIn: () => true,
-            getCurrentUserId: () => 42,
+            currentUser$: authState$,
+            getCurrentUserId: () => currentUserId,
             getAccessToken: () => 'test-token',
           }
         },
@@ -42,22 +45,39 @@ describe('ChatWidget', () => {
           provide: ChatService,
           useValue: {
             ...chatService,
-            connect: vi.fn(),
-            disconnect: vi.fn(),
-            message$: incoming,
+            message$: new Subject(),
             connectionState$: of('idle'),
             connectionError$: of(''),
-            getMyConversations: () => of(page(conversations)),
-            createMyConversation: (subject: string) => of({ ...conversations[0], conversationId: 13, subject }),
-            createClientMessageId: () => 'customer-client-1',
-            getMyAttachments: vi.fn(() => of([])),
-            uploadMyAttachment: vi.fn(),
-            downloadAttachment: vi.fn(),
-            acknowledgeMessage: vi.fn(messageId => of({
-              id: messageId, conversationId: 11, senderId: 7, receiverId: 42,
-              content: 'reply', deliveryStatus: 'READ' as const
-            })),
             isConnected: () => false,
+          }
+        },
+        {
+          provide: AiService,
+          useValue: {
+            customerChatStream: vi.fn(() => of('Gợi ý ', 'từ AI')),
+            customerChat: vi.fn(() => of({ reply: 'Gợi ý từ AI' }))
+          }
+        },
+        {
+          provide: ClientApiService,
+          useValue: {
+            searchHotels: vi.fn(() => of({
+              content: [{
+                id: 99,
+                name: 'LuxeStay Riverside',
+                addressLine: 'Quận 1',
+                starRating: 4,
+                latitude: 0,
+                longitude: 0,
+                thumbnailUrl: '/hotel.webp',
+                propertyType: 'HOTEL',
+                pricing: { nightlyPrice: 2_000_000, discountedPrice: 1_800_000, numberOfNights: 1, taxAmount: 0, feeAmount: 0, totalAmount: 1_800_000, currency: 'VND' }
+              }],
+              totalElements: 1,
+              totalPages: 1,
+              number: 1,
+              size: 3
+            }))
           }
         }
       ]
@@ -65,65 +85,122 @@ describe('ChatWidget', () => {
 
     fixture = TestBed.createComponent(ChatWidgetComponent);
     component = fixture.componentInstance;
-    fixture.detectChanges();
     await fixture.whenStable();
   });
 
-  it('selects and loads the latest own conversation', () => {
-    expect(component.selectedConversationId()).toBe(11);
-    expect(chatService.getMyConversationMessages).toHaveBeenCalledWith(11, 0, 50);
+  it('should create', () => {
+    expect(component).toBeTruthy();
   });
 
   it('does not fail when the chat body is not mounted', () => {
     expect(() => component.scrollToBottom()).not.toThrow();
   });
 
-  it('exposes dialog semantics and does not add an optimistic message', () => {
+  it('exposes dialog semantics and avoids optimistic send while offline', () => {
     component.toggleChat();
     fixture.detectChanges();
 
     const panel = fixture.nativeElement.querySelector('[role="dialog"]');
     expect(panel?.getAttribute('aria-labelledby')).toBe('support-chat-title');
-    expect(fixture.nativeElement.querySelector('.close-button')?.getAttribute('aria-label')).toContain('Dong');
+    expect(fixture.nativeElement.querySelector('.close-button')?.getAttribute('aria-label')).toContain('Đóng');
 
     component.newMessage = 'hello';
+    component.switchMode('human');
     component.sendMessage();
 
-    expect(chatService.sendMyConversationMessage).toHaveBeenCalledWith(11, 'hello', 'customer-client-1');
-    expect(component.messages()).toEqual([expect.objectContaining({ id: 50, conversationId: 11 })]);
+    expect(chatService.sendCustomerMessage).not.toHaveBeenCalled();
+    expect(component.messages()).toHaveLength(0);
+    expect(component.sendError()).toContain('offline');
   });
 
-  it('sends with the selected conversation and ignores realtime messages for another conversation', () => {
-    component.newMessage = 'Can ho tro';
+  it('uses AI concierge before human support', () => {
+    component.toggleChat();
+    component.newMessage = 'Tư vấn điểm đến';
 
     component.sendMessage();
-    incoming.next({ id: 99, conversationId: 12, senderId: 7, receiverId: 42, content: 'other' });
 
-    expect(chatService.sendMyConversationMessage).toHaveBeenCalledWith(11, 'Can ho tro', 'customer-client-1');
-    expect(component.messages()).toEqual([expect.objectContaining({ conversationId: 11 })]);
+    expect(component.aiMessages().at(-1)?.text).toBe('Gợi ý từ AI');
+    expect(component.aiTyping()).toBe(false);
   });
 
-  it('reuses the client message id after a retryable send failure', () => {
-    chatService.sendMyConversationMessage
-      .mockReturnValueOnce(throwError(() => new Error('offline')))
-      .mockReturnValueOnce(of({
-        id: 51, conversationId: 11, senderId: 42, receiverId: 0,
-        content: 'Thu lai', clientMessageId: 'customer-client-1', deliveryStatus: 'PERSISTED'
-      }));
-    component.newMessage = 'Thu lai';
+  it('keeps human support input enabled while an AI response is still streaming', () => {
+    component.toggleChat();
+    component.aiTyping.set(true);
+    component.switchMode('human');
+    component.connectionState.set('connected');
+    fixture.detectChanges();
 
-    component.sendMessage();
-    component.sendMessage();
-
-    expect(chatService.sendMyConversationMessage).toHaveBeenNthCalledWith(
-      1, 11, 'Thu lai', 'customer-client-1');
-    expect(chatService.sendMyConversationMessage).toHaveBeenNthCalledWith(
-      2, 11, 'Thu lai', 'customer-client-1');
-    expect(component.messages()).toEqual([expect.objectContaining({ id: 51 })]);
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('#support-message');
+    expect(input.disabled).toBe(false);
   });
 
-  function page<T>(content: T[]) {
-    return { content, totalElements: content.length, totalPages: content.length ? 1 : 0,
-      number: 0, size: 50, first: true, last: true, retentionDays: 365 };
-  }
+  it('shows the animated three-dot indicator while AI is responding', () => {
+    component.toggleChat();
+    component.aiTyping.set(true);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.ai-typing-dot')).toHaveLength(3);
+    expect(fixture.nativeElement.querySelector('.ai-thinking')?.getAttribute('aria-label'))
+      .toBe('AI đang chuẩn bị tư vấn');
+  });
+
+  it('routes AI recommendations to search with extracted filters', () => {
+    component.toggleChat();
+    component.newMessage = 'Tìm phòng ở Hà Nội cho 2 người, ngân sách 3 triệu';
+
+    component.sendMessage();
+    fixture.detectChanges();
+
+    const recommendation = component.aiMessages().at(-1);
+    expect(recommendation?.searchParams).toMatchObject({
+      keyword: 'Hà Nội',
+      displayLocation: 'Hà Nội',
+      adultCount: 2,
+      roomCount: 1,
+      maxPrice: 3_000_000,
+      sortBy: 'POPULAR'
+    });
+    const action = fixture.nativeElement.querySelector('.ai-search-action');
+    expect(action?.textContent).toContain('Xem phòng phù hợp với yêu cầu');
+    expect(action?.getAttribute('href')).toContain('/search');
+    expect(action?.getAttribute('href')).toContain('maxPrice=3000000');
+    const propertyCard = fixture.nativeElement.querySelector('.ai-property-card');
+    expect(propertyCard?.textContent).toContain('LuxeStay Riverside');
+    expect(propertyCard?.getAttribute('href')).toContain('/hotel/99');
+  });
+
+  it('does not show a search action for a generic greeting', () => {
+    component.toggleChat();
+    component.newMessage = 'Xin chào';
+
+    component.sendMessage();
+    fixture.detectChanges();
+
+    expect(component.aiMessages().at(-1)?.searchParams).toBeUndefined();
+    expect(fixture.nativeElement.querySelector('.ai-search-action')).toBeNull();
+  });
+
+  it('formats safe AI markdown into readable sections', () => {
+    const html = component.formatAiMessage('**Loại phòng**\n1. Family Suite\n- Gần trung tâm');
+
+    expect(html).toContain('<strong>Loại phòng</strong>');
+    expect(html).toContain('ai-copy-item');
+    expect(html).not.toContain('**');
+  });
+
+  it('activates chat when the persistent client layout receives a login update', () => {
+    authState$.next({ isAuthenticated: false });
+    fixture.detectChanges();
+    chatService.connect.mockClear();
+    chatService.getMyHistory.mockClear();
+
+    currentUserId = 84;
+    authState$.next({ isAuthenticated: true });
+    fixture.detectChanges();
+
+    expect(component.isLoggedIn()).toBe(true);
+    expect(component.currentUserId()).toBe(84);
+    expect(chatService.connect).toHaveBeenCalledWith('customer');
+    expect(chatService.getMyHistory).toHaveBeenCalledOnce();
+  });
 });

@@ -1,11 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-<<<<<<< HEAD
-import { HomeSearchStateService } from '../../services/home-search-state.service';
-=======
 import { PublicI18nService } from '../../../../../core/i18n/public-i18n.service';
 import { HomeSearchStateService, StayType } from '../../services/home-search-state.service';
->>>>>>> codex/ui-functional-audit-polish
 
 @Component({
   selector: 'app-stay-type-selector',
@@ -21,13 +17,8 @@ import { HomeSearchStateService, StayType } from '../../services/home-search-sta
                [class.scale-100]="isOvernight"
                [class.group-hover:scale-100]="isOvernight"></div>
         </div>
-<<<<<<< HEAD
-        <span class="text-[14px] font-semibold" [class.text-gray-900]="isOvernight" [class.text-gray-600]="!isOvernight">Chỗ Ở Qua Đêm</span>
-        <input type="radio" name="stayType" value="OVERNIGHT" class="hidden" checked>
-=======
         <span class="text-[14px] font-semibold" [class.text-gray-900]="isOvernight" [class.text-gray-600]="!isOvernight">{{ i18n.text('PUBLIC.STAY_TYPE.OVERNIGHT') }}</span>
         <input type="radio" name="stayType" value="OVERNIGHT" class="hidden" [checked]="isOvernight" (change)="selectType('OVERNIGHT')">
->>>>>>> codex/ui-functional-audit-polish
       </label>
 
       <label class="flex items-center gap-2 cursor-not-allowed group relative opacity-50" [title]="i18n.text('PUBLIC.STAY_TYPE.UNAVAILABLE_TITLE')">
@@ -38,7 +29,7 @@ import { HomeSearchStateService, StayType } from '../../services/home-search-sta
           {{ i18n.text('PUBLIC.STAY_TYPE.COMING_SOON') }}
         </div>
         <!-- Disable day-use for now as backend doesn't support hourly booking yet -->
-        <span class="sr-only" role="radio" aria-checked="false" aria-disabled="true">Chỗ ở Trong Ngày chưa khả dụng</span>
+        <input type="radio" name="stayType" value="DAY_USE" class="hidden" disabled>
       </label>
     </div>
   `
@@ -49,5 +40,9 @@ export class StayTypeSelectorComponent {
 
   get isOvernight(): boolean {
     return this.stateService.state().stayType === 'OVERNIGHT';
+  }
+
+  selectType(type: StayType) {
+    this.stateService.updateStayType(type);
   }
 }

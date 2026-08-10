@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { OperationalAuditEvent, OperationalAuditFilters, OperationalAuditService } from '../../../core/services/operational-audit.service';
 import { AuthService } from '../../../core/services/auth';
-import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-audit-log',
@@ -17,7 +16,6 @@ export class AuditLogComponent implements OnInit {
   private readonly auditService = inject(OperationalAuditService);
   private readonly authService = inject(AuthService);
   private readonly changeDetector = inject(ChangeDetectorRef);
-  private readonly route = inject(ActivatedRoute);
 
   readonly domains = ['STAFF', 'ROLE', 'PROPERTY', 'ROOM', 'MAINTENANCE', 'RESERVATION'];
   readonly pageSizes = [25, 50, 100];
@@ -37,13 +35,6 @@ export class AuditLogComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const query = this.route.snapshot.queryParamMap;
-    const domain = query.get('domain');
-    if (domain && this.domains.includes(domain.toUpperCase())) this.filters.domain = domain.toUpperCase();
-    const aggregateType = query.get('aggregateType');
-    const aggregateId = query.get('aggregateId');
-    if (aggregateType) this.filters.aggregateType = aggregateType.toUpperCase();
-    if (aggregateId) this.filters.aggregateId = aggregateId;
     this.load();
   }
 

@@ -116,26 +116,6 @@ public class PlatformBillingQueryService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
-    public String historyCsv(Long targetHotelId) {
-        StringBuilder csv = new StringBuilder("id,orderPublicId,contractPublicId,actionType,actorType,reason,occurredAt\r\n");
-        for (HistoryItem item : history(targetHotelId)) {
-            csv.append(item.id()).append(',').append(cell(item.orderPublicId())).append(',')
-                    .append(cell(item.contractPublicId())).append(',').append(item.actionType()).append(',')
-                    .append(cell(item.actorType())).append(',').append(cell(item.reason())).append(',')
-                    .append(item.occurredAt()).append("\r\n");
-        }
-        return csv.toString();
-    }
-
-    private String cell(Object value) {
-        if (value == null) return "";
-        String text = String.valueOf(value);
-        String leadingTrimmed = text.stripLeading();
-        if (!leadingTrimmed.isEmpty() && "=+-@".indexOf(leadingTrimmed.charAt(0)) >= 0) text = "'" + text;
-        return "\"" + text.replace("\"", "\"\"") + "\"";
-    }
-
     private void authorize(SubscriptionOrder order) {
         if (propertyAccessService.isSystemAdministrator()) {
             return;
@@ -172,7 +152,9 @@ public class PlatformBillingQueryService {
         return new HistoryItem(
                 history.getId(), history.getOrder().getPublicId(),
                 history.getContract() == null ? null : history.getContract().getPublicId(),
-                history.getActionType(), history.getActorType(), history.getReason(), history.getOccurredAt());
+                history.getTransaction() == null ? null : history.getTransaction().getPublicId(),
+                history.getActionType(), history.getPreviousStateJson(), history.getNewStateJson(),
+                history.getActorType(), history.getActorId(), history.getReason(), history.getOccurredAt());
     }
 
     private String requireText(String value, String field) {
@@ -199,7 +181,8 @@ public class PlatformBillingQueryService {
     }
 
     public record HistoryItem(
-            Long id, String orderPublicId, String contractPublicId,
-            SubscriptionHistory.ActionType actionType, String actorType, String reason, LocalDateTime occurredAt) {
+            Long id, String orderPublicId, String contractPublicId, String transactionPublicId,
+            SubscriptionHistory.ActionType actionType, String previousStateJson, String newStateJson,
+            String actorType, Long actorId, String reason, LocalDateTime occurredAt) {
     }
 }

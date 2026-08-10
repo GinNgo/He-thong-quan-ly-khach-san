@@ -1,15 +1,7 @@
-<<<<<<< HEAD
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
-=======
->>>>>>> codex/ui-functional-audit-polish
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
-<<<<<<< HEAD
-import { ConfirmationService } from 'primeng/api';
-import { FeedbackStateComponent } from '../../../shared/components/feedback-state/feedback-state.component';
-=======
 import { DialogModule } from 'primeng/dialog';
 import { TableModule } from 'primeng/table';
 import {
@@ -20,20 +12,14 @@ import {
 import { PublicI18nService } from '../../../core/i18n/public-i18n.service';
 
 type InvoiceSnapshot = Record<string, string | number | null | undefined>;
->>>>>>> codex/ui-functional-audit-polish
 
 @Component({
   selector: 'app-invoice-management',
   standalone: true,
-<<<<<<< HEAD
-  imports: [CommonModule, TableModule, ButtonModule, TagModule, DialogModule, CardModule, FeedbackStateComponent],
-  templateUrl: './invoice-management.html'
-=======
   imports: [CommonModule, TableModule, ButtonModule, DialogModule, CardModule],
   templateUrl: './invoice-management.html',
   styleUrl: './invoice-management.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
->>>>>>> codex/ui-functional-audit-polish
 })
 export class InvoiceManagement implements OnInit {
   private readonly invoiceService = inject(InvoiceService);
@@ -51,78 +37,6 @@ export class InvoiceManagement implements OnInit {
   readonly actionError = signal('');
 
   displayInvoiceDialog = false;
-<<<<<<< HEAD
-  currentInvoice?: Invoice;
-  currentReservation?: Reservation;
-  loading = false;
-  loadError = '';
-  invoiceError = '';
-  invoiceLoadingId: number | null = null;
-
-  constructor(
-    private reservationService: ReservationService,
-    private invoiceService: InvoiceService,
-    private confirmationService: ConfirmationService,
-    private cdr: ChangeDetectorRef
-  ) {}
-
-  ngOnInit() {
-    this.loadReservations();
-  }
-
-  loadReservations() {
-    this.loading = true;
-    this.loadError = '';
-    this.reservationService.getAllReservations().subscribe({
-      next: data => {
-        this.reservations = data.filter(r => r.status === 'CHECKED_OUT' || r.status === 'CHECKED_IN');
-        this.loading = false;
-        this.cdr.markForCheck();
-      },
-      error: error => {
-        this.loading = false;
-        this.loadError = error?.error?.message || 'Unable to load invoice-ready reservations.';
-        this.cdr.markForCheck();
-      }
-    });
-  }
-
-  showInvoice(res: Reservation) {
-    this.currentReservation = res;
-    if (res.id) {
-      this.invoiceError = '';
-      this.invoiceLoadingId = res.id;
-      this.invoiceService.getInvoiceByReservation(res.id).subscribe({
-        next: (invoice) => {
-          this.invoiceLoadingId = null;
-          this.currentInvoice = invoice;
-          this.displayInvoiceDialog = true;
-          this.cdr.markForCheck();
-        },
-        error: () => {
-          this.invoiceLoadingId = null;
-          this.confirmationService.confirm({
-            message: 'Chưa có hóa đơn cho Booking này. Tạo hóa đơn mới?',
-            header: 'Xác nhận',
-            icon: 'pi pi-exclamation-triangle',
-            accept: () => {
-              this.invoiceLoadingId = res.id!;
-              this.invoiceService.generateInvoice(res.id!).subscribe({
-                next: newInvoice => {
-                  this.invoiceLoadingId = null;
-                  this.currentInvoice = newInvoice;
-                  this.displayInvoiceDialog = true;
-                  this.cdr.markForCheck();
-                },
-                error: error => {
-                  this.invoiceLoadingId = null;
-                  this.invoiceError = error?.error?.message || 'Unable to generate the invoice. Retry from the reservation list.';
-                  this.cdr.markForCheck();
-                }
-              });
-            }
-          });
-=======
   private invoiceDialogTrigger: HTMLElement | null = null;
 
   ngOnInit(): void {
@@ -185,7 +99,6 @@ export class InvoiceManagement implements OnInit {
           this.actionError.set(this.copy('Tệp PDF rỗng.', 'The PDF file is empty.'));
           this.downloadingInvoiceId.set(null);
           return;
->>>>>>> codex/ui-functional-audit-polish
         }
         const filename = this.pdfFilename(response.headers.get('Content-Disposition'), invoice.invoiceNumber);
         const url = URL.createObjectURL(blob);

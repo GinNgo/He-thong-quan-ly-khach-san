@@ -30,11 +30,6 @@ public class PropertyImage extends AuditableEntity {
     @Column(name = "image_url", nullable = false, columnDefinition = "nvarchar(1000)")
     private String imageUrl;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "media_id")
-    @JsonIgnore
-    private PropertyMedia media;
-
     @Column(name = "is_primary")
     private Boolean isPrimary = false;
 

@@ -3,15 +3,6 @@ import { Component, EventEmitter, Input, OnChanges, Output, computed, inject } f
 import { FormsModule } from '@angular/forms';
 import { CheckboxModule } from 'primeng/checkbox';
 import { SliderModule } from 'primeng/slider';
-import {
-  canonicalPriceDisplayState,
-  canonicalPropertyTypes,
-  canonicalReviewScore,
-  canonicalStarRatings,
-  PRICE_FILTER_MAX,
-  PRICE_FILTER_MIN,
-  PRICE_FILTER_STEP,
-} from '../../pages/property-search-page/property-search-query';
 
 import { PublicI18nService } from '../../../../core/i18n/public-i18n.service';
 
@@ -42,20 +33,11 @@ export interface FilterState {
       </header>
 
       <section class="filter-group">
-<<<<<<< HEAD
-        <div class="group-heading"><h3>Khoảng giá mỗi đêm</h3><span>VND</span></div>
-        <p-slider [(ngModel)]="priceRange" [range]="true" [min]="priceFilterMin" [max]="priceFilterMax"
-          [step]="priceFilterStep" ariaLabel="Khoảng giá phòng"></p-slider>
-        <div class="price-values">
-          <span>{{ formatVnd(priceRange[0]) }}</span>
-          <span>{{ priceRange[1] >= priceFilterMax ? '10.000.000 ₫ trở lên' : formatVnd(priceRange[1]) }}</span>
-=======
         <div class="group-heading"><h3>{{ i18n.text('PUBLIC.RESULTS.PRICE_PER_NIGHT') }}</h3><span>VND</span></div>
         <p-slider [(ngModel)]="priceRange" [range]="true" [min]="0" [max]="10000000" [step]="100000" [attr.aria-label]="i18n.text('PUBLIC.RESULTS.PRICE_ARIA')"></p-slider>
         <div class="price-values">
           <span>{{ formatVnd(priceRange[0]) }}</span>
           <span>{{ priceRange[1] >= 10000000 ? i18n.text('PUBLIC.RESULTS.PRICE_UPPER', { amount: formatVnd(10000000) }) : formatVnd(priceRange[1]) }}</span>
->>>>>>> codex/ui-functional-audit-polish
         </div>
       </section>
 
@@ -81,13 +63,7 @@ export interface FilterState {
           <input type="radio" name="review-score" [value]="score.value" [(ngModel)]="selectedReviewScore">
           <span><strong>{{ score.value }}+</strong> {{ score.label }}</span>
         </label>
-<<<<<<< HEAD
-        <button *ngIf="selectedReviewScore !== null" type="button" class="text-action compact" (click)="selectedReviewScore = null">
-          Bỏ lọc điểm đánh giá
-        </button>
-=======
         <button *ngIf="selectedReviewScore" type="button" class="text-action compact" (click)="selectedReviewScore = null">{{ i18n.text('PUBLIC.RESULTS.CLEAR_REVIEW') }}</button>
->>>>>>> codex/ui-functional-audit-polish
       </section>
 
       <div class="filter-actions"><button type="button" class="apply-button" (click)="applyFilters()">{{ i18n.text('PUBLIC.RESULTS.APPLY_FILTERS') }}</button></div>
@@ -108,15 +84,8 @@ export class SearchFilterSidebarComponent implements OnChanges {
   @Input() initialState: Partial<FilterState> = {};
   @Output() filtersChanged = new EventEmitter<FilterState>();
 
-<<<<<<< HEAD
-  priceRange = [PRICE_FILTER_MIN, PRICE_FILTER_MAX];
-  readonly priceFilterMin = PRICE_FILTER_MIN;
-  readonly priceFilterMax = PRICE_FILTER_MAX;
-  readonly priceFilterStep = PRICE_FILTER_STEP;
-=======
   readonly i18n: I18nFacade = this.resolveI18n();
   priceRange = [0, 10000000];
->>>>>>> codex/ui-functional-audit-polish
   selectedPropertyTypes: string[] = [];
   selectedStars: number[] = [];
   selectedReviewScore: number | null = null;
@@ -133,34 +102,12 @@ export class SearchFilterSidebarComponent implements OnChanges {
   ]);
 
   ngOnChanges(): void {
-    const priceState = canonicalPriceDisplayState(this.initialState.minPrice, this.initialState.maxPrice);
-    this.priceRange = [priceState.minPrice, priceState.maxPrice];
-    this.selectedPropertyTypes = canonicalPropertyTypes(this.initialState.propertyTypes);
-    this.selectedStars = canonicalStarRatings(this.initialState.starRatings);
-    this.selectedReviewScore = canonicalReviewScore(this.initialState.minReviewScore);
+    this.priceRange = [this.initialState.minPrice ?? 0, this.initialState.maxPrice ?? 10000000];
+    this.selectedPropertyTypes = [...(this.initialState.propertyTypes || [])];
+    this.selectedStars = [...(this.initialState.starRatings || [])];
+    this.selectedReviewScore = this.initialState.minReviewScore ?? null;
   }
   applyFilters(): void {
-<<<<<<< HEAD
-    const priceState = canonicalPriceDisplayState(this.priceRange[0], this.priceRange[1]);
-    this.priceRange = [priceState.minPrice, priceState.maxPrice];
-    this.filtersChanged.emit({
-      minPrice: priceState.minPrice,
-      maxPrice: priceState.maxPrice,
-      propertyTypes: canonicalPropertyTypes(this.selectedPropertyTypes),
-      starRatings: canonicalStarRatings(this.selectedStars),
-      minReviewScore: canonicalReviewScore(this.selectedReviewScore),
-      amenityIds: [...(this.initialState.amenityIds || [])]
-    });
-  }
-
-  clearAll(): void {
-    this.priceRange = [PRICE_FILTER_MIN, PRICE_FILTER_MAX]; this.selectedPropertyTypes = []; this.selectedStars = [];
-    this.selectedReviewScore = null; this.applyFilters();
-  }
-
-  formatVnd(value: number): string {
-    return `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(value || 0)} ₫`;
-=======
     this.filtersChanged.emit({ minPrice: Math.max(0, Number(this.priceRange[0]) || 0), maxPrice: Math.max(this.priceRange[0], Number(this.priceRange[1]) || 10000000), propertyTypes: [...this.selectedPropertyTypes], starRatings: [...this.selectedStars], minReviewScore: this.selectedReviewScore, amenityIds: [] });
   }
   clearAll(): void { this.priceRange = [0, 10000000]; this.selectedPropertyTypes = []; this.selectedStars = []; this.selectedReviewScore = null; this.applyFilters(); }
@@ -169,6 +116,5 @@ export class SearchFilterSidebarComponent implements OnChanges {
   private resolveI18n(): I18nFacade {
     try { return inject(PublicI18nService); }
     catch { return { text: (key: string) => key, count: (key: string) => key, dateLocale: () => 'vi-VN' }; }
->>>>>>> codex/ui-functional-audit-polish
   }
 }

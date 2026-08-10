@@ -70,22 +70,4 @@ describe('RevenueReportService', () => {
     expect(request.request.params.get('planCode')).toBe('PRO');
     request.flush(new Blob(['xlsx']));
   });
-
-  it('returns property export filename, checksum and row count from response headers', () => {
-    let result: { filename: string; checksum: string; rowCount: number } | undefined;
-    service.exportPropertyRevenue({ from: '2026-07-01', to: '2026-07-31', propertyId: 42 }, 'CSV')
-      .subscribe(download => result = download);
-
-    const request = http.expectOne((item) =>
-      item.url === `${environment.apiUrl}/management/reports/property-revenue/export`);
-    expect(request.request.params.get('propertyId')).toBe('42');
-    request.flush(new Blob(['csv']), { headers: {
-      'Content-Disposition': 'attachment; filename="property-ledger.csv"',
-      'X-Report-Checksum': 'b'.repeat(64),
-      'X-Report-Row-Count': '12',
-    } });
-    expect(result?.filename).toBe('property-ledger.csv');
-    expect(result?.checksum).toBe('b'.repeat(64));
-    expect(result?.rowCount).toBe(12);
-  });
 });

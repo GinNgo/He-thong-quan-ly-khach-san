@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { provideTranslateService } from '@ngx-translate/core';
-import { of } from 'rxjs';
+import { defer, of, throwError } from 'rxjs';
 
 import { AuthService } from '@app/core/services/auth';
 import { LoginComponent } from './login.component';
@@ -81,6 +81,35 @@ describe('LoginComponent', () => {
     expect(component.googleButtonWidth).toBeLessThanOrEqual(400);
   });
 
+  it('retries a transient social provisioning conflict before showing an error', async () => {
+    vi.useFakeTimers();
+    let attempts = 0;
+    authServiceMock.googleLogin.mockReturnValue(defer(() => {
+      attempts += 1;
+      return attempts < 3
+        ? throwError(() => ({ error: { code: 'SOCIAL_PROVISIONING_CONFLICT', retryable: true } }))
+        : of({
+            accessToken: 'social-token',
+            userId: 42,
+            username: 'customer@example.com',
+            roles: ['CUSTOMER'],
+            permissions: [],
+          });
+    }));
+
+    (component as any).completeSocialLogin({
+      provider: 'GOOGLE',
+      id: 'google-subject',
+      idToken: 'google-token',
+    });
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(attempts).toBe(3);
+    expect(authServiceMock.setSession).toHaveBeenCalledWith('social-token', expect.objectContaining({ id: 42 }));
+    expect(component.errorMessage).toBe('');
+    vi.useRealTimers();
+  });
+
   it('links the footer to real privacy, terms, and support destinations', () => {
     const anchors = [...fixture.nativeElement.querySelectorAll('footer a')] as HTMLAnchorElement[];
     const destinations = anchors.map(anchor => anchor.getAttribute('href'));
@@ -108,6 +137,19 @@ describe('LoginComponent', () => {
     }));
   });
 
+  it('explains that email verification is required when the backend blocks login', () => {
+    authServiceMock.login.mockReturnValue(throwError(() => ({
+      error: { code: 'EMAIL_NOT_VERIFIED' },
+    })));
+    component.loginObj.username = 'customer@example.com';
+    component.loginObj.password = 'password';
+
+    component.onSubmit();
+
+    expect(component.errorMessage).toContain('Email chưa được xác thực');
+    expect(authServiceMock.setSession).not.toHaveBeenCalled();
+  });
+
   it('keeps receptionist permissions and sends the account to the admin portal', () => {
     const permissions = [
       { function: 'REPORT', actionMask: 1 },
@@ -130,8 +172,7 @@ describe('LoginComponent', () => {
       roles: ['RECEPTIONIST'],
       permissions,
     }));
-    expect(router.navigate).toHaveBeenCalledWith(['/admin/dashboard']);
-    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/admin/dashboard');
   });
 
   it('sends a customer home instead of reusing an admin or management return URL', () => {
@@ -150,6 +191,38 @@ describe('LoginComponent', () => {
 
     expect(router.navigateByUrl).toHaveBeenCalledWith('/');
     expect(router.navigate).not.toHaveBeenCalledWith(['/admin/dashboard']);
+  });
+
+  it('sends an approved property owner directly to the management portal', () => {
+    authServiceMock.login.mockReturnValue(of({
+      accessToken: 'access-token',
+      userId: 51,
+      username: 'owner@example.com',
+      roles: ['CUSTOMER', 'PROPERTY_OWNER'],
+      permissions: [],
+    }));
+    component.loginObj.username = 'owner@example.com';
+    component.loginObj.password = 'password';
+
+    component.onSubmit();
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/management/dashboard');
+  });
+
+  it.each(['HOTEL_ADMIN', 'HOTEL_MANAGER'])('sends a %s child account directly to the admin portal', (role) => {
+    authServiceMock.login.mockReturnValue(of({
+      accessToken: 'access-token',
+      userId: 52,
+      username: `${role.toLowerCase()}@example.com`,
+      roles: [role],
+      permissions: [],
+    }));
+    component.loginObj.username = `${role.toLowerCase()}@example.com`;
+    component.loginObj.password = 'password';
+
+    component.onSubmit();
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/admin/dashboard');
   });
 
 });

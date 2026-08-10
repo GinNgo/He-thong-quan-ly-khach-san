@@ -79,14 +79,16 @@ public class DataInitializer implements CommandLineRunner {
         initFunction(hotelModule, FunctionCode.RESERVATION.name(), "Đặt phòng", "/admin/reservations", "pi pi-calendar", 4);
         initFunction(hotelModule, FunctionCode.HOTEL_SERVICE.name(), "Dịch vụ khách sạn", "/admin/services", "pi pi-box", 5);
         initFunction(hotelModule, FunctionCode.RESERVATION_ASSIGNMENT.name(), "Gán phòng lưu trú", null, "pi pi-link", 40);
-        initFunction(hotelModule, FunctionCode.RESERVATION_AMEND.name(), "Thay đổi đặt phòng", null, "pi pi-calendar-plus", 44);
         initFunction(hotelModule, FunctionCode.CHECKIN.name(), "Nhận phòng", null, "pi pi-sign-in", 41);
         initFunction(hotelModule, FunctionCode.RESERVATION_CANCEL.name(), "Hủy đặt phòng vận hành", null, "pi pi-times-circle", 42);
         initFunction(hotelModule, FunctionCode.RESERVATION_NO_SHOW.name(), "Đánh dấu khách không đến", null, "pi pi-user-minus", 43);
-        initFunction(hotelModule, FunctionCode.HOUSEKEEPING.name(), "Housekeeping", "/management/housekeeping", "pi pi-sparkles", 44);
+        initFunction(hotelModule, FunctionCode.HOUSEKEEPING.name(), "Dọn phòng", "/management/housekeeping", "pi pi-sparkles", 44);
         deprecateFunction("CHAT");
 
         initFunction(financeModule, FunctionCode.INVOICE.name(), "Hóa đơn", "/admin/invoices", "pi pi-file-o", 1);
+        initFunction(financeModule, FunctionCode.RESERVATION_PAYMENT.name(), "Thanh toán đặt phòng", null, "pi pi-wallet", 2);
+        initFunction(financeModule, FunctionCode.PROPERTY_PAYMENT_CONFIG.name(), "Cấu hình thanh toán cơ sở", "/management/payment-configuration", "pi pi-credit-card", 3);
+        initFunction(financeModule, FunctionCode.PROPERTY_REFUND.name(), "Hoàn tiền đặt phòng", "/management/refunds", "pi pi-replay", 4);
 
         initFunction(partnerModule, "ADMIN_PROPERTIES", "Cơ sở lưu trú", "/admin/properties", "pi pi-building", 1);
         initFunction(partnerModule, "PROPERTY_OWNERS", "Chủ cơ sở", "/admin/property-owners", "pi pi-users", 2);
@@ -101,6 +103,7 @@ public class DataInitializer implements CommandLineRunner {
         initFunction(subscriptionModule, "SUBSCRIPTION_ORDERS", "Đơn đăng ký gói", "/admin/subscription-orders", "pi pi-file-edit", 3);
         initFunction(subscriptionModule, "SUBSCRIPTION_PAYMENTS", "Thanh toán gói", "/admin/subscription-payments", "pi pi-credit-card", 4);
         initFunction(subscriptionModule, "SOFTWARE_CONTRACTS", "Hợp đồng", "/admin/software-contracts", "pi pi-file", 5);
+        initFunction(subscriptionModule, FunctionCode.PLATFORM_BILLING.name(), "Gói phần mềm", "/management/billing", "pi pi-star", 6);
 
         Role superAdminRole = initRole("SUPER_ADMIN", "Quản trị hệ thống", "Toàn quyền hệ thống.");
         Role adminRole = initRole("ADMIN", "Quản trị viên", "Toàn quyền hệ thống.");
@@ -208,15 +211,9 @@ public class DataInitializer implements CommandLineRunner {
         role.setCode(code);
         role.setName(name);
         role.setDescription(description);
-<<<<<<< HEAD
-        role.setStatus(Role.ACTIVE_STATUS);
-        role.setSystemRole(Role.isSystemCode(code));
-        role.enforceSystemIntegrity();
-=======
         role.setStatus("ACTIVE");
         role.setSystemRole(Set.of("SUPER_ADMIN", "ADMIN", "CUSTOMER", "PROPERTY_OWNER", "HOTEL_ADMIN",
                 "HOTEL_MANAGER", "RECEPTIONIST", "ACCOUNTANT", "HOUSEKEEPING").contains(code));
->>>>>>> codex/ui-functional-audit-polish
         return roleRepository.save(role);
     }
 
@@ -308,15 +305,18 @@ public class DataInitializer implements CommandLineRunner {
         ensurePermission(role, FunctionCode.CUSTOMER, manage);
         ensurePermission(role, FunctionCode.ROOM_TYPE, manage);
         ensurePermission(role, FunctionCode.ROOM, manage);
-        ensurePermission(role, FunctionCode.RESERVATION, manage | ActionCode.APPROVE);
+        ensurePermission(role, FunctionCode.RESERVATION, manage | ActionCode.APPROVE | ActionCode.TASK_EXECUTE);
         seedReservationLifecyclePermissions(role);
         ensurePermission(role, FunctionCode.HOTEL_SERVICE, manage);
         ensurePermission(role, FunctionCode.INVOICE, manageAndExport);
         ensurePermission(role, FunctionCode.RESERVATION_PAYMENT, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE);
         ensurePermission(role, FunctionCode.PROPERTY_PAYMENT_CONFIG, ActionCode.VIEW | ActionCode.UPDATE);
-        ensurePermission(role, FunctionCode.PROPERTY_REFUND, ActionCode.VIEW | ActionCode.APPROVE);
-        ensurePermission(role, FunctionCode.PLATFORM_BILLING, ActionCode.VIEW | ActionCode.CREATE);
-        ensurePermission(role, FunctionCode.HOUSEKEEPING, ActionCode.VIEW | ActionCode.UPDATE);
+        mergePermission(role, FunctionCode.PROPERTY_REFUND,
+                ActionCode.VIEW | ActionCode.APPROVE | ActionCode.TASK_EXECUTE);
+        mergePermission(role, FunctionCode.PLATFORM_BILLING,
+                ActionCode.VIEW | ActionCode.CREATE | ActionCode.TASK_EXECUTE);
+        ensurePermission(role, FunctionCode.HOUSEKEEPING,
+                ActionCode.VIEW | ActionCode.UPDATE | ActionCode.APPROVE | ActionCode.TASK_EXECUTE);
     }
 
     private void seedReceptionistPermissions(Role role) {
@@ -324,9 +324,12 @@ public class DataInitializer implements CommandLineRunner {
         ensurePermission(role, FunctionCode.CUSTOMER, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE);
         ensurePermission(role, FunctionCode.ROOM_TYPE, ActionCode.VIEW);
         ensurePermission(role, FunctionCode.ROOM, ActionCode.VIEW | ActionCode.UPDATE);
-        ensurePermission(role, FunctionCode.RESERVATION, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE);
+        ensurePermission(role, FunctionCode.RESERVATION,
+                ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.TASK_EXECUTE);
         seedReservationLifecyclePermissions(role);
         ensurePermission(role, FunctionCode.INVOICE, ActionCode.VIEW | ActionCode.CREATE);
+        mergePermission(role, FunctionCode.HOUSEKEEPING,
+                ActionCode.VIEW | ActionCode.UPDATE | ActionCode.APPROVE | ActionCode.TASK_EXECUTE);
     }
 
     private void seedAccountantPermissions(Role role) {
@@ -334,20 +337,22 @@ public class DataInitializer implements CommandLineRunner {
         ensurePermission(role, FunctionCode.REPORT, ActionCode.VIEW);
         ensurePermission(role, FunctionCode.INVOICE, invoiceMask);
         ensurePermission(role, FunctionCode.RESERVATION_PAYMENT, ActionCode.VIEW | ActionCode.CREATE | ActionCode.UPDATE | ActionCode.EXPORT);
-        ensurePermission(role, FunctionCode.PROPERTY_REFUND, ActionCode.VIEW | ActionCode.APPROVE);
+        mergePermission(role, FunctionCode.PROPERTY_REFUND,
+                ActionCode.VIEW | ActionCode.APPROVE | ActionCode.TASK_EXECUTE);
     }
 
     private void seedHousekeepingPermissions(Role role) {
         mergePermission(role, FunctionCode.HOUSEKEEPING,
-                ActionCode.VIEW | ActionCode.UPDATE | ActionCode.APPROVE);
+                ActionCode.VIEW | ActionCode.UPDATE | ActionCode.APPROVE | ActionCode.TASK_EXECUTE);
     }
 
     private void seedReservationLifecyclePermissions(Role role) {
-        ensurePermission(role, FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.VIEW | ActionCode.UPDATE);
-        ensurePermission(role, FunctionCode.RESERVATION_AMEND, ActionCode.VIEW | ActionCode.UPDATE);
-        ensurePermission(role, FunctionCode.CHECKIN, ActionCode.VIEW | ActionCode.UPDATE);
-        ensurePermission(role, FunctionCode.RESERVATION_CANCEL, ActionCode.UPDATE);
-        ensurePermission(role, FunctionCode.RESERVATION_NO_SHOW, ActionCode.UPDATE);
+        ensurePermission(role, FunctionCode.RESERVATION_ASSIGNMENT,
+                ActionCode.VIEW | ActionCode.UPDATE | ActionCode.TASK_EXECUTE);
+        ensurePermission(role, FunctionCode.CHECKIN, ActionCode.VIEW | ActionCode.TASK_EXECUTE);
+        ensurePermission(role, FunctionCode.CHECKOUT, ActionCode.VIEW | ActionCode.TASK_EXECUTE);
+        ensurePermission(role, FunctionCode.RESERVATION_CANCEL, ActionCode.VIEW | ActionCode.TASK_EXECUTE);
+        ensurePermission(role, FunctionCode.RESERVATION_NO_SHOW, ActionCode.VIEW | ActionCode.TASK_EXECUTE);
     }
 
     private void ensurePermission(Role role, FunctionCode functionCode, int actionMask) {
@@ -499,52 +504,6 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void seedSubscriptionPlans() {
-<<<<<<< HEAD
-        if (subscriptionPlanRepository.count() == 0) {
-            com.hotel.entities.SubscriptionPlan freePlan = new com.hotel.entities.SubscriptionPlan();
-            freePlan.setCode("FREE");
-            freePlan.setFamilyCode("FREE");
-            freePlan.setVersionNumber(1);
-            freePlan.setNameVi("Gói Miễn phí");
-            freePlan.setNameEn("Free Plan");
-            freePlan.setBillingType("MONTHLY");
-            freePlan.setPrice(BigDecimal.ZERO);
-            freePlan.setIsLifetime(false);
-            freePlan.setDurationValue(1);
-            freePlan.setDurationUnit("MONTH");
-            freePlan.setStatus("INACTIVE");
-            subscriptionPlanRepository.save(freePlan);
-
-            com.hotel.entities.SubscriptionPlan standardPlan = new com.hotel.entities.SubscriptionPlan();
-            standardPlan.setCode("STANDARD");
-            standardPlan.setFamilyCode("STANDARD");
-            standardPlan.setVersionNumber(1);
-            standardPlan.setNameVi("Gói Tiêu chuẩn");
-            standardPlan.setNameEn("Standard Plan");
-            standardPlan.setBillingType("MONTHLY");
-            standardPlan.setPrice(new BigDecimal("500000"));
-            standardPlan.setIsLifetime(false);
-            standardPlan.setDurationValue(1);
-            standardPlan.setDurationUnit("MONTH");
-            standardPlan.setStatus("ACTIVE");
-            standardPlan.setActivatedAt(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC));
-            subscriptionPlanRepository.save(standardPlan);
-            
-            com.hotel.entities.SubscriptionPlan premiumPlan = new com.hotel.entities.SubscriptionPlan();
-            premiumPlan.setCode("PREMIUM");
-            premiumPlan.setFamilyCode("PREMIUM");
-            premiumPlan.setVersionNumber(1);
-            premiumPlan.setNameVi("Gói Cao cấp");
-            premiumPlan.setNameEn("Premium Plan");
-            premiumPlan.setBillingType("YEARLY");
-            premiumPlan.setPrice(new BigDecimal("5000000"));
-            premiumPlan.setIsLifetime(false);
-            premiumPlan.setDurationValue(1);
-            premiumPlan.setDurationUnit("YEAR");
-            premiumPlan.setStatus("ACTIVE");
-            premiumPlan.setActivatedAt(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC));
-            subscriptionPlanRepository.save(premiumPlan);
-=======
         seedFeatureCatalog();
         ensurePlan("FREE", "Gói Miễn phí", "Free Plan", "MONTHLY", BigDecimal.ZERO, true,
                 java.util.Map.of("MAX_PROPERTIES", 1, "MAX_ROOM_TYPES", 3, "MAX_ROOMS", 10, "MAX_IMAGES", 15, "MAX_STAFF", 0, "PROMOTION_CAMPAIGNS", 0, "SPONSORED_PLACEMENTS", 0));
@@ -594,7 +553,6 @@ public class DataInitializer implements CommandLineRunner {
             feature.setFeatureCode(entry.getKey());
             feature.setLimitValue(entry.getValue());
             planFeatureRepository.save(feature);
->>>>>>> codex/ui-functional-audit-polish
         }
     }
 }

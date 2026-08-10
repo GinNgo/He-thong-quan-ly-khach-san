@@ -147,6 +147,7 @@ flowchart LR
 
 ```mermaid
 classDiagram
+    direction LR
     class User {
         +Long id
         +String username
@@ -203,14 +204,7 @@ classDiagram
 
 ```mermaid
 classDiagram
-    class Location {
-        +Long id
-        +Long parentId
-        +String sourceCode
-        +String nameVi
-        +String normalizedName
-        +String locationType
-    }
+    direction LR
     class Hotel {
         +Long id
         +String slug
@@ -243,10 +237,8 @@ classDiagram
     }
     class PropertyImage
     class RoomTypeImage
-
-    Location "0..1" --> "*" Location : parent province
-    Hotel "1" --> "*" UserProperty : scoped by
     User "1" --> "*" UserProperty : assigned
+    Hotel "1" --> "*" UserProperty : scoped by
     Hotel "1" --> "*" RoomType : defines
     Hotel "1" --> "*" Room : owns
     RoomType "1" --> "*" Room : classifies
@@ -691,7 +683,18 @@ sequenceDiagram
 - **Phân tích:** notification hệ thống có `userId=null`; endpoint REST hiện yêu cầu permission REPORT:VIEW nên phạm vi người dùng cần tiếp tục đối chiếu UI.
 - **Kết luận:** backend tests pass; delivery/E2E vẫn là bằng chứng còn thiếu.
 
-## 4. Activity Diagram
+## 4. Activity Diagram (flowchart nghiệp vụ)
+
+Trong khóa luận này, **Activity Diagram được dùng thay cho flowchart riêng** vì nó thể hiện đầy đủ trình tự xử lý, điều kiện rẽ nhánh, trạng thái lỗi và trách nhiệm nghiệp vụ. Không vẽ lại cùng một luồng dưới hai tên khác nhau. Bốn flow nghiệp vụ cần đưa vào bản DOCX là:
+
+| Mã flow | Chức năng | Sơ đồ dùng trong báo cáo |
+| --- | --- | --- |
+| FLOW-01 | Tìm kiếm, kiểm tra phòng và đặt phòng | UML-16 |
+| FLOW-02 | Hủy booking và hoàn tiền | UML-17 |
+| FLOW-03 | Gán phòng, check-in, dịch vụ, check-out và housekeeping | UML-18 |
+| FLOW-04 | Import, deduplicate và claim cơ sở | UML-19 |
+
+Các thao tác CRUD nhỏ như thêm/sửa/xóa RoomType, phòng, dịch vụ, Role hoặc User được mô tả trong Use Case/Class/Sequence và bảng chức năng; không cần tạo flowchart riêng nếu không có quy trình rẽ nhánh đặc biệt.
 
 ### 4.1. Activity đặt phòng
 
@@ -844,7 +847,7 @@ sequenceDiagram
     P-->>UI: 403 only for a genuinely missing permission
 ```
 
-The receptionist portal uses customer-specific endpoints and an accessible
+The receptionist portal uses customer-specific endpoints and an assignedible
 property list. Optional service data is requested only when the account has
 the corresponding service permission, so an unrelated 403 cannot eject the
 user from an otherwise authorized screen.

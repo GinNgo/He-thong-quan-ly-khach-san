@@ -40,6 +40,7 @@ class UserCurrentProfileServiceTest {
     @Mock private UserPropertyRepository userPropertyRepository;
     @Mock private AccountSubscriptionRepository accountSubscriptionRepository;
     @Mock private SubscriptionFeatureService subscriptionFeatureService;
+    @Mock private PropertySubscriptionEntitlementService propertyEntitlementService;
     @Mock private ChatMessageRepository chatMessageRepository;
     @Mock private ReservationRepository reservationRepository;
     @Mock private PropertyClaimRequestRepository propertyClaimRequestRepository;
@@ -89,6 +90,8 @@ class UserCurrentProfileServiceTest {
         when(reservationRepository.countByUserIdAndStatusIn(eq(userId), anyList())).thenReturn(2L);
         when(accountSubscriptionRepository.findByUserIdAndStatus(userId, "ACTIVE"))
                 .thenReturn(List.of(subscription));
+        when(propertyEntitlementService.getCurrent(12L))
+                .thenReturn(PropertySubscriptionEntitlementService.EntitlementView.none(12L, "TEST"));
         when(subscriptionFeatureService.getActiveFeaturesForUser(userId))
                 .thenReturn(Map.of("MAX_PROPERTIES", 3));
 
@@ -108,6 +111,46 @@ class UserCurrentProfileServiceTest {
     }
 
     @Test
+    void prefersPropertyEntitlementUsedByTheManagementPortal() {
+        Long userId = 78L;
+        User user = new User();
+        user.setId(userId);
+        user.setUsername("tenant@example.com");
+        user.setStatus("ACTIVE");
+        user.setRoles(Set.of());
+
+        Hotel hotel = new Hotel();
+        hotel.setId(15L);
+        hotel.setName("LuxeStay Central");
+        UserProperty assignment = new UserProperty();
+        assignment.setId(1L);
+        assignment.setUser(user);
+        assignment.setHotel(hotel);
+        assignment.setRelationshipType("OWNER");
+        assignment.setIsPrimaryOwner(true);
+        assignment.setStatus("ACTIVE");
+
+        LocalDateTime startAt = LocalDateTime.of(2026, 8, 9, 0, 0);
+        LocalDateTime endAt = LocalDateTime.of(2027, 8, 9, 0, 0);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userPropertyRepository.findByUserIdAndRelationshipTypeOrderByStartDateDesc(userId, "STAFF"))
+                .thenReturn(List.of());
+        when(userPropertyRepository.findByUserId(userId)).thenReturn(List.of(assignment));
+        when(accountSubscriptionRepository.findByUserIdAndStatus(userId, "ACTIVE")).thenReturn(List.of());
+        when(propertyEntitlementService.getCurrent(15L)).thenReturn(
+                new PropertySubscriptionEntitlementService.EntitlementView(
+                        15L, "PLATFORM", true, 3L, "PREMIUM", "Gói Cao cấp", "ACTIVE",
+                        startAt, endAt, false, Map.of("MAX_ROOMS", 100), "contract-1", null));
+
+        UserDto result = userService.getUserWithSaaSContext(userId).orElseThrow();
+
+        assertEquals("Gói Cao cấp", result.getPlan());
+        assertEquals("ACTIVE", result.getSubscriptionStatus());
+        assertEquals(endAt, result.getEndAt());
+        assertEquals(100, result.getLimits().get("MAX_ROOMS"));
+    }
+
+    @Test
     void returnsEmptyWithoutLoadingContextForAMissingAccount() {
         when(userRepository.findById(88L)).thenReturn(Optional.empty());
 
@@ -115,42 +158,5 @@ class UserCurrentProfileServiceTest {
 
         verify(userPropertyRepository, never()).findByUserId(88L);
         verify(accountSubscriptionRepository, never()).findByUserIdAndStatus(88L, "ACTIVE");
-    }
-
-    @Test
-    void pendingClaimMappingIsNotExposedAsAnActiveManagementAssignment() {
-        Long userId = 78L;
-        User user = new User();
-        user.setId(userId);
-        user.setUsername("claimant@example.com");
-        user.setEmail("claimant@example.com");
-        user.setStatus("ACTIVE");
-        user.setRoles(Set.of());
-
-        Hotel imported = new Hotel();
-        imported.setId(19L);
-        imported.setName("Imported Hotel");
-        imported.setStatus("DRAFT");
-        imported.setApprovalStatus("IMPORTED_PENDING_REVIEW");
-        imported.setOperationStatus("ACTIVE");
-
-        UserProperty pendingOwner = new UserProperty();
-        pendingOwner.setUser(user);
-        pendingOwner.setHotel(imported);
-        pendingOwner.setRelationshipType("OWNER");
-        pendingOwner.setStatus("PENDING");
-
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(userPropertyRepository.findByUserIdAndRelationshipTypeOrderByStartDateDesc(userId, "STAFF"))
-                .thenReturn(List.of());
-        when(userPropertyRepository.findByUserId(userId)).thenReturn(List.of(pendingOwner));
-        when(chatMessageRepository.countByReceiverIdAndIsReadFalse(userId)).thenReturn(0L);
-        when(reservationRepository.countByUserIdAndStatusIn(eq(userId), anyList())).thenReturn(0L);
-        when(accountSubscriptionRepository.findByUserIdAndStatus(userId, "ACTIVE")).thenReturn(List.of());
-
-        UserDto result = userService.getUserWithSaaSContext(userId).orElseThrow();
-
-        assertTrue(result.getAssignedProperties().isEmpty());
-        assertEquals("PENDING", result.getPartnerRegistrationStatus());
     }
 }

@@ -4,7 +4,6 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 import jakarta.persistence.*;
-import java.util.Locale;
 import java.util.Set;
 
 @NoArgsConstructor
@@ -12,11 +11,6 @@ import java.util.Set;
 @Entity
 @Table(name = "app_role")
 public class Role extends AuditableEntity {
-
-    public static final String ACTIVE_STATUS = "ACTIVE";
-    public static final Set<String> SYSTEM_CODES = Set.of(
-            "SUPER_ADMIN", "ADMIN", "CUSTOMER", "PROPERTY_OWNER", "HOTEL_ADMIN",
-            "HOTEL_MANAGER", "RECEPTIONIST", "ACCOUNTANT");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,7 +26,7 @@ public class Role extends AuditableEntity {
     private String description;
 
     @Column(nullable = false)
-    private String status = ACTIVE_STATUS;
+    private String status = "ACTIVE";
 
     @Column(name = "system_role", nullable = false)
     private Boolean systemRole = false;
@@ -92,22 +86,5 @@ public class Role extends AuditableEntity {
 
     public void setRolePermissions(java.util.Set<RolePermission> rolePermissions) {
         this.rolePermissions = rolePermissions;
-    }
-
-    public static boolean isSystemCode(String value) {
-        return value != null && SYSTEM_CODES.contains(value.trim().toUpperCase(Locale.ROOT));
-    }
-
-    public boolean isGovernedSystemRole() {
-        return Boolean.TRUE.equals(systemRole) || isSystemCode(code);
-    }
-
-    @PrePersist
-    @PreUpdate
-    public void enforceSystemIntegrity() {
-        if (isGovernedSystemRole()) {
-            systemRole = true;
-            status = ACTIVE_STATUS;
-        }
     }
 }

@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { finalize, timeout } from 'rxjs';
+import { AuthService } from '../../../core/services/auth';
 import { ManagedProperty, ManagementApiService } from '../../../core/services/management-api.service';
-import { PropertyProfile } from '../../../core/models/property-profile.model';
 import { PropertyLocation, PropertyService } from '../../../core/services/property.service';
 import { FeedbackStateComponent } from '../../../shared/components/feedback-state/feedback-state.component';
 
@@ -14,18 +15,22 @@ import { FeedbackStateComponent } from '../../../shared/components/feedback-stat
   styleUrl: './management-properties.component.css',
 })
 export class ManagementPropertiesComponent implements OnInit {
-  private api = inject(ManagementApiService);
-  private propertyService = inject(PropertyService);
-  private fb = inject(FormBuilder);
-  private cdr = inject(ChangeDetectorRef);
+  private readonly api = inject(ManagementApiService);
+  private readonly propertyService = inject(PropertyService);
+  private readonly authService = inject(AuthService);
+  private readonly fb = inject(FormBuilder);
+  private readonly cdr = inject(ChangeDetectorRef);
+
   properties: ManagedProperty[] = [];
   provinces: PropertyLocation[] = [];
   wards: PropertyLocation[] = [];
-  selected?: ManagedProperty;
   loading = true;
+  locationsLoading = false;
   saving = false;
+  showCreate = false;
   error = '';
   success = '';
+  readonly canCreate = this.authService.getRoles().some(role => role === 'PROPERTY_OWNER' || role === 'SUPER_ADMIN');
 
   readonly form = this.fb.nonNullable.group({
     nameVi: ['', [Validators.required, Validators.maxLength(255)]],
@@ -39,85 +44,84 @@ export class ManagementPropertiesComponent implements OnInit {
     website: ['', Validators.maxLength(255)],
     starRating: [0, [Validators.min(0), Validators.max(5)]],
     descriptionVi: ['', Validators.maxLength(4000)],
-    reason: ['Property profile update', [Validators.required, Validators.minLength(3), Validators.maxLength(500)]],
+    descriptionEn: ['', Validators.maxLength(4000)],
   });
 
   ngOnInit(): void {
     this.load();
-    this.propertyService.getProvinces().subscribe({ next: values => { this.provinces = values; this.cdr.markForCheck(); } });
+    this.loadProvinces();
   }
 
   load(): void {
     this.loading = true;
     this.error = '';
-    this.api.properties().subscribe({
-      next: properties => { this.properties = properties; if (properties.length) this.select(properties[0]); this.loading = false; this.cdr.markForCheck(); },
-      error: error => { this.error = error?.error?.message || 'Không thể tải danh sách cơ sở.'; this.loading = false; this.cdr.markForCheck(); },
+    this.api.properties().pipe(
+      timeout(10000),
+      finalize(() => { this.loading = false; this.cdr.detectChanges(); }),
+    ).subscribe({
+      next: properties => { this.properties = properties; },
+      error: error => { this.error = error?.error?.message || 'Không thể tải danh sách cơ sở.'; },
     });
-  }
-
-  select(property: ManagedProperty): void {
-    this.selected = property;
-    this.success = '';
-    this.error = '';
-    this.form.reset({
-      nameVi: property.nameVi, nameEn: property.nameEn || '', propertyType: property.propertyType || 'HOTEL',
-      provinceId: property.provinceId || null, wardId: property.wardId || null, address: property.address || '',
-      phone: property.phone || '', email: property.email || '', website: property.website || '',
-      starRating: property.starRating || 0, descriptionVi: property.descriptionVi || '', reason: 'Property profile update',
-    });
-    if (property.provinceId) this.loadWards(property.provinceId, property.wardId);
   }
 
   provinceChanged(): void {
     const provinceId = this.form.controls.provinceId.value;
     this.form.controls.wardId.setValue(null);
     this.wards = [];
-    if (provinceId) this.loadWards(provinceId);
-  }
-
-  save(): void {
-    if (!this.selected || this.form.invalid || this.saving) {
-      this.form.markAllAsTouched();
-      return;
-    }
-    this.saving = true;
-    this.error = '';
-    this.success = '';
-    const value = this.form.getRawValue();
-    const profile: PropertyProfile = {
-      nameVi: value.nameVi.trim(),
-      nameEn: value.nameEn.trim() || undefined,
-      propertyType: value.propertyType as PropertyProfile['propertyType'],
-      provinceId: value.provinceId!,
-      wardId: value.wardId!,
-      addressLine: value.address.trim(),
-      phone: value.phone.trim() || undefined,
-      email: value.email.trim() || undefined,
-      website: value.website.trim() || undefined,
-      starRating: value.starRating,
-      descriptionVi: value.descriptionVi.trim() || undefined,
-    };
-    this.api.updateProperty(this.selected.id, { profile, reason: value.reason.trim() }).subscribe({
-      next: updated => {
-        this.properties = this.properties.map(property => property.id === updated.id ? updated : property);
-        this.select(updated);
-        this.success = 'Đã lưu hồ sơ cơ sở.';
-        this.saving = false;
-        this.cdr.markForCheck();
-      },
-      error: error => { this.error = error?.error?.message || 'Không thể lưu hồ sơ cơ sở.'; this.saving = false; this.cdr.markForCheck(); },
+    if (!provinceId) return;
+    this.locationsLoading = true;
+    this.propertyService.getWards(provinceId).pipe(
+      timeout(10000),
+      finalize(() => { this.locationsLoading = false; this.cdr.detectChanges(); }),
+    ).subscribe({
+      next: wards => { this.wards = wards; },
+      error: () => { this.error = 'Không thể tải danh sách phường/xã.'; },
     });
   }
 
-  private loadWards(provinceId: number, wardId?: number): void {
-    this.propertyService.getWards(provinceId).subscribe({
-      next: values => {
-        this.wards = values;
-        if (wardId && values.some(value => value.id === wardId)) this.form.controls.wardId.setValue(wardId);
-        this.cdr.markForCheck();
+  openCreate(): void {
+    if (!this.canCreate) return;
+    this.form.reset({
+      nameVi: '', nameEn: '', propertyType: 'HOTEL', provinceId: null, wardId: null,
+      address: '', phone: '', email: '', website: '', starRating: 0,
+      descriptionVi: '', descriptionEn: '',
+    });
+    this.wards = [];
+    this.error = '';
+    this.success = '';
+    this.showCreate = true;
+  }
+
+  save(): void {
+    if (!this.canCreate || this.form.invalid || this.saving) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    const value = this.form.getRawValue();
+    if (value.provinceId === null || value.wardId === null) return;
+    this.saving = true;
+    this.error = '';
+    this.api.createProperty({ ...value, provinceId: value.provinceId, wardId: value.wardId }).pipe(
+      timeout(15000),
+      finalize(() => { this.saving = false; this.cdr.detectChanges(); }),
+    ).subscribe({
+      next: property => {
+        this.properties = [...this.properties, property];
+        this.showCreate = false;
+        this.success = 'Đã tạo cơ sở ở trạng thái bản nháp.';
       },
-      error: () => { this.error = 'Không thể tải danh sách phường/xã.'; this.cdr.markForCheck(); },
+      error: error => { this.error = error?.error?.message || 'Không thể tạo cơ sở.'; },
+    });
+  }
+
+  private loadProvinces(): void {
+    this.locationsLoading = true;
+    this.propertyService.getProvinces().pipe(
+      timeout(10000),
+      finalize(() => { this.locationsLoading = false; this.cdr.detectChanges(); }),
+    ).subscribe({
+      next: provinces => { this.provinces = provinces; },
+      error: () => { this.error = 'Không thể tải danh sách tỉnh/thành phố.'; },
     });
   }
 }

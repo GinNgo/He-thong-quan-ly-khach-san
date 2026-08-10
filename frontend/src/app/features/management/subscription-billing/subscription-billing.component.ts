@@ -8,9 +8,9 @@ import {
   PlatformSubscriptionEntitlement,
   PlatformOrder,
   PlatformPolicyAvailability,
-  PlatformSubscriptionHistoryItem,
 } from '../../../core/services/platform-billing.service';
 import { PlatformPaymentPanelComponent } from './platform-payment-panel.component';
+import { ManagementApiService } from '../../../core/services/management-api.service';
 
 @Component({
   selector: 'app-subscription-billing',
@@ -23,32 +23,61 @@ export class SubscriptionBillingComponent implements OnInit {
   private readonly platformBilling = inject(PlatformBillingService);
   private readonly route = inject(ActivatedRoute);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly managementApi = inject(ManagementApiService);
 
   plans: PlatformCatalogPlan[] = [];
   currentEntitlement: PlatformSubscriptionEntitlement | null = null;
   policyAvailability: PlatformPolicyAvailability | null = null;
   latestOrder: PlatformOrder | null = null;
-  history: PlatformSubscriptionHistoryItem[] = [];
   activePropertyId?: number;
   isLoading = true;
   plansError = '';
   subscriptionError = '';
   policyError = '';
   orderError = '';
-  historyError = '';
-  exportingHistory = false;
   creatingOrderFor?: number;
   private loadingPlans = true;
   private loadingSubscription = true;
   loadingPolicy = true;
 
   ngOnInit(): void {
-    const propertyId = Number(this.route.snapshot.queryParamMap.get('propertyId'));
-    this.activePropertyId = Number.isInteger(propertyId) && propertyId > 0 ? propertyId : undefined;
     this.loadPlans();
-    this.loadEntitlement();
     this.loadPolicyAvailability();
-    this.loadHistory();
+
+    // The management header changes propertyId without recreating this routed component.
+    this.route.queryParamMap.subscribe((params) => {
+      const paymentOrder = params.get('paymentOrder');
+      if (paymentOrder && paymentOrder !== this.latestOrder?.publicId) {
+        this.platformBilling.getOrder(paymentOrder).subscribe({
+          next: (order) => {
+            this.latestOrder = order;
+            this.loadEntitlement();
+            this.cdr.markForCheck();
+          },
+          error: (err) => this.orderError = err?.error?.message || 'Không thể cập nhật kết quả thanh toán gói.',
+        });
+      }
+      const propertyId = Number(params.get('propertyId'));
+      const nextPropertyId = Number.isInteger(propertyId) && propertyId > 0 ? propertyId : undefined;
+      if (!nextPropertyId) {
+        this.managementApi.context().subscribe({
+          next: (context) => {
+            this.activePropertyId = context.activePropertyId ?? context.properties?.[0]?.id;
+            this.loadEntitlement();
+            this.cdr.markForCheck();
+          },
+          error: () => {
+            this.activePropertyId = undefined;
+            this.loadEntitlement();
+          },
+        });
+        return;
+      }
+      if (nextPropertyId === this.activePropertyId && this.loadingSubscription === false) return;
+      this.activePropertyId = nextPropertyId;
+      this.loadEntitlement();
+      this.cdr.markForCheck();
+    });
   }
 
   loadPlans(): void {
@@ -115,44 +144,6 @@ export class SubscriptionBillingComponent implements OnInit {
         this.updateLoadingState();
         this.cdr.markForCheck();
       },
-    });
-  }
-
-  loadHistory(): void {
-    this.historyError = '';
-    if (!this.activePropertyId) {
-      this.history = [];
-      return;
-    }
-    this.platformBilling.getHistory(this.activePropertyId).subscribe({
-      next: history => { this.history = history; this.cdr.markForCheck(); },
-      error: () => { this.history = []; this.historyError = 'Unable to load historical subscription events for this property.'; this.cdr.markForCheck(); }
-    });
-  }
-
-  exportHistory(): void {
-    if (!this.activePropertyId || this.exportingHistory) return;
-    this.exportingHistory = true;
-    this.historyError = '';
-    this.platformBilling.exportHistory(this.activePropertyId).subscribe({
-      next: response => {
-        const blob = response.body;
-        if (!blob) {
-          this.historyError = 'The subscription history export was empty.';
-          this.exportingHistory = false;
-          return;
-        }
-        const disposition = response.headers.get('Content-Disposition') ?? '';
-        const filename = /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? `subscription-history-${this.activePropertyId}.csv`;
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = url;
-        anchor.download = filename;
-        anchor.click();
-        URL.revokeObjectURL(url);
-        this.exportingHistory = false;
-      },
-      error: () => { this.historyError = 'Unable to export subscription history for this property.'; this.exportingHistory = false; }
     });
   }
 
@@ -223,5 +214,4 @@ export class SubscriptionBillingComponent implements OnInit {
     const randomUuid = globalThis.crypto?.randomUUID?.();
     return randomUuid ? `${prefix}-${randomUuid}` : `${prefix}-${Date.now()}`;
   }
-
 }

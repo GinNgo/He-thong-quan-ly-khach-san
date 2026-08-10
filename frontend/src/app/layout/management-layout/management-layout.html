@@ -1,4 +1,3 @@
-<a class="skip-link" href="#management-main-content">Bo qua dieu huong doi tac</a>
 <div
   class="management-shell"
   [class.sidebar-collapsed]="isSidebarCollapsed"
@@ -34,7 +33,7 @@
                   [routerLinkActiveOptions]="{ exact: link.url === '/management/dashboard' }"
                   [queryParams]="activePropertyId ? { propertyId: activePropertyId } : null"
                   [attr.aria-current]="activeLink.isActive ? 'page' : null"
-                  [title]="isSidebarCollapsed ? link.label : null"
+                  [attr.title]="isSidebarCollapsed ? link.label : null"
                   (click)="closeMobileNavigation()"
                 >
                   <span class="material-symbols-outlined" aria-hidden="true">{{ link.icon }}</span>
@@ -62,7 +61,6 @@
     <header class="management-header">
       <div class="header-leading">
         <button
-          #navigationTrigger
           type="button"
           class="management-icon-button"
           (click)="toggleSidebar()"
@@ -107,7 +105,7 @@
               (change)="selectProperty(propertySelect.value)"
             >
               @for (property of properties; track property.id) {
-                <option [value]="property.id" [selected]="property.id === activePropertyId">{{ property.nameVi }}</option>
+                <option [value]="property.id">{{ propertyName(property) }}</option>
               }
             </select>
           }
@@ -115,7 +113,6 @@
 
         <div class="user-menu-anchor">
           <button
-            #profileTrigger
             type="button"
             class="management-profile-button"
             (click)="toggleUserMenu()"
@@ -153,7 +150,7 @@
       <aside class="property-status-banner" role="alert" aria-live="polite">
         <span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span>
         <div>
-          <strong>Chưa thể vận hành {{ activeProperty.nameVi }}</strong>
+          <strong>Chưa thể vận hành {{ propertyName(activeProperty) }}</strong>
           <span>
             Duyệt: {{ statusLabel(activeProperty.approvalStatus) }} · Vận hành: {{ statusLabel(activeProperty.operationStatus) }}.
             Bạn vẫn có thể hoàn thiện hồ sơ cơ sở và quản lý gói phần mềm.
@@ -163,7 +160,7 @@
       </aside>
     }
 
-    <main id="management-main-content" class="management-content" appRouteFocusTarget>
+    <main id="management-main-content" class="management-content" tabindex="-1">
       <router-outlet></router-outlet>
     </main>
   </div>

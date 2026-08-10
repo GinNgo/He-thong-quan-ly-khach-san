@@ -109,12 +109,16 @@ export class LocationAutocompleteComponent implements OnDestroy {
 
   get groupedResults(): SuggestionGroup[] {
     const groups: SuggestionGroup[] = [
-      { type: 'PROVINCE', label: this.i18n.text('PUBLIC.SEARCH.GROUP_PROVINCES'), icon: 'pi pi-map-marker', items: this.resultGroups.provinces || [] },
-      { type: 'WARD', label: this.i18n.text('PUBLIC.SEARCH.GROUP_WARDS'), icon: 'pi pi-map', items: this.resultGroups.wards || [] },
+      { type: 'PROVINCE', label: this.i18n.text('PUBLIC.SEARCH.GROUP_PROVINCES'), icon: 'pi pi-map-marker', items: this.withAvailableProperties(this.resultGroups.provinces) },
+      { type: 'WARD', label: this.i18n.text('PUBLIC.SEARCH.GROUP_WARDS'), icon: 'pi pi-map', items: this.withAvailableProperties(this.resultGroups.wards) },
       { type: 'PROPERTY', label: this.i18n.text('PUBLIC.SEARCH.GROUP_PROPERTIES'), icon: 'pi pi-building', items: this.resultGroups.properties || [] },
       { type: 'LANDMARK', label: this.i18n.text('PUBLIC.SEARCH.GROUP_LANDMARKS'), icon: 'pi pi-compass', items: this.resultGroups.landmarks || [] }
     ];
     return groups.filter(group => group.items.length > 0);
+  }
+
+  private withAvailableProperties(items?: LocationSuggestion[]): LocationSuggestion[] {
+    return (items || []).filter(item => Number(item.propertyCount) > 0);
   }
 
   get flatResults(): LocationSuggestion[] {

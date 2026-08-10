@@ -31,7 +31,7 @@
     --hotel-border-strong: #94a3b8;
     --hotel-heading: #0f172a;
     --hotel-text: #334155;
-    --hotel-text-muted: #475569;
+    --hotel-text-muted: #64748b;
 
     /* Typography */
     --hotel-font-body: 'Montserrat', sans-serif;
@@ -165,60 +165,6 @@ h1, h2, h3, h4, h5, h6, .font-serif {
 }
 .animate-slide-down {
   animation: slideDown 0.3s ease-out forwards;
-}
-
-.skip-link {
-    position: fixed;
-    top: var(--hotel-space-2);
-    left: var(--hotel-space-2);
-    z-index: 10000;
-    padding: var(--hotel-space-2) var(--hotel-space-4);
-    color: #fff;
-    border-radius: var(--hotel-radius-md);
-    background: var(--hotel-heading);
-    box-shadow: var(--hotel-shadow-md);
-    transform: translateY(calc(-100% - var(--hotel-space-4)));
-    transition: transform var(--hotel-transition-fast) ease;
-}
-
-.skip-link:focus {
-    transform: translateY(0);
-}
-
-.admin-page .page-header p {
-    color: var(--hotel-text-muted) !important;
-}
-
-/* Keep authenticated tables and overlays inside narrow viewports while preserving local scrolling. */
-:where(.p-datatable-wrapper, .table-scroll, .table-responsive) {
-    max-width: 100%;
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-}
-
-:where(.p-dialog-mask, .modal) {
-    max-width: 100vw;
-    padding: 1rem;
-}
-
-:where(.p-dialog, .modal-dialog, .cdk-overlay-pane) {
-    max-width: calc(100vw - 2rem) !important;
-}
-
-:where(.p-dialog-content, .modal-content) {
-    max-width: 100%;
-    overflow-x: auto;
-}
-
-@media (max-width: 23.4375rem) {
-    :where(.p-dialog-mask, .modal) {
-        padding: .5rem;
-    }
-
-    :where(.p-dialog, .modal-dialog, .cdk-overlay-pane) {
-        max-width: calc(100vw - 1rem) !important;
-        max-height: calc(100dvh - 1rem);
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {

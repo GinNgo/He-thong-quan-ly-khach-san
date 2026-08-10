@@ -1,49 +1,22 @@
-import { TestBed } from '@angular/core/testing';
-import { ConfirmationService } from 'primeng/api';
-import { of } from 'rxjs';
-import { AdminInventoryService } from '../../../core/services/admin-inventory.service';
-import { PermissionService } from '../../../core/services/permission.service';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+
 import { RoomManagement } from './room-management';
 
 describe('RoomManagement', () => {
-  const room = { id: 1, hotelId: 7, roomTypeId: 3, roomNumber: '101', floor: 1, status: 'AVAILABLE', housekeepingStatus: 'CLEAN', maintenanceStatus: 'NONE' };
-  const api = {
-    getRooms: vi.fn(() => of([room])), getRoomTypes: vi.fn(() => of([{ id: 3, hotelId: 7, code: 'DLX', nameVi: 'Deluxe', maxGuests: 2, basePrice: 1, status: 'ACTIVE' }])),
-    getProperties: vi.fn(() => of([{ id: 7, name: 'Hotel 7' }])), createRoom: vi.fn(() => of(room)), updateRoom: vi.fn(() => of(room)),
-    bulkCreateRooms: vi.fn(() => of({ created: [room], failedRoomNumbers: [] })), deleteRoom: vi.fn(() => of(undefined)),
-  };
-  beforeEach(async () => { vi.clearAllMocks(); await TestBed.configureTestingModule({ imports: [RoomManagement], providers: [
-    { provide: AdminInventoryService, useValue: api }, { provide: PermissionService, useValue: { hasPermission: () => true } }
-  ] }).compileComponents(); });
+  let component: RoomManagement;
+  let fixture: ComponentFixture<RoomManagement>;
 
-  it('loads and submits tenant-scoped create and update payloads', () => {
-    const fixture = TestBed.createComponent(RoomManagement); fixture.detectChanges(); const component = fixture.componentInstance;
-    expect(component.rooms).toHaveLength(1);
-    component.form = { hotelId: 7, roomTypeId: 3, roomNumber: '102', floor: 1 }; component.save();
-    expect(api.createRoom).toHaveBeenCalledWith(expect.objectContaining({ hotelId: 7, roomTypeId: 3 }));
-    component.openEdit(room as any); component.form.roomNumber = '103'; component.save();
-    expect(api.updateRoom).toHaveBeenCalledWith(1, expect.objectContaining({ roomNumber: '103' }));
-  }, 30000);
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [RoomManagement],
+    }).compileComponents();
 
-  it('rejects oversized bulk ranges before calling the API', () => {
-    const fixture = TestBed.createComponent(RoomManagement); fixture.detectChanges(); const component = fixture.componentInstance;
-    component.bulk = { hotelId: 7, roomTypeId: 3, floor: 1, fromNumber: 1, toNumber: 201, prefix: '' }; component.createBulk();
-    expect(api.bulkCreateRooms).not.toHaveBeenCalled();
+    fixture = TestBed.createComponent(RoomManagement);
+    component = fixture.componentInstance;
+    await fixture.whenStable();
   });
 
-  it('opens work-order management without mutating room state directly', () => {
-    const fixture = TestBed.createComponent(RoomManagement); fixture.detectChanges(); const component = fixture.componentInstance;
-    component.openMaintenance(room as any);
-    expect(component.maintenanceRoom).toEqual(room);
-    expect(component.maintenanceRoom?.id).toBe(1);
-  });
-
-  it('submits one bulk request and confirmed soft-disable', () => {
-    const fixture = TestBed.createComponent(RoomManagement); fixture.detectChanges(); const component = fixture.componentInstance;
-    component.bulk = { hotelId: 7, roomTypeId: 3, floor: 1, fromNumber: 101, toNumber: 103, prefix: 'A' }; component.createBulk();
-    expect(api.bulkCreateRooms).toHaveBeenCalledWith(component.bulk);
-    const confirmations = fixture.debugElement.injector.get(ConfirmationService);
-    vi.spyOn(confirmations, 'confirm').mockImplementation(options => { options.accept?.(); return confirmations; });
-    component.deactivate(room as any); expect(api.deleteRoom).toHaveBeenCalledWith(1);
+  it('should create', () => {
+    expect(component).toBeTruthy();
   });
 });

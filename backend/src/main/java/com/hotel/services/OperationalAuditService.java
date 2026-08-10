@@ -13,9 +13,7 @@ import com.hotel.security.CustomUserDetails;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,7 +25,6 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Locale;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -112,29 +109,6 @@ public class OperationalAuditService {
             specification = specification.and((root, ignored, cb) -> cb.lessThanOrEqualTo(root.get("occurredAt"), safeQuery.to()));
         }
         return repository.findAll(specification, pageable).map(this::toDto);
-    }
-
-    /**
-     * Reads one already-authorized tenant aggregate. The owning domain service must
-     * perform customer ownership or property access checks before calling this method.
-     */
-    @Transactional(readOnly = true)
-    public List<OperationalAuditEventDTO> findAuthorizedAggregateHistory(
-            Long hotelId, String domain, String aggregateType, String aggregateId, int limit) {
-        if (hotelId == null) throw new IllegalArgumentException("Audit property is required.");
-        requireText(domain, "Audit domain");
-        requireText(aggregateType, "Audit aggregate type");
-        requireText(aggregateId, "Audit aggregate id");
-        int safeLimit = Math.min(Math.max(limit, 1), 100);
-        Specification<OperationalAuditEvent> specification = Specification.<OperationalAuditEvent>where(
-                        (root, ignored, cb) -> cb.equal(root.get("hotelId"), hotelId))
-                .and((root, ignored, cb) -> cb.equal(root.get("domain"), upper(domain)))
-                .and((root, ignored, cb) -> cb.equal(root.get("aggregateType"), upper(aggregateType)))
-                .and((root, ignored, cb) -> cb.equal(root.get("aggregateId"), aggregateId.trim()));
-        return repository.findAll(specification, PageRequest.of(
-                        0, safeLimit, Sort.by(Sort.Order.desc("occurredAt"), Sort.Order.desc("id"))))
-                .map(this::toDto)
-                .getContent();
     }
 
     @Transactional(readOnly = true)

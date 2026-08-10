@@ -1,7 +1,6 @@
 package com.hotel.controllers;
 
 import com.hotel.dtos.*;
-import com.hotel.exceptions.ApiErrorResponse;
 import com.hotel.exceptions.CorrelationIdSupport;
 import com.hotel.paymentprovider.idempotency.FinancialIdempotencyService;
 import com.hotel.paymentprovider.idempotency.MutationIdempotencyService;
@@ -38,7 +37,7 @@ public class ReservationController {
     @PostMapping
     @Permission(function = FunctionCode.RESERVATION, action = ActionCode.CREATE)
     public ResponseEntity<ReservationDTO> createReservation(Authentication authentication,
-                                                             @Valid @RequestBody ReservationRequest request,
+                                                             @RequestBody ReservationRequest request,
                                                              @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
                                                              HttpServletRequest httpRequest) {
         return createIdempotentReservation(authentication.getName(), request, idempotencyKey, httpRequest);
@@ -48,16 +47,6 @@ public class ReservationController {
     @Permission(function = FunctionCode.RESERVATION, action = ActionCode.VIEW)
     public ResponseEntity<List<ReservationDTO>> getAllReservations() {
         return ResponseEntity.ok(reservationService.getAllReservations());
-    }
-
-    @GetMapping("/page")
-    @Permission(function = FunctionCode.RESERVATION, action = ActionCode.VIEW)
-    public ResponseEntity<ReservationPageDTO> searchReservations(
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String query,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(reservationService.searchReservations(status, query, page, size));
     }
 
     @GetMapping("/{id}")
@@ -72,32 +61,32 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.getMyReservations(authentication.getName()));
     }
 
-    @GetMapping("/my-bookings/page")
-    @PreAuthorize("hasAuthority('CUSTOMER')")
-    public ResponseEntity<ReservationPageDTO> searchMyReservations(
-            Authentication authentication,
-            @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(reservationService.searchMyReservations(
-                authentication.getName(), status, page, size));
-    }
-
     @PostMapping("/{id}/cancel")
     @PreAuthorize("hasAuthority('CUSTOMER')")
     public ResponseEntity<ReservationDTO> cancelMyReservation(
             Authentication authentication,
             @PathVariable Long id,
+            @Valid @RequestBody CustomerCancellationRequest request,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             HttpServletRequest httpRequest) {
         String username = authentication.getName();
         ReservationDTO response = mutationIdempotencyService.execute(
                 mutationCommand("RESERVATION_CANCEL", username + ":" + id, idempotencyKey,
-                        new CancellationPayload(id), httpRequest),
+                        new CancellationPayload(id, request.reasonCode(), request.reason()), httpRequest),
                 HttpStatus.OK.value(),
                 ReservationDTO.class,
-                () -> reservationService.cancelMyReservation(id, username));
+                () -> reservationService.cancelMyReservation(id, username, request));
         return ResponseEntity.ok(response);
+    }
+
+    ResponseEntity<ReservationDTO> cancelMyReservation(
+            Authentication authentication,
+            Long id,
+            String idempotencyKey,
+            HttpServletRequest httpRequest) {
+        return cancelMyReservation(authentication, id,
+                new CustomerCancellationRequest("CHANGE_OF_PLANS", "Thay đổi kế hoạch"),
+                idempotencyKey, httpRequest);
     }
 
     @PutMapping("/{id}/status")
@@ -110,10 +99,7 @@ public class ReservationController {
     @PutMapping("/{id}/rooms")
     @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.UPDATE)
     public ResponseEntity<ReservationDTO> assignRooms(@PathVariable Long id, @RequestBody AssignRoomsRequest request) {
-        return ResponseEntity.status(HttpStatus.GONE)
-                .header("Deprecation", "true")
-                .header("Link", "</api/reservations/" + id + "/room-assignment>; rel=successor-version")
-                .build();
+        return ResponseEntity.ok(reservationService.assignRooms(id, request));
     }
 
     @GetMapping("/{id}/available-rooms")
@@ -122,78 +108,16 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.getAvailableRooms(id));
     }
 
-    @GetMapping("/{id}/available-rooms/context")
-    @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.VIEW)
-    public ResponseEntity<AvailableRoomContextDTO> availableRoomContext(@PathVariable Long id) {
-        return ResponseEntity.ok(reservationService.getAvailableRoomContext(id));
-    }
-
     @PostMapping("/{id}/assign-rooms")
     @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.UPDATE)
     public ResponseEntity<ReservationDTO> assignRoomsPost(@PathVariable Long id, @RequestBody AssignRoomsRequest request) {
-        return ResponseEntity.status(HttpStatus.GONE)
-                .header("Deprecation", "true")
-                .header("Link", "</api/reservations/" + id + "/room-assignment>; rel=successor-version")
-                .build();
-    }
-
-    @PostMapping("/{id}/room-assignment")
-    @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.UPDATE)
-    public ResponseEntity<ReservationDTO> updateRoomAssignment(
-            Authentication authentication,
-            @PathVariable Long id,
-            @RequestBody RoomAssignmentMutationRequest request,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
-            HttpServletRequest httpRequest) {
-        ReservationDTO response = mutationIdempotencyService.execute(
-                mutationCommand("RESERVATION_ROOM_ASSIGNMENT", authentication.getName() + ":" + id,
-                idempotencyKey, request, httpRequest),
-                HttpStatus.OK.value(),
-                ReservationDTO.class,
-                () -> reservationService.updateRoomAssignment(id, request),
-                () -> reservationService.findRoomAssignmentReplay(id, request.roomIds()).orElse(null));
-        return ResponseEntity.ok(response);
-    }
-
-    @PostMapping("/{id}/room-assignment/release")
-    @Permission(function = FunctionCode.RESERVATION_ASSIGNMENT, action = ActionCode.UPDATE)
-    public ResponseEntity<ReservationDTO> releaseRoomAssignment(
-            Authentication authentication,
-            @PathVariable Long id,
-            @RequestBody RoomAssignmentReleaseRequest request,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
-            HttpServletRequest httpRequest) {
-        ReservationDTO response = mutationIdempotencyService.execute(
-                mutationCommand("RESERVATION_ROOM_RELEASE", authentication.getName() + ":" + id,
-                idempotencyKey, request, httpRequest),
-                HttpStatus.OK.value(),
-                ReservationDTO.class,
-                () -> reservationService.releaseRoomAssignment(id, request),
-                () -> reservationService.findRoomReleaseReplay(id).orElse(null));
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/{id}/check-in-readiness")
-    @Permission(function = FunctionCode.CHECKIN, action = ActionCode.VIEW)
-    public ResponseEntity<CheckInReadinessDTO> checkInReadiness(@PathVariable Long id) {
-        return ResponseEntity.ok(reservationService.getCheckInReadiness(id));
+        return ResponseEntity.ok(reservationService.assignRooms(id, request));
     }
 
     @PostMapping("/{id}/check-in")
-    @Permission(function = FunctionCode.CHECKIN, action = ActionCode.UPDATE)
-    public ResponseEntity<ReservationDTO> checkIn(
-            Authentication authentication,
-            @PathVariable Long id,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
-            HttpServletRequest httpRequest) {
-        ReservationDTO response = mutationIdempotencyService.execute(
-                mutationCommand("RESERVATION_CHECK_IN", authentication.getName() + ":" + id,
-                        idempotencyKey, new CheckInPayload(id), httpRequest),
-                HttpStatus.OK.value(),
-                ReservationDTO.class,
-                () -> reservationService.checkIn(id),
-                () -> reservationService.findCheckInReplay(id).orElse(null));
-        return ResponseEntity.ok(response);
+    @Permission(function = FunctionCode.CHECKIN, action = ActionCode.TASK_EXECUTE)
+    public ResponseEntity<ReservationDTO> checkIn(@PathVariable Long id) {
+        return ResponseEntity.ok(reservationService.checkIn(id));
     }
 
     @PostMapping("/{id}/cancel-operational")
@@ -209,32 +133,25 @@ public class ReservationController {
     }
 
     @PostMapping("/{id}/check-out")
-    @Permission(function = FunctionCode.CHECKOUT, action = ActionCode.CREATE)
+    @Permission(function = FunctionCode.CHECKOUT, action = ActionCode.TASK_EXECUTE)
     public ResponseEntity<CheckoutResultDTO> checkOut(@PathVariable Long id,
             @RequestBody(required = false) CheckoutRequest request) {
         return ResponseEntity.ok(reservationService.checkout(id, request));
     }
 
     @PostMapping("/public/book")
-    public ResponseEntity<ApiErrorResponse> createPublicReservation(HttpServletRequest httpRequest) {
-        ApiErrorResponse body = new ApiErrorResponse(
-                HttpStatus.GONE.value(),
-                "ANONYMOUS_BOOKING_DISABLED",
-                "Anonymous booking is unavailable. Sign in with a customer account to book.",
-                CorrelationIdSupport.resolve(httpRequest),
-                null,
-                false,
-                null,
-                httpRequest.getRequestURI());
-        return ResponseEntity.status(HttpStatus.GONE)
-                .header("Deprecation", "true")
-                .body(body);
+    public ResponseEntity<ReservationDTO> createPublicReservation(
+            @RequestBody ReservationRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            HttpServletRequest httpRequest) {
+        String publicScope = "PUBLIC:" + httpRequest.getRemoteAddr();
+        return createIdempotentReservation(publicScope, request, idempotencyKey, httpRequest, null);
     }
 
     @PostMapping("/book")
     @PreAuthorize("hasAuthority('CUSTOMER')")
     public ResponseEntity<ReservationDTO> createCustomerReservation(Authentication authentication,
-                                                                    @Valid @RequestBody ReservationRequest request,
+                                                                    @RequestBody ReservationRequest request,
                                                                     @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
                                                                     HttpServletRequest httpRequest) {
         return createIdempotentReservation(authentication.getName(), request, idempotencyKey, httpRequest);
@@ -298,10 +215,7 @@ public class ReservationController {
                 CorrelationIdSupport.resolve(request));
     }
 
-    private record CancellationPayload(Long reservationId) {
-    }
-
-    private record CheckInPayload(Long reservationId) {
+    private record CancellationPayload(Long reservationId, String reasonCode, String reason) {
     }
 
     private void requireGenericStatusEndpoint(String status) {

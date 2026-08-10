@@ -5,22 +5,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Collection;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 @Repository
 public interface PropertyImageRepository extends JpaRepository<PropertyImage, Long> {
     List<PropertyImage> findByHotelId(Long hotelId);
-    @Query("select image from PropertyImage image where image.hotel.id = :hotelId order by image.sortOrder, image.id")
-    List<PropertyImage> findByHotelIdOrderBySortOrderAsc(@Param("hotelId") Long hotelId);
-    List<PropertyImage> findByHotelIdOrderBySortOrderAscIdAsc(Long hotelId);
-    @Query("select image from PropertyImage image join fetch image.hotel hotel where hotel.id in :hotelIds order by hotel.id, image.sortOrder, image.id")
-    List<PropertyImage> findByHotelIdInOrderByHotelIdAscSortOrderAscIdAsc(@Param("hotelIds") Collection<Long> hotelIds);
+    List<PropertyImage> findByHotelIdOrderBySortOrderAsc(Long hotelId);
     long countByHotelId(Long hotelId);
-<<<<<<< HEAD
-    long countByMediaId(Long mediaId);
-=======
     long countByIsDemoTrue();
->>>>>>> codex/ui-functional-audit-polish
 }

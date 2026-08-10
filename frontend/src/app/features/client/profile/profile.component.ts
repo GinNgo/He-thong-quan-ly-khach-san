@@ -1,14 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { finalize, map, of, switchMap } from 'rxjs';
 import { PublicI18nService } from '@app/core/i18n/public-i18n.service';
 import { AuthService } from '@app/core/services/auth';
-<<<<<<< HEAD
-import { ClientApiService, ReservationSummary, UserContext } from '@app/core/services/client-api.service';
-import { Reservation, ReservationService } from '@app/core/services/reservation.service';
-=======
 import {
   ClientApiService,
   ReservationSummary,
@@ -19,26 +15,16 @@ import {
   RefundSummary,
   ReservationService,
 } from '@app/core/services/reservation.service';
->>>>>>> codex/ui-functional-audit-polish
 import { AsyncActionCoordinatorService } from '@app/core/services/async-action-coordinator.service';
 import { UserService } from '@app/core/services/user';
 import { EmailVerificationService } from '@app/core/services/email-verification.service';
-import { ReservationAmendmentWorkspaceComponent } from '@app/shared/reservation-amendment/reservation-amendment-workspace.component';
-import { RoomAssignmentCopyService } from '@app/shared/physical-room-picker/room-assignment-copy.service';
-import { StayReview, StayReviewService } from '@app/core/services/stay-review.service';
 
 @Component({
-<<<<<<< HEAD
-  selector: 'app-profile', standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, ReservationAmendmentWorkspaceComponent],
-  templateUrl: './profile.component.html', styleUrls: ['./profile.component.css']
-=======
   selector: 'app-profile',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './profile.component.html',
   styleUrls: ['./profile.component.css'],
->>>>>>> codex/ui-functional-audit-polish
 })
 export class ProfileComponent implements OnInit {
   private readonly authService = inject(AuthService);
@@ -51,12 +37,7 @@ export class ProfileComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
   private readonly changeDetector = inject(ChangeDetectorRef);
-<<<<<<< HEAD
-  private readonly stayReviews = inject(StayReviewService);
-  readonly roomAssignmentCopy = inject(RoomAssignmentCopyService);
-=======
   readonly i18n = inject(PublicI18nService);
->>>>>>> codex/ui-functional-audit-polish
 
   user: UserContext | null = null;
   activeTab: 'profile' | 'bookings' = 'profile';
@@ -69,20 +50,10 @@ export class ProfileComponent implements OnInit {
   uploading = false;
   emailActionBusy = false;
   cancellingId: number | null = null;
-<<<<<<< HEAD
-  selectedBooking: Reservation | null = null;
-  bookingDetailLoading = false;
-  bookingDetailError = '';
-  amendmentReservationId: number | null = null;
-  error = ''; bookingsError = ''; success = '';
-  reviewsByReservation = new Map<number, StayReview>();
-  reviewReservationId: number | null = null;
-  reviewRating = 10; reviewTitle = ''; reviewComment = ''; reviewBusy = false; reviewError = '';
-=======
+  cancellationBookingId: number | null = null;
   error = '';
   bookingsError = '';
   success = '';
->>>>>>> codex/ui-functional-audit-polish
   readonly emailVerificationText = {
     verified: 'Email đã xác minh / Email verified',
     unverified: 'Email chưa xác minh / Email not verified',
@@ -103,13 +74,13 @@ export class ProfileComponent implements OnInit {
   readonly profileForm = this.fb.nonNullable.group({
     fullName: ['', [Validators.required, Validators.maxLength(150)]],
     email: ['', [Validators.required, Validators.email]],
-<<<<<<< HEAD
-    phone: ['', [Validators.maxLength(30), Validators.pattern(/^[0-9+().\s-]*$/)]],
-    avatarUrl: ['']
-=======
     phone: ['', [Validators.maxLength(30), Validators.pattern(/^[0-9+().\-\s]*$/)]],
     avatarUrl: [''],
->>>>>>> codex/ui-functional-audit-polish
+  });
+
+  readonly cancellationForm = this.fb.nonNullable.group({
+    reasonCode: ['', Validators.required],
+    reason: ['', Validators.maxLength(500)],
   });
 
   ngOnInit(): void {
@@ -231,16 +202,6 @@ export class ProfileComponent implements OnInit {
 
   loadBookings(): void {
     if (this.bookingsLoading) return;
-<<<<<<< HEAD
-    this.bookingsLoading = true; this.bookingsError = '';
-    this.clientApi.getMyBookings().pipe(finalize(() => {
-      this.bookingsLoading = false;
-      this.changeDetector.detectChanges();
-    })).subscribe({
-      next: data => { this.bookings = data; this.loadMyReviews(); this.changeDetector.detectChanges(); },
-      error: () => { this.bookingsError = 'Không thể tải danh sách chuyến đi.'; this.changeDetector.detectChanges(); }
-    });
-=======
     this.bookingsLoading = true;
     this.bookingsError = '';
     this.clientApi
@@ -261,24 +222,37 @@ export class ProfileComponent implements OnInit {
           this.changeDetector.detectChanges();
         },
       });
->>>>>>> codex/ui-functional-audit-polish
   }
 
   cancelBooking(id: number): void {
     if (this.cancellingId !== null) return;
-    if (
-      !confirm(
-        this.i18n.text('PUBLIC.ACCOUNT.CANCEL_CONFIRM'),
-      )
-    )
+    this.cancellationBookingId = id;
+    this.cancellationForm.reset({ reasonCode: '', reason: '' });
+  }
+
+  closeCancellationDialog(): void {
+    if (this.cancellingId !== null) return;
+    this.cancellationBookingId = null;
+  }
+
+  confirmCancellation(): void {
+    const id = this.cancellationBookingId;
+    if (id === null || this.cancellationForm.invalid) {
+      this.cancellationForm.markAllAsTouched();
       return;
+    }
+    const cancellation = this.cancellationForm.getRawValue();
+    if (cancellation.reasonCode === 'OTHER' && !cancellation.reason.trim()) {
+      this.cancellationForm.controls.reason.setErrors({ required: true });
+      return;
+    }
 
     this.cancellingId = id;
     this.bookingsError = '';
     this.success = '';
     const idempotencyKey = this.getCancellationKey(id);
     this.actionCoordinator
-      .run(`reservation:cancel:${id}`, () => this.reservationService.cancelMyReservation(id, idempotencyKey))
+      .run(`reservation:cancel:${id}`, () => this.reservationService.cancelMyReservation(id, cancellation, idempotencyKey))
       .pipe(
         finalize(() => {
           this.cancellingId = null;
@@ -294,6 +268,9 @@ export class ProfileComponent implements OnInit {
                   status: updated.status || 'CANCELLED',
                   payment: updated.payment,
                   refunds: updated.refunds,
+                  cancellationReasonCode: updated.cancellationReasonCode,
+                  cancellationReason: updated.cancellationReason,
+                  cancelledAt: updated.cancelledAt,
                 }
               : booking,
           );
@@ -301,41 +278,13 @@ export class ProfileComponent implements OnInit {
             ? this.i18n.text('PUBLIC.ACCOUNT.CANCEL_SUCCESS_REFUND')
             : this.i18n.text('PUBLIC.ACCOUNT.CANCEL_SUCCESS_NO_REFUND');
           sessionStorage.removeItem(`hotel:reservation-cancel:${id}`);
+          this.cancellationBookingId = null;
           this.loadProfile();
         },
         error: (err) => {
           this.bookingsError = err.error?.message || this.i18n.text('PUBLIC.ACCOUNT.CANCEL_ERROR');
         },
       });
-  }
-
-  viewBooking(id: number): void {
-    if (this.bookingDetailLoading) return;
-    this.bookingDetailLoading = true;
-    this.bookingDetailError = '';
-    this.selectedBooking = null;
-    this.reservationService.getReservationById(id).pipe(finalize(() => {
-      this.bookingDetailLoading = false;
-      this.changeDetector.detectChanges();
-    })).subscribe({
-      next: booking => this.selectedBooking = booking,
-      error: () => this.bookingDetailError = 'Không thể tải chi tiết chuyến đi.',
-    });
-  }
-
-  openAmendment(id: number): void {
-    this.amendmentReservationId = id;
-  }
-
-  closeAmendment(): void {
-    this.amendmentReservationId = null;
-  }
-
-  handleAmendmentApplied(id: number): void {
-    this.success = 'Đã cập nhật đặt phòng theo báo giá mới.';
-    this.amendmentReservationId = null;
-    this.loadBookings();
-    this.viewBooking(id);
   }
 
   private getCancellationKey(id: number): string {
@@ -348,54 +297,6 @@ export class ProfileComponent implements OnInit {
     return generated;
   }
 
-<<<<<<< HEAD
-  logout(): void { this.authService.logout(); this.router.navigate(['/']); }
-  avatarError(): void { this.profileForm.patchValue({ avatarUrl: '' }); }
-  getStatusLabel(status: string): string { return ({PENDING:'Chờ xác nhận',PENDING_PAYMENT:'Chờ thanh toán',CONFIRMED:'Đã xác nhận',CHECKED_IN:'Đã nhận phòng',CHECKED_OUT:'Đã trả phòng',CANCELLED:'Đã hủy'} as Record<string,string>)[status] || status; }
-  getEventLabel(eventType: string): string {
-    return ({
-      RESERVATION_CREATED: 'Đã tạo đặt phòng',
-      RESERVATION_STATUS_CHANGED: 'Đã đổi trạng thái',
-      ROOMS_ASSIGNED: this.roomAssignmentCopy.text('historyAssigned'),
-      ROOMS_REASSIGNED: this.roomAssignmentCopy.text('historyReassigned'),
-      ROOMS_RELEASED: this.roomAssignmentCopy.text('historyReleased'),
-    } as Record<string, string>)[eventType] || eventType;
-  }
-
-  openReview(reservationId: number): void {
-    this.reviewReservationId = reservationId; this.reviewRating = 10;
-    this.reviewTitle = ''; this.reviewComment = ''; this.reviewError = '';
-  }
-
-  closeReview(): void { this.reviewReservationId = null; this.reviewError = ''; }
-
-  submitReview(): void {
-    if (!this.reviewReservationId || this.reviewBusy) return;
-    if (this.reviewRating < 1 || this.reviewRating > 10 || this.reviewComment.trim().length < 10) {
-      this.reviewError = 'Vui lòng chọn 1-10 điểm và nhập ít nhất 10 ký tự / Choose 1-10 and enter at least 10 characters.';
-      return;
-    }
-    const reservationId = this.reviewReservationId;
-    this.reviewBusy = true; this.reviewError = '';
-    this.stayReviews.create(reservationId, { rating: this.reviewRating,
-      title: this.reviewTitle.trim() || undefined, comment: this.reviewComment.trim() })
-      .pipe(finalize(() => { this.reviewBusy = false; this.changeDetector.detectChanges(); }))
-      .subscribe({
-        next: review => { this.reviewsByReservation.set(reservationId, review); this.success = 'Đã gửi đánh giá lưu trú / Stay review submitted.'; this.closeReview(); },
-        error: err => this.reviewError = err.error?.message || 'Không thể gửi đánh giá / Review could not be submitted.',
-      });
-  }
-
-  private loadMyReviews(): void {
-    this.stayReviews.mine().subscribe({
-      next: reviews => this.reviewsByReservation = new Map(reviews.map(review => [review.reservationId, review])),
-      error: () => undefined,
-    });
-  }
-
-  assignedRoomNumbers(booking: Reservation): string[] {
-    return [...new Set((booking.details || []).flatMap(detail => detail.assignedRoomNumbers || []))];
-=======
   logout(): void {
     this.authService.logout();
     this.router.navigate(['/']);
@@ -542,7 +443,6 @@ export class ProfileComponent implements OnInit {
     };
     const key = providers[provider || ''];
     return key ? (key.startsWith('PUBLIC.') ? this.i18n.text(key) : key) : provider || this.i18n.text('PUBLIC.ACCOUNT.PROVIDER_SYSTEM');
->>>>>>> codex/ui-functional-audit-polish
   }
 
   loadProfile(): void {

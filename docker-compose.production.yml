@@ -1,0 +1,92 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: Y
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD}
+      MSSQL_PID: Developer
+    volumes:
+      - hotel_sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 60s
+    networks: [hotel_network]
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-demo}
+      # The bundled Flyway scripts upgrade an existing legacy schema; Hibernate
+      # initializes a new deployment schema before this service accepts traffic.
+      SPRING_FLYWAY_ENABLED: ${SPRING_FLYWAY_ENABLED:-false}
+      # Legacy production schemas are migrated explicitly; never let Hibernate alter populated tables at startup.
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-none}
+      RESERVATION_AMENDMENT_DEFAULT_ARRIVAL_TIME: "14:00"
+      JAVA_TOOL_OPTIONS: -Dapp.reservation-amendment.default-arrival-time=14:00
+      # Retained image versions write to /app as a non-root user; use /tmp until
+      # the Dockerfile permission fix is deployed with the next image build.
+      UPLOAD_PATH: /tmp/uploads
+      SERVER_PORT: 8080
+      DB_URL: jdbc:sqlserver://sqlserver:1433;databaseName=HotelDB;encrypt=true;trustServerCertificate=true
+      DB_USERNAME: sa
+      DB_PASSWORD: ${MSSQL_SA_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      PROPERTY_PAYMENT_ENCRYPTION_KEY: ${PROPERTY_PAYMENT_ENCRYPTION_KEY:?Set PROPERTY_PAYMENT_ENCRYPTION_KEY}
+      CORS_ALLOWED_ORIGINS: ${PUBLIC_ORIGIN}
+      WEBSOCKET_ALLOWED_ORIGINS: ${PUBLIC_ORIGIN}
+      REGISTRATION_LOGIN_URL: ${PUBLIC_ORIGIN}/login
+      PASSWORD_RESET_URL: ${PUBLIC_ORIGIN}/reset-password
+      EMAIL_VERIFICATION_URL: ${PUBLIC_ORIGIN}/verify-email
+      DEMO_ACCOUNT_PASSWORD: ${DEMO_ACCOUNT_PASSWORD:-}
+      VNPAY_RETURN_URL: ${PUBLIC_ORIGIN}/payment-result
+      VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:-}
+      VNPAY_HASH_SECRET: ${VNPAY_HASH_SECRET:-}
+      VNPAY_URL: ${VNPAY_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODELS: ${GEMINI_MODELS:-gemini-2.5-flash}
+      GEMINI_STREAMING_ENABLED: ${GEMINI_STREAMING_ENABLED:-true}
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID:-}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET:-}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      PAYMENT_DEMO_ENABLED: ${PAYMENT_DEMO_ENABLED:-true}
+      PAYMENT_SANDBOX_ENABLED: ${PAYMENT_SANDBOX_ENABLED:-false}
+      PAYMENT_PRODUCTION_ENABLED: "false"
+      PAYMENT_PRODUCTION_APPROVED: "false"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP"]
+      interval: 20s
+      timeout: 10s
+      retries: 6
+      start_period: 90s
+    networks: [hotel_network]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-8088}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [hotel_network]
+
+networks:
+  hotel_network:
+    driver: bridge
+
+volumes:
+  hotel_sqlserver_data:

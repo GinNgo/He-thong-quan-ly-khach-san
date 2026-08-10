@@ -30,11 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(
         classes = BackendApplication.class,
-        properties = {
-                "payment.property.encryption-key=test-property-payment-key",
-                "spring.datasource.url=jdbc:h2:mem:credential-registration;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
-                "spring.jpa.hibernate.ddl-auto=create-drop"
-        })
+        properties = "payment.property.encryption-key=test-property-payment-key")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class CredentialRegistrationIntegrationTest {

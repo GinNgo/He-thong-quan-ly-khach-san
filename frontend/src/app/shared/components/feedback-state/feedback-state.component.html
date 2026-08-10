@@ -4,7 +4,6 @@
   [attr.role]="role"
   [attr.aria-live]="ariaLive"
   [attr.aria-busy]="state === 'loading'"
-  [appFocusOnError]="state === 'error'"
 >
   <span class="feedback-state__icon" [class]="icon + ' feedback-state__icon'" aria-hidden="true"></span>
   <h2 class="feedback-state__title">{{ resolvedTitle }}</h2>

@@ -61,7 +61,6 @@ class AvatarUploadIntegrationTest {
     @Autowired private ObjectMapper objectMapper;
     @Autowired private RefreshTokenSessionRepository refreshTokenRepository;
     @Autowired private UserRepository userRepository;
-    @Autowired private RefreshTokenSessionRepository refreshTokenRepository;
     @Autowired private PasswordEncoder passwordEncoder;
 
     @DynamicPropertySource

@@ -73,4 +73,15 @@ describe('RegisterComponent', () => {
     expect(destinations).not.toContain('#');
     expect(fixture.nativeElement.querySelector('#terms').getAttribute('aria-describedby')).toBe('terms-consent-copy');
   });
+
+  it('renders legal content in a viewport modal instead of the registration layout flow', () => {
+    component.openLegal(new Event('click'), 'TERMS');
+    fixture.detectChanges();
+
+    const backdrop = fixture.nativeElement.querySelector('.legal-modal-backdrop') as HTMLElement;
+    expect(backdrop).not.toBeNull();
+    expect(getComputedStyle(backdrop).position).toBe('fixed');
+    expect(fixture.nativeElement.querySelector('.register-page-shell .legal-modal-backdrop')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[role="dialog"]').getAttribute('aria-labelledby')).toBe('legal-modal-title');
+  });
 });

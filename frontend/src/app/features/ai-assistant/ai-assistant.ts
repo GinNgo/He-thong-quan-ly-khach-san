@@ -1,14 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { AfterViewChecked, ChangeDetectorRef, Component, ElementRef, HostListener, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-<<<<<<< HEAD
-import { timeout } from 'rxjs';
-import { FocusTrapModule } from 'primeng/focustrap';
-=======
 import { finalize, timeout } from 'rxjs';
->>>>>>> codex/ui-functional-audit-polish
 
-import { AiService } from '../../core/services/ai';
+import { AiService, ChatHistoryMessage } from '../../core/services/ai';
 
 interface ChatMessage {
   text: string;
@@ -17,12 +12,12 @@ interface ChatMessage {
   retryText?: string;
 }
 
-const AI_REQUEST_TIMEOUT_MS = 15_000;
+const AI_REQUEST_TIMEOUT_MS = 30_000;
 
 @Component({
   selector: 'app-ai-assistant',
   standalone: true,
-  imports: [CommonModule, FormsModule, FocusTrapModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './ai-assistant.html',
   styleUrl: './ai-assistant.css'
 })
@@ -54,7 +49,7 @@ export class AiAssistant implements AfterViewChecked {
   toggleChat(): void {
     if (this.isOpen) {
       this.isOpen = false;
-      setTimeout(() => this.triggerButton?.nativeElement.focus());
+      this.triggerButton?.nativeElement.focus();
       return;
     }
 
@@ -73,7 +68,7 @@ export class AiAssistant implements AfterViewChecked {
     if (!this.isOpen) return;
 
     this.isOpen = false;
-    setTimeout(() => this.triggerButton?.nativeElement.focus());
+    this.triggerButton?.nativeElement.focus();
   }
 
   sendMessage(): void {
@@ -101,7 +96,24 @@ export class AiAssistant implements AfterViewChecked {
     }
     this.isTyping = true;
 
-    this.aiService.chat(userText).pipe(
+    const historyMessages = [...this.messages];
+    let currentMessageIndex = -1;
+    for (let index = historyMessages.length - 1; index >= 0; index -= 1) {
+      const message = historyMessages[index];
+      if (message.sender === 'user' && message.text === userText) {
+        currentMessageIndex = index;
+        break;
+      }
+    }
+    if (currentMessageIndex >= 0) historyMessages.splice(currentMessageIndex, 1);
+
+    const firstUserIndex = historyMessages.findIndex((message) => message.sender === 'user');
+    const history = (firstUserIndex >= 0 ? historyMessages.slice(firstUserIndex) : [])
+      .filter((message) => !message.retryText)
+      .slice(-10)
+      .map<ChatHistoryMessage>((message) => ({ role: message.sender, text: message.text }));
+
+    this.aiService.chat(userText, history).pipe(
       timeout(AI_REQUEST_TIMEOUT_MS),
       finalize(() => {
         this.isTyping = false;

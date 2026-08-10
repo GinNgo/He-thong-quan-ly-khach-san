@@ -1,62 +1,3 @@
-<<<<<<< HEAD
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-
-import { PropertyResultCardComponent } from './property-result-card';
-
-describe('PropertyResultCardComponent image fallback', () => {
-  let fixture: ComponentFixture<PropertyResultCardComponent>;
-
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [PropertyResultCardComponent] }).compileComponents();
-    fixture = TestBed.createComponent(PropertyResultCardComponent);
-  });
-
-  it('treats blank API image values as missing', () => {
-    fixture.componentRef.setInput('property', {
-      id: 91,
-      name: 'Blank Image Hotel',
-      propertyType: 'HOTEL',
-      thumbnailUrl: '   ',
-      mainImageUrl: '\t',
-      mainImage: '',
-      addressLine: '91 Test Street',
-    });
-    fixture.detectChanges();
-
-    const image = fixture.nativeElement.querySelector('img') as HTMLImageElement;
-    expect(image.getAttribute('src')).toBe('/assets/fallbacks/hotel-default.webp');
-    expect(image.alt).toBe('Blank Image Hotel');
-  });
-
-  it('renders a reviewed zero score instead of treating it as unrated', () => {
-    fixture.componentRef.setInput('property', property({ reviewScore: 0, reviewCount: 3 }));
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('.review b')?.textContent.trim()).toBe('0.0');
-    expect(fixture.nativeElement.querySelector('.unrated')).toBeNull();
-  });
-
-  it.each([
-    [{ reviewScore: null, reviewCount: 3 }, 'null score'],
-    [{ reviewScore: 8, reviewCount: 0 }, 'zero review count'],
-  ])('renders the unrated state for %s', (override, _label) => {
-    fixture.componentRef.setInput('property', property(override));
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('.review')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.unrated')).not.toBeNull();
-  });
-
-  it('exposes the authoritative displayed nightly price for range assertions', () => {
-    fixture.componentRef.setInput('property', property({
-      pricing: {
-        nightlyPrice: 500000,
-        discountedPrice: 500000,
-        numberOfNights: 2,
-        taxAmount: 150000,
-        feeAmount: 0,
-        totalAmount: 1150000,
-=======
 import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { of, Subject } from 'rxjs';
@@ -119,53 +60,11 @@ describe('PropertyResultCardComponent', () => {
         taxAmount: 60000,
         feeAmount: 15000,
         totalAmount: 575000,
->>>>>>> codex/ui-functional-audit-polish
         currency: 'VND',
       },
     }));
     fixture.detectChanges();
 
-<<<<<<< HEAD
-    const nightlyPrice = fixture.nativeElement.querySelector('[data-nightly-price]') as HTMLElement;
-    expect(nightlyPrice.getAttribute('data-price-value')).toBe('500000');
-    expect(nightlyPrice.textContent).toContain('500.000');
-    expect(fixture.nativeElement.querySelector('[data-pricing-unavailable]')).toBeNull();
-  });
-
-  it('renders unavailable without a synthetic zero nightly price when pricing is null', () => {
-    fixture.componentRef.setInput('property', property({ pricing: undefined }));
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('[data-nightly-price]')).toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-pricing-unavailable]')).not.toBeNull();
-  });
-
-  it.each([
-    [3, '[data-availability-count]', '3', 'positive authoritative count'],
-    [0, '[data-availability-unavailable]', null, 'sold out'],
-    [undefined, '[data-availability-missing]', null, 'missing projection'],
-  ])('renders availability state for %s (%s)', (availableRoomCount, selector, rawValue, _label) => {
-    fixture.componentRef.setInput('property', property({ availableRoomCount }));
-    fixture.detectChanges();
-
-    const state = fixture.nativeElement.querySelector(selector) as HTMLElement;
-    expect(state).not.toBeNull();
-    if (rawValue !== null) expect(state.getAttribute('data-availability-value')).toBe(rawValue);
-  });
-});
-
-function property(override: Record<string, unknown> = {}) {
-  return {
-    id: 91,
-    name: 'Review Contract Hotel',
-    addressLine: '91 Test Street',
-    starRating: 4,
-    latitude: 10,
-    longitude: 106,
-    ...override,
-  };
-}
-=======
     expect(fixture.nativeElement.querySelector('[data-sponsored]')).toBeNull();
     expect(fixture.nativeElement.querySelector('.nightly-price-label del')).toBeNull();
     expect(fixture.nativeElement.querySelector('.promotion-proof')).toBeNull();
@@ -231,4 +130,3 @@ function property(override: Record<string, unknown> = {}) {
     };
   }
 });
->>>>>>> codex/ui-functional-audit-polish

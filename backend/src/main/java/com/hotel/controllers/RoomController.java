@@ -15,7 +15,6 @@ import com.hotel.security.ActionCode;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/rooms")
@@ -43,20 +42,20 @@ public class RoomController {
     @PostMapping
     @Permission(function = FunctionCode.ROOM, action = ActionCode.CREATE)
     @Operation(summary = "Create new room")
-    public ResponseEntity<RoomDTO> createRoom(@Valid @RequestBody RoomDTO dto) {
+    public ResponseEntity<RoomDTO> createRoom(@RequestBody RoomDTO dto) {
         return ResponseEntity.ok(roomService.createRoom(dto));
     }
 
     @PostMapping("/bulk")
     @Permission(function = FunctionCode.ROOM, action = ActionCode.CREATE)
-    public ResponseEntity<BulkRoomResultDTO> bulkCreate(@Valid @RequestBody BulkRoomRequest request) {
+    public ResponseEntity<BulkRoomResultDTO> bulkCreate(@RequestBody BulkRoomRequest request) {
         return ResponseEntity.ok(roomService.bulkCreate(request));
     }
 
     @PutMapping("/{id}")
     @Permission(function = FunctionCode.ROOM, action = ActionCode.UPDATE)
     @Operation(summary = "Update room")
-    public ResponseEntity<RoomDTO> updateRoom(@PathVariable Long id, @Valid @RequestBody RoomDTO dto) {
+    public ResponseEntity<RoomDTO> updateRoom(@PathVariable Long id, @RequestBody RoomDTO dto) {
         return ResponseEntity.ok(roomService.updateRoom(id, dto));
     }
 

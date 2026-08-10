@@ -1,7 +1,7 @@
 import { registerLocaleData } from '@angular/common';
 import localeVi from '@angular/common/locales/vi';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { NEVER, of, throwError } from 'rxjs';
 import {
   CheckoutPreview,
   CheckoutResult,
@@ -144,6 +144,20 @@ describe('ReservationCheckoutComponent', () => {
     expect(component.serviceOptions()).toEqual([
       expect.objectContaining({ value: 17 }),
     ]);
+  });
+
+  it('stops the catalog loading state when the service endpoint times out', () => {
+    vi.useFakeTimers();
+    checkoutService.preview.mockReturnValue(of(makePreview('SETTLED', 0, true)));
+    hotelService.getServicesForHotel.mockReturnValue(NEVER);
+
+    component.loadPreview();
+    expect(component.catalogLoading()).toBe(true);
+    vi.advanceTimersByTime(15_001);
+
+    expect(component.catalogLoading()).toBe(false);
+    expect(component.catalogError()).toContain('Timeout');
+    vi.useRealTimers();
   });
 
   it('presents service and minibar as explicit usage choices', () => {

@@ -12,7 +12,6 @@ import com.hotel.propertycommerce.payment.PropertyFinancialTransaction;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ContextConfiguration;
@@ -27,15 +26,12 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({PropertyRevenueRepository.class, PropertyRevenueService.class})
 @ContextConfiguration(classes = BackendApplication.class)
 @TestPropertySource(properties = {
-        "spring.datasource.url=${PROPERTY_REVENUE_DATABASE_URL:jdbc:h2:mem:property-revenue-reconciliation;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}",
-        "spring.datasource.username=${PROPERTY_REVENUE_DATABASE_USERNAME:sa}",
-        "spring.datasource.password=${PROPERTY_REVENUE_DATABASE_PASSWORD:}",
-        "spring.datasource.driver-class-name=${PROPERTY_REVENUE_DATABASE_DRIVER:org.h2.Driver}",
-        "spring.jpa.database-platform=${PROPERTY_REVENUE_DATABASE_DIALECT:org.hibernate.dialect.H2Dialect}",
+        "spring.datasource.url=jdbc:h2:mem:property-revenue-reconciliation;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.flyway.enabled=false"
 })

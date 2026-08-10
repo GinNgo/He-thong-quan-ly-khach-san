@@ -76,7 +76,7 @@ public class AuthService {
         );
         User authenticatedUser = userRepository.findByUsername(authentication.getName())
                 .orElseThrow(() -> new BadCredentialsException("Invalid username or password."));
-        AccountStatusPolicy.requireActive(authenticatedUser);
+        AccountStatusPolicy.requireLoginAllowed(authenticatedUser);
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -202,7 +202,7 @@ public class AuthService {
     }
 
     AuthResponse createSocialAuthResponse(User user) {
-        AccountStatusPolicy.requireActive(user);
+        AccountStatusPolicy.requireLoginAllowed(user);
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 user.getUsername(),
                 null,
@@ -235,7 +235,7 @@ public class AuthService {
     @Transactional(readOnly = true)
     public AuthResponse refreshAccessToken(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(com.hotel.security.RefreshTokenException::invalid);
-        AccountStatusPolicy.requireActive(user);
+        AccountStatusPolicy.requireLoginAllowed(user);
 
         java.util.List<org.springframework.security.core.authority.SimpleGrantedAuthority> authorities =
                 user.getRoles().stream()

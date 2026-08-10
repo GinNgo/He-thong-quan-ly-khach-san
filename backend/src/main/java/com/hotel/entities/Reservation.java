@@ -54,6 +54,15 @@ public class Reservation extends AuditableEntity {
     @Column(name = "special_requests", columnDefinition = "nvarchar(max)")
     private String specialRequests;
 
+    @Column(name = "cancellation_reason_code", length = 50)
+    private String cancellationReasonCode;
+
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
     @Column(name = "deposit_configuration_id")
     private Long depositConfigurationId;
 
@@ -85,19 +94,6 @@ public class Reservation extends AuditableEntity {
     @Column(name = "booking_idempotency_key", length = 160)
     private String bookingIdempotencyKey;
 
-<<<<<<< HEAD
-    @Column(name = "operational_policy_id")
-    private Long operationalPolicyId;
-
-    @Column(name = "operational_policy_version")
-    private Long operationalPolicyVersion;
-
-    @Column(name = "operational_policy_effective_from")
-    private LocalDateTime operationalPolicyEffectiveFrom;
-
-    @Column(name = "operational_policy_snapshot", columnDefinition = "nvarchar(max)")
-    private String operationalPolicySnapshot;
-=======
     @Column(name = "pricing_quote_id", length = 64)
     private String pricingQuoteId;
 
@@ -136,7 +132,6 @@ public class Reservation extends AuditableEntity {
 
     @Column(name = "pricing_member_benefit_json", columnDefinition = "nvarchar(max)")
     private String pricingMemberBenefitJson;
->>>>>>> codex/ui-functional-audit-polish
 
 
 
@@ -230,6 +225,13 @@ public class Reservation extends AuditableEntity {
         this.specialRequests = specialRequests;
     }
 
+    public String getCancellationReasonCode() { return cancellationReasonCode; }
+    public void setCancellationReasonCode(String cancellationReasonCode) { this.cancellationReasonCode = cancellationReasonCode; }
+    public String getCancellationReason() { return cancellationReason; }
+    public void setCancellationReason(String cancellationReason) { this.cancellationReason = cancellationReason; }
+    public LocalDateTime getCancelledAt() { return cancelledAt; }
+    public void setCancelledAt(LocalDateTime cancelledAt) { this.cancelledAt = cancelledAt; }
+
     public void captureDepositPolicy(DepositPolicySnapshot snapshot) {
         if (snapshot == null) {
             throw new IllegalArgumentException("Deposit policy snapshot is required.");
@@ -263,28 +265,6 @@ public class Reservation extends AuditableEntity {
                 com.hotel.paymentprovider.domain.VndMoney.of(depositRequired));
     }
 
-    public void applyAmendedDepositPolicy(DepositPolicySnapshot snapshot) {
-        if (snapshot == null) {
-            throw new IllegalArgumentException("Deposit policy snapshot is required.");
-        }
-        if (depositPolicyType == null) {
-            throw new IllegalStateException("The reservation has no deposit policy to amend.");
-        }
-        boolean samePolicy = hotel != null
-                && hotel.getId() != null
-                && hotel.getId().equals(snapshot.propertyId())
-                && java.util.Objects.equals(depositConfigurationId, snapshot.configurationId())
-                && java.util.Objects.equals(depositConfigurationVersion, snapshot.configurationVersion())
-                && depositPolicyType.equals(snapshot.policyType().name())
-                && java.util.Objects.equals(depositPolicyValue, snapshot.policyValue());
-        if (!samePolicy) {
-            throw new IllegalArgumentException("Reservation amendments must preserve the original deposit policy identity.");
-        }
-        depositBookingTotal = snapshot.bookingTotal().amount();
-        depositRequired = snapshot.requiredDeposit().amount();
-        depositCurrency = snapshot.currency();
-    }
-
     public Long getDepositConfigurationId() { return depositConfigurationId; }
     public Long getDepositConfigurationVersion() { return depositConfigurationVersion; }
     public String getDepositPolicyType() { return depositPolicyType; }
@@ -303,23 +283,6 @@ public class Reservation extends AuditableEntity {
         this.bookingIdempotencyKey = bookingIdempotencyKey;
     }
 
-<<<<<<< HEAD
-    public void captureOperationalPolicy(com.hotel.services.OperationalPolicyService.PolicySnapshot snapshot) {
-        if (snapshot == null) return;
-        if (operationalPolicySnapshot != null) {
-            throw new IllegalStateException("Operational policy snapshot is immutable once captured.");
-        }
-        operationalPolicyId = snapshot.policyId();
-        operationalPolicyVersion = snapshot.version();
-        operationalPolicyEffectiveFrom = snapshot.effectiveFrom();
-        operationalPolicySnapshot = snapshot.json();
-    }
-
-    public Long getOperationalPolicyId() { return operationalPolicyId; }
-    public Long getOperationalPolicyVersion() { return operationalPolicyVersion; }
-    public LocalDateTime getOperationalPolicyEffectiveFrom() { return operationalPolicyEffectiveFrom; }
-    public String getOperationalPolicySnapshot() { return operationalPolicySnapshot; }
-=======
     public String getPricingQuoteId() { return pricingQuoteId; }
     public void setPricingQuoteId(String pricingQuoteId) { this.pricingQuoteId = pricingQuoteId; }
     public Instant getPricingQuoteExpiresAt() { return pricingQuoteExpiresAt; }
@@ -346,5 +309,4 @@ public class Reservation extends AuditableEntity {
     public void setPricingPromotionsJson(String pricingPromotionsJson) { this.pricingPromotionsJson = pricingPromotionsJson; }
     public String getPricingMemberBenefitJson() { return pricingMemberBenefitJson; }
     public void setPricingMemberBenefitJson(String pricingMemberBenefitJson) { this.pricingMemberBenefitJson = pricingMemberBenefitJson; }
->>>>>>> codex/ui-functional-audit-polish
 }

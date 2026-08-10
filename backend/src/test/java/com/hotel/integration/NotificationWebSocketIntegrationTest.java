@@ -1,28 +1,15 @@
 package com.hotel.integration;
 
 import com.hotel.BackendApplication;
-<<<<<<< HEAD
-import com.hotel.security.ActionCode;
-import com.hotel.security.CustomUserDetails;
-import com.hotel.security.CustomUserDetailsService;
-import com.hotel.security.FunctionCode;
-import com.hotel.security.JwtTokenProvider;
-=======
 import com.hotel.dtos.AuthResponse;
 import com.hotel.dtos.LoginRequest;
 import com.hotel.services.AuthService;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
->>>>>>> codex/ui-functional-audit-polish
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-<<<<<<< HEAD
-import org.springframework.boot.test.mock.mockito.MockBean;
-=======
 import org.springframework.beans.factory.annotation.Value;
->>>>>>> codex/ui-functional-audit-polish
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
@@ -30,8 +17,6 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
@@ -46,27 +31,24 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-<<<<<<< HEAD
-import java.util.Set;
-=======
->>>>>>> codex/ui-functional-audit-polish
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-<<<<<<< HEAD
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.when;
-=======
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
->>>>>>> codex/ui-functional-audit-polish
 
 @SpringBootTest(classes = BackendApplication.class,
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "spring.datasource.url=jdbc:h2:mem:notificationws;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
-        "payment.property.encryption-key=test-property-payment-encryption-key"
+        "app.e2e-fixtures.enabled=true",
+        "payment.property.encryption-key=test-property-payment-encryption-key",
+        "LUXESTAY_E2E_CUSTOMER_USERNAME=e2e-test-customer",
+        "LUXESTAY_E2E_CUSTOMER_PASSWORD=customer-test-password",
+        "LUXESTAY_E2E_ADMIN_USERNAME=e2e-test-admin",
+        "LUXESTAY_E2E_ADMIN_PASSWORD=admin-test-password",
+        "LUXESTAY_E2E_OWNER_USERNAME=e2e-test-owner",
+        "LUXESTAY_E2E_OWNER_PASSWORD=owner-test-password"
 })
 @ActiveProfiles("test")
 class NotificationWebSocketIntegrationTest {
@@ -75,20 +57,12 @@ class NotificationWebSocketIntegrationTest {
     private int port;
 
     @Autowired
-    private JwtTokenProvider jwtTokenProvider;
-
-    @MockBean
-    private CustomUserDetailsService userDetailsService;
+    private AuthService authService;
 
     @Value("${jwt.secret}")
     private String jwtSecret;
 
     private final List<WebSocketStompClient> clients = new ArrayList<>();
-
-    @BeforeEach
-    void configurePrincipal() {
-        when(userDetailsService.loadUserByUsername("notification-admin")).thenReturn(adminDetails());
-    }
 
     @AfterEach
     void stopClients() {
@@ -106,76 +80,6 @@ class NotificationWebSocketIntegrationTest {
 
     @Test
     void adminCanConnectAndSubscribeToProtectedNotificationTopic() throws Exception {
-<<<<<<< HEAD
-        SockJsClient sockJsClient = new SockJsClient(List.of(
-                new WebSocketTransport(new StandardWebSocketClient())));
-        stompClient = new WebSocketStompClient(sockJsClient);
-        stompClient.setMessageConverter(new MappingJackson2MessageConverter());
-
-        StompHeaders connectHeaders = new StompHeaders();
-        connectHeaders.add("Authorization", "Bearer " + token(adminDetails()));
-        CompletableFuture<StompSession> connected = new CompletableFuture<>();
-        CompletableFuture<Throwable> sessionFailure = new CompletableFuture<>();
-
-        stompClient.connectAsync(
-                "ws://localhost:" + port + "/ws",
-                new WebSocketHttpHeaders(),
-                connectHeaders,
-                new StompSessionHandlerAdapter() {
-                    @Override
-                    public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
-                        connected.complete(session);
-                    }
-
-                    @Override
-                    public void handleFrame(StompHeaders headers, Object payload) {
-                        sessionFailure.complete(new IllegalStateException(
-                                "STOMP error: " + headers));
-                    }
-
-                    @Override
-                    public void handleException(
-                            StompSession session,
-                            StompCommand command,
-                            StompHeaders headers,
-                            byte[] payload,
-                            Throwable exception) {
-                        sessionFailure.complete(exception);
-                    }
-
-                    @Override
-                    public void handleTransportError(StompSession session, Throwable exception) {
-                        sessionFailure.complete(exception);
-                    }
-                });
-
-        StompSession session = connected.get(10, TimeUnit.SECONDS);
-        session.subscribe(
-                "/topic/admin/notifications", new StompSessionHandlerAdapter() {
-                });
-
-        Thread.sleep(1500);
-        assertFalse(sessionFailure.isDone(),
-                () -> "Notification STOMP session failed: " + sessionFailure.getNow(null));
-        assertTrue(session.isConnected());
-        session.disconnect();
-    }
-
-    private String token(CustomUserDetails user) {
-        return jwtTokenProvider.generateToken(new UsernamePasswordAuthenticationToken(
-                user, null, user.getAuthorities()));
-    }
-
-    private CustomUserDetails adminDetails() {
-        return new CustomUserDetails(
-                "notification-admin",
-                "hash",
-                Set.of(new SimpleGrantedAuthority("ADMIN")),
-                Map.of(FunctionCode.REPORT, ActionCode.VIEW),
-                7L,
-                null,
-                Map.of());
-=======
         SessionProbe probe = connect(adminToken());
         StompSession session = probe.awaitConnected();
 
@@ -328,6 +232,5 @@ class NotificationWebSocketIntegrationTest {
         CompletableFuture<Throwable> failure() {
             return failure;
         }
->>>>>>> codex/ui-functional-audit-polish
     }
 }

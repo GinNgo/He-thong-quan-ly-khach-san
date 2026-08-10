@@ -12,4 +12,8 @@ public class AppFunctionDto {
     private String icon;
     private Integer sortOrder;
     private Integer actionMask; // Used when fetching RolePermissions
+    private Integer supportedActionMask;
+    private String scopeType;
+    private Boolean active;
+    private Long version;
 }

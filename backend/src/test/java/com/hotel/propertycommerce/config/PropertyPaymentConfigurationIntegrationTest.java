@@ -21,8 +21,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
@@ -50,7 +50,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @DataJpaTest
 @ContextConfiguration(classes = PropertyPaymentConfigurationIntegrationTest.TestApplication.class)
 @Import({PropertyPaymentConfigurationService.class, PropertyAccessService.class,
-        PropertyPaymentConfigurationIntegrationTest.TestBeans.class})
+        PropertyPaymentConfigurationIntegrationTest.TestConfiguration.class})
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:h2:mem:property-payment-config;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
         "spring.jpa.hibernate.ddl-auto=create-drop",
@@ -58,13 +58,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
         "payment.property.encryption-key=integration-test-encryption-key"
 })
 class PropertyPaymentConfigurationIntegrationTest {
-    @TestConfiguration(proxyBeanMethods = false)
+    @SpringBootConfiguration
     @EnableAutoConfiguration
     @EntityScan(basePackages = "com.hotel")
     @EnableJpaRepositories(basePackages = "com.hotel")
     static class TestApplication { }
 
-    static class TestBeans {
+    static class TestConfiguration {
         @Bean PaymentEnvironmentGuard paymentEnvironmentGuard() {
             return new PaymentEnvironmentGuard(true, true, false, false, false);
         }
@@ -88,7 +88,7 @@ class PropertyPaymentConfigurationIntegrationTest {
         assign(owner, first);
         authenticate(admin, "SUPER_ADMIN"); service.update(second.getId(), request());
         authenticate(owner, "PROPERTY_OWNER"); service.update(first.getId(), request());
-        assertThrows(com.hotel.exceptions.ResourceNotFoundException.class, () -> service.get(second.getId()));
+        assertThrows(SecurityException.class, () -> service.get(second.getId()));
         entityManager.flush(); entityManager.clear();
         entityManager.unwrap(Session.class).enableFilter("propertyPaymentConfigurationTenantFilter").setParameter("hotelId", first.getId());
         assertEquals(1, repository.findAll().size());

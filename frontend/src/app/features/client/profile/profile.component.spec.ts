@@ -44,7 +44,7 @@ describe('ProfileComponent payment and refund states', () => {
   it('labels payment states and reconciliation without relying on color alone', () => {
     expect(component.getPaymentLabel({
       provider: 'VNPAY', amount: 200000, currency: 'VND', status: 'PENDING', reconciliationRequired: false,
-    })).toBe('Ch\u1edd c\u1ed5ng thanh to\u00e1n');
+    })).toBe('Ch\u1edd nh\u00e0 cung c\u1ea5p x\u00e1c nh\u1eadn');
     expect(component.getPaymentLabel({
       provider: 'VNPAY', amount: 200000, currency: 'VND', status: 'SUCCEEDED', reconciliationRequired: true,
     })).toBe('C\u1ea7n \u0111\u1ed1i so\u00e1t');
@@ -68,15 +68,11 @@ describe('ProfileComponent payment and refund states', () => {
     })).toBe('Ho\u00e0n ti\u1ec1n th\u1ea5t b\u1ea1i');
   });
 
-  it('does not promise an immediate 100% refund during cancellation confirmation', () => {
-    const confirmSpy = vi.fn(() => false);
-    vi.stubGlobal('confirm', confirmSpy);
-
+  it('opens a reason form instead of cancelling immediately', () => {
     component.cancelBooking(42);
 
-    expect(confirmSpy).toHaveBeenCalledWith(expect.not.stringContaining('100%'));
-    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('y\u00eau c\u1ea7u ho\u00e0n ti\u1ec1n'));
+    expect(component.cancellationBookingId).toBe(42);
+    expect(component.cancellationForm.controls.reasonCode.value).toBe('');
     expect(reservationService.cancelMyReservation).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
   });
 });

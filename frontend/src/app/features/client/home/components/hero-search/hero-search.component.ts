@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-import { Component, ViewChild, inject } from '@angular/core';
-=======
->>>>>>> codex/ui-functional-audit-polish
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 
@@ -50,19 +46,6 @@ import { StayTypeSelectorComponent } from '../stay-type-selector/stay-type-selec
             <app-guest-room-selector></app-guest-room-selector>
           </div>
 
-<<<<<<< HEAD
-          <!-- Search Button -->
-          <div class="flex-shrink-0 lg:w-[140px] h-[65px]">
-            <button type="button" class="w-full h-full border-0 bg-primary hover:bg-primary-hover text-white font-bold text-[18px] rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
-                    (click)="search()">
-              <span>TÌM</span>
-            </button>
-          </div>
-
-        </div>
-        <p *ngIf="stateService.validationError() as error" class="m-0 text-sm font-semibold text-red-700" role="alert">
-          {{ error.message }}
-=======
           <button type="button" class="search-submit" (click)="search()">
             <i class="pi pi-search" aria-hidden="true"></i>
             <span>{{ i18n.text('PUBLIC.SEARCH.SUBMIT') }}</span>
@@ -72,7 +55,6 @@ import { StayTypeSelectorComponent } from '../stay-type-selector/stay-type-selec
         <p *ngIf="searchError" class="search-error" role="alert">
           <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
           {{ searchError }}
->>>>>>> codex/ui-functional-audit-polish
         </p>
       </div>
     </section>
@@ -86,13 +68,6 @@ import { StayTypeSelectorComponent } from '../stay-type-selector/stay-type-selec
   `]
 })
 export class HeroSearchComponent {
-<<<<<<< HEAD
-  readonly stateService = inject(HomeSearchStateService);
-  @ViewChild(DateRangeSelectorComponent) private dateSelector?: DateRangeSelectorComponent;
-
-  search(): void {
-    if (!this.stateService.submitSearch()) this.dateSelector?.focusTrigger();
-=======
   private readonly stateService = inject(HomeSearchStateService);
   readonly i18n = inject(PublicI18nService);
   searchError = '';
@@ -102,6 +77,5 @@ export class HeroSearchComponent {
     if (!this.stateService.submitSearch()) {
       this.searchError = this.stateService.dateValidationError() || this.i18n.text('PUBLIC.SEARCH.FALLBACK_ERROR');
     }
->>>>>>> codex/ui-functional-audit-polish
   }
 }

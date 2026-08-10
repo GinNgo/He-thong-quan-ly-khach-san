@@ -108,16 +108,11 @@
               <small *ngIf="result.type === 'PROPERTY'">
                 {{ propertyTypeLabel(result.propertyType) }} · {{ result.wardName || result.provinceName }}<ng-container *ngIf="result.address"> · {{ result.address }}</ng-container>
               </small>
-<<<<<<< HEAD
-              <small *ngIf="result.type === 'LANDMARK'">
-                {{ result.secondaryText || result.provinceName }}<ng-container *ngIf="result.defaultRadiusKm"> · {{ result.defaultRadiusKm }} km</ng-container>
-=======
               <small *ngIf="result.type === 'LANDMARK'" class="landmark-meta">
                 {{ result.secondaryText || i18n.text('PUBLIC.SEARCH.LANDMARK_FALLBACK') }}<ng-container *ngIf="result.defaultRadiusKm"> · {{ i18n.text('PUBLIC.SEARCH.WITHIN_RADIUS', { radius: result.defaultRadiusKm }) }}</ng-container>
               </small>
               <small *ngIf="result.type === 'LANDMARK' && result.descriptionVi" class="landmark-description">
                 {{ result.descriptionVi }}
->>>>>>> codex/ui-functional-audit-polish
               </small>
             </span>
             <span *ngIf="result.reviewScore" class="review-score">{{ result.reviewScore | number:'1.1-1' }}</span>

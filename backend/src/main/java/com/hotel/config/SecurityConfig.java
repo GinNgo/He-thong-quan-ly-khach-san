@@ -4,6 +4,7 @@ import com.hotel.security.JwtAccessDeniedHandler;
 import com.hotel.security.JwtAuthFilter;
 import com.hotel.security.JwtAuthenticationEntryPoint;
 import com.hotel.security.PaymentTrafficAbuseFilter;
+import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -60,6 +61,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(jwtAccessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
+                .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/auth/social-identities").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/auth/social-identities/*/link").authenticated()
@@ -67,7 +69,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/v1/hotels/public/**").permitAll()
                 .requestMatchers("/api/room-types/public/**").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/reservations/public/book").permitAll()
+                .requestMatchers("/api/reservations/public/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/partner/register", "/api/v1/partner/register").permitAll()
                 .requestMatchers(
@@ -86,10 +88,6 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/**").hasAnyAuthority("SUPER_ADMIN", "ROLE_SUPER_ADMIN")
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/ws-chat/**").permitAll()
-<<<<<<< HEAD
-                .requestMatchers("/api/notifications/**").authenticated()
-=======
->>>>>>> codex/ui-functional-audit-polish
                 .requestMatchers("/api/subscriptions/plans").permitAll()
                 .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated()
@@ -115,14 +113,8 @@ public class SecurityConfig {
         configuration.setAllowCredentials(true);
         configuration.setAllowedMethods(java.util.Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.Arrays.asList(
-<<<<<<< HEAD
-                "Authorization", "Content-Type", "X-Refresh-Request", "X-Logout-Request",
-                "X-Correlation-ID", "Idempotency-Key"));
-        configuration.setExposedHeaders(java.util.List.of("X-Correlation-ID", "Retry-After"));
-=======
                 "Authorization", "Content-Type", "Idempotency-Key", "X-Correlation-ID", "X-Refresh-Request", "X-Logout-Request"));
         configuration.setExposedHeaders(java.util.List.of("X-Correlation-ID"));
->>>>>>> codex/ui-functional-audit-polish
         org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

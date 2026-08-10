@@ -110,7 +110,7 @@ describe('AiAssistant', () => {
     component.newMessage = 'Kiểm tra timeout';
 
     component.sendMessage();
-    vi.advanceTimersByTime(15_000);
+    vi.advanceTimersByTime(30_000);
     await Promise.resolve();
 
     expect(component.isTyping).toBe(false);

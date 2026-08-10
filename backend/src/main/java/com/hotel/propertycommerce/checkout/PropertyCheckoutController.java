@@ -138,7 +138,7 @@ public class PropertyCheckoutController {
     }
 
     @PostMapping("/checkout")
-    @Permission(function = FunctionCode.CHECKOUT, action = ActionCode.CREATE)
+    @Permission(function = FunctionCode.CHECKOUT, action = ActionCode.TASK_EXECUTE)
     public CheckoutResponse checkout(
             @PathVariable Long reservationId,
             @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId,

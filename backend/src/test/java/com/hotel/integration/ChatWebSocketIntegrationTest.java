@@ -1,16 +1,12 @@
 package com.hotel.integration;
 
 import com.hotel.BackendApplication;
-import com.hotel.security.ActionCode;
-import com.hotel.security.CustomUserDetails;
-import com.hotel.security.CustomUserDetailsService;
-import com.hotel.security.FunctionCode;
-import com.hotel.security.JwtTokenProvider;
-import org.junit.jupiter.api.BeforeEach;
+import com.hotel.dtos.AuthResponse;
+import com.hotel.dtos.LoginRequest;
+import com.hotel.services.AuthService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
@@ -18,8 +14,6 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
@@ -30,15 +24,12 @@ import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.when;
 
 @SpringBootTest(classes = BackendApplication.class,
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
@@ -59,18 +50,9 @@ class ChatWebSocketIntegrationTest {
     private int port;
 
     @Autowired
-    private JwtTokenProvider jwtTokenProvider;
-
-    @MockBean
-    private CustomUserDetailsService userDetailsService;
+    private AuthService authService;
 
     private final List<WebSocketStompClient> clients = new ArrayList<>();
-
-    @BeforeEach
-    void configurePrincipals() {
-        when(userDetailsService.loadUserByUsername("e2e-chat-customer")).thenReturn(customerDetails());
-        when(userDetailsService.loadUserByUsername("e2e-chat-support")).thenReturn(supportDetails());
-    }
 
     @AfterEach
     void stopClients() {
@@ -107,7 +89,7 @@ class ChatWebSocketIntegrationTest {
         customerProbe.awaitFailure();
         awaitDisconnected(customerSession);
 
-        SessionProbe supportProbe = connect(supportToken());
+        SessionProbe supportProbe = connect(adminToken());
         StompSession supportSession = supportProbe.awaitConnected();
         supportSession.subscribe("/user/queue/support/messages", new StompSessionHandlerAdapter() {
         });
@@ -161,37 +143,19 @@ class ChatWebSocketIntegrationTest {
     }
 
     private String customerToken() {
-        return token(customerDetails());
+        return login("e2e-chat-customer", "customer-chat-password");
     }
 
-    private String supportToken() {
-        return token(supportDetails());
+    private String adminToken() {
+        return login("e2e-chat-admin", "admin-chat-password");
     }
 
-    private String token(CustomUserDetails user) {
-        return jwtTokenProvider.generateToken(new UsernamePasswordAuthenticationToken(
-                user, null, user.getAuthorities()));
-    }
-
-    private CustomUserDetails customerDetails() {
-        return details("e2e-chat-customer", 42L, Map.of(), "CUSTOMER");
-    }
-
-    private CustomUserDetails supportDetails() {
-        return details("e2e-chat-support", 7L,
-                Map.of(FunctionCode.AI_CHAT, ActionCode.VIEW | ActionCode.CREATE), "SUPPORT");
-    }
-
-    private CustomUserDetails details(
-            String username, Long userId, Map<FunctionCode, Integer> masks, String authority) {
-        return new CustomUserDetails(
-                username,
-                "hash",
-                Set.of(new SimpleGrantedAuthority(authority)),
-                masks,
-                userId,
-                null,
-                Map.of());
+    private String login(String username, String password) {
+        LoginRequest request = new LoginRequest();
+        request.setUsername(username);
+        request.setPassword(password);
+        AuthResponse response = authService.login(request);
+        return response.getAccessToken();
     }
 
     private void awaitDisconnected(StompSession session) throws InterruptedException {

@@ -11,7 +11,6 @@ import com.hotel.security.ActionCode;
 import com.hotel.security.CustomUserDetails;
 import com.hotel.security.FunctionCode;
 import com.hotel.services.PropertyAccessService;
-import com.hotel.services.PaymentReceiptEmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -32,9 +31,6 @@ import java.util.UUID;
 
 @Service
 public class ManualTransferConfirmationService {
-
-    @Autowired(required = false)
-    private PaymentReceiptEmailService paymentReceiptEmailService;
 
     private static final Set<String> MANUAL_METHODS = Set.of("MANUAL_TRANSFER", "QR_TRANSFER");
 
@@ -169,9 +165,6 @@ public class ManualTransferConfirmationService {
         idempotencyService.complete(acquired.recordId(), 200, transaction.getPublicId());
         audit(attempt, actor, command, PaymentState.PENDING_VERIFICATION, PaymentState.SUCCESS,
                 command.reason().trim(), false, ledgerIdentity);
-        if (paymentReceiptEmailService != null) {
-            paymentReceiptEmailService.sendPropertyReceiptAfterCommit(attempt, transaction);
-        }
         return response(transaction, false);
     }
 
@@ -234,7 +227,6 @@ public class ManualTransferConfirmationService {
         return switch (purpose) {
             case DEPOSIT -> PropertyFinancialTransaction.TransactionType.BOOKING_DEPOSIT;
             case BALANCE -> PropertyFinancialTransaction.TransactionType.ROOM_PAYMENT;
-            case AMENDMENT_DELTA -> PropertyFinancialTransaction.TransactionType.ROOM_PAYMENT;
             case SERVICE -> PropertyFinancialTransaction.TransactionType.SERVICE_PAYMENT;
             case SURCHARGE -> PropertyFinancialTransaction.TransactionType.SURCHARGE;
             case OTHER -> PropertyFinancialTransaction.TransactionType.MANUAL_ADJUSTMENT;

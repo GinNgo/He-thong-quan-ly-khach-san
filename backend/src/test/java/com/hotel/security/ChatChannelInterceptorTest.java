@@ -20,7 +20,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -68,26 +67,6 @@ class ChatChannelInterceptorTest {
                 message(SimpMessageType.CONNECT, null, "Bearer valid-token", null), channel);
 
         assertNotNull(SimpMessageHeaderAccessor.wrap(result).getUser());
-    }
-
-    @Test
-    void validChatConnectNotifiesTheWebSocketUserRegistry() {
-        CustomUserDetails customer = customer();
-        when(jwtTokenProvider.validateToken("valid-token")).thenReturn(true);
-        when(jwtTokenProvider.getUsername("valid-token")).thenReturn("customer");
-        when(userDetailsService.loadUserByUsername("customer")).thenReturn(customer);
-        AtomicReference<java.security.Principal> registeredUser = new AtomicReference<>();
-        SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.create(SimpMessageType.CONNECT);
-        accessor.setSessionAttributes(new HashMap<>(Map.of(
-                ChatHandshakeInterceptor.CHAT_SESSION_ATTRIBUTE, true)));
-        accessor.setNativeHeader("Authorization", "Bearer valid-token");
-        accessor.setUserChangeCallback(registeredUser::set);
-        accessor.setLeaveMutable(true);
-        Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
-
-        interceptor.preSend(message, channel);
-
-        assertNotNull(registeredUser.get());
     }
 
     @Test
@@ -145,6 +124,18 @@ class ChatChannelInterceptorTest {
 
         assertDoesNotThrow(() -> interceptor.preSend(allowed, channel));
         assertThrows(AccessDeniedException.class, () -> interceptor.preSend(forged, channel));
+    }
+
+    @Test
+    void authenticatedTenantCanSendToSystemSupportDestination() {
+        CustomUserDetails tenant = user(52L, Map.of(), "PROPERTY_OWNER");
+        Message<byte[]> message = message(
+                SimpMessageType.MESSAGE,
+                "/app/chat.tenant.send",
+                null,
+                authentication(tenant));
+
+        assertDoesNotThrow(() -> interceptor.preSend(message, channel));
     }
 
     @Test
