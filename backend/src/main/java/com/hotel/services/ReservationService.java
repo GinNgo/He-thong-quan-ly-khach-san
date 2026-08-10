@@ -83,11 +83,22 @@ public class ReservationService {
                 : userRepository.findByUsername(username)
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng đặt phòng."));
 
+        if (request.getUserId() != null) {
+            user = userRepository.findById(request.getUserId())
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy khách hàng đã chọn."));
+        }
+
         RoomType roomType = roomTypeRepository.findByIdForUpdate(request.getRoomTypeId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy loại phòng."));
         publicInventoryEligibilityPolicy.requireSellableRoomTypeForBooking(roomType);
         Hotel hotel = roomType.getHotel();
 
+        if (request.getCheckInDate() == null || request.getCheckOutDate() == null) {
+            throw new IllegalArgumentException("Vui lòng chọn ngày nhận và trả phòng.");
+        }
+        if (!request.getCheckOutDate().isAfter(request.getCheckInDate())) {
+            throw new IllegalArgumentException("Ngày trả phòng phải sau ngày nhận phòng.");
+        }
         int quantity = request.getQuantity() == null ? 1 : request.getQuantity();
         int adults = request.getAdults() != null ? request.getAdults() : request.getGuests();
         int children = request.getChildren() == null ? 0 : request.getChildren();
