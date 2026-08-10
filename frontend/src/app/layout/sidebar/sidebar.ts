@@ -2,6 +2,7 @@ import { ChangeDetectorRef, Component, EventEmitter, OnInit, inject, Input, Outp
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import { AuthService } from '../../core/services/auth';
 
 export interface AppFunctionDto {
   id: number;
@@ -30,6 +31,7 @@ export class Sidebar implements OnInit {
 
   private http = inject(HttpClient);
   private cdr = inject(ChangeDetectorRef);
+  private authService = inject(AuthService);
 
   menuItems: AppModuleDto[] = [];
   isLoading = true;
@@ -45,7 +47,7 @@ export class Sidebar implements OnInit {
 
     this.http.get<AppModuleDto[]>(`${environment.apiUrl}/auth/my-menu`).subscribe({
       next: (res) => {
-        this.menuItems = this.deduplicateMenu(res);
+        this.menuItems = this.deduplicateMenu(this.filterForCurrentPortal(res));
         this.isLoading = false;
         this.cdr.detectChanges();
       },
@@ -71,6 +73,31 @@ export class Sidebar implements OnInit {
         return true;
       })
     })).filter(module => module.functions.length > 0);
+  }
+
+  private filterForCurrentPortal(modules: AppModuleDto[]): AppModuleDto[] {
+    const isSystemAdministrator = this.authService.getRoles()
+      .some(role => role === 'SUPER_ADMIN' || role === 'ADMIN');
+    if (!isSystemAdministrator) return modules;
+
+    const tenantFunctionCodes = new Set([
+      'CUSTOMER', 'ROOM_TYPE', 'ROOM', 'RESERVATION', 'RESERVATION_ASSIGNMENT',
+      'CHECKIN', 'CHECKOUT', 'RESERVATION_CANCEL', 'RESERVATION_NO_SHOW',
+      'HOTEL_SERVICE', 'HOUSEKEEPING', 'INVOICE', 'RESERVATION_PAYMENT',
+      'PROPERTY_PAYMENT_CONFIG', 'PROPERTY_REFUND', 'PLATFORM_BILLING'
+    ]);
+
+    return modules
+      .filter(module => module.code !== 'HOTEL')
+      .map(module => ({
+        ...module,
+        functions: (module.functions || [])
+          .filter(func => !tenantFunctionCodes.has(func.code) && !func.url?.startsWith('/management/'))
+          .map(func => func.url === '/admin/dashboard'
+            ? { ...func, code: 'PLATFORM_REVENUE_HOME', name: 'Doanh thu hệ thống', url: '/admin/platform-revenue', icon: 'pi pi-chart-line' }
+            : func)
+      }))
+      .filter(module => module.functions.length > 0);
   }
 
   onNavigate(): void {

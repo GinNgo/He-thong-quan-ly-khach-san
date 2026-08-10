@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/analytics")
@@ -23,6 +24,7 @@ public class AnalyticsController {
     }
 
     @GetMapping("/dashboard")
+    @PreAuthorize("!hasAnyAuthority('SUPER_ADMIN','ADMIN','ROLE_SUPER_ADMIN','ROLE_ADMIN')")
     @Permission(function = FunctionCode.REPORT, action = ActionCode.VIEW)
     public ResponseEntity<AnalyticsDataDTO> getDashboardData() {
         return ResponseEntity.ok(analyticsService.getAnalyticsData());

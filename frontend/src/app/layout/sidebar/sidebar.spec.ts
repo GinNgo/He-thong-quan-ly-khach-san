@@ -4,14 +4,22 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { Sidebar } from './sidebar';
+import { AuthService } from '../../core/services/auth';
 
 describe('Sidebar', () => {
   let http: HttpTestingController;
+  let roles: string[];
 
   beforeEach(async () => {
+    roles = [];
     await TestBed.configureTestingModule({
       imports: [Sidebar],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: AuthService, useValue: { getRoles: () => roles } },
+      ],
     }).compileComponents();
 
     http = TestBed.inject(HttpTestingController);
@@ -62,5 +70,32 @@ describe('Sidebar', () => {
     http.expectOne(`${environment.apiUrl}/auth/my-menu`).flush([]);
     expect(fixture.componentInstance.errorMessage).toBe('');
     expect(fixture.componentInstance.menuItems).toEqual([]);
+  });
+
+  it('removes tenant operations and points system administrators to platform revenue', () => {
+    roles = ['SUPER_ADMIN'];
+    const fixture = TestBed.createComponent(Sidebar);
+    fixture.detectChanges();
+
+    http.expectOne(`${environment.apiUrl}/auth/my-menu`).flush([
+      {
+        id: 1,
+        code: 'SYSTEM',
+        name: 'Hệ thống',
+        functions: [{ id: 1, code: 'REPORT', name: 'Bảng điều khiển', url: '/admin/dashboard', icon: 'chart' }],
+      },
+      {
+        id: 2,
+        code: 'HOTEL',
+        name: 'Khách sạn',
+        functions: [{ id: 2, code: 'ROOM', name: 'Phòng', url: '/admin/rooms', icon: 'home' }],
+      },
+    ]);
+
+    expect(fixture.componentInstance.menuItems.map(module => module.code)).toEqual(['SYSTEM']);
+    expect(fixture.componentInstance.menuItems[0].functions[0]).toMatchObject({
+      name: 'Doanh thu hệ thống',
+      url: '/admin/platform-revenue',
+    });
   });
 });

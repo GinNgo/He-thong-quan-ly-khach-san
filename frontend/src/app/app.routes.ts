@@ -4,6 +4,7 @@ import { permissionGuard } from './core/guards/permission.guard';
 import { roleGuard } from './core/guards/role-guard';
 import { FunctionCode, ActionCode } from './core/services/permission.service';
 import { clientAuthGuard } from './core/guards/client-auth.guard';
+import { systemDashboardGuard } from './core/guards/system-dashboard.guard';
 
 export const routes: Routes = [
   {
@@ -42,7 +43,7 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/admin-layout/admin-layout').then(m => m.AdminLayout),
     canActivate: [authGuard],
     children: [
-      { path: 'dashboard', loadComponent: () => import('./features/admin/dashboard/dashboard').then(m => m.Dashboard), canActivate: [permissionGuard], data: { functionCode: FunctionCode.REPORT, actionCode: ActionCode.VIEW } },
+      { path: 'dashboard', loadComponent: () => import('./features/admin/dashboard/dashboard').then(m => m.Dashboard), canActivate: [systemDashboardGuard, permissionGuard], data: { functionCode: FunctionCode.REPORT, actionCode: ActionCode.VIEW } },
       { path: 'profile', loadComponent: () => import('./features/admin/profile/profile.component').then(m => m.AdminProfileComponent) },
       { path: 'users', loadComponent: () => import('./features/admin/user-management/user-management').then(m => m.UserManagement), canActivate: [permissionGuard], data: { functionCode: FunctionCode.USER, actionCode: ActionCode.VIEW, userType: 'STAFF' } },
       { path: 'customers', loadComponent: () => import('./features/admin/user-management/user-management').then(m => m.UserManagement), canActivate: [permissionGuard], data: { functionCode: FunctionCode.CUSTOMER, actionCode: ActionCode.VIEW, userType: 'CUSTOMER' } },
