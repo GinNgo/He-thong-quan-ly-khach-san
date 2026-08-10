@@ -53,6 +53,15 @@ public class SubscriptionCatalogService {
     }
 
     @Transactional(readOnly = true)
+    public List<SubscriptionPlanDTO> getAllPlansForAdministration() {
+        return safeList(planRepository.findAll()).stream()
+                .sorted(Comparator.comparing(SubscriptionPlan::getPrice)
+                        .thenComparing(SubscriptionPlan::getCode))
+                .map(this::toPlanDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<AccountSubscriptionDTO> getSubscriptions(Long userId) {
         return safeList(accountSubscriptionRepository.findByUserId(userId))
                 .stream()

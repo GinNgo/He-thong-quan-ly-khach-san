@@ -1,12 +1,13 @@
-import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { SubscriptionService, SubscriptionPlan, AccountSubscription } from '../../../core/services/subscription.service';
+import { Component, OnInit, inject } from '@angular/core';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
-import { ToastModule } from 'primeng/toast';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
+import { ToastModule } from 'primeng/toast';
+import { AuthService } from '../../../core/services/auth';
+import { AccountSubscription, SubscriptionPlan, SubscriptionService } from '../../../core/services/subscription.service';
 
 @Component({
   selector: 'app-subscription-plans',
@@ -16,39 +17,60 @@ import { TagModule } from 'primeng/tag';
   templateUrl: './subscription-plans.html',
   styles: [`
     .plan-card { height: 100%; display: flex; flex-direction: column; }
-    .plan-price { font-size: 2rem; font-weight: bold; margin: 1rem 0; color: var(--primary-color); }
-    .plan-features { flex-grow: 1; }
-    .feature-item { margin: 0.5rem 0; display: flex; align-items: center; }
-    .feature-item i { margin-right: 0.5rem; color: var(--green-500); }
+    .plan-price { margin: 1rem 0; color: var(--hotel-primary); font-size: 2rem; font-weight: 700; }
+    .plan-features { flex-grow: 1; text-align: left; }
+    .feature-item { display: flex; align-items: center; gap: .5rem; margin: .5rem 0; }
+    .feature-item i { color: var(--hotel-success); }
   `]
 })
 export class SubscriptionPlansComponent implements OnInit {
   private subscriptionService = inject(SubscriptionService);
   private messageService = inject(MessageService);
+  private authService = inject(AuthService);
 
   plans: SubscriptionPlan[] = [];
   mySubscriptions: AccountSubscription[] = [];
+  loading = true;
+  errorMessage = '';
 
-  ngOnInit() {
-    this.loadPlans();
-    this.loadMySubscriptions();
+  get isSystemAdministrator(): boolean {
+    return this.authService.getRoles().some(role => role === 'SUPER_ADMIN' || role === 'ADMIN');
   }
 
-  loadPlans() {
-    this.subscriptionService.getPlans().subscribe({
-      next: (data) => this.plans = data,
-      error: (err) => this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải danh sách gói.' })
+  ngOnInit(): void {
+    this.loadPlans();
+    if (!this.isSystemAdministrator) this.loadMySubscriptions();
+  }
+
+  loadPlans(): void {
+    this.loading = true;
+    this.errorMessage = '';
+    const request = this.isSystemAdministrator
+      ? this.subscriptionService.getAdminPlans()
+      : this.subscriptionService.getPlans();
+    request.subscribe({
+      next: data => { this.plans = data; this.loading = false; },
+      error: () => {
+        this.loading = false;
+        this.errorMessage = 'Không thể tải danh sách gói dịch vụ.';
+        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: this.errorMessage });
+      }
     });
   }
 
-  loadMySubscriptions() {
+  loadMySubscriptions(): void {
     this.subscriptionService.getMySubscriptions().subscribe({
-      next: (data) => this.mySubscriptions = data,
-      error: (err) => console.error(err)
+      next: data => this.mySubscriptions = data,
+      error: () => this.mySubscriptions = []
     });
   }
 
   isCurrentPlan(plan: SubscriptionPlan): boolean {
     return this.mySubscriptions.some(sub => sub.plan.id === plan.id && sub.status === 'ACTIVE');
+  }
+
+  billingLabel(plan: SubscriptionPlan): string {
+    if (plan.isLifetime || plan.billingType === 'ONCE') return 'Vĩnh viễn';
+    return plan.billingType === 'YEARLY' ? 'Năm' : 'Tháng';
   }
 }

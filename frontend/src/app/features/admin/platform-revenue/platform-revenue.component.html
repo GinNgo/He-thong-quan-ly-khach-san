@@ -29,9 +29,9 @@
     <section class="export-toolbar" aria-labelledby="export-title">
       <div><p class="eyebrow">Chứng từ</p><h3 id="export-title">Xuất báo cáo đã đối soát</h3><small>CSV, Excel và PDF dùng cùng bộ lọc, dòng dữ liệu và tổng tiền.</small></div>
       <div class="export-actions">
-        <button type="button" (click)="export('CSV')" [disabled]="exportState() === 'loading'"><span class="material-symbols-outlined" aria-hidden="true">csv</span>CSV</button>
-        <button type="button" (click)="export('EXCEL')" [disabled]="exportState() === 'loading'"><span class="material-symbols-outlined" aria-hidden="true">table_view</span>Excel</button>
-        <button type="button" (click)="export('PDF')" [disabled]="exportState() === 'loading'"><span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>PDF</button>
+        <button type="button" (click)="export('CSV')" [disabled]="exportState() === 'loading'" title="Dữ liệu bảng tương thích Excel"><span class="material-symbols-outlined" aria-hidden="true">csv</span>Xuất CSV</button>
+        <button type="button" (click)="export('EXCEL')" [disabled]="exportState() === 'loading'" title="Bảng tính Microsoft Excel"><span class="material-symbols-outlined" aria-hidden="true">table_view</span>Xuất Excel</button>
+        <button type="button" (click)="export('PDF')" [disabled]="exportState() === 'loading'" title="Báo cáo PDF nhiều trang"><span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>Xuất PDF</button>
       </div>
       @if (exportMessage()) { <p class="export-status" [class.export-status--error]="exportState() === 'error'" [class.export-status--success]="exportState() === 'success'" role="status" aria-live="polite">{{ exportMessage() }}</p> }
     </section>

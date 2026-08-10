@@ -37,7 +37,10 @@ class RevenueExportServiceTest {
         assertEquals(checksum, excel.checksum());
         assertEquals(checksum, pdf.checksum());
         assertEquals(1, csv.rowCount());
-        assertTrue(new String(csv.content(), StandardCharsets.UTF_8).contains("TX-1"));
+        String csvText = new String(csv.content(), StandardCharsets.UTF_8);
+        assertTrue(csvText.startsWith("\uFEFF"));
+        assertTrue(csvText.contains("Mã giao dịch"));
+        assertTrue(csvText.contains("TX-1"));
         assertTrue(new String(pdf.content(), StandardCharsets.ISO_8859_1).startsWith("%PDF-1.4"));
         try (ZipInputStream zip = new ZipInputStream(new java.io.ByteArrayInputStream(excel.content()))) {
             assertEquals("[Content_Types].xml", zip.getNextEntry().getName());

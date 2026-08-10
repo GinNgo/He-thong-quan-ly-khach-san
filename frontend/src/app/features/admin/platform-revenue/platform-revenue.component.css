@@ -28,7 +28,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .export-toolbar h3 { margin: 0; color: var(--hotel-heading); font-size: 1.15rem; }
 .export-toolbar small { color: var(--hotel-text-muted); }
 .export-actions { display: flex; gap: var(--hotel-space-2); }
-.export-actions button { color: var(--hotel-primary); background: var(--hotel-primary-light); border-color: rgb(15 118 110 / .25); }
+.export-actions button { min-height: 2.5rem; padding-inline: var(--hotel-space-3); color: var(--hotel-primary); background: var(--hotel-primary-light); border-color: rgb(15 118 110 / .25); font-size: var(--hotel-text-sm); white-space: nowrap; }
 .export-status { grid-column: 1 / -1; margin: 0; padding: var(--hotel-space-2) var(--hotel-space-3); color: var(--hotel-info); background: var(--hotel-info-light); border-radius: var(--hotel-radius-md); font-size: var(--hotel-text-sm); }
 .export-status--error { color: var(--hotel-danger); background: var(--hotel-danger-light); }
 .export-status--success { color: var(--hotel-success); background: var(--hotel-success-light); }

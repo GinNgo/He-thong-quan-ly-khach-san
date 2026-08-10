@@ -63,6 +63,10 @@ export class SubscriptionService {
     return this.http.get<SubscriptionPlan[]>(`${this.apiUrl}/plans`);
   }
 
+  getAdminPlans(): Observable<SubscriptionPlan[]> {
+    return this.http.get<SubscriptionPlan[]>(`${environment.apiUrl}/admin/subscription-plans`);
+  }
+
   getMySubscriptions(): Observable<AccountSubscription[]> {
     return this.http.get<AccountSubscription[]>(`${this.apiUrl}/me`);
   }

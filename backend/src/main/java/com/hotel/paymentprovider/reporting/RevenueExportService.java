@@ -42,7 +42,7 @@ public class RevenueExportService {
         Objects.requireNonNull(format, "format must not be null");
         String checksum = checksum(report);
         byte[] content = switch (format) {
-            case CSV -> csv(report, checksum).getBytes(StandardCharsets.UTF_8);
+            case CSV -> ("\uFEFF" + csv(report, checksum)).getBytes(StandardCharsets.UTF_8);
             case EXCEL -> excel(report, checksum);
             case PDF -> pdf(report, checksum);
         };
@@ -72,30 +72,25 @@ public class RevenueExportService {
 
     private String csv(RevenueReportResult report, String checksum) {
         List<String> lines = new ArrayList<>();
-        lines.add(row("context", report.context(), "basis", report.basis(), "checksum", checksum));
-        lines.add(row("from", report.filters().fromInclusive(), "to", report.filters().toExclusive(),
-                "zone", report.filters().zoneId()));
-        lines.add(row("propertyId", report.filters().propertyId(), "provider", report.filters().provider(),
-                "method", report.filters().method(), "transactionType", report.filters().transactionType(),
-                "roomType", report.filters().roomType(), "planCode", report.filters().planCode()));
-        lines.add(row("grossRevenue", report.totals().grossRevenue(), "refunds", report.totals().refunds(),
-                "credits", report.totals().credits(), "netRevenue", report.totals().netRevenue(),
-                "cashCollected", report.totals().cashCollected(),
-                "invoicedRevenue", report.totals().invoicedRevenue(),
-                "unpaidBalance", report.totals().unpaidBalance(),
-                "heldDeposits", report.totals().heldDeposits()));
-        lines.add(row("successfulTransactionCount", report.totals().successfulTransactionCount(),
-                "failedTransactionCount", report.totals().failedTransactionCount(),
-                "unreconciledTransactionCount", report.totals().unreconciledTransactionCount()));
-        lines.add(row("publicId", "occurredAt", "transactionType", "sourceType", "sourceId", "propertyId",
-                "method", "provider", "grossAmount", "refundAmount", "creditAmount", "netAmount",
-                "reconciliationStatus", "dimensions"));
+        lines.add(row("BÁO CÁO DOANH THU LUXESTAY", report.context(), "Cơ sở ghi nhận", report.basis()));
+        lines.add(row("Từ ngày", report.filters().fromInclusive(), "Đến ngày", report.filters().toExclusive(),
+                "Múi giờ", report.filters().zoneId()));
+        lines.add(row("Tổng thu", report.totals().grossRevenue(), "Hoàn tiền", report.totals().refunds(),
+                "Điều chỉnh", report.totals().credits(), "Doanh thu ròng", report.totals().netRevenue()));
+        lines.add(row("Giao dịch thành công", report.totals().successfulTransactionCount(),
+                "Giao dịch thất bại", report.totals().failedTransactionCount(),
+                "Chưa đối soát", report.totals().unreconciledTransactionCount(), "Mã kiểm tra", checksum));
+        lines.add(row());
+        lines.add(row("Mã giao dịch", "Thời gian", "Loại giao dịch", "Loại nguồn", "Mã nguồn", "Mã cơ sở",
+                "Phương thức", "Nhà cung cấp", "Tổng tiền", "Hoàn tiền", "Điều chỉnh", "Doanh thu ròng",
+                "Trạng thái đối soát", "Thông tin bổ sung"));
         report.rows().forEach(item -> lines.add(row(
                 item.publicId(), item.occurredAt(), item.transactionType(), item.sourceType(), item.sourceId(),
                 item.propertyId(), item.method(), item.provider(), item.grossAmount(), item.refundAmount(),
                 item.creditAmount(), item.netAmount(), item.reconciliationStatus(), dimensions(item.dimensions()))));
-        lines.add(row("reconciliationCode", "sourceType", "sourceId", "expectedAmount", "actualAmount",
-                "deltaAmount", "message"));
+        lines.add(row());
+        lines.add(row("Mã sai lệch", "Loại nguồn", "Mã nguồn", "Số tiền dự kiến", "Số tiền thực tế",
+                "Chênh lệch", "Nội dung"));
         report.reconciliationIssues().forEach(issue -> lines.add(row(
                 issue.code(), issue.sourceType(), issue.sourceId(), issue.expectedAmount(), issue.actualAmount(),
                 issue.deltaAmount(), issue.message())));
@@ -183,34 +178,47 @@ public class RevenueExportService {
     }
 
     private byte[] simplePdf(List<String> lines) {
-        List<String> contentLines = new ArrayList<>();
-        int y = 790;
-        for (String line : lines) {
-            if (y < 30) {
-                y = 790;
+        int linesPerPage = 45;
+        int pageCount = Math.max(1, (lines.size() + linesPerPage - 1) / linesPerPage);
+        int fontObject = 3 + pageCount * 2;
+        List<String> objects = new ArrayList<>();
+        objects.add("<< /Type /Catalog /Pages 2 0 R >>");
+        String kids = java.util.stream.IntStream.range(0, pageCount)
+                .mapToObj(index -> (3 + index * 2) + " 0 R")
+                .reduce((left, right) -> left + " " + right).orElse("");
+        objects.add("<< /Type /Pages /Kids [" + kids + "] /Count " + pageCount + " >>");
+        for (int page = 0; page < pageCount; page++) {
+            int contentObject = 4 + page * 2;
+            objects.add("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 "
+                    + fontObject + " 0 R >> >> /Contents " + contentObject + " 0 R >>");
+            List<String> contentLines = new ArrayList<>();
+            int start = page * linesPerPage;
+            int end = Math.min(start + linesPerPage, lines.size());
+            int y = 790;
+            contentLines.add("BT /F1 8 Tf 500 815 Td (Page " + (page + 1) + "/" + pageCount + ") Tj ET");
+            for (int index = start; index < end; index++) {
+                contentLines.add("BT /F1 9 Tf 40 " + y + " Td (" + escape(ascii(lines.get(index))) + ") Tj ET");
+                y -= 16;
             }
-            contentLines.add("BT /F1 9 Tf 40 " + y + " Td (" + escape(ascii(line)) + ") Tj ET");
-            y -= 16;
+            byte[] stream = String.join("\n", contentLines).getBytes(StandardCharsets.ISO_8859_1);
+            objects.add("<< /Length " + stream.length + " >>\nstream\n"
+                    + new String(stream, StandardCharsets.ISO_8859_1) + "\nendstream");
         }
-        byte[] stream = String.join("\n", contentLines).getBytes(StandardCharsets.ISO_8859_1);
+        objects.add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             write(out, "%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n");
             List<Integer> offsets = new ArrayList<>();
             offsets.add(0);
-            offsets.add(object(out, "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"));
-            offsets.add(object(out, "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"));
-            offsets.add(object(out, "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n"));
-            offsets.add(object(out, "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n"));
-            offsets.add(object(out, "5 0 obj\n<< /Length " + stream.length + " >>\nstream\n"));
-            out.write(stream);
-            write(out, "\nendstream\nendobj\n");
+            for (int index = 0; index < objects.size(); index++) {
+                offsets.add(object(out, (index + 1) + " 0 obj\n" + objects.get(index) + "\nendobj\n"));
+            }
             int xref = out.size();
-            write(out, "xref\n0 6\n0000000000 65535 f \n");
+            write(out, "xref\n0 " + (objects.size() + 1) + "\n0000000000 65535 f \n");
             for (int i = 1; i < offsets.size(); i++) {
                 write(out, String.format(java.util.Locale.ROOT, "%010d 00000 n \n", offsets.get(i)));
             }
-            write(out, "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n" + xref + "\n%%EOF\n");
+            write(out, "trailer\n<< /Size " + (objects.size() + 1) + " /Root 1 0 R >>\nstartxref\n" + xref + "\n%%EOF\n");
             return out.toByteArray();
         } catch (IOException exception) {
             throw new IllegalStateException("Unable to render PDF export.", exception);
