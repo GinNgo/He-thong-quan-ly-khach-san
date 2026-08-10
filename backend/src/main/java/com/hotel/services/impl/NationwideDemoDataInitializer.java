@@ -171,19 +171,21 @@ public class NationwideDemoDataInitializer {
     private void seedPlan(String code, String nameVi, String nameEn, String billingType, BigDecimal price,
                           boolean lifetime, Map<String, Integer> limits) {
         SubscriptionPlan plan = subscriptionPlanRepository.findByCode(code).orElseGet(SubscriptionPlan::new);
+        boolean newPlan = plan.getId() == null;
         plan.setCode(code);
-        plan.setNameVi(nameVi);
-        plan.setNameEn(nameEn);
-        plan.setBillingType(billingType);
-        plan.setPrice(price);
-        plan.setIsLifetime(lifetime);
-        plan.setStatus("ACTIVE");
+        if (newPlan || plan.getNameVi() == null || plan.getNameVi().isBlank()) plan.setNameVi(nameVi);
+        if (newPlan || plan.getNameEn() == null || plan.getNameEn().isBlank()) plan.setNameEn(nameEn);
+        if (newPlan || plan.getBillingType() == null || plan.getBillingType().isBlank()) plan.setBillingType(billingType);
+        if (newPlan || plan.getPrice() == null) plan.setPrice(price);
+        if (newPlan || plan.getIsLifetime() == null) plan.setIsLifetime(lifetime);
+        if (newPlan || plan.getStatus() == null || plan.getStatus().isBlank()) plan.setStatus("ACTIVE");
         plan = subscriptionPlanRepository.save(plan);
         for (Map.Entry<String, Integer> entry : limits.entrySet()) {
             PlanFeature feature = planFeatureRepository.findByPlanIdAndFeatureCode(plan.getId(), entry.getKey()).orElseGet(PlanFeature::new);
+            boolean newFeature = feature.getId() == null;
             feature.setPlan(plan);
             feature.setFeatureCode(entry.getKey());
-            feature.setLimitValue(entry.getValue());
+            if (newFeature || feature.getLimitValue() == null) feature.setLimitValue(entry.getValue());
             planFeatureRepository.save(feature);
         }
     }

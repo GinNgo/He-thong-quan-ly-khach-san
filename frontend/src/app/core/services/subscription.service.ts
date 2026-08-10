@@ -59,6 +59,7 @@ export interface SubscriptionPlanCommand {
   billingType: 'MONTHLY' | 'YEARLY' | 'ONCE';
   price: number;
   isLifetime: boolean;
+  features: Array<{ code: string; limit: number }>;
 }
 
 @Injectable({

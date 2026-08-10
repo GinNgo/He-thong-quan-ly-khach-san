@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.math.BigDecimal;
 import java.util.Locale;
+import java.util.HashSet;
 import java.util.stream.Collectors;
 
 @Service
@@ -115,6 +116,21 @@ public class SubscriptionCatalogService {
         if ("ONCE".equals(billingType) && !Boolean.TRUE.equals(command.isLifetime())) {
             throw new IllegalArgumentException("Gói thanh toán một lần phải là gói vĩnh viễn.");
         }
+        Set<String> requestedFeatureCodes = command.features() == null ? Set.of() : command.features().stream()
+                .map(FeatureLimitCommand::code)
+                .filter(code -> code != null && !code.isBlank())
+                .map(code -> code.trim().toUpperCase(Locale.ROOT))
+                .collect(Collectors.toSet());
+        if (requestedFeatureCodes.size() != (command.features() == null ? 0 : command.features().size())) {
+            throw new IllegalArgumentException("Danh sách quyền lợi có mã trống hoặc bị trùng.");
+        }
+        if (featureRepository.findByCodeIn(requestedFeatureCodes).size() != requestedFeatureCodes.size()) {
+            throw new IllegalArgumentException("Danh sách quyền lợi chứa mã không tồn tại.");
+        }
+        if (command.features() != null && command.features().stream()
+                .anyMatch(feature -> feature.limit() == null || feature.limit() < -1)) {
+            throw new IllegalArgumentException("Hạn mức quyền lợi phải từ 0 trở lên hoặc -1 là không giới hạn.");
+        }
     }
 
     private void applyPlan(SubscriptionPlan plan, PlanCommand command) {
@@ -125,6 +141,22 @@ public class SubscriptionCatalogService {
         plan.setBillingType(billingType);
         plan.setPrice(command.price());
         plan.setIsLifetime("ONCE".equals(billingType) || Boolean.TRUE.equals(command.isLifetime()));
+        Set<PlanFeature> features = plan.getFeatures();
+        if (features == null) {
+            features = new HashSet<>();
+            plan.setFeatures(features);
+        } else {
+            features.clear();
+        }
+        if (command.features() != null) {
+            for (FeatureLimitCommand requested : command.features()) {
+                PlanFeature feature = new PlanFeature();
+                feature.setPlan(plan);
+                feature.setFeatureCode(requested.code().trim().toUpperCase(Locale.ROOT));
+                feature.setLimitValue(requested.limit());
+                features.add(feature);
+            }
+        }
     }
 
     private String normalizeBillingType(String value) {
@@ -141,7 +173,11 @@ public class SubscriptionCatalogService {
             String nameEn,
             String billingType,
             BigDecimal price,
-            Boolean isLifetime) {
+            Boolean isLifetime,
+            List<FeatureLimitCommand> features) {
+    }
+
+    public record FeatureLimitCommand(String code, Integer limit) {
     }
 
     @Transactional(readOnly = true)

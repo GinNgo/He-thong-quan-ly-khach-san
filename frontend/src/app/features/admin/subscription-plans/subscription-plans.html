@@ -53,6 +53,11 @@
     <label class="col-12"><span class="block font-semibold mb-2">Tên gói tiếng Anh</span><input pInputText class="w-full" [(ngModel)]="form.nameEn" [disabled]="saving" /></label>
     <label class="col-12"><span class="block font-semibold mb-2">Giá bán (VND) *</span><p-inputNumber styleClass="w-full" inputStyleClass="w-full" [(ngModel)]="form.price" [min]="0" [minFractionDigits]="0" [maxFractionDigits]="0" [disabled]="saving"></p-inputNumber></label>
     <label class="col-12 flex align-items-center gap-2"><input type="checkbox" [(ngModel)]="form.isLifetime" [disabled]="saving || form.billingType === 'ONCE'" /><span>Gói sử dụng vĩnh viễn</span></label>
+    <div class="col-12"><div class="font-semibold mb-1">Giới hạn quyền lợi</div><small class="text-600">Nhập -1 để đặt quyền lợi không giới hạn.</small></div>
+    <label class="col-12 md:col-6" *ngFor="let feature of form.features; let index = index">
+      <span class="block font-semibold mb-2">{{ featureCatalog[index].label }}</span>
+      <p-inputNumber styleClass="w-full" inputStyleClass="w-full" [(ngModel)]="feature.limit" [min]="-1" [minFractionDigits]="0" [maxFractionDigits]="0" [disabled]="saving"></p-inputNumber>
+    </label>
   </div>
   <ng-template pTemplate="footer">
     <button pButton type="button" label="Hủy" class="p-button-text" [disabled]="saving" (click)="dialogVisible=false"></button>

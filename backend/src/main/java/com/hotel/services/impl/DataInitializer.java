@@ -549,9 +549,10 @@ public class DataInitializer implements CommandLineRunner {
         for (var entry : limits.entrySet()) {
             PlanFeature feature = planFeatureRepository.findByPlanIdAndFeatureCode(plan.getId(), entry.getKey())
                     .orElseGet(PlanFeature::new);
+            boolean newFeature = feature.getId() == null;
             feature.setPlan(plan);
             feature.setFeatureCode(entry.getKey());
-            feature.setLimitValue(entry.getValue());
+            if (newFeature || feature.getLimitValue() == null) feature.setLimitValue(entry.getValue());
             planFeatureRepository.save(feature);
         }
     }

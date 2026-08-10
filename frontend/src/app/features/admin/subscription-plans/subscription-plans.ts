@@ -50,6 +50,15 @@ export class SubscriptionPlansComponent implements OnInit {
     { label: 'Theo năm', value: 'YEARLY' },
     { label: 'Thanh toán một lần', value: 'ONCE' }
   ];
+  readonly featureCatalog = [
+    { code: 'MAX_IMAGES', label: 'Hình ảnh' },
+    { code: 'MAX_PROPERTIES', label: 'Số cơ sở' },
+    { code: 'MAX_ROOMS', label: 'Phòng' },
+    { code: 'MAX_ROOM_TYPES', label: 'Loại phòng' },
+    { code: 'MAX_STAFF', label: 'Nhân viên' },
+    { code: 'PROMOTION_CAMPAIGNS', label: 'Chiến dịch khuyến mãi' },
+    { code: 'SPONSORED_PLACEMENTS', label: 'Vị trí tài trợ' }
+  ];
 
   get isSystemAdministrator(): boolean {
     return this.authService.getRoles().some(role => role === 'SUPER_ADMIN' || role === 'ADMIN');
@@ -116,7 +125,11 @@ export class SubscriptionPlansComponent implements OnInit {
       nameEn: plan.nameEn || '',
       billingType: plan.billingType as SubscriptionPlanCommand['billingType'],
       price: plan.price,
-      isLifetime: plan.isLifetime
+      isLifetime: plan.isLifetime,
+      features: this.featureCatalog.map(item => ({
+        code: item.code,
+        limit: plan.features.find(feature => feature.code === item.code)?.limit ?? 0
+      }))
     };
     this.dialogVisible = true;
   }
@@ -159,6 +172,14 @@ export class SubscriptionPlansComponent implements OnInit {
   }
 
   private emptyForm(): SubscriptionPlanCommand {
-    return { code: '', nameVi: '', nameEn: '', billingType: 'MONTHLY', price: 0, isLifetime: false };
+    return {
+      code: '',
+      nameVi: '',
+      nameEn: '',
+      billingType: 'MONTHLY',
+      price: 0,
+      isLifetime: false,
+      features: this.featureCatalog.map(item => ({ code: item.code, limit: 0 }))
+    };
   }
 }
