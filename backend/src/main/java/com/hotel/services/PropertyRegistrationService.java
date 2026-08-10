@@ -21,13 +21,29 @@ public class PropertyRegistrationService {
     private final AccountSubscriptionRepository accountSubscriptionRepository;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final PropertyOwnershipLifecycleService ownershipLifecycleService;
+    private final ProvinceCompatibilityService provinceCompatibilityService;
+    private final EmailService emailService;
 
     @Autowired(required = false)
     private OperationalAuditService operationalAuditService;
 
     @Transactional
     public User registerPropertyOwner(String email, String password, String fullName, String phone,
-                                      String propertyName, String propertyAddress, String authenticatedUsername) {
+                                      String propertyName, String propertyAddress, Long provinceId, Long wardId,
+                                      String authenticatedUsername) {
+
+        if (propertyAddress == null || propertyAddress.isBlank()) {
+            throw new IllegalArgumentException("Địa chỉ chi tiết là bắt buộc.");
+        }
+        Location province = provinceCompatibilityService.currentProvinceForId(provinceId);
+        if (province == null) {
+            throw new IllegalArgumentException("Tỉnh/thành phố không hợp lệ.");
+        }
+        Location ward = provinceCompatibilityService.wardsFor(province.getId()).stream()
+                .filter(location -> location.getId().equals(wardId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Phường/xã không thuộc tỉnh/thành phố đã chọn."));
 
         // 1. Create or get User
         User user = userRepository.findByEmail(email).orElse(null);
@@ -59,7 +75,11 @@ public class PropertyRegistrationService {
         // 2. Create Property
         Hotel property = new Hotel();
         property.setName(propertyName);
-        property.setAddressLine(propertyAddress);
+        property.setAddressLine(String.join(", ", propertyAddress.trim(), ward.getNameVi(), province.getNameVi()));
+        property.setCity(province.getNameVi());
+        property.setCountry("Vietnam");
+        property.setProvinceId(province.getId());
+        property.setWardId(ward.getId());
         property.setStatus("DRAFT");
         property.setApprovalStatus("PENDING_APPROVAL");
         property.setOperationStatus("INACTIVE");
@@ -67,6 +87,9 @@ public class PropertyRegistrationService {
 
         // 3. Map User to Property
         ownershipLifecycleService.createPendingOwner(user, property);
+
+        emailService.sendPartnerRegistrationAlert(
+                property.getId(), fullName, user.getEmail(), propertyName, property.getAddressLine());
 
         // 4. Assign Default Plan (e.g. BASIC)
         SubscriptionPlan basicPlan = planRepository.findByCode("BASIC").orElse(null);

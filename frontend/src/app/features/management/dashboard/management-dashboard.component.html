@@ -2,7 +2,7 @@
   <header>
     <div><h1>Tổng quan cơ sở</h1><p>Tồn phòng và mức sử dụng gói theo cơ sở đang chọn.</p></div>
     <select [(ngModel)]="selectedPropertyId" (change)="selectProperty()" aria-label="Cơ sở đang quản lý">
-      @for (property of context?.properties || []; track property.id) { <option [ngValue]="property.id">{{ property.nameVi }}</option> }
+      @for (property of context?.properties || []; track property.id) { <option [ngValue]="property.id">{{ propertyName(property) }}</option> }
     </select>
   </header>
   @if (error) {

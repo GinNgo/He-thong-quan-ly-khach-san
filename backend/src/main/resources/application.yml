@@ -101,6 +101,7 @@ app:
   mail:
     sender-name: ${MAIL_SENDER_NAME:LuxeStay}
     registration-enabled: ${REGISTRATION_EMAIL_ENABLED:true}
+    email-verification-url: ${EMAIL_VERIFICATION_URL:http://localhost:4200/verify-email}
     password-reset-enabled: ${PASSWORD_RESET_EMAIL_ENABLED:true}
     password-reset-url: ${PASSWORD_RESET_URL:http://localhost:4200/reset-password}
     login-url: ${REGISTRATION_LOGIN_URL:http://localhost:4200/login}
@@ -122,6 +123,7 @@ app:
     enabled: true
     resource: ${LOCATION_IMPORT_RESOURCE:classpath:data/locations.json}
     current-province-resource: ${CURRENT_PROVINCE_IMPORT_RESOURCE:classpath:data/provinces-current-34.json}
+    current-ward-resource: ${CURRENT_WARD_IMPORT_RESOURCE:classpath:data/wards-current-34.json}
     landmark-resource: ${LANDMARK_IMPORT_RESOURCE:classpath:data/landmarks.json}
     cleanup-obsolete: false
   e2e-fixtures:
@@ -145,6 +147,11 @@ app:
     max-results-per-batch: 100
     request-delay-ms: 1000
     auto-publish: false
+  ai:
+    gemini:
+      api-key: ${LUXESTAY_AI_GEMINI_API_KEY:${GEMINI_API_KEY:}}
+      models: ${GEMINI_MODELS:gemini-3.6-flash,gemini-3.5-flash,gemini-flash-latest,gemini-2.5-flash}
+      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
 
 google:
   client:

@@ -1,7 +1,7 @@
 # Release manifest - LuxeStay thesis report
 
-version: `thesis-final-docx-2026-07-29`
-verifiedAt: `2026-07-29` (Asia/Saigon)
+version: `thesis-final-docx-2026-08-08`
+verifiedAt: `2026-08-08` (Asia/Saigon)
 status: `FINAL_DOCX/RENDER_BLOCKED`
 reviewer: `User-approved finalization; Codex structural/a11y/privacy verification`
 
@@ -21,8 +21,8 @@ reviewer: `User-approved finalization; Codex structural/a11y/privacy verificatio
 
 | Artifact | SHA-256 |
 | --- | --- |
-| `LuxeStay_KhoaLuan_FINAL.docx` | `53F7F107B725B13AFE4058259DABCBB051456809AAEDBD3B759AE2E073845942` |
-| `LuxeStay_HuongDan_TraLoi_Rubric_FINAL.docx` | `95BC24FFCCE7C01EB0572796912862A4BAC0020307359F0FCCC46D5E0B976BF5` |
+| `LuxeStay_KhoaLuan_FINAL.docx` | `2FEB2C5D8DD86612CE7E4DDBB7F8A00471AFFCDBF0B3782EFBE9C932BC3871CE` |
+| `LuxeStay_HuongDan_TraLoi_Rubric_FINAL.docx` | `4ED3D1E39B9ED3FAC35B5CCF2F7A7EE1EB4F47E9ADEAE61066FE07E077741B45` |
 
 ## Verification commands and results
 
@@ -40,7 +40,7 @@ reviewer: `User-approved finalization; Codex structural/a11y/privacy verificatio
 | Static privacy scan and screenshot spot-check | No secret/path/private key pattern; demo email noted | PRELIMINARY |
 | D01-D08 Drive exports | 8 official DOCX exports, SHA-256 registry complete | CURRENT |
 | D03/D04 rubric mapping | 14/14 source criteria mapped with boundary/readiness | CURRENT |
-| DOCX structural QA | Thesis draft: 451 paragraphs, 7/40/9 headings, 6 tables, 47 inline images, 38 package media items with no SVG, TOC/PAGE fields; tall assets split into `(a)/(b)` panels; rubric guide: 201 paragraphs, 3 tables, PAGE fields | CURRENT |
+| DOCX structural QA | Thesis final: 459 paragraphs, 7/41/9 headings, 6 tables, 49 inline images, 39 package media items with no SVG, TOC/PAGE fields; architecture image and flowchart policy maps to Activity UML-16..19; rubric guide: 201 paragraphs, 3 tables, PAGE fields | CURRENT |
 | DOCX accessibility audit | 0 high/medium/low findings for both draft artifacts after screenshot alt text fix | CURRENT |
 | FINAL DOCX package/integrity | Both final files pass ZIP/package open; thesis has 451 paragraphs, 6 tables, 47 inline images, 38 PNG media, 0 SVG and TOC/PAGE fields | CURRENT |
 | FINAL privacy scan | 0 local path, private-key, JWT, secret-assignment or email patterns in both final DOCX packages | CURRENT |

@@ -8,6 +8,9 @@
     <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form">
       <div class="form-section">
         <h3>Thông tin cá nhân</h3>
+        <div class="account-notice" *ngIf="isAuthenticatedRegistration" role="status">
+          Hồ sơ này sẽ được đăng ký bằng tài khoản Google bạn đang đăng nhập. Bạn không cần tạo mật khẩu mới.
+        </div>
         <div class="form-group">
           <label for="fullName">Họ và tên *</label>
           <input type="text" id="fullName" formControlName="fullName" placeholder="Nhập họ và tên"
@@ -21,6 +24,7 @@
           <div class="form-group">
             <label for="email">Email đăng nhập *</label>
             <input type="email" id="email" formControlName="email" placeholder="example@email.com"
+              [readOnly]="isAuthenticatedRegistration"
               [class.invalid]="registerForm.get('email')?.invalid && registerForm.get('email')?.touched">
             <div class="error-msg" *ngIf="registerForm.get('email')?.invalid && registerForm.get('email')?.touched">
               Email không hợp lệ.
@@ -37,7 +41,7 @@
           </div>
         </div>
 
-        <div class="form-group">
+        <div class="form-group" *ngIf="!isAuthenticatedRegistration">
           <label for="password">Mật khẩu *</label>
           <input type="password" id="password" formControlName="password" placeholder="Tối thiểu 6 ký tự"
             [class.invalid]="registerForm.get('password')?.invalid && registerForm.get('password')?.touched">
@@ -58,21 +62,49 @@
           </div>
         </div>
 
+        <div class="form-row location-row">
+          <div class="form-group">
+            <label for="provinceId">Tỉnh/Thành phố *</label>
+            <p-select inputId="provinceId" [options]="provinces" optionLabel="nameVi" optionValue="id"
+              formControlName="provinceId" placeholder="Chọn tỉnh/thành phố" [loading]="provincesLoading"
+              [filter]="true" filterBy="nameVi,nameEn" [filterMatchMode]="$any('locationFuzzy')"
+              filterPlaceholder="Nhập tên tỉnh/thành phố" emptyFilterMessage="Không tìm thấy tỉnh/thành phố"
+              (onChange)="onProvinceChange()"></p-select>
+            <div class="error-msg" *ngIf="registerForm.get('provinceId')?.invalid && registerForm.get('provinceId')?.touched">
+              Vui lòng chọn tỉnh/thành phố.
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="wardId">Phường/Xã *</label>
+            <p-select inputId="wardId" [options]="wards" optionLabel="displayName" optionValue="id"
+              formControlName="wardId" [loading]="wardsLoading"
+              [disabled]="!registerForm.get('provinceId')?.value"
+              [filter]="true" filterBy="displayName,nameVi,legacyParentName" [filterMatchMode]="$any('locationFuzzy')"
+              filterPlaceholder="Nhập tên phường/xã hoặc quận/huyện" emptyFilterMessage="Không tìm thấy phường/xã"
+              [placeholder]="registerForm.get('provinceId')?.value ? 'Chọn phường/xã' : 'Chọn tỉnh/thành phố trước'"></p-select>
+            <div class="error-msg" *ngIf="registerForm.get('wardId')?.invalid && registerForm.get('wardId')?.touched">
+              Vui lòng chọn phường/xã.
+            </div>
+          </div>
+        </div>
+
         <div class="form-group">
-          <label for="propertyAddress">Địa chỉ đầy đủ *</label>
-          <input type="text" id="propertyAddress" formControlName="propertyAddress" placeholder="Số nhà, Tên đường, Quận/Huyện, Tỉnh/TP"
+          <label for="propertyAddress">Số nhà, tên đường *</label>
+          <input type="text" id="propertyAddress" formControlName="propertyAddress" autocomplete="street-address" placeholder="Ví dụ: 123 Đường Nguyễn Huệ"
             [class.invalid]="registerForm.get('propertyAddress')?.invalid && registerForm.get('propertyAddress')?.touched">
           <div class="error-msg" *ngIf="registerForm.get('propertyAddress')?.invalid && registerForm.get('propertyAddress')?.touched">
-            Địa chỉ là bắt buộc.
+            Vui lòng nhập số nhà và tên đường.
           </div>
         </div>
       </div>
 
-      <div class="error-banner" *ngIf="errorMessage">
-        {{ errorMessage }}
+      <div class="error-banner" *ngIf="errorMessage" role="alert" aria-live="assertive">
+        <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+        <span>{{ errorMessage }}</span>
       </div>
 
-      <button type="submit" class="submit-btn" [disabled]="isLoading">
+      <button type="submit" class="submit-btn" [disabled]="isLoading || profileLoading">
         <span *ngIf="!isLoading">Đăng ký ngay</span>
         <span *ngIf="isLoading" class="spinner"></span>
       </button>

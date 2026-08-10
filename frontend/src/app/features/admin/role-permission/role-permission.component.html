@@ -5,7 +5,7 @@
   <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
     <div>
       <h2 class="mb-1 text-dark fw-bold"><i class="pi pi-shield me-2" style="color: var(--hotel-gold);"></i>Ph&acirc;n quy&#7873;n</h2>
-      <p class="text-muted mb-0">C&#7845;p quy&#7873;n xem, th&ecirc;m, s&#7917;a, x&oacute;a cho t&#7915;ng vai tr&ograve; theo trang.</p>
+      <p class="text-muted mb-0">Cấp quyền xem, thêm, sửa, xóa, xuất, duyệt và thực hiện tác vụ theo từng chức năng.</p>
     </div>
     <div class="d-flex gap-2"><button pButton label="Đặt lại" icon="pi pi-undo" class="p-button-outlined" [disabled]="!dirty || saving" (click)="resetPermissions()"></button><button pButton label="Lưu phân quyền" icon="pi pi-save" class="btn btn-primary-hotel" [disabled]="!selectedRole || !dirty || saving || protectedRole" [loading]="saving" (click)="savePermissions()"></button></div>
   </div>
@@ -48,7 +48,8 @@
             Vui l&ograve;ng ch&#7885;n vai tr&ograve;
           </h5>
         </div>
-        <div *ngIf="protectedRole" class="alert alert-info">Vai trò hệ thống được quản trị bằng cấu hình nền tảng và không thể chỉnh sửa tại đây.</div>
+        <div *ngIf="protectedRole" class="alert alert-info">Vai trò quản trị lõi được bảo vệ và không thể chỉnh sửa quyền.</div>
+        <div *ngIf="editableSystemRole" class="alert alert-info">Có thể chỉnh quyền vai trò vận hành tại đây. Bỏ quyền Xem sẽ chặn trang; bỏ Thêm, Sửa, Xóa hoặc Duyệt sẽ chặn thao tác tương ứng.</div>
         <div *ngIf="dirty" class="alert alert-warning py-2">Có thay đổi chưa được lưu.</div>
 
         <div *ngIf="loading" class="text-center py-5">
@@ -72,7 +73,7 @@
                 <td *ngFor="let act of actions" class="text-center">
                   <p-checkbox
                     [binary]="true"
-                    [disabled]="protectedRole"
+                    [disabled]="protectedRole || !moduleSupportsAction(module, act.value)"
                     [ngModel]="moduleHasPermission(module, act.value)"
                     (onChange)="toggleModule(module, act.value, $event.checked)">
                   </p-checkbox>
@@ -87,7 +88,7 @@
                 <td *ngFor="let act of actions" class="text-center">
                   <p-checkbox
                     [binary]="true"
-                    [disabled]="protectedRole"
+                    [disabled]="protectedRole || !supportsAction(func, act.value)"
                     [ngModel]="hasPermission(func, act.value)"
                     (onChange)="togglePermission(func, act.value, $event.checked)">
                   </p-checkbox>

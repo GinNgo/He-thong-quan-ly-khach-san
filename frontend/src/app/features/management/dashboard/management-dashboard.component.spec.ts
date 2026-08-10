@@ -20,7 +20,7 @@ describe('ManagementDashboardComponent', () => {
     fixture.detectChanges();
 
     context$.next({
-      properties: [{ id: 1, code: 'HOTEL-1', nameVi: 'LuxeStay Hà Nội', propertyType: 'HOTEL', address: 'Hà Nội', approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', isDemo: false }],
+      properties: [{ id: 1, code: 'HOTEL-1', name: 'Grand Palace Hotel', propertyType: 'HOTEL', address: 'Hà Nội', approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', isDemo: false }],
       activePropertyId: 1,
       planCode: 'STANDARD',
       subscriptionStatus: 'ACTIVE',
@@ -35,7 +35,7 @@ describe('ManagementDashboardComponent', () => {
 
     const element: HTMLElement = fixture.nativeElement;
     expect(element.textContent).not.toContain('Đang tải tổng quan...');
-    expect(element.textContent).toContain('LuxeStay Hà Nội');
+    expect(element.textContent).toContain('Grand Palace Hotel');
     expect(element.textContent).toContain('STANDARD');
     expect(element.textContent).toContain('Nguồn quyền lợi: Hệ thống thanh toán gói');
     expect(element.textContent).toContain('Phòng trống');

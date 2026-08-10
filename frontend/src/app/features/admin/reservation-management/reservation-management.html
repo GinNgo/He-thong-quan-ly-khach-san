@@ -111,6 +111,9 @@
             >
               {{ getReservationLabel(res.status) }}
             </span>
+            <small *ngIf="res.status === 'CANCELLED' && res.cancellationReason" class="d-block mt-1 text-danger">
+              Lý do: {{ res.cancellationReason }}
+            </small>
           </td>
           <td>
             <div class="financial-cell">

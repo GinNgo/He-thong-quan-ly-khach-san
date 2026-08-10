@@ -11,13 +11,13 @@
 
 The final release scan is still required after REVIEW/FINAL DOCX and PDF export; no final artifact is claimed here.
 
-## Final DOCX scan (2026-07-29)
+## Final DOCX scan (2026-08-08)
 
 - `docs/export/LuxeStay_KhoaLuan_FINAL.docx` and `docs/export/LuxeStay_HuongDan_TraLoi_Rubric_FINAL.docx` were created with the metadata scrubber.
 - Both packages pass ZIP integrity and can be opened by `python-docx`.
 - Accessibility audit reports 0 high, medium or low findings for both FINAL DOCX files.
 - Package text scan reports 0 local machine paths, private keys, JWTs, secret assignments and email addresses.
-- The thesis FINAL contains 47 inline images with 47 descriptions/titles, 38 PNG media items and 0 SVG media.
+- The thesis FINAL contains 49 inline images with descriptions/titles, 39 PNG media items and 0 SVG media. It now embeds the rendered architecture image; the four documented flowcharts are represented by Activity diagrams UML-16..UML-19 rather than duplicate figures.
 - No PDF was generated because the renderer cannot start without `soffice`; PDF privacy status remains `NOT_AVAILABLE/RENDER_BLOCKED`.
 
 ## Phạm vi đã quét

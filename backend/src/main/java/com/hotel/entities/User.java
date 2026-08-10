@@ -53,6 +53,9 @@ public class User extends AuditableEntity {
     @Column(name = "status")
     private String status = "ACTIVE";
 
+    @Column(name = "failed_login_count", nullable = false)
+    private Integer failedLoginCount = 0;
+
     @Column(name = "auth_revoked_at")
     private Instant authRevokedAt;
 
@@ -155,6 +158,14 @@ public class User extends AuditableEntity {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Integer getFailedLoginCount() {
+        return failedLoginCount;
+    }
+
+    public void setFailedLoginCount(Integer failedLoginCount) {
+        this.failedLoginCount = failedLoginCount;
     }
 
     public Instant getAuthRevokedAt() {

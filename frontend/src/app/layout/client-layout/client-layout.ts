@@ -39,12 +39,13 @@ export class ClientLayout implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(state => {
+      const becameAuthenticated = state.isAuthenticated && !this.isLoggedIn;
       this.isLoggedIn = state.isAuthenticated;
       this.username = state.username;
       this.fullName = state.fullName || state.username;
       this.avatarUrl = state.avatarUrl || '';
-      if (state.isAuthenticated) this.loadUserContext();
-      else this.userContext = null;
+      if (becameAuthenticated) this.loadUserContext();
+      else if (!state.isAuthenticated) this.userContext = null;
     });
   }
 

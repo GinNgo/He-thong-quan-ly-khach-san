@@ -1,6 +1,7 @@
 package com.hotel.controllers;
 
 import com.hotel.exceptions.ApiErrorResponse;
+import com.hotel.exceptions.AiServiceUnavailableException;
 import com.hotel.exceptions.CorrelationIdSupport;
 import com.hotel.exceptions.PropertyNotOperationalException;
 import com.hotel.exceptions.RegistrationConflictException;
@@ -118,6 +119,14 @@ public class GlobalExceptionHandler {
                 request, Map.of(), false, null);
     }
 
+    @ExceptionHandler(AiServiceUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleAiUnavailable(
+            AiServiceUnavailableException ex,
+            HttpServletRequest request) {
+        return response(HttpStatus.SERVICE_UNAVAILABLE, "AI_UNAVAILABLE", ex.getMessage(),
+                request, Map.of(), true, null);
+    }
+
     @ExceptionHandler(PropertyNotOperationalException.class)
     public ResponseEntity<ApiErrorResponse> handlePropertyNotOperational(
             PropertyNotOperationalException ex,
@@ -163,7 +172,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleForbidden(
             RuntimeException ex,
             HttpServletRequest request) {
-        return response(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Access is denied.",
+        return response(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Bạn không có quyền thực hiện thao tác này.",
                 request, Map.of(), false, null);
     }
 

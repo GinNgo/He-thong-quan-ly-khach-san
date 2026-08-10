@@ -1,10 +1,10 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 
 import { ChangeDetectorRef, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@app/core/services/auth';
 import { isPasswordLengthValid, PASSWORD_POLICY } from '@app/core/auth/password-policy';
 import { AuthLegalCopyService } from '../legal-support/auth-legal-copy.service';
@@ -18,8 +18,10 @@ import { AuthLegalCopyService } from '../legal-support/auth-legal-copy.service';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RegisterComponent {
+  legalModal: 'TERMS' | 'PRIVACY' | null = null;
   private authService = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
   readonly i18n = inject(AuthLegalCopyService);
   readonly passwordPolicy = PASSWORD_POLICY;
@@ -38,6 +40,21 @@ export class RegisterComponent {
   isLoading = false;
   passwordVisible = false;
   confirmPasswordVisible = false;
+  readonly returnUrl = this.resolveClientReturnUrl(this.route.snapshot.queryParamMap?.get('returnUrl') || '/');
+
+  openLegal(event: Event, kind: 'TERMS' | 'PRIVACY'): void {
+    event.preventDefault();
+    this.legalModal = kind;
+  }
+
+  closeLegal(): void {
+    this.legalModal = null;
+  }
+
+  @HostListener('document:keydown.escape')
+  closeLegalWithEscape(): void {
+    if (this.legalModal) this.closeLegal();
+  }
 
   togglePasswordVisibility(field: 'password' | 'confirmPassword'): void {
     if (field === 'password') {
@@ -91,8 +108,11 @@ export class RegisterComponent {
           ? 'Đăng ký thành công! Vui lòng kiểm tra hộp thư để xác minh email.'
           : 'Đăng ký thành công! Hãy đăng nhập để gửi lại liên kết xác minh email.';
         this.cdr.markForCheck();
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('postVerificationReturnUrl', this.returnUrl);
+        }
         setTimeout(() => {
-          this.router.navigate(['/login']);
+          this.router.navigate(['/login'], { queryParams: { returnUrl: this.returnUrl } });
         }, 2000);
       },
       error: (err) => {
@@ -105,5 +125,13 @@ export class RegisterComponent {
         this.cdr.markForCheck();
       }
     });
+  }
+
+  private resolveClientReturnUrl(returnUrl: string): string {
+    if (!returnUrl.startsWith('/') || returnUrl.startsWith('//')) return '/';
+    const blockedRoutes = ['/admin', '/management', '/403', '/login', '/register', '/verify-email'];
+    return blockedRoutes.some(route => returnUrl === route || returnUrl.startsWith(`${route}/`) || returnUrl.startsWith(`${route}?`))
+      ? '/'
+      : returnUrl;
   }
 }

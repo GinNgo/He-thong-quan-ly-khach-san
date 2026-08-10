@@ -135,6 +135,27 @@ class PropertyAccessServiceTest {
         assertThrows(PropertyNotOperationalException.class, () -> service.requireManagedHotel(30L));
     }
 
+    @Test
+    void systemAdministratorCannotReadUnassignedTenantDataThroughManagementPortalScope() {
+        Hotel otherTenant = hotel(31L, "APPROVED", "ACTIVE");
+        authenticate("owner", "ROLE_SUPER_ADMIN");
+        when(hotelRepository.findById(31L)).thenReturn(Optional.of(otherTenant));
+        when(userPropertyRepository.findByUserId(10L)).thenReturn(List.of());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.requireTenantAssignedHotel(31L));
+        assertThrows(ResourceNotFoundException.class, () -> service.requireTenantManagedHotel(31L));
+    }
+
+    @Test
+    void systemAdministratorWithExplicitAssignmentCanUseManagementPortalScope() {
+        Hotel assigned = hotel(32L, "APPROVED", "ACTIVE");
+        authenticate("owner", "ROLE_SUPER_ADMIN");
+        when(hotelRepository.findById(32L)).thenReturn(Optional.of(assigned));
+        when(userPropertyRepository.findByUserId(10L)).thenReturn(List.of(assignment(assigned, "ACTIVE")));
+
+        assertEquals(assigned, service.requireTenantManagedHotel(32L));
+    }
+
     private void authenticate(String username, String authority) {
         SecurityContextHolder.getContext().setAuthentication(
                 new TestingAuthenticationToken(username, "password", authority));

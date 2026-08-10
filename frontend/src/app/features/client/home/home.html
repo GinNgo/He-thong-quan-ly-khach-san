@@ -23,12 +23,12 @@
   </div>
 
   <main class="home-content">
-    <div class="content-intro">
+    <div class="content-intro reveal-on-scroll">
       <span class="eyebrow">{{ 'HOME.INTRO_KICKER' | translate }}</span>
       <p>{{ 'HOME.INTRO_DESCRIPTION' | translate }}</p>
     </div>
 
-    <section class="member-benefits" aria-labelledby="member-benefits-title">
+    <section class="member-benefits reveal-on-scroll" aria-labelledby="member-benefits-title">
       <article class="member-card">
         <div class="member-card-icon"><i class="pi pi-star" aria-hidden="true"></i></div>
         <div class="member-card-copy">
@@ -73,20 +73,20 @@
       </article>
     </section>
 
-    <app-promotions
+    <app-promotions class="reveal-on-scroll"
       [promotions]="promotions"
       [loading]="promotionsLoading"
       [error]="promotionsError"
       (retry)="loadPromotions()">
     </app-promotions>
 
-    <div class="editorial-section">
+    <div class="editorial-section reveal-on-scroll">
       <app-editorial-slideshow></app-editorial-slideshow>
     </div>
 
-    <app-partner-spotlight-carousel></app-partner-spotlight-carousel>
+    <app-partner-spotlight-carousel class="reveal-on-scroll"></app-partner-spotlight-carousel>
 
-    <section id="destinations" class="home-section" aria-labelledby="destinations-title">
+    <section id="destinations" class="home-section reveal-on-scroll" aria-labelledby="destinations-title">
       <app-popular-destinations
         [destinations]="destinations"
         [loading]="isLoadingDestinations"
@@ -94,9 +94,9 @@
       </app-popular-destinations>
     </section>
 
-    <app-destination-recommendations></app-destination-recommendations>
+    <app-destination-recommendations class="reveal-on-scroll"></app-destination-recommendations>
 
-    <section id="featured" class="home-section" aria-labelledby="featured-title">
+    <section id="featured" class="home-section reveal-on-scroll" aria-labelledby="featured-title">
       <app-featured-properties
         [properties]="featuredProperties"
         [loading]="isLoadingFeatured"
@@ -105,7 +105,7 @@
     </section>
   </main>
 
-  <section id="partner" class="owner-band" aria-labelledby="partner-title">
+  <section id="partner" class="owner-band reveal-on-scroll" aria-labelledby="partner-title">
     <div class="owner-copy">
       <span class="eyebrow">{{ 'HOME.PARTNER_KICKER' | translate }}</span>
       <h2 id="partner-title">{{ 'HOME.PARTNER_TITLE' | translate }}</h2>

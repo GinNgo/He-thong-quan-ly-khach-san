@@ -39,6 +39,8 @@ public class ChatAuthorizationService {
     public boolean isSystemAdministrator(CustomUserDetails userDetails) {
         return userDetails.getAuthorities().stream()
                 .anyMatch(authority -> "SUPER_ADMIN".equals(authority.getAuthority())
-                        || "ROLE_SUPER_ADMIN".equals(authority.getAuthority()));
+                        || "ROLE_SUPER_ADMIN".equals(authority.getAuthority())
+                        || "ADMIN".equals(authority.getAuthority())
+                        || "ROLE_ADMIN".equals(authority.getAuthority()));
     }
 }

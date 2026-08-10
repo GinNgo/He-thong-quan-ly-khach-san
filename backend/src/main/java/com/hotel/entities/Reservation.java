@@ -54,6 +54,15 @@ public class Reservation extends AuditableEntity {
     @Column(name = "special_requests", columnDefinition = "nvarchar(max)")
     private String specialRequests;
 
+    @Column(name = "cancellation_reason_code", length = 50)
+    private String cancellationReasonCode;
+
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
     @Column(name = "deposit_configuration_id")
     private Long depositConfigurationId;
 
@@ -215,6 +224,13 @@ public class Reservation extends AuditableEntity {
     public void setSpecialRequests(String specialRequests) {
         this.specialRequests = specialRequests;
     }
+
+    public String getCancellationReasonCode() { return cancellationReasonCode; }
+    public void setCancellationReasonCode(String cancellationReasonCode) { this.cancellationReasonCode = cancellationReasonCode; }
+    public String getCancellationReason() { return cancellationReason; }
+    public void setCancellationReason(String cancellationReason) { this.cancellationReason = cancellationReason; }
+    public LocalDateTime getCancelledAt() { return cancelledAt; }
+    public void setCancelledAt(LocalDateTime cancelledAt) { this.cancelledAt = cancelledAt; }
 
     public void captureDepositPolicy(DepositPolicySnapshot snapshot) {
         if (snapshot == null) {

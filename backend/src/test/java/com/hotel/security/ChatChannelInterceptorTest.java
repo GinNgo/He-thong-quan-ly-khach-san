@@ -127,6 +127,18 @@ class ChatChannelInterceptorTest {
     }
 
     @Test
+    void authenticatedTenantCanSendToSystemSupportDestination() {
+        CustomUserDetails tenant = user(52L, Map.of(), "PROPERTY_OWNER");
+        Message<byte[]> message = message(
+                SimpMessageType.MESSAGE,
+                "/app/chat.tenant.send",
+                null,
+                authentication(tenant));
+
+        assertDoesNotThrow(() -> interceptor.preSend(message, channel));
+    }
+
+    @Test
     void legacyNotificationSessionIsNotChangedByChatInterceptor() {
         SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.create(SimpMessageType.SUBSCRIBE);
         accessor.setDestination("/topic/notifications");

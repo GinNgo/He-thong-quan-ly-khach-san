@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { finalize, timeout } from 'rxjs/operators';
@@ -46,6 +46,7 @@ export class PropertyManagementComponent implements OnInit {
   private readonly propertyService = inject(PropertyService);
   private readonly messageService = inject(MessageService);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly cdr = inject(ChangeDetectorRef);
   public readonly authService = inject(AuthService);
 
   properties: AdminProperty[] = [];
@@ -91,7 +92,10 @@ export class PropertyManagementComponent implements OnInit {
     this.loading = true;
     this.propertyService.getAllProperties().pipe(
       timeout(10000),
-      finalize(() => { this.loading = false; })
+      finalize(() => {
+        this.loading = false;
+        this.cdr.detectChanges();
+      })
     ).subscribe({
       next: data => { this.properties = data; },
       error: error => {
@@ -105,7 +109,10 @@ export class PropertyManagementComponent implements OnInit {
     this.locationsLoading = true;
     this.propertyService.getProvinces().pipe(
       timeout(10000),
-      finalize(() => { this.locationsLoading = false; })
+      finalize(() => {
+        this.locationsLoading = false;
+        this.cdr.detectChanges();
+      })
     ).subscribe({
       next: data => { this.provinces = data; },
       error: () => {
@@ -127,7 +134,10 @@ export class PropertyManagementComponent implements OnInit {
     this.locationsLoading = true;
     this.propertyService.getWards(provinceId).pipe(
       timeout(10000),
-      finalize(() => { this.locationsLoading = false; })
+      finalize(() => {
+        this.locationsLoading = false;
+        this.cdr.detectChanges();
+      })
     ).subscribe({
       next: data => { this.wards = data; },
       error: error => {

@@ -5,7 +5,9 @@ import { RoleService, Role } from '@app/core/services/role.service';
 import { ClientApiService, Hotel } from '@app/core/services/client-api.service';
 import { ActivatedRoute } from '@angular/router';
 import { MessageService } from 'primeng/api';
-import { finalize, timeout } from 'rxjs/operators';
+import { finalize, map, timeout } from 'rxjs/operators';
+import { AuthService } from '@app/core/services/auth';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-user-management',
@@ -39,6 +41,8 @@ export class UserManagement implements OnInit {
   private route = inject(ActivatedRoute);
   private messageService = inject(MessageService);
   private cdr = inject(ChangeDetectorRef);
+  private authService = inject(AuthService);
+  readonly isSystemAdministrator = this.authService.getRoles().includes('SUPER_ADMIN');
 
   ngOnInit(): void {
     this.userType = this.route.snapshot.data['userType'] || 'STAFF';
@@ -67,9 +71,24 @@ export class UserManagement implements OnInit {
     this.errorMessage = '';
     this.users = [];
 
-    const usersRequest = this.userType === 'CUSTOMER'
-      ? this.userService.getCustomers()
-      : this.userService.getUsers();
+    let usersRequest: Observable<User[]>;
+    if (this.userType !== 'CUSTOMER') {
+      usersRequest = this.userService.getUsers();
+    } else if (this.isSystemAdministrator) {
+      usersRequest = this.userService.getCustomers();
+    } else {
+      usersRequest = this.userService.getPropertyGuests().pipe(
+        map(guests => guests.map((guest, index) => ({
+          id: -(index + 1),
+          username: '',
+          email: guest.email,
+          fullName: guest.fullName,
+          roles: [],
+          status: '',
+          createdAt: '',
+        }))),
+      );
+    }
 
     usersRequest.pipe(
       timeout(10000),
@@ -103,9 +122,12 @@ export class UserManagement implements OnInit {
   }
 
   loadHotels(): void {
-    this.hotelService.searchHotels({}).pipe(timeout(10000)).subscribe({
-      next: (data: any) => {
-        this.hotels = data.content || [];
+    this.hotelService.getAccessibleHotels().pipe(timeout(10000)).subscribe({
+      next: (hotels) => {
+        this.hotels = hotels;
+        if (!this.isSystemAdministrator && this.hotels.length === 1 && !this.userForm.hotelId) {
+          this.userForm.hotelId = this.hotels[0].id;
+        }
       },
       error: (error) => {
         const detail = error?.error?.message || 'Không thể tải danh sách cơ sở.';
@@ -116,6 +138,9 @@ export class UserManagement implements OnInit {
 
   openNew(): void {
     this.userForm = this.createEmptyForm();
+    if (!this.isSystemAdministrator && this.hotels.length === 1) {
+      this.userForm.hotelId = this.hotels[0].id;
+    }
     this.userDialogMode = 'create';
     this.displayDialog = true;
   }
@@ -139,6 +164,15 @@ export class UserManagement implements OnInit {
 
   saveUser(): void {
     if (this.saving) return;
+
+    if (this.userType === 'STAFF' && !this.userForm.hotelId) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Thiếu cơ sở',
+        detail: 'Vui lòng chọn cơ sở được phân công cho nhân sự.'
+      });
+      return;
+    }
 
     const payload = { ...this.userForm };
     if (this.userType === 'CUSTOMER') {

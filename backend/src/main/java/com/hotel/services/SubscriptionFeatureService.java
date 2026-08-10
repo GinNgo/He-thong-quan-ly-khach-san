@@ -16,12 +16,22 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class SubscriptionFeatureService {
 
+    private static final Map<String, Integer> FREE_LIMITS = Map.of(
+            "MAX_PROPERTIES", 1,
+            "MAX_ROOM_TYPES", 3,
+            "MAX_ROOMS", 10,
+            "MAX_IMAGES", 15,
+            "MAX_STAFF", 0,
+            "PROMOTION_CAMPAIGNS", 0,
+            "SPONSORED_PLACEMENTS", 0);
+
     private final AccountSubscriptionRepository accountSubscriptionRepository;
     private final PropertySubscriptionEntitlementService propertyEntitlementService;
 
     @Transactional
     public Map<String, Integer> getActiveFeaturesForProperty(Long hotelId) {
-        return propertyEntitlementService.getCurrent(hotelId).limits();
+        Map<String, Integer> limits = propertyEntitlementService.getCurrent(hotelId).limits();
+        return limits.isEmpty() ? FREE_LIMITS : limits;
     }
 
     @Transactional
@@ -40,6 +50,7 @@ public class SubscriptionFeatureService {
             throw new IllegalArgumentException("Usage and addition must be non-negative.");
         }
         Map<String, Integer> limits = propertyEntitlementService.getCurrentForUpdate(hotelId).limits();
+        if (limits.isEmpty()) limits = FREE_LIMITS;
         Integer limit = limits.get(featureCode);
         if (limit == null || limit == 0 || limit < -1) {
             throw new IllegalStateException("Upgrade this property's subscription to use this feature.");

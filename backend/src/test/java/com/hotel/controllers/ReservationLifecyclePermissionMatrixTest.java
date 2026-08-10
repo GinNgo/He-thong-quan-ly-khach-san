@@ -56,7 +56,7 @@ class ReservationLifecyclePermissionMatrixTest {
         assertPermission("assignRooms", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.UPDATE,
                 Long.class, AssignRoomsRequest.class);
         assertPermission("availableRooms", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.VIEW, Long.class);
-        assertPermission("checkIn", FunctionCode.CHECKIN, ActionCode.UPDATE, Long.class);
+        assertPermission("checkIn", FunctionCode.CHECKIN, ActionCode.TASK_EXECUTE, Long.class);
         assertPermission("cancelOperational", FunctionCode.RESERVATION_CANCEL, ActionCode.UPDATE, Long.class);
         assertPermission("markNoShow", FunctionCode.RESERVATION_NO_SHOW, ActionCode.UPDATE, Long.class);
     }
@@ -127,7 +127,7 @@ class ReservationLifecyclePermissionMatrixTest {
         return List.of(
                 endpoint("assignRooms", FunctionCode.RESERVATION_ASSIGNMENT, ActionCode.UPDATE,
                         Long.class, AssignRoomsRequest.class),
-                endpoint("checkIn", FunctionCode.CHECKIN, ActionCode.UPDATE, Long.class),
+                endpoint("checkIn", FunctionCode.CHECKIN, ActionCode.TASK_EXECUTE, Long.class),
                 endpoint("cancelOperational", FunctionCode.RESERVATION_CANCEL, ActionCode.UPDATE, Long.class),
                 endpoint("markNoShow", FunctionCode.RESERVATION_NO_SHOW, ActionCode.UPDATE, Long.class));
     }

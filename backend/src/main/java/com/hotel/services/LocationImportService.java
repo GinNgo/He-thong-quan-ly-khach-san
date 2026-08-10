@@ -52,6 +52,9 @@ public class LocationImportService {
     @Value("${app.location-import.current-province-resource:classpath:data/provinces-current-34.json}")
     Resource currentProvinceResource;
 
+    @Value("${app.location-import.current-ward-resource:classpath:data/wards-current-34.json}")
+    Resource currentWardResource;
+
     @Value("${app.location-import.cleanup-obsolete:false}")
     private boolean cleanupObsolete;
 
@@ -113,6 +116,7 @@ public class LocationImportService {
             }
 
             importCurrentProvinces(existingByKey, canonicalKeys, report);
+            importCurrentWards(existingByKey, canonicalKeys, report);
             importLandmarks(existingByKey, existingLandmarksBySourceIdentity, canonicalKeys, report);
 
             if (removeObsolete) {
@@ -170,6 +174,40 @@ public class LocationImportService {
         } catch (IOException exception) {
             throw new IllegalStateException("Không thể đọc danh mục 34 tỉnh/thành hiện hành: "
                     + resource.getDescription(), exception);
+        }
+    }
+
+    private void importCurrentWards(Map<String, Location> existingByKey,
+                                    Set<String> canonicalKeys, MutableReport report) {
+        if (currentWardResource == null || !currentWardResource.exists() || !currentWardResource.isReadable()) {
+            log.info("Current two-tier ward resource is unavailable; keeping legacy compatibility data.");
+            return;
+        }
+        try (InputStream input = openUtf8BomSafe(currentWardResource.getInputStream())) {
+            List<Map<String, Object>> provinces = objectMapper.readValue(input, new TypeReference<>() { });
+            for (Map<String, Object> provinceData : provinces) {
+                String provinceCode = requiredText(provinceData, "code");
+                Location province = existingByKey.get(key("PROVINCE", "VN34-" + String.format("%02d", Integer.parseInt(provinceCode))));
+                if (province == null) throw new IllegalArgumentException("Không tìm thấy tỉnh hiện hành: " + provinceCode);
+                for (Map<String, Object> wardData : childList(provinceData, "wards")) {
+                    String officialCode = requiredText(wardData, "code");
+                    String sourceCode = "VN34-W-" + officialCode;
+                    String wardName = requiredVietnameseName(wardData);
+                    Location ward = upsert(existingByKey, "WARD", sourceCode, "W-" + sourceCode,
+                            wardName, province, null, wardName + ", " + province.getNameVi(), report);
+                    ward.setSourceProvider("PROVINCES_OPEN_API_V2");
+                    ward.setSourceObjectType("WARD");
+                    ward.setSourceObjectId(officialCode);
+                    ward.setDataQualityStatus("VERIFIED");
+                    ward.setLastSeenAt(LocalDateTime.now());
+                    locationRepository.save(ward);
+                    canonicalKeys.add(key("WARD", sourceCode));
+                    report.wards++;
+                }
+            }
+        } catch (IOException exception) {
+            throw new IllegalStateException("Không thể đọc danh mục phường/xã 2 cấp hiện hành: "
+                    + currentWardResource.getDescription(), exception);
         }
     }
 

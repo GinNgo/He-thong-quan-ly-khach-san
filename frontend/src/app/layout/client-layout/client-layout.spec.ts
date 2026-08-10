@@ -144,4 +144,37 @@ describe('ClientLayout', () => {
     expect(element.querySelector('.account-menu')).toBeNull();
     expect(element.querySelector('.public-header')?.classList.contains('account-menu-open')).toBe(false);
   });
+
+  it('loads the user context once when authenticated state details are refreshed', () => {
+    const context: UserContext = {
+      id: 42,
+      username: 'customer@example.test',
+      email: 'customer@example.test',
+      fullName: 'Nguyen Van An',
+      roles: ['CUSTOMER'],
+    };
+    getProfile.mockReturnValue(of(context));
+
+    const fixture = TestBed.createComponent(ClientLayout);
+    fixture.detectChanges();
+
+    currentUser$.next({
+      isAuthenticated: true,
+      username: context.username,
+      fullName: '',
+      avatarUrl: '',
+      roles: ['CUSTOMER'],
+      permissions: [],
+    });
+    currentUser$.next({
+      isAuthenticated: true,
+      username: context.username,
+      fullName: context.fullName || '',
+      avatarUrl: '',
+      roles: ['CUSTOMER'],
+      permissions: [],
+    });
+
+    expect(getProfile).toHaveBeenCalledTimes(1);
+  });
 });

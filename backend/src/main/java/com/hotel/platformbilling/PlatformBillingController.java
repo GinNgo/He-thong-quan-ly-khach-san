@@ -5,6 +5,7 @@ import com.hotel.paymentprovider.config.PaymentEnvironmentGuard.PaymentEnvironme
 import com.hotel.platformbilling.config.PlatformPaymentConfigurationService;
 import com.hotel.platformbilling.order.SubscriptionOrderService;
 import com.hotel.platformbilling.payment.PlatformPaymentAttemptService;
+import com.hotel.paymentprovider.vnpay.VnpayCheckoutUrlService;
 import com.hotel.platformbilling.subscription.SubscriptionPolicyService;
 import com.hotel.platformbilling.subscription.SubscriptionRenewalService;
 import com.hotel.platformbilling.subscription.SubscriptionUpgradeService;
@@ -41,6 +42,7 @@ public class PlatformBillingController {
     private final PlatformPaymentConfigurationService configurationService;
     private final PlatformBillingQueryService queryService;
     private final PropertySubscriptionEntitlementService entitlementService;
+    private final VnpayCheckoutUrlService vnpayCheckoutUrlService;
 
     @Autowired
     public PlatformBillingController(
@@ -52,7 +54,8 @@ public class PlatformBillingController {
             SubscriptionPolicyService policyService,
             PlatformPaymentConfigurationService configurationService,
             PlatformBillingQueryService queryService,
-            PropertySubscriptionEntitlementService entitlementService) {
+            PropertySubscriptionEntitlementService entitlementService,
+            VnpayCheckoutUrlService vnpayCheckoutUrlService) {
         this.catalogService = catalogService;
         this.orderService = orderService;
         this.attemptService = attemptService;
@@ -62,6 +65,7 @@ public class PlatformBillingController {
         this.configurationService = configurationService;
         this.queryService = queryService;
         this.entitlementService = entitlementService;
+        this.vnpayCheckoutUrlService = vnpayCheckoutUrlService;
     }
 
     /** Compatibility constructor retained for focused controller tests and integrations. */
@@ -75,7 +79,7 @@ public class PlatformBillingController {
             PlatformPaymentConfigurationService configurationService,
             PlatformBillingQueryService queryService) {
         this(catalogService, orderService, attemptService, renewalService, upgradeService, policyService,
-                configurationService, queryService, null);
+                configurationService, queryService, null, null);
     }
 
     @GetMapping("/subscription-plans")
@@ -102,12 +106,22 @@ public class PlatformBillingController {
 
     @PostMapping("/subscription-orders/{orderId}/payment-attempts")
     @Permission(function = FunctionCode.PLATFORM_BILLING, action = ActionCode.CREATE)
-    public ResponseEntity<PlatformPaymentAttemptService.AttemptResponse> createAttempt(
+    public ResponseEntity<PaymentAttemptResponse> createAttempt(
             @PathVariable String orderId,
             @RequestBody PaymentAttemptRequest request,
             @RequestHeader("Idempotency-Key") String idempotencyKey) {
-        return ResponseEntity.ok(attemptService.create(new PlatformPaymentAttemptService.CreateAttemptCommand(
-                orderId, request.provider(), request.method(), idempotencyKey)));
+        PlatformPaymentAttemptService.AttemptResponse attempt = attemptService.create(
+                new PlatformPaymentAttemptService.CreateAttemptCommand(
+                        orderId, request.provider(), request.method(), idempotencyKey));
+        String redirectUrl = null;
+        if (vnpayCheckoutUrlService != null && "VNPAY".equalsIgnoreCase(attempt.provider())) {
+            var ready = configurationService.requireReady(attempt.provider());
+            String callbackUrl = ready.configuration().getCallbackUrl();
+            String returnUrl = callbackUrl + (callbackUrl.contains("?") ? "&" : "?")
+                    + "redirect=1&orderId=" + orderId;
+            redirectUrl = vnpayCheckoutUrlService.create(attempt, ready.credentials(), returnUrl);
+        }
+        return ResponseEntity.ok(new PaymentAttemptResponse(attempt, redirectUrl));
     }
 
     @PostMapping("/subscription-orders/{orderId}/cancel")
@@ -201,6 +215,20 @@ public class PlatformBillingController {
     }
 
     public record PaymentAttemptRequest(String provider, String method) {
+    }
+
+    public record PaymentAttemptResponse(
+            Long id, String publicId, String orderPublicId,
+            com.hotel.platformbilling.payment.PlatformPaymentAttempt.Status status,
+            String provider, String method, PaymentEnvironment environment,
+            java.math.BigDecimal expectedAmount, String currency,
+            String providerOrderReference, java.time.LocalDateTime expiresAt,
+            String merchantReferenceMasked, boolean replayed, String redirectUrl) {
+        PaymentAttemptResponse(PlatformPaymentAttemptService.AttemptResponse value, String redirectUrl) {
+            this(value.id(), value.publicId(), value.orderPublicId(), value.status(), value.provider(), value.method(),
+                    value.environment(), value.expectedAmount(), value.currency(), value.providerOrderReference(),
+                    value.expiresAt(), value.merchantReferenceMasked(), value.replayed(), redirectUrl);
+        }
     }
 
     public record PlanChangeRequest(Long targetPlanId) {

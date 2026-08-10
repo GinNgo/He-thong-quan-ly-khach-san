@@ -15,6 +15,8 @@ public class ChatConversationDTO {
     private String hotelName;
     private Long reservationId;
     private Long assignedAgentId;
+    private String channel;
+    private String subject;
     private String status;
     private String lastMessage;
     private Instant lastMessageAt;

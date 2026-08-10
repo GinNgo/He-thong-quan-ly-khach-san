@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Locale;
@@ -65,16 +66,27 @@ public class ReservationController {
     public ResponseEntity<ReservationDTO> cancelMyReservation(
             Authentication authentication,
             @PathVariable Long id,
+            @Valid @RequestBody CustomerCancellationRequest request,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             HttpServletRequest httpRequest) {
         String username = authentication.getName();
         ReservationDTO response = mutationIdempotencyService.execute(
                 mutationCommand("RESERVATION_CANCEL", username + ":" + id, idempotencyKey,
-                        new CancellationPayload(id), httpRequest),
+                        new CancellationPayload(id, request.reasonCode(), request.reason()), httpRequest),
                 HttpStatus.OK.value(),
                 ReservationDTO.class,
-                () -> reservationService.cancelMyReservation(id, username));
+                () -> reservationService.cancelMyReservation(id, username, request));
         return ResponseEntity.ok(response);
+    }
+
+    ResponseEntity<ReservationDTO> cancelMyReservation(
+            Authentication authentication,
+            Long id,
+            String idempotencyKey,
+            HttpServletRequest httpRequest) {
+        return cancelMyReservation(authentication, id,
+                new CustomerCancellationRequest("CHANGE_OF_PLANS", "Thay đổi kế hoạch"),
+                idempotencyKey, httpRequest);
     }
 
     @PutMapping("/{id}/status")
@@ -103,7 +115,7 @@ public class ReservationController {
     }
 
     @PostMapping("/{id}/check-in")
-    @Permission(function = FunctionCode.CHECKIN, action = ActionCode.UPDATE)
+    @Permission(function = FunctionCode.CHECKIN, action = ActionCode.TASK_EXECUTE)
     public ResponseEntity<ReservationDTO> checkIn(@PathVariable Long id) {
         return ResponseEntity.ok(reservationService.checkIn(id));
     }
@@ -121,7 +133,7 @@ public class ReservationController {
     }
 
     @PostMapping("/{id}/check-out")
-    @Permission(function = FunctionCode.CHECKOUT, action = ActionCode.CREATE)
+    @Permission(function = FunctionCode.CHECKOUT, action = ActionCode.TASK_EXECUTE)
     public ResponseEntity<CheckoutResultDTO> checkOut(@PathVariable Long id,
             @RequestBody(required = false) CheckoutRequest request) {
         return ResponseEntity.ok(reservationService.checkout(id, request));
@@ -203,7 +215,7 @@ public class ReservationController {
                 CorrelationIdSupport.resolve(request));
     }
 
-    private record CancellationPayload(Long reservationId) {
+    private record CancellationPayload(Long reservationId, String reasonCode, String reason) {
     }
 
     private void requireGenericStatusEndpoint(String status) {

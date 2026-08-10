@@ -29,6 +29,19 @@ public class AppFunction {
     @Column(name = "sort_order")
     private Integer sortOrder;
 
+    @Column(name = "supported_action_mask", nullable = false)
+    private Integer supportedActionMask = 127;
+
+    @Column(name = "scope_type", nullable = false, length = 20)
+    private String scopeType = "PROPERTY";
+
+    @Column(nullable = false)
+    private Boolean active = true;
+
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public AppModule getModule() { return module; }
@@ -43,4 +56,12 @@ public class AppFunction {
     public void setIcon(String icon) { this.icon = icon; }
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+    public Integer getSupportedActionMask() { return supportedActionMask; }
+    public void setSupportedActionMask(Integer supportedActionMask) { this.supportedActionMask = supportedActionMask; }
+    public String getScopeType() { return scopeType; }
+    public void setScopeType(String scopeType) { this.scopeType = scopeType; }
+    public Boolean getActive() { return active; }
+    public void setActive(Boolean active) { this.active = active; }
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 }

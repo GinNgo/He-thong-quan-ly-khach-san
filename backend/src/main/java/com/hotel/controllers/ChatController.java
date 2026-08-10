@@ -70,10 +70,37 @@ public class ChatController {
                 savedMessage);
     }
 
+    @MessageMapping("/chat.tenant.send")
+    public void sendTenantToAdmin(
+            @Valid @Payload CustomerChatMessageRequest request,
+            Principal principal) {
+        CustomUserDetails tenantUser = authorizationService.requireUser(principal);
+        ChatMessageDTO savedMessage = chatService.sendTenantToAdmin(
+                tenantUser,
+                request.getHotelId(),
+                request.getContent());
+        messagingTemplate.convertAndSendToUser(
+                tenantUser.getUsername(),
+                "/queue/messages",
+                savedMessage);
+        chatService.getSystemSupportRecipients().forEach(username ->
+                messagingTemplate.convertAndSendToUser(
+                        username,
+                        "/queue/support/messages",
+                        savedMessage));
+    }
+
     @GetMapping("/api/chat/me/history")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<ChatMessageDTO>> getMyHistory(Principal principal) {
         return ResponseEntity.ok(chatService.getMyHistory(authorizationService.requireUser(principal)));
+    }
+
+    @GetMapping("/api/chat/tenant/history")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<ChatMessageDTO>> getMyTenantSupportHistory(Principal principal) {
+        return ResponseEntity.ok(chatService.getMyTenantSupportHistory(
+                authorizationService.requireUser(principal)));
     }
 
     @GetMapping("/api/chat/support/conversations")

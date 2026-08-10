@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { Hotel } from './client-api.service';
 
@@ -17,6 +18,9 @@ export interface PropertyLocation {
   nameEn?: string;
   locationType: 'PROVINCE' | 'WARD';
   parent?: { id: number };
+  fullPath?: string;
+  legacyParentName?: string;
+  displayName?: string;
 }
 
 export interface CreatePropertyRequest {
@@ -60,7 +64,21 @@ export class PropertyService {
   }
 
   getWards(provinceId: number): Observable<PropertyLocation[]> {
-    return this.http.get<PropertyLocation[]>(`${environment.apiUrl}/public/locations/provinces/${provinceId}/wards`);
+    return this.http.get<PropertyLocation[]>(`${environment.apiUrl}/public/locations/provinces/${provinceId}/wards`).pipe(
+      map((wards) => wards
+        .map((ward) => ({
+          ...ward,
+          displayName: ward.legacyParentName
+            ? `${ward.nameVi} — ${ward.legacyParentName}`
+            : ward.nameVi,
+        }))
+        .sort((left, right) => (left.displayName ?? left.nameVi).localeCompare(
+          right.displayName ?? right.nameVi,
+          'vi',
+          { numeric: true },
+        )),
+      ),
+    );
   }
 
   createProperty(property: CreatePropertyRequest): Observable<AdminProperty> {

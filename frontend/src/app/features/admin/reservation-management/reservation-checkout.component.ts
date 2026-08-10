@@ -28,9 +28,10 @@ import {
   HotelServiceDTO,
   HotelServiceService,
 } from '../../../core/services/hotel-service.service';
+import { finalize, timeout } from 'rxjs/operators';
 
 type AdjustmentMode = 'SURCHARGE' | 'NEGATIVE_ADJUSTMENT';
-type BusyAction = 'PREVIEW' | 'SERVICE' | 'ADJUSTMENT' | 'OVERRIDE' | 'CHECKOUT' | null;
+type BusyAction = 'PREVIEW' | 'SERVICE' | 'ADJUSTMENT' | 'CHECKOUT' | null;
 
 @Component({
   selector: 'app-reservation-checkout',
@@ -56,7 +57,6 @@ export class ReservationCheckoutComponent implements OnChanges {
   readonly busyAction = signal<BusyAction>(null);
   readonly errorMessage = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
-  readonly checkoutOverrideId = signal<number | null>(null);
   readonly catalogHotelId = signal<number | null>(null);
   readonly catalogLoading = signal(false);
   readonly catalogError = signal<string | null>(null);
@@ -80,10 +80,6 @@ export class ReservationCheckoutComponent implements OnChanges {
     amount: [0, [Validators.required, Validators.min(1)]],
   });
 
-  readonly overrideForm = this.formBuilder.nonNullable.group({
-    reason: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(500)]],
-  });
-
   readonly serviceOptions = computed(() =>
     this.servicesState()
       .filter((service) => service.id && service.status === 'ACTIVE')
@@ -95,11 +91,11 @@ export class ReservationCheckoutComponent implements OnChanges {
 
   readonly canCheckout = computed(() => {
     const current = this.preview();
-    return Boolean(current?.checkoutAllowed || this.checkoutOverrideId());
+    return Boolean(current?.checkoutAllowed);
   });
 
-  readonly needsDebtOverride = computed(
-    () => this.preview()?.settlementState === 'OUTSTANDING' && !this.checkoutOverrideId(),
+  readonly hasOutstandingBalance = computed(
+    () => this.preview()?.settlementState === 'OUTSTANDING',
   );
 
   readonly isOverpaid = computed(() => this.preview()?.settlementState === 'OVERPAID');
@@ -129,7 +125,6 @@ export class ReservationCheckoutComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['reservationId'] && this.reservationId > 0) {
-      this.checkoutOverrideId.set(null);
       this.servicesState.set([]);
       this.catalogHotelId.set(null);
       this.catalogError.set(null);
@@ -219,30 +214,11 @@ export class ReservationCheckoutComponent implements OnChanges {
     });
   }
 
-  authorizeDebtOverride(): void {
-    if (this.overrideForm.invalid || this.busyAction()) {
-      this.overrideForm.markAllAsTouched();
-      return;
-    }
-    this.beginAction('OVERRIDE');
-    this.checkoutService
-      .authorizeDebtOverride(this.reservationId, this.overrideForm.getRawValue().reason)
-      .subscribe({
-        next: (result) => {
-          this.checkoutOverrideId.set(result.overrideId);
-          this.preview.set(result.preview);
-          this.successMessage.set('Đã cấp quyền trả phòng còn công nợ cho lần thao tác này.');
-          this.finishAction();
-        },
-        error: (error: unknown) => this.failAction(error, 'Không thể cấp quyền công nợ.'),
-      });
-  }
-
   checkout(): void {
     if (!this.canCheckout() || this.busyAction()) return;
     this.beginAction('CHECKOUT');
     this.checkoutService
-      .checkout(this.reservationId, this.checkoutOverrideId() ?? undefined)
+      .checkout(this.reservationId)
       .subscribe({
         next: (result) => {
           this.successMessage.set(`Đã chốt hóa đơn ${result.invoiceNumber}.`);
@@ -289,16 +265,17 @@ export class ReservationCheckoutComponent implements OnChanges {
     this.catalogLoading.set(true);
     this.catalogError.set(null);
     this.servicesState.set([]);
-    this.hotelService.getServicesForHotel(hotelId).subscribe({
+    this.hotelService.getServicesForHotel(hotelId).pipe(
+      timeout(15000),
+      finalize(() => this.catalogLoading.set(false)),
+    ).subscribe({
       next: (services) => {
         this.servicesState.set(services);
-        this.catalogLoading.set(false);
       },
       error: (error: unknown) => {
         this.catalogError.set(
           this.extractErrorMessage(error) || 'Không thể tải danh mục dịch vụ của khách sạn này.',
         );
-        this.catalogLoading.set(false);
       },
     });
   }

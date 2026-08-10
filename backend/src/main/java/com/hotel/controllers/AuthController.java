@@ -16,6 +16,7 @@ import com.hotel.exceptions.ApiErrorResponse;
 import com.hotel.exceptions.CorrelationIdSupport;
 import com.hotel.exceptions.SocialAccountLinkException;
 import com.hotel.security.AccountDisabledAuthenticationException;
+import com.hotel.security.EmailNotVerifiedAuthenticationException;
 import com.hotel.security.RefreshTokenException;
 import com.hotel.security.PasswordResetException;
 import com.hotel.services.AuthService;
@@ -170,6 +171,13 @@ public class AuthController {
     public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
             org.springframework.security.core.AuthenticationException ex,
             HttpServletRequest request) {
+        if (EmailNotVerifiedAuthenticationException.causedByUnverifiedEmail(ex)) {
+            return error(
+                    HttpStatus.UNAUTHORIZED,
+                    EmailNotVerifiedAuthenticationException.ERROR_CODE,
+                    EmailNotVerifiedAuthenticationException.DEFAULT_MESSAGE,
+                    request);
+        }
         if (AccountDisabledAuthenticationException.causedByAccountDisabled(ex)) {
             return error(
                     HttpStatus.UNAUTHORIZED,
@@ -178,6 +186,17 @@ public class AuthController {
                     request);
         }
         return error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid username or password.", request);
+    }
+
+    @ExceptionHandler(EmailNotVerifiedAuthenticationException.class)
+    public ResponseEntity<ApiErrorResponse> handleEmailNotVerified(
+            EmailNotVerifiedAuthenticationException exception,
+            HttpServletRequest request) {
+        return error(
+                HttpStatus.UNAUTHORIZED,
+                EmailNotVerifiedAuthenticationException.ERROR_CODE,
+                EmailNotVerifiedAuthenticationException.DEFAULT_MESSAGE,
+                request);
     }
 
     @ExceptionHandler(AccountDisabledAuthenticationException.class)

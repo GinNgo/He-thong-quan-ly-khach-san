@@ -179,6 +179,14 @@ export class ChatDashboardComponent implements OnInit, OnDestroy, AfterViewCheck
     return this.conversations().find((conversation) => conversation.conversationId === conversationId);
   }
 
+  conversationTypeLabel(conversation?: ChatConversation): string {
+    return conversation?.channel === 'TENANT_ADMIN' ? 'ĐỐI TÁC → QUẢN TRỊ HỆ THỐNG' : 'KHÁCH HÀNG → CƠ SỞ';
+  }
+
+  participantLabel(conversation?: ChatConversation): string {
+    return conversation?.channel === 'TENANT_ADMIN' ? 'Đối tác' : 'Khách hàng';
+  }
+
   private handleIncomingMessage(message: ChatMessage | null): void {
     if (!message) return;
     const selectedConversationId = this.selectedConversationId();

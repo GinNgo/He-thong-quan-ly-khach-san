@@ -25,6 +25,8 @@ public class PropertyRegistrationController {
                 request.getPhone(),
                 request.getPropertyName(),
                 request.getPropertyAddress(),
+                request.getProvinceId(),
+                request.getWardId(),
                 authentication == null ? null : authentication.getName()
         );
         return ResponseEntity.ok().body("Registration successful. Please login.");
@@ -47,5 +49,7 @@ public class PropertyRegistrationController {
         private String phone;
         private String propertyName;
         private String propertyAddress;
+        private Long provinceId;
+        private Long wardId;
     }
 }

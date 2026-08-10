@@ -2,7 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
 
-export interface ManagedProperty { id: number; code: string; nameVi: string; propertyType: string; address: string; approvalStatus: string; operationStatus: string; operational?: boolean; mainImage?: string; isDemo: boolean; }
+export interface ManagedProperty { id: number; code: string; nameVi?: string; name?: string; nameEn?: string; propertyType: string; address: string; provinceId?: number; wardId?: number; approvalStatus: string; operationStatus: string; operational?: boolean; mainImage?: string; isDemo: boolean; }
+export interface CreateManagementPropertyRequest { nameVi: string; nameEn: string; propertyType: string; provinceId: number; wardId: number; address: string; phone: string; email: string; website: string; starRating: number; descriptionVi: string; descriptionEn: string; }
 export interface ManagementUsage { properties?: number; roomTypes?: number; rooms?: number; staff?: number; images?: number; }
 export interface ManagementContext { properties: ManagedProperty[]; activePropertyId?: number; activePropertyOperational?: boolean; planCode: string; subscriptionStatus: string; subscriptionSource?: string; endAt?: string; lifetime: boolean; limits: Record<string, number>; usage: ManagementUsage; upgradeRequired: boolean; dashboard?: Record<string, number>; }
 
@@ -14,6 +15,8 @@ export class ManagementApiService {
   context(activePropertyId?: number) {
     return this.http.get<ManagementContext>(`${this.baseUrl}/context`, { params: activePropertyId ? { activePropertyId } : {} });
   }
+  properties() { return this.http.get<ManagedProperty[]>(`${this.baseUrl}/properties`); }
+  createProperty(body: CreateManagementPropertyRequest) { return this.http.post<ManagedProperty>(`${this.baseUrl}/properties`, body); }
   roomTypes(propertyId: number) { return this.http.get<any[]>(`${this.baseUrl}/room-types`, { params: { propertyId } }); }
   rooms(propertyId: number) { return this.http.get<any[]>(`${this.baseUrl}/rooms`, { params: { propertyId } }); }
   createRoomType(body: any) { return this.http.post<any>(`${this.baseUrl}/room-types`, body); }

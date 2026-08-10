@@ -3,6 +3,7 @@ package com.hotel.services;
 import com.hotel.entities.Hotel;
 import com.hotel.entities.HousekeepingTask;
 import com.hotel.entities.Room;
+import com.hotel.entities.Role;
 import com.hotel.entities.User;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.HousekeepingTaskRepository;
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.List;
 import java.util.Map;
@@ -29,6 +31,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -58,6 +61,18 @@ class ManagementPortalServiceTest {
     private ManagementPortalService service;
 
     @Test
+    void hotelManagerCannotCreateAPropertyThroughTheManagementService() {
+        User manager = new User();
+        Role managerRole = new Role();
+        managerRole.setCode("HOTEL_MANAGER");
+        manager.setRoles(Set.of(managerRole));
+        when(propertyAccessService.currentUser()).thenReturn(manager);
+
+        assertThrows(AccessDeniedException.class, () -> service.createProperty(null));
+        verify(hotelRepository, never()).saveAndFlush(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void pendingPropertyRemainsSelectableWithoutOperationalDashboardData() {
         User owner = new User();
@@ -65,13 +80,13 @@ class ManagementPortalServiceTest {
         owner.setFullName("Owner");
         Hotel pending = new Hotel();
         pending.setId(20L);
-        pending.setNameVi("Pending Hotel");
+        pending.setName("Legacy Pending Hotel");
         pending.setApprovalStatus("PENDING_APPROVAL");
         pending.setOperationStatus("INACTIVE");
 
         when(propertyAccessService.currentUser()).thenReturn(owner);
         when(propertyAccessService.assignedHotelIds()).thenReturn(Set.of(20L));
-        when(propertyAccessService.requireAssignedHotel(20L)).thenReturn(pending);
+        when(propertyAccessService.requireTenantAssignedHotel(20L)).thenReturn(pending);
         when(propertyAccessService.isOperational(pending)).thenReturn(false);
         when(hotelRepository.findAllById(Set.of(20L))).thenReturn(List.of(pending));
         when(propertyEntitlementService.getCurrent(20L)).thenReturn(
@@ -87,6 +102,7 @@ class ManagementPortalServiceTest {
         Map<String, Long> usage = (Map<String, Long>) context.get("usage");
         assertEquals(2L, usage.get("staff"));
         assertEquals(false, context.get("activePropertyOperational"));
+        assertEquals("Legacy Pending Hotel", properties.getFirst().get("nameVi"));
         assertFalse((Boolean) properties.getFirst().get("operational"));
         assertNull(context.get("dashboard"));
         verify(propertyAccessService, never()).requireManagedHotel(20L);
@@ -94,7 +110,7 @@ class ManagementPortalServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void systemAdministratorCanUseAnExplicitPropertyWithoutAssignmentRows() {
+    void systemAdministratorCannotUseAnExplicitPropertyWithoutAssignmentRows() {
         User administrator = new User();
         administrator.setId(1L);
         Hotel property = new Hotel();
@@ -106,17 +122,10 @@ class ManagementPortalServiceTest {
         when(propertyAccessService.currentUser()).thenReturn(administrator);
         when(propertyAccessService.assignedHotelIds()).thenReturn(Set.of());
         when(propertyAccessService.isSystemAdministrator()).thenReturn(true);
-        when(propertyAccessService.requireAssignedHotel(20L)).thenReturn(property);
-        when(propertyAccessService.isOperational(property)).thenReturn(true);
-        when(propertyEntitlementService.getCurrent(20L)).thenReturn(
-                PropertySubscriptionEntitlementService.EntitlementView.none(20L, "NO_ENTITLEMENT"));
+        when(propertyAccessService.requireTenantAssignedHotel(20L))
+                .thenThrow(new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy cơ sở."));
 
-        Map<String, Object> context = service.context(20L);
-        List<Map<String, Object>> properties = (List<Map<String, Object>>) context.get("properties");
-
-        assertEquals(20L, context.get("activePropertyId"));
-        assertEquals(1, properties.size());
-        assertEquals(20L, properties.getFirst().get("id"));
+        assertThrows(com.hotel.exceptions.ResourceNotFoundException.class, () -> service.context(20L));
         verify(hotelRepository, never()).findAllById(Set.of());
     }
 

@@ -40,7 +40,7 @@
           </section>
           <nav>
             <a routerLink="/profile" [queryParams]="{tab: 'profile'}" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-user"></i><span>{{ 'LAYOUT.PROFILE' | translate }}</span></a>
-            <a routerLink="/booking-history" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-suitcase"></i><span>{{ 'LAYOUT.MY_TRIPS' | translate }}</span><b *ngIf="userContext?.pendingBookingCount">{{ userContext.pendingBookingCount }}</b></a>
+            <a routerLink="/booking-history" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-briefcase" aria-hidden="true"></i><span>{{ 'LAYOUT.MY_TRIPS' | translate }}</span><b *ngIf="userContext?.pendingBookingCount">{{ userContext.pendingBookingCount }}</b></a>
             <a routerLink="/my-invoices" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-file"></i><span>{{ 'LAYOUT.MY_INVOICES' | translate }}</span></a>
             <a routerLink="/favorites" (click)="closeAccountMenu()" role="menuitem"><i class="pi pi-heart"></i><span><ng-container *ngIf="localeService.locale() === 'vi'">&#272;&#227; l&#432;u</ng-container><ng-container *ngIf="localeService.locale() !== 'vi'">Saved stays</ng-container></span></a>
             <div class="menu-divider"></div>
@@ -79,7 +79,7 @@
       <p>{{ 'LAYOUT.FOOTER_DESCRIPTION' | translate }}</p>
       <div class="footer-contact-list">
         <a href="tel:+842873006886"><i class="pi pi-phone" aria-hidden="true"></i><span>028 7300 6886</span></a>
-        <a href="mailto:support@luxestay.vn"><i class="pi pi-envelope" aria-hidden="true"></i><span>support&#64;luxestay.vn</span></a>
+        <a href="mailto:luxestay8386@gmail.com"><i class="pi pi-envelope" aria-hidden="true"></i><span>luxestay8386&#64;gmail.com</span></a>
       </div>
     </div>
 

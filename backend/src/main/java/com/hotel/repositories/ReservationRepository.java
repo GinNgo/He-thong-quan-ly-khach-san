@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 import java.util.Optional;
+import java.util.Collection;
+import com.hotel.entities.User;
 
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -17,6 +19,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findByUserIdOrderByIdDesc(Long userId);
     List<Reservation> findByUserUsername(String username);
     List<Reservation> findByHotelIdIn(java.util.Collection<Long> hotelIds);
+
+    @Query("select distinct r.user from Reservation r where r.hotel.id in :hotelIds")
+    List<User> findDistinctCustomersByHotelIds(Collection<Long> hotelIds);
     List<Reservation> findByStatus(String status);
     long countByUserIdAndStatusIn(Long userId, java.util.Collection<String> statuses);
 

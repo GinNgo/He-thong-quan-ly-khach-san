@@ -17,6 +17,11 @@ export interface User {
   staffAssignments?: StaffAssignment[];
 }
 
+export interface PropertyGuest {
+  fullName?: string;
+  email: string;
+}
+
 export interface StaffAssignment {
   id: number;
   hotelId: number;
@@ -64,6 +69,10 @@ export class UserService {
 
   getCustomers(): Observable<User[]> {
     return this.http.get<User[]>(`${this.apiUrl}/customers`);
+  }
+
+  getPropertyGuests(): Observable<PropertyGuest[]> {
+    return this.http.get<PropertyGuest[]>(`${this.apiUrl}/property-guests`);
   }
 
   getUserById(id: number): Observable<User> {

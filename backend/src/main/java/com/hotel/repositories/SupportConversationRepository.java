@@ -21,8 +21,17 @@ public interface SupportConversationRepository extends JpaRepository<SupportConv
 
     Optional<SupportConversation> findFirstByCustomerIdOrderByLastActivityAtDesc(Long customerId);
 
+    Optional<SupportConversation> findFirstByCustomerIdAndChannelOrderByLastActivityAtDesc(
+            Long customerId,
+            String channel);
+
     List<SupportConversation> findByHotelIdInAndStatusNotOrderByLastActivityAtDesc(
             Collection<Long> hotelIds,
+            String status);
+
+    List<SupportConversation> findByHotelIdInAndChannelAndStatusNotOrderByLastActivityAtDesc(
+            Collection<Long> hotelIds,
+            String channel,
             String status);
 
     List<SupportConversation> findByStatusNotOrderByLastActivityAtDesc(String status);

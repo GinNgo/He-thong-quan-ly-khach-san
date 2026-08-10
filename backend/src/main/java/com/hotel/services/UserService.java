@@ -71,13 +71,34 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public List<UserDto> getCustomers() {
+        requireSystemCustomerAdministration();
         return userRepository.findCustomers().stream()
+                .filter(user -> user.getRoles() != null && user.getRoles().stream()
+                        .anyMatch(role -> "CUSTOMER".equals(role.getCode())))
+                .sorted(Comparator.comparing(User::getId).reversed())
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<com.hotel.dtos.PropertyGuestDTO> getPropertyGuests() {
+        if (propertyAccessService.isSystemAdministrator()) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "System administrators should use the customer administration endpoint.");
+        }
+        java.util.Set<Long> visibleHotelIds = propertyAccessService.accessibleHotelIds();
+        if (visibleHotelIds.isEmpty()) return List.of();
+        return reservationRepository.findDistinctCustomersByHotelIds(visibleHotelIds).stream()
+                .filter(user -> user.getRoles() != null && user.getRoles().stream()
+                        .anyMatch(role -> "CUSTOMER".equals(role.getCode())))
+                .sorted(Comparator.comparing(User::getId).reversed())
+                .map(user -> new com.hotel.dtos.PropertyGuestDTO(user.getFullName(), user.getEmail()))
+                .toList();
+    }
+
     @Transactional
     public UserDto createCustomer(User user) {
+        requireSystemCustomerAdministration();
         if (userRepository.existsByUsername(user.getUsername())) {
             throw new RuntimeException("Username is already taken!");
         }
@@ -99,6 +120,7 @@ public class UserService {
 
     @Transactional
     public UserDto updateCustomer(Long id, User userDetails) {
+        requireSystemCustomerAdministration();
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         boolean isCustomer = user.getRoles() != null && user.getRoles().stream()
@@ -119,6 +141,13 @@ public class UserService {
             user.setPasswordHash(passwordEncoder.encode(userDetails.getPasswordHash()));
         }
         return convertToDto(userRepository.save(user));
+    }
+
+    private void requireSystemCustomerAdministration() {
+        if (!propertyAccessService.isSystemAdministrator()) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Tenant staff may view property guests but cannot administer customer accounts.");
+        }
     }
 
     public Optional<UserDto> getUserById(Long id) {
@@ -645,9 +674,36 @@ public class UserService {
                     .map(com.hotel.entities.PropertyClaimRequest::getStatus).orElse("NONE"));
         }
 
-        // Fetch active subscription
+        // The client account menu must use the same property-scoped entitlement as the management portal.
+        PropertySubscriptionEntitlementService.EntitlementView propertyEntitlement = userProperties.stream()
+                .filter(up -> up.getHotel() != null && up.getHotel().getId() != null)
+                .filter(up -> "ACTIVE".equals(up.getStatus()))
+                .sorted(Comparator
+                        .comparing((com.hotel.entities.UserProperty up) -> !Boolean.TRUE.equals(up.getIsPrimaryOwner()))
+                        .thenComparing(com.hotel.entities.UserProperty::getId,
+                                Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(up -> propertyEntitlementService.getCurrent(up.getHotel().getId()))
+                .filter(entitlement -> entitlement.planCode() != null
+                        && !"NO_PLAN".equals(entitlement.planCode())
+                        && "ACTIVE".equals(entitlement.status()))
+                .findFirst()
+                .orElse(null);
+
         List<com.hotel.entities.AccountSubscription> subs = accountSubscriptionRepository.findByUserIdAndStatus(id, "ACTIVE");
-        if (!subs.isEmpty()) {
+        if (propertyEntitlement != null) {
+            dto.setPlan(propertyEntitlement.planName() == null || propertyEntitlement.planName().isBlank()
+                    ? propertyEntitlement.planCode()
+                    : propertyEntitlement.planName());
+            dto.setSubscriptionStatus(propertyEntitlement.status());
+            dto.setStartAt(propertyEntitlement.effectiveFrom());
+            dto.setEndAt(propertyEntitlement.effectiveUntil());
+            dto.setIsLifetime(propertyEntitlement.lifetime());
+            dto.setLimits(propertyEntitlement.limits());
+
+            java.util.Map<String, Integer> currentUsage = new java.util.HashMap<>();
+            currentUsage.put("MAX_PROPERTIES", userProperties.size());
+            dto.setCurrentUsage(currentUsage);
+        } else if (!subs.isEmpty()) {
             com.hotel.entities.AccountSubscription activeSub = subs.get(0);
             dto.setPlan(activeSub.getPlan().getCode());
             dto.setSubscriptionStatus(activeSub.getStatus());

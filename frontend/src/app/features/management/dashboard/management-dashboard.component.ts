@@ -28,6 +28,12 @@ export class ManagementDashboardComponent implements OnInit {
   }
   selectProperty(): void { this.load(this.selectedPropertyId); }
   get activeProperty(): ManagedProperty | undefined { return this.context?.properties.find(property => property.id === this.selectedPropertyId); }
+  propertyName(property: ManagedProperty): string {
+    return property.nameVi?.trim()
+      || property.name?.trim()
+      || property.nameEn?.trim()
+      || `Cơ sở #${property.id}`;
+  }
   get activePropertyOperational(): boolean {
     return this.context?.activePropertyOperational
       ?? this.activeProperty?.operational

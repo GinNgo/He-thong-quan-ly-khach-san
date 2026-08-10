@@ -18,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Optional;
+import java.sql.SQLException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -52,7 +53,7 @@ class SocialAccountLinkServiceTest {
         ExternalIdentityProfile profile = profile("subject-1", "guest@example.com");
         User winner = activeUser(10L, "guest@example.com");
         when(provisioning.resolveOrProvision(profile))
-                .thenThrow(new DataIntegrityViolationException("unique provider subject"));
+                .thenThrow(uniqueConstraintViolation());
         when(provisioning.recoverAfterUniqueCollision(profile)).thenReturn(winner);
 
         assertEquals(winner, service.resolveOrLink(profile));
@@ -63,7 +64,7 @@ class SocialAccountLinkServiceTest {
     void concurrentProvisioningWithoutWinnerReturnsRetryableConflict() {
         ExternalIdentityProfile profile = profile("subject-2", "guest@example.com");
         when(provisioning.resolveOrProvision(profile))
-                .thenThrow(new DataIntegrityViolationException("unique provider subject"));
+                .thenThrow(uniqueConstraintViolation());
         when(provisioning.recoverAfterUniqueCollision(profile))
                 .thenThrow(SocialAccountLinkException.provisioningConflict());
 
@@ -71,6 +72,25 @@ class SocialAccountLinkServiceTest {
                 SocialAccountLinkException.class, () -> service.resolveOrLink(profile));
         assertEquals("SOCIAL_PROVISIONING_CONFLICT", error.code());
         assertTrue(error.retryable());
+    }
+
+    @Test
+    void nonUniquePersistenceFailureIsNotMisreportedAsConcurrentProvisioning() {
+        ExternalIdentityProfile profile = profile("subject-db", "guest@example.com");
+        DataIntegrityViolationException failure = new DataIntegrityViolationException(
+                "null constraint", new SQLException("failed_login_count is required", "23000", 515));
+        when(provisioning.resolveOrProvision(profile)).thenThrow(failure);
+
+        assertEquals(failure, assertThrows(
+                DataIntegrityViolationException.class,
+                () -> service.resolveOrLink(profile)));
+        verify(provisioning, never()).recoverAfterUniqueCollision(profile);
+    }
+
+    private DataIntegrityViolationException uniqueConstraintViolation() {
+        return new DataIntegrityViolationException(
+                "unique provider subject",
+                new SQLException("duplicate key", "23000", 2627));
     }
 
     @Test

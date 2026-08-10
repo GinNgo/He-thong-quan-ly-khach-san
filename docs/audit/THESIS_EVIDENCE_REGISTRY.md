@@ -26,7 +26,7 @@ Registry này là danh sách đầu mối. Evidence chi tiết phải có claim,
 | E-FRONT-01 | FRONT_MATTER | docs/thesis-assets/front-matter | Lời cảm ơn, lời cam đoan và tóm tắt đã có bản nháp | 2026-07-28 | CURRENT | REVIEW | REVIEW |
 | E-ADMIN-01 | ADMIN_AUDIT | docs/audit/ADMIN_FUNCTIONAL_VERIFICATION_PLAN.md | 29 route Admin đã được inventory; `/admin/plans` purchase PARTIAL và runtime data-backed còn BLOCKED | 2026-07-29 | CURRENT_STATIC/BLOCKED_RUNTIME | REVIEW | REVIEW |
 | E-DOCX-01 | DOCX_QA | docs/audit/THESIS_DOCX_STRUCTURAL_QA.md; docs/export/LuxeStay_KhoaLuan_DRAFT_scrubbed.docx; docs/export/thesis-draft-a11y-20260729.json | DRAFT có 451 paragraph, 6 table, 47 inline image, 38 media PNG, không SVG; a11y 0 lỗi | 2026-07-29 | CURRENT | REVIEW | VERIFIED |
-| E-DOCX-02 | FINAL_DOCX | docs/export/LuxeStay_KhoaLuan_FINAL.docx; docs/export/LuxeStay_HuongDan_TraLoi_Rubric_FINAL.docx | Hai FINAL DOCX pass package open, a11y và privacy; thesis có 47 hình/38 PNG/0 SVG | 2026-07-29 | CURRENT | PASS_DOCX/PDF_NOT_AVAILABLE | VERIFIED_STRUCTURAL |
+| E-DOCX-02 | FINAL_DOCX | docs/export/LuxeStay_KhoaLuan_FINAL.docx; docs/export/LuxeStay_HuongDan_TraLoi_Rubric_FINAL.docx | Hai FINAL DOCX pass package open, a11y và privacy; thesis có 459 paragraph, 49 hình/39 PNG/0 SVG, gồm architecture-01; FLOW-01..FLOW-04 ánh xạ UML-16..UML-19 | 2026-08-08 | CURRENT | PASS_DOCX/PDF_NOT_AVAILABLE | VERIFIED_STRUCTURAL |
 
 ## Quy tắc bổ sung
 

@@ -25,6 +25,9 @@ public interface LocationRepository extends JpaRepository<Location, Long> {
     List<Location> findByParentIdInAndLocationTypeAndStatusOrderByNameViAsc(
             Collection<Long> parentIds, String locationType, String status);
 
+    @Query("SELECT l FROM Location l WHERE l.status = 'ACTIVE' ORDER BY l.nameVi")
+    List<Location> findActiveSearchCandidates(org.springframework.data.domain.Pageable pageable);
+
     @Query("SELECT l FROM Location l WHERE l.status = 'ACTIVE' AND (:type IS NULL OR l.locationType = :type) AND (l.normalizedName LIKE CONCAT('%', :keyword, '%') OR LOWER(l.fullPath) LIKE CONCAT('%', LOWER(:rawKeyword), '%'))")
     org.springframework.data.domain.Page<Location> searchLocations(@Param("keyword") String keyword,
                                                                    @Param("rawKeyword") String rawKeyword,

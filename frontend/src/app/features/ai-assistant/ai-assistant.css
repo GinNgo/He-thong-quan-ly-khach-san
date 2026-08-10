@@ -1,6 +1,6 @@
 .ai-widget-container {
     position: fixed;
-    right: var(--hotel-space-6);
+    right: calc(var(--hotel-space-6) + 3.75rem);
     bottom: var(--hotel-space-6);
     z-index: 1050;
     font-family: var(--hotel-font-body);
@@ -90,6 +90,16 @@
     font-size: var(--hotel-text-xs);
 }
 
+.ai-online-dot {
+    display: inline-block;
+    width: 0.45rem;
+    height: 0.45rem;
+    margin-right: 0.3rem;
+    border-radius: 50%;
+    background: #b9fbc0;
+    box-shadow: 0 0 0 3px rgba(185, 251, 192, 0.18);
+}
+
 .ai-icon-button {
     border: 0;
     border-radius: var(--hotel-radius-pill);
@@ -170,6 +180,14 @@
     background: var(--hotel-card-bg);
 }
 
+.ai-disclaimer {
+    margin: 0 0 0.5rem;
+    color: var(--hotel-text-muted);
+    font-size: 0.72rem;
+    line-height: 1.35;
+    text-align: center;
+}
+
 .form-control {
     min-height: 44px;
     border: 1px solid var(--hotel-border);
@@ -232,7 +250,7 @@
 
 @media (max-width: 575px) {
     .ai-widget-container {
-        right: var(--hotel-space-4);
+        right: calc(var(--hotel-space-4) + 3.5rem);
         bottom: var(--hotel-space-4);
     }
 

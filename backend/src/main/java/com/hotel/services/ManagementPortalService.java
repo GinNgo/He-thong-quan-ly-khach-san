@@ -5,6 +5,7 @@ import com.hotel.entities.*;
 import com.hotel.repositories.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,8 @@ public class ManagementPortalService {
     private final HotelRepository hotelRepository;
     private final LocationRepository locationRepository;
     private final UserPropertyRepository userPropertyRepository;
+    private final AccountSubscriptionRepository accountSubscriptionRepository;
+    private final SubscriptionPlanRepository subscriptionPlanRepository;
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final RoomTypeRepository roomTypeRepository;
@@ -42,14 +45,22 @@ public class ManagementPortalService {
         Long selectedId = activePropertyId != null
                 ? activePropertyId
                 : assignedIds.stream().findFirst().orElse(null);
-        Hotel selectedProperty = selectedId == null ? null : propertyAccessService.requireAssignedHotel(selectedId);
+        Hotel selectedProperty = selectedId == null ? null : propertyAccessService.requireTenantAssignedHotel(selectedId);
         List<Map<String, Object>> properties = systemAdministrator
                 ? selectedProperty == null ? List.of() : List.of(propertySummary(selectedProperty))
                 : hotelRepository.findAllById(assignedIds).stream().map(this::propertySummary).toList();
         PropertySubscriptionEntitlementService.EntitlementView entitlement = selectedId == null
                 ? PropertySubscriptionEntitlementService.EntitlementView.none(null, "PROPERTY_NOT_SELECTED")
                 : propertyEntitlementService.getCurrent(selectedId);
-        Map<String, Integer> limits = entitlement.limits();
+        boolean usesDefaultFreePlan = entitlement.limits().isEmpty();
+        Map<String, Integer> limits = usesDefaultFreePlan ? Map.of(
+                "MAX_PROPERTIES", 1,
+                "MAX_ROOM_TYPES", 3,
+                "MAX_ROOMS", 10,
+                "MAX_IMAGES", 15,
+                "MAX_STAFF", 0,
+                "PROMOTION_CAMPAIGNS", 0,
+                "SPONSORED_PLACEMENTS", 0) : entitlement.limits();
         boolean activePropertyOperational = propertyAccessService.isOperational(selectedProperty);
         Map<String, Long> usage = usage(user.getId(), selectedId);
         Map<String, Object> result = new LinkedHashMap<>();
@@ -58,15 +69,15 @@ public class ManagementPortalService {
         result.put("properties", properties);
         result.put("activePropertyId", selectedId);
         result.put("activePropertyOperational", activePropertyOperational);
-        result.put("planCode", entitlement.planCode());
-        result.put("subscriptionStatus", entitlement.status());
+        result.put("planCode", usesDefaultFreePlan ? "FREE" : entitlement.planCode());
+        result.put("subscriptionStatus", usesDefaultFreePlan ? "ACTIVE" : entitlement.status());
         result.put("subscriptionSource", entitlement.source());
         result.put("startAt", entitlement.effectiveFrom());
         result.put("endAt", entitlement.effectiveUntil());
-        result.put("lifetime", entitlement.lifetime());
+        result.put("lifetime", usesDefaultFreePlan || entitlement.lifetime());
         result.put("limits", limits);
         result.put("usage", usage);
-        result.put("upgradeRequired", limits.isEmpty() || !"ACTIVE".equals(entitlement.status()));
+        result.put("upgradeRequired", !usesDefaultFreePlan && !"ACTIVE".equals(entitlement.status()));
         if (activePropertyOperational) result.put("dashboard", dashboard(selectedId));
         return result;
     }
@@ -80,6 +91,11 @@ public class ManagementPortalService {
     @Transactional
     public Map<String, Object> createProperty(ManagementPropertyRequest request) {
         User user = propertyAccessService.currentUser();
+        boolean allowed = user.getRoles() != null && user.getRoles().stream()
+                .anyMatch(role -> "PROPERTY_OWNER".equals(role.getCode()) || "SUPER_ADMIN".equals(role.getCode()));
+        if (!allowed) {
+            throw new AccessDeniedException("Chỉ chủ cơ sở hoặc quản trị hệ thống mới có thể tạo cơ sở.");
+        }
         requireWithinLimit(user, "MAX_PROPERTIES",
                 userPropertyRepository.countActiveOwnedPropertiesByUserId(user.getId()), 1);
         if (request == null || request.getNameVi() == null || request.getNameVi().isBlank()
@@ -150,19 +166,29 @@ public class ManagementPortalService {
         mapping.setStatus("ACTIVE");
         mapping.setStartDate(LocalDateTime.now());
         userPropertyRepository.save(mapping);
+        // New properties start on the free plan (3 room types, 10 rooms).
+        subscriptionPlanRepository.findByCode("FREE").ifPresent(plan -> {
+            AccountSubscription subscription = new AccountSubscription();
+            subscription.setUser(user);
+            subscription.setPlan(plan);
+            subscription.setStartAt(LocalDateTime.now());
+            subscription.setIsLifetime(true);
+            subscription.setStatus("ACTIVE");
+            accountSubscriptionRepository.save(subscription);
+        });
         audit("PROPERTY", "PROPERTY_CREATED", hotel.getId(), null, propertySummary(hotel), "Property profile created");
         return propertySummary(hotel);
     }
 
     @Transactional(readOnly = true)
     public List<RoomTypeDTO> roomTypes(Long hotelId) {
-        propertyAccessService.requireCanManage(hotelId);
+        propertyAccessService.requireTenantCanManage(hotelId);
         return roomTypeRepository.findByHotelId(hotelId).stream().map(this::roomTypeDto).toList();
     }
 
     @Transactional
     public RoomTypeDTO createRoomType(RoomTypeDTO dto) {
-        Hotel hotel = propertyAccessService.requireManagedHotel(dto.getHotelId());
+        Hotel hotel = propertyAccessService.requireTenantManagedHotel(dto.getHotelId());
         dto.setHotelId(hotel.getId());
         return roomTypeService.createRoomType(dto);
     }
@@ -171,13 +197,13 @@ public class ManagementPortalService {
     public RoomTypeDTO updateRoomType(Long id, RoomTypeDTO dto) {
         RoomType roomType = roomTypeRepository.findById(id)
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy loại phòng."));
-        propertyAccessService.requireAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
+        propertyAccessService.requireTenantAccessibleOrNotFound(roomType.getHotel().getId(), "loại phòng");
         return roomTypeService.updateRoomType(id, dto);
     }
 
     @Transactional(readOnly = true)
     public List<RoomDTO> rooms(Long hotelId) {
-        propertyAccessService.requireCanManage(hotelId);
+        propertyAccessService.requireTenantCanManage(hotelId);
         return roomRepository.findByHotelId(hotelId).stream().map(this::roomDto).toList();
     }
 
@@ -185,7 +211,7 @@ public class ManagementPortalService {
     public RoomDTO createRoom(RoomDTO dto) {
         RoomType roomType = roomTypeRepository.findById(dto.getRoomTypeId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy loại phòng."));
-        propertyAccessService.requireCanManage(roomType.getHotel().getId());
+        propertyAccessService.requireTenantCanManage(roomType.getHotel().getId());
         dto.setHotelId(roomType.getHotel().getId());
         if (dto.getHousekeepingStatus() == null) dto.setHousekeepingStatus("CLEAN");
         return roomService.createRoom(dto);
@@ -195,7 +221,7 @@ public class ManagementPortalService {
     public RoomDTO updateRoom(Long id, RoomDTO dto) {
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy phòng."));
-        propertyAccessService.requireAccessibleOrNotFound(room.getHotel().getId(), "phòng");
+        propertyAccessService.requireTenantAccessibleOrNotFound(room.getHotel().getId(), "phòng");
         return roomService.updateRoom(id, dto);
     }
 
@@ -211,7 +237,7 @@ public class ManagementPortalService {
         RoomStatePolicy.requireInitialStatus(request.getStatus());
         RoomType roomType = roomTypeRepository.findById(request.getRoomTypeId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy loại phòng."));
-        Hotel hotel = propertyAccessService.requireManagedHotel(roomType.getHotel().getId());
+        Hotel hotel = propertyAccessService.requireTenantManagedHotel(roomType.getHotel().getId());
         if (request.getHotelId() != null && !request.getHotelId().equals(hotel.getId())) {
             throw new IllegalArgumentException("Loại phòng không thuộc cơ sở đã chọn.");
         }
@@ -241,7 +267,7 @@ public class ManagementPortalService {
     public Map<String, Object> completeHousekeeping(Long taskId) {
         HousekeepingTask task = housekeepingTaskRepository.findById(taskId)
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy tác vụ dọn phòng."));
-        propertyAccessService.requireAccessibleOrNotFound(task.getHotel().getId(), "tác vụ dọn phòng");
+        propertyAccessService.requireTenantAccessibleOrNotFound(task.getHotel().getId(), "tác vụ dọn phòng");
         if (!Set.of("PENDING", "IN_PROGRESS").contains(task.getStatus())) {
             throw new IllegalStateException("Tác vụ dọn phòng đã kết thúc.");
         }
@@ -308,7 +334,9 @@ public class ManagementPortalService {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", hotel.getId());
         data.put("code", hotel.getCode());
-        data.put("nameVi", hotel.getNameVi());
+        data.put("nameVi", firstNonBlank(hotel.getNameVi(), hotel.getName(), hotel.getNameEn(), "Cơ sở #" + hotel.getId()));
+        data.put("name", hotel.getName());
+        data.put("nameEn", hotel.getNameEn());
         data.put("propertyType", hotel.getPropertyType());
         data.put("address", hotel.getAddressLine());
         data.put("provinceId", hotel.getProvinceId());
@@ -319,6 +347,15 @@ public class ManagementPortalService {
         data.put("mainImage", hotel.getMainImage());
         data.put("isDemo", hotel.getIsDemo());
         return data;
+    }
+
+    private String firstNonBlank(String... values) {
+        return Arrays.stream(values)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .findFirst()
+                .orElse("");
     }
 
     private RoomTypeDTO roomTypeDto(RoomType entity) {

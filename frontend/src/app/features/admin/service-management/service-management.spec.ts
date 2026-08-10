@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
-import { of } from 'rxjs';
+import { NEVER, of } from 'rxjs';
 
 import { HotelServiceService } from '@app/core/services/hotel-service.service';
 import { ManagementApiService } from '@app/core/services/management-api.service';
@@ -97,5 +97,18 @@ describe('ServiceManagement', () => {
       7,
       expect.objectContaining({ price: 450000, hotelId: 20 }),
     );
+  });
+
+  it('stops loading when the management context request times out', async () => {
+    vi.useFakeTimers();
+    managementApi.context.mockReturnValue(NEVER);
+
+    const timeoutFixture = TestBed.createComponent(ServiceManagement);
+    timeoutFixture.detectChanges();
+    await vi.advanceTimersByTimeAsync(10000);
+
+    expect(timeoutFixture.componentInstance.loading).toBe(false);
+    expect(timeoutFixture.componentInstance.errorMessage).toBeTruthy();
+    vi.useRealTimers();
   });
 });

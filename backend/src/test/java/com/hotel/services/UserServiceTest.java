@@ -11,6 +11,7 @@ import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.RoleRepository;
 import com.hotel.repositories.UserPropertyRepository;
 import com.hotel.repositories.UserRepository;
+import com.hotel.repositories.ReservationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,6 +57,9 @@ class UserServiceTest {
     private UserPropertyRepository userPropertyRepository;
 
     @Mock
+    private ReservationRepository reservationRepository;
+
+    @Mock
     private SubscriptionFeatureService subscriptionFeatureService;
 
     @Mock
@@ -89,6 +93,38 @@ class UserServiceTest {
         receptionist.setId(3L);
         receptionist.setCode("RECEPTIONIST");
         receptionist.setName("Lễ tân");
+    }
+
+    @Test
+    void getPropertyGuests_ForTenant_ReturnsOnlyNameAndEmailForAccessibleHotels() {
+        Role customerRole = new Role();
+        customerRole.setCode("CUSTOMER");
+        customerRole.setName("Khách hàng");
+        User customer = new User();
+        customer.setId(99L);
+        customer.setUsername("guest@example.com");
+        customer.setEmail("guest@example.com");
+        customer.setRoles(Set.of(customerRole));
+
+        when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
+        when(propertyAccessService.accessibleHotelIds()).thenReturn(Set.of(10L));
+        when(reservationRepository.findDistinctCustomersByHotelIds(Set.of(10L))).thenReturn(List.of(customer));
+
+        var result = userService.getPropertyGuests();
+
+        assertEquals(List.of("guest@example.com"), result.stream().map(item -> item.email()).toList());
+        assertEquals(null, result.get(0).fullName());
+        verify(userRepository, never()).findCustomers();
+    }
+
+    @Test
+    void updateCustomer_ForTenant_IsForbiddenBeforeLoadingCustomerAccount() {
+        when(propertyAccessService.isSystemAdministrator()).thenReturn(false);
+
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> userService.updateCustomer(99L, new User()));
+
+        verify(userRepository, never()).findById(any());
     }
 
     @Test

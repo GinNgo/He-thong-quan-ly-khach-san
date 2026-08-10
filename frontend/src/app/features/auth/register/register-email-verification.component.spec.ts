@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 
 import { AuthService } from '@app/core/services/auth';
@@ -21,7 +21,13 @@ describe('RegisterComponent email verification message', () => {
           },
         },
         { provide: Router, useValue: { navigate: vi.fn() } },
-        { provide: ActivatedRoute, useValue: { snapshot: {}, queryParams: of({}) } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { queryParamMap: convertToParamMap({ returnUrl: '/booking/checkout?room=12' }) },
+            queryParams: of({}),
+          },
+        },
       ],
     }).compileComponents();
 
@@ -38,6 +44,7 @@ describe('RegisterComponent email verification message', () => {
 
     component.onSubmit();
 
+    expect(localStorage.getItem('postVerificationReturnUrl')).toBe('/booking/checkout?room=12');
     expect(component.successMessage).toContain('xác minh email');
   });
 });

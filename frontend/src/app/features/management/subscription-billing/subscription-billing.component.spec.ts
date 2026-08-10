@@ -5,6 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
 import { PlatformCatalogPlan } from '../../../core/services/platform-billing.service';
 import { SubscriptionBillingComponent } from './subscription-billing.component';
+import { of } from 'rxjs';
 
 describe('SubscriptionBillingComponent', () => {
   let http: HttpTestingController;
@@ -16,7 +17,13 @@ describe('SubscriptionBillingComponent', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: { get: () => '42' } } } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { queryParamMap: { get: () => '42' } },
+            queryParamMap: of({ get: () => '42' }),
+          },
+        },
       ],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);

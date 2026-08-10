@@ -6,7 +6,8 @@ export enum ActionCode {
   UPDATE = 4,
   DELETE = 8,
   EXPORT = 16,
-  APPROVE = 32
+  APPROVE = 32,
+  TASK_EXECUTE = 64
 }
 
 export enum FunctionCode {
@@ -29,6 +30,7 @@ export enum FunctionCode {
   CHECKIN = 'CHECKIN',
   CHECKOUT = 'CHECKOUT',
   HOUSEKEEPING = 'HOUSEKEEPING',
+  OPERATIONAL_TASK = 'OPERATIONAL_TASK',
   INVOICE = 'INVOICE',
   REPORT = 'REPORT',
   AI_CHAT = 'AI_CHAT',
@@ -112,5 +114,9 @@ export class PermissionService {
 
   canApprove(functionCode: string): boolean {
     return this.hasPermission(functionCode, ActionCode.APPROVE);
+  }
+
+  canExecuteTask(functionCode: string): boolean {
+    return this.hasPermission(functionCode, ActionCode.TASK_EXECUTE);
   }
 }

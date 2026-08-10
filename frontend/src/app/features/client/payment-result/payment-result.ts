@@ -18,6 +18,9 @@ export class PaymentResultComponent implements OnInit {
   message = '';
   provider = '';
   reservationId?: number;
+  isPolling = false;
+  pollingTimedOut = false;
+  private sessionId = '';
   
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -35,6 +38,7 @@ export class PaymentResultComponent implements OnInit {
         this.message = this.i18n.text('PUBLIC.PAYMENT.INVALID_DATA');
         return;
       }
+      this.sessionId = sessionId;
       this.pollAuthoritativeStatus(sessionId);
     });
   }
@@ -43,19 +47,43 @@ export class PaymentResultComponent implements OnInit {
     this.router.navigate(['/profile'], { queryParams: { tab: 'bookings' } });
   }
 
+  retryStatus(): void {
+    if (!this.sessionId || this.isPolling) return;
+    this.pollAuthoritativeStatus(this.sessionId);
+  }
+
   private pollAuthoritativeStatus(sessionId: string): void {
+    this.isPolling = true;
+    this.pollingTimedOut = false;
     timer(0, 2000).pipe(
       switchMap(() => this.paymentService.getPaymentSessionStatus(sessionId)),
       takeWhile((session) => session.status === 'CREATED' || session.status === 'PENDING', true),
-      take(10),
+      take(60),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: (session) => this.applySessionStatus(session),
+      next: (session) => {
+        this.applySessionStatus(session);
+        if (!this.isPendingSession(session)) this.isPolling = false;
+      },
       error: () => {
+        this.isPolling = false;
+        this.pollingTimedOut = true;
         this.status = 'PENDING';
         this.message = this.i18n.text('PUBLIC.PAYMENT.STATUS_UNAVAILABLE');
       },
+      complete: () => {
+        this.isPolling = false;
+        if (this.status === 'PROCESSING' || this.status === 'PENDING') {
+          this.status = 'PENDING';
+          this.pollingTimedOut = true;
+          this.message = this.i18n.text('PUBLIC.PAYMENT.STATUS_TIMEOUT');
+        }
+      },
     });
+  }
+
+  private isPendingSession(session: PaymentSessionStatus): boolean {
+    return session.status === 'CREATED' || session.status === 'PENDING';
   }
 
   private applySessionStatus(session: PaymentSessionStatus): void {

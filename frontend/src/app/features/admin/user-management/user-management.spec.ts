@@ -5,6 +5,7 @@ import { ClientApiService } from '@app/core/services/client-api.service';
 import { RoleService } from '@app/core/services/role.service';
 import { User, UserService } from '@app/core/services/user';
 import { UserManagement } from './user-management';
+import { AuthService } from '@app/core/services/auth';
 
 describe('UserManagement staff lifecycle', () => {
   const staff: User = {
@@ -49,7 +50,8 @@ describe('UserManagement staff lifecycle', () => {
       providers: [
         { provide: UserService, useValue: userService },
         { provide: RoleService, useValue: { getRoles: () => of([]) } },
-        { provide: ClientApiService, useValue: { searchHotels: () => of({ content: [] }) } },
+        { provide: ClientApiService, useValue: { getAccessibleHotels: () => of([]) } },
+        { provide: AuthService, useValue: { getRoles: () => ['PROPERTY_OWNER'] } },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { data: { userType: 'STAFF' } }, data: of({ userType: 'STAFF' }) },
@@ -86,5 +88,15 @@ describe('UserManagement staff lifecycle', () => {
       hotelId: 11,
       reason: 'New seasonal contract',
     });
+  });
+
+  it('loads only tenant-accessible properties for staff assignment', () => {
+    const hotelService = TestBed.inject(ClientApiService);
+    const accessibleSpy = vi.spyOn(hotelService, 'getAccessibleHotels');
+
+    const fixture = TestBed.createComponent(UserManagement);
+    fixture.detectChanges();
+
+    expect(accessibleSpy).toHaveBeenCalled();
   });
 });

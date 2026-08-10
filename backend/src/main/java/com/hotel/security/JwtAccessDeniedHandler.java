@@ -33,7 +33,7 @@ public class JwtAccessDeniedHandler implements AccessDeniedHandler {
         ApiErrorResponse body = new ApiErrorResponse(
                 HttpStatus.FORBIDDEN.value(),
                 "ACCESS_DENIED",
-                "Access is denied",
+                "Bạn không có quyền thực hiện thao tác này.",
                 correlationId,
                 Map.of(),
                 false,

@@ -40,7 +40,7 @@ public class HousekeepingController {
     }
 
     @PostMapping("/tasks/{taskId}/claim")
-    @Permission(function = FunctionCode.HOUSEKEEPING, action = ActionCode.UPDATE)
+    @Permission(function = FunctionCode.HOUSEKEEPING, action = ActionCode.TASK_EXECUTE)
     public ResponseEntity<HousekeepingTaskDTO> claim(
             @PathVariable Long taskId,
             @RequestBody(required = false) HousekeepingCommandRequest request) {
@@ -48,7 +48,7 @@ public class HousekeepingController {
     }
 
     @PostMapping("/tasks/{taskId}/assign")
-    @Permission(function = FunctionCode.HOUSEKEEPING, action = ActionCode.UPDATE)
+    @Permission(function = FunctionCode.HOUSEKEEPING, action = ActionCode.APPROVE)
     public ResponseEntity<HousekeepingTaskDTO> assign(
             @PathVariable Long taskId,
             @RequestBody HousekeepingAssignRequest request) {
@@ -56,7 +56,7 @@ public class HousekeepingController {
     }
 
     @PostMapping("/tasks/{taskId}/start")
-    @Permission(function = FunctionCode.HOUSEKEEPING, action = ActionCode.UPDATE)
+    @Permission(function = FunctionCode.HOUSEKEEPING, action = ActionCode.TASK_EXECUTE)
     public ResponseEntity<HousekeepingTaskDTO> start(
             @PathVariable Long taskId,
             @RequestBody(required = false) HousekeepingCommandRequest request) {
@@ -64,7 +64,7 @@ public class HousekeepingController {
     }
 
     @PostMapping("/tasks/{taskId}/complete")
-    @Permission(function = FunctionCode.HOUSEKEEPING, action = ActionCode.APPROVE)
+    @Permission(function = FunctionCode.HOUSEKEEPING, action = ActionCode.TASK_EXECUTE)
     public ResponseEntity<HousekeepingTaskDTO> complete(
             @PathVariable Long taskId,
             @RequestBody(required = false) HousekeepingCommandRequest request) {

@@ -9,13 +9,16 @@ import { FeedbackStateComponent } from '../../../shared/components/feedback-stat
 export class ManagementInventoryComponent implements OnInit {
   private api = inject(ManagementApiService); private route = inject(ActivatedRoute); private cdr = inject(ChangeDetectorRef);
   mode: 'room-types' | 'rooms' = 'room-types'; properties: ManagedProperty[] = []; propertyId?: number; rows: any[] = []; roomTypes: any[] = []; loading = true; saving = false; error = ''; showForm = false; changingRoomId?: number;
+  private limits: Record<string, number> = {};
+  private upgradeRequired = false;
   roomTypeForm: any = { code: '', nameVi: '', nameEn: '', bedType: 'DOUBLE', bedCount: 1, maxAdults: 2, maxChildren: 1, maxGuests: 3, basePrice: 0, status: 'ACTIVE' };
   bulkForm: any = { roomTypeId: undefined, fromNumber: 101, toNumber: 105, floor: 1, status: 'AVAILABLE' };
+  readonly floors = Array.from({ length: 30 }, (_, index) => index + 1);
 
   ngOnInit(): void {
     this.mode = this.route.snapshot.data['mode'] || 'room-types';
     this.api.context().subscribe({
-      next: context => { this.properties = context.properties; this.propertyId = context.activePropertyId; this.reload(); this.cdr.markForCheck(); },
+      next: context => { this.properties = context.properties; this.propertyId = context.activePropertyId; this.limits = context.limits || {}; this.upgradeRequired = !!context.upgradeRequired; this.reload(); this.cdr.markForCheck(); },
       error: e => { this.error = e?.error?.message || 'Không thể tải context.'; this.loading = false; this.cdr.markForCheck(); }
     });
   }
@@ -41,6 +44,17 @@ export class ManagementInventoryComponent implements OnInit {
   save(): void {
     if (!this.propertyId || this.saving) return;
     this.error = '';
+    if (this.mode === 'room-types') {
+      if (this.upgradeRequired || this.limits['MAX_ROOM_TYPES'] === undefined) {
+        this.error = 'Cơ sở chưa có gói dịch vụ đang hoạt động. Vui lòng kích hoạt hoặc đăng ký gói trước khi thêm loại phòng.';
+        return;
+      }
+      const limit = this.limits['MAX_ROOM_TYPES'];
+      if (limit !== undefined && limit >= 0 && this.rows.length >= limit) {
+        this.error = `Goi dich vu hien tai da dat gioi han ${limit} loai phong. Vui long nang cap goi dich vu.`;
+        return;
+      }
+    }
     this.saving = true;
     const request = this.mode === 'room-types'
       ? this.api.createRoomType({ ...this.roomTypeForm, hotelId: this.propertyId })

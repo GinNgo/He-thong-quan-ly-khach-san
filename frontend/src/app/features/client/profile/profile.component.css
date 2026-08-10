@@ -298,6 +298,60 @@
   opacity: 0.55;
   cursor: not-allowed;
 }
+
+.property-contact {
+  margin: 18px 0;
+  padding: 16px 18px;
+  border: 1px solid #d8e2ee;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f7fbff, #eef5fb);
+}
+.property-contact-heading { display: flex; align-items: flex-start; gap: 12px; }
+.property-contact-heading > i { color: #1769aa; font-size: 1.25rem; margin-top: 3px; }
+.property-contact-heading div { display: grid; gap: 3px; flex: 1; }
+.property-contact-heading small { color: #60758c; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
+.property-contact-heading strong { color: #102a43; font-size: 1.05rem; }
+.property-contact-heading span { color: #52677d; font-size: .9rem; }
+.property-link { color: #1769aa; font-weight: 700; white-space: nowrap; }
+.property-contact-details { display: flex; flex-wrap: wrap; gap: 10px 20px; margin: 14px 0 0 31px; color: #304b63; font-size: .9rem; }
+.property-contact-details a { color: #1769aa; text-decoration: none; }
+.property-contact-details i { margin-right: 6px; }
+.cancel-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(15 23 42 / 58%);
+}
+.cancel-dialog {
+  width: min(520px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: 24px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgb(15 23 42 / 25%);
+}
+.cancel-dialog h2 { margin: 0 0 8px; color: var(--hotel-heading); }
+.cancel-dialog p { color: var(--hotel-text-muted); }
+.cancel-dialog form { display: grid; gap: 10px; }
+.cancel-dialog label { margin-top: 6px; font-weight: 700; color: var(--hotel-heading); }
+.cancel-dialog select,
+.cancel-dialog textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--hotel-border);
+  border-radius: var(--hotel-radius-sm);
+  font: inherit;
+}
+.field-error { color: var(--hotel-danger); }
+.cancel-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
+.dialog-secondary,
+.dialog-danger { min-height: 44px; padding: 0 16px; border-radius: var(--hotel-radius-sm); font: inherit; font-weight: 700; cursor: pointer; }
+.dialog-secondary { border: 1px solid var(--hotel-border); background: #fff; color: var(--hotel-heading); }
+.dialog-danger { border: 1px solid var(--hotel-danger); background: var(--hotel-danger); color: #fff; }
 .booking-meta {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -13,6 +13,7 @@ describe('AdminLoginComponent', () => {
     isLoggedIn: ReturnType<typeof vi.fn>;
     login: ReturnType<typeof vi.fn>;
     setSession: ReturnType<typeof vi.fn>;
+    getAuthState: ReturnType<typeof vi.fn>;
   };
   let queryParams: Record<string, string>;
 
@@ -22,6 +23,7 @@ describe('AdminLoginComponent', () => {
       isLoggedIn: vi.fn(() => false),
       login: vi.fn(),
       setSession: vi.fn(),
+      getAuthState: vi.fn(() => ({ roles: [], permissions: [] })),
     };
 
     await TestBed.configureTestingModule({
@@ -47,6 +49,10 @@ describe('AdminLoginComponent', () => {
       roles: ['HOTEL_MANAGER'],
       permissions: [{ function: 'REPORT', actionMask: 1 }],
     }));
+    authServiceMock.getAuthState.mockReturnValue({
+      roles: ['HOTEL_MANAGER'],
+      permissions: [{ function: 'REPORT', actionMask: 1 }],
+    });
     component.loginObj.username = 'hotel-manager';
     component.loginObj.password = 'password';
 
@@ -65,14 +71,48 @@ describe('AdminLoginComponent', () => {
       accessToken: 'access-token',
       username: 'receptionist',
       roles: ['RECEPTIONIST'],
-      permissions: [],
+      permissions: [{ function: 'ROOM', actionMask: 1 }],
     }));
+    authServiceMock.getAuthState.mockReturnValue({
+      roles: ['RECEPTIONIST'],
+      permissions: [{ function: 'ROOM', actionMask: 1 }],
+    });
     component.loginObj.username = 'receptionist';
     component.loginObj.password = 'password';
 
     component.onSubmit();
 
     expect(router.navigateByUrl).toHaveBeenCalledWith('/admin/rooms?status=AVAILABLE');
+  });
+
+  it('redirects a receptionist away from an unauthorized returnUrl', () => {
+    queryParams['returnUrl'] = '/admin/services';
+    fixture.destroy();
+    fixture = TestBed.createComponent(AdminLoginComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    authServiceMock.login.mockReturnValue(of({
+      accessToken: 'access-token',
+      username: 'receptionist1',
+      roles: ['RECEPTIONIST'],
+      permissions: [
+        { function: 'REPORT', actionMask: 1 },
+        { function: 'RESERVATION', actionMask: 7 },
+      ],
+    }));
+    authServiceMock.getAuthState.mockReturnValue({
+      roles: ['RECEPTIONIST'],
+      permissions: [
+        { function: 'REPORT', actionMask: 1 },
+        { function: 'RESERVATION', actionMask: 7 },
+      ],
+    });
+    component.loginObj.username = 'receptionist1';
+    component.loginObj.password = 'password';
+
+    component.onSubmit();
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/admin/dashboard');
   });
 
   it('ignores a non-portal returnUrl', () => {
@@ -87,6 +127,7 @@ describe('AdminLoginComponent', () => {
       roles: ['ADMIN'],
       permissions: [],
     }));
+    authServiceMock.getAuthState.mockReturnValue({ roles: ['ADMIN'], permissions: [] });
     component.loginObj.username = 'admin';
     component.loginObj.password = 'password';
 

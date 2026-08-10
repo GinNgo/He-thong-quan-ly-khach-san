@@ -134,6 +134,42 @@ class ChatServiceTest {
         verify(chatMessageRepository).findByConversationIdAndLegacyUnscopedFalseOrderByTimestampAsc(71L);
     }
 
+    @Test
+    void tenantMessageCreatesDedicatedAdminConversationForAccessibleProperty() {
+        User tenantEntity = userEntity(52L, "owner");
+        Hotel hotel = hotel(11L, "Tenant Hotel");
+        tenantEntity.setHotel(hotel);
+        CustomUserDetails tenant = new CustomUserDetails(
+                "owner", "hash", Set.of(new SimpleGrantedAuthority("PROPERTY_OWNER")),
+                Map.of(), 52L, 11L, Map.of());
+
+        when(userRepository.findById(52L)).thenReturn(Optional.of(tenantEntity));
+        when(userRepository.findByIdForUpdate(52L)).thenReturn(Optional.of(tenantEntity));
+        when(hotelRepository.findById(11L)).thenReturn(Optional.of(hotel));
+        when(conversationRepository.findFirstByCustomerIdAndHotelIdAndChannelAndStatusInOrderByLastActivityAtDesc(
+                52L, 11L, "TENANT_ADMIN", Set.of("OPEN", "ASSIGNED", "ESCALATED")))
+                .thenReturn(Optional.empty());
+        when(conversationRepository.save(any(SupportConversation.class))).thenAnswer(invocation -> {
+            SupportConversation conversation = invocation.getArgument(0);
+            conversation.setId(81L);
+            return conversation;
+        });
+        when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> {
+            ChatMessage message = invocation.getArgument(0);
+            message.setId(101L);
+            message.setTimestamp(Instant.parse("2026-08-09T06:00:00Z"));
+            return message;
+        });
+
+        ChatMessageDTO result = chatService.sendTenantToAdmin(tenant, 11L, "Cần hỗ trợ gói phần mềm");
+
+        assertEquals(81L, result.getConversationId());
+        assertEquals(52L, result.getSenderId());
+        verify(conversationRepository, org.mockito.Mockito.times(2)).save(org.mockito.ArgumentMatchers.argThat(conversation ->
+                "TENANT_ADMIN".equals(conversation.getChannel())
+                        && "Yêu cầu hỗ trợ từ đối tác".equals(conversation.getSubject())));
+    }
+
     private CustomUserDetails user(Long id, Map<FunctionCode, Integer> masks, String authority) {
         return new CustomUserDetails(
                 "user" + id,

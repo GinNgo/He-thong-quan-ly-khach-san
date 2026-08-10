@@ -11,6 +11,7 @@ import {
 } from '../../../core/services/property-payment.service';
 import { PropertyPaymentPanelComponent } from './property-payment-panel.component';
 import { AsyncActionCoordinatorService } from '../../../core/services/async-action-coordinator.service';
+import { PaymentService } from '../../../core/services/payment.service';
 
 @Component({
   selector: 'app-booking-checkout',
@@ -24,6 +25,7 @@ export class BookingCheckoutComponent implements OnInit {
   private router = inject(Router);
   private clientApi = inject(ClientApiService);
   private propertyPaymentService = inject(PropertyPaymentService);
+  private paymentService = inject(PaymentService);
   private changeDetector = inject(ChangeDetectorRef);
   private actionCoordinator = inject(AsyncActionCoordinatorService);
   readonly i18n = inject(PublicI18nService);
@@ -142,13 +144,13 @@ export class BookingCheckoutComponent implements OnInit {
       error: (err) => {
         console.error('Error submitting booking', err);
         this.isSubmitting = false;
-        if (err?.status === 409) {
-          this.errorMessage = this.i18n.text('PUBLIC.BOOKING.ERROR_ROOM_SOLD_OUT');
+        if (err?.error?.message) {
+          this.errorMessage = err.error.message;
           this.changeDetector.markForCheck();
           return;
         }
-        if (err?.error?.message) {
-          this.errorMessage = err.error.message;
+        if (err?.status === 409) {
+          this.errorMessage = this.i18n.text('PUBLIC.BOOKING.ERROR_ROOM_SOLD_OUT');
           this.changeDetector.markForCheck();
           return;
         }
@@ -323,6 +325,32 @@ export class BookingCheckoutComponent implements OnInit {
     if (this.paymentRequestIdentity !== requestIdentity) {
       this.paymentRequestIdentity = requestIdentity;
       this.paymentIdempotencyKey = this.newRequestId();
+    }
+
+    if (method === 'VNPAY') {
+      this.paymentService.createPaymentSession(
+        reservationId,
+        'VNPAY',
+        this.paymentIdempotencyKey,
+      ).subscribe({
+        next: (session) => {
+          this.isSubmitting = false;
+          if (!session.url) {
+            this.errorMessage = this.i18n.text('PUBLIC.BOOKING.ERROR_PAYMENT_CONNECTION');
+            this.changeDetector.markForCheck();
+            return;
+          }
+          window.location.href = session.url;
+        },
+        error: (err) => {
+          console.error('Unable to create VNPAY payment session', err);
+          this.isSubmitting = false;
+          this.errorMessage = err?.error?.message
+            || this.i18n.text('PUBLIC.BOOKING.ERROR_PAYMENT_CONNECTION');
+          this.changeDetector.markForCheck();
+        },
+      });
+      return;
     }
 
     this.propertyPaymentService.createAttempt(

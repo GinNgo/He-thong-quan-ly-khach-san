@@ -44,7 +44,7 @@
         <span class="conversation-avatar" aria-hidden="true">{{ conversationInitials(conversation) }}</span>
         <span class="conversation-copy">
           <strong>{{ conversation.customerName }}</strong>
-          <small>{{ conversation.hotelName }} · {{ conversation.status }}</small>
+          <small>{{ conversation.channel === 'TENANT_ADMIN' ? 'Đối tác' : 'Khách hàng' }} · {{ conversation.hotelName }} · {{ conversation.status }}</small>
           <span>{{ conversation.lastMessage || 'Cuộc hội thoại mới' }}</span>
         </span>
         <time *ngIf="conversation.lastMessageAt" [attr.datetime]="conversation.lastMessageAt">
@@ -61,8 +61,8 @@
           {{ (getConversation(selectedId)?.customerName || '?').charAt(0) | uppercase }}
         </div>
         <div>
-          <p class="eyebrow">CUSTOMER CONVERSATION</p>
-          <h2>{{ getConversation(selectedId)?.customerName || ('Khách hàng #' + selectedId) }}</h2>
+          <p class="eyebrow">{{ conversationTypeLabel(getConversation(selectedId)) }}</p>
+          <h2>{{ getConversation(selectedId)?.customerName || (participantLabel(getConversation(selectedId)) + ' #' + selectedId) }}</h2>
           <p>{{ getConversation(selectedId)?.hotelName }} · {{ getConversation(selectedId)?.status }}</p>
         </div>
       </header>
@@ -93,7 +93,7 @@
       </div>
 
       <form class="message-composer" (ngSubmit)="sendMessage()">
-        <label class="visually-hidden" for="support-dashboard-message">Phản hồi khách hàng</label>
+        <label class="visually-hidden" for="support-dashboard-message">Phản hồi người gửi</label>
         <input
           id="support-dashboard-message"
           name="supportDashboardMessage"
@@ -103,7 +103,7 @@
           [(ngModel)]="newMessage"
           [disabled]="isSending()"
           aria-describedby="dashboard-send-status"
-          placeholder="Viết phản hồi cho khách hàng…">
+          placeholder="Viết phản hồi…">
         <button
           type="submit"
           class="send-button"
@@ -122,7 +122,7 @@
       <div class="dashboard-state dashboard-welcome">
         <span class="welcome-icon" aria-hidden="true"><i class="pi pi-comments"></i></span>
         <h2>Chọn một cuộc hội thoại</h2>
-        <p>Hãy chọn khách hàng trong hàng đợi để xem lịch sử và phản hồi.</p>
+        <p>Hãy chọn một yêu cầu trong hàng đợi để xem lịch sử và phản hồi.</p>
       </div>
     </ng-template>
   </main>

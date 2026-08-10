@@ -3,6 +3,8 @@ package com.hotel.services;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import com.hotel.observability.OperationalMetrics;
+import com.hotel.emailoutbox.EmailOutboxService;
+import com.hotel.emailoutbox.EmailOutboxDtos;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,11 +29,14 @@ class EmailServiceTest {
     @Mock
     private JavaMailSender mailSender;
 
+    @Mock
+    private EmailOutboxService emailOutboxService;
+
     private EmailService emailService;
 
     @BeforeEach
     void setUp() {
-        emailService = new EmailService(mailSender, new OperationalMetrics(new SimpleMeterRegistry()));
+        emailService = new EmailService(mailSender, new OperationalMetrics(new SimpleMeterRegistry()), emailOutboxService);
         ReflectionTestUtils.setField(emailService, "fromEmail", "noreply@luxestay.test");
         ReflectionTestUtils.setField(emailService, "loginUrl", "https://luxestay.test/login");
     }
@@ -59,5 +64,29 @@ class EmailServiceTest {
         assertFalse(sent);
         verify(mailSender, never()).createMimeMessage();
         verify(mailSender, never()).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void partnerAlert_UsesConfiguredAdministratorRecipient() {
+        ReflectionTestUtils.setField(emailService, "outboxEnabled", true);
+        ReflectionTestUtils.setField(emailService, "adminRecipient", " Operations@LuxeStay.vn ");
+
+        boolean queued = emailService.sendPartnerRegistrationAlert(
+                42L, "Owner", "owner@example.com", "Property", "Address");
+
+        assertTrue(queued);
+        verify(emailOutboxService).enqueue(any(EmailOutboxDtos.EnqueueRequest.class));
+    }
+
+    @Test
+    void partnerAlert_BlocksMissingTestOrOwnerRecipients() {
+        ReflectionTestUtils.setField(emailService, "outboxEnabled", true);
+        for (String recipient : new String[]{"", "alerts@example.com", "alerts@luxestay.test", "owner@luxestay.vn"}) {
+            ReflectionTestUtils.setField(emailService, "adminRecipient", recipient);
+            assertFalse(emailService.sendPartnerRegistrationAlert(
+                    42L, "Owner", "owner@luxestay.vn", "Property", "Address"));
+        }
+
+        verify(emailOutboxService, never()).enqueue(any(EmailOutboxDtos.EnqueueRequest.class));
     }
 }

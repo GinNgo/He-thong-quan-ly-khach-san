@@ -46,6 +46,14 @@ public class ProvinceCompatibilityService {
     }
 
     public List<Location> wardsFor(Long provinceId) {
+        List<Location> currentWards = Optional.ofNullable(locationRepository
+                .findByParentIdAndLocationTypeAndStatusOrderByNameViAsc(provinceId, "WARD", "ACTIVE"))
+                .orElse(List.of());
+        if (currentWards.stream().anyMatch(ward -> ward.getSourceCode() != null
+                && ward.getSourceCode().startsWith("VN34-W-"))) {
+            return currentWards.stream().filter(ward -> ward.getSourceCode() != null
+                    && ward.getSourceCode().startsWith("VN34-W-")).toList();
+        }
         Set<Long> scopeIds = provinceScopeIds(provinceId);
         if (scopeIds.isEmpty()) return List.of();
         return locationRepository.findByParentIdInAndLocationTypeAndStatusOrderByNameViAsc(

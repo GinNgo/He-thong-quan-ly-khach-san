@@ -42,7 +42,7 @@
                     [routerLinkActiveOptions]="{ exact: func.url === '/admin/dashboard' }"
                     [attr.aria-current]="activeLink.isActive ? 'page' : null"
                     class="sidebar-link"
-                    [title]="isCollapsed ? func.name : null"
+                    [attr.title]="isCollapsed ? func.name : null"
                     (click)="onNavigate()"
                   >
                     <i [class]="func.icon + ' sidebar-icon'" aria-hidden="true"></i>

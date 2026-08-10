@@ -50,6 +50,7 @@ class PropertyOwnershipLifecycleServiceTest {
 
         assertEquals("PENDING", result.getStatus());
         assertFalse(result.getIsPrimaryOwner());
+        assertFalse(result.getBillingAdmin());
         assertEquals(null, result.getStartDate());
         assertTrue(user.getRoles().isEmpty());
     }
@@ -72,6 +73,7 @@ class PropertyOwnershipLifecycleServiceTest {
 
         assertEquals("ACTIVE", result.getStatus());
         assertTrue(result.getIsPrimaryOwner());
+        assertTrue(result.getBillingAdmin());
         assertNotNull(result.getStartDate());
         assertTrue(user.getRoles().contains(ownerRole));
         verify(userRepository).save(user);
@@ -95,6 +97,7 @@ class PropertyOwnershipLifecycleServiceTest {
         Hotel result = service.rejectProperty(10L);
 
         assertEquals("INACTIVE", mapping.getStatus());
+        assertFalse(mapping.getBillingAdmin());
         assertNotNull(mapping.getEndDate());
         assertFalse(user.getRoles().stream().anyMatch(role -> "PROPERTY_OWNER".equals(role.getCode())));
         assertEquals("REJECTED", result.getApprovalStatus());

@@ -33,10 +33,15 @@ export interface AppFunction {
   icon?: string;
   sortOrder?: number;
   actionMask: number;
+  supportedActionMask: number;
+  scopeType?: 'PUBLIC' | 'SELF' | 'PROPERTY' | 'PLATFORM';
+  active: boolean;
+  version?: number;
 }
 
 export interface UpdateRolePermissionsRequest {
   expectedVersion: number;
+  reason?: string;
   permissions: Array<{
     functionId: number;
     actionMask: number;

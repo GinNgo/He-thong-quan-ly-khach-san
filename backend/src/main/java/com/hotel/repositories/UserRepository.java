@@ -67,4 +67,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
                    or role.code = 'SUPER_ADMIN')
             """)
     List<String> findSupportRecipientUsernames(@Param("hotelId") Long hotelId);
+
+    @Query("""
+            select distinct user.username
+            from User user
+            join user.roles role
+            where user.status = 'ACTIVE'
+              and role.code in ('SUPER_ADMIN', 'ADMIN')
+            """)
+    List<String> findSystemSupportRecipientUsernames();
 }

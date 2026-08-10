@@ -13,7 +13,11 @@ import java.util.List;
 public interface HotelServiceRepository extends JpaRepository<HotelService, Long> {
     Optional<HotelService> findByHotelIdAndCodeIgnoreCase(Long hotelId, String code);
 
-    @Query(value = "SELECT * FROM services WHERE (hotel_id = :hotelId AND is_system = 0) OR (hotel_id IS NULL AND is_system = 1) ORDER BY is_system DESC, code", nativeQuery = true)
+    // Use JPQL so Boolean/bit storage is handled by the configured JPA dialect.
+    @Query("SELECT service FROM HotelService service " +
+            "WHERE (service.hotel.id = :hotelId AND service.systemService = false) " +
+            "OR (service.hotel IS NULL AND service.systemService = true) " +
+            "ORDER BY service.systemService DESC, service.code")
     List<HotelService> findVisibleByHotelId(@Param("hotelId") Long hotelId);
 
     @Query(value = "SELECT * FROM services WHERE id = :id", nativeQuery = true)

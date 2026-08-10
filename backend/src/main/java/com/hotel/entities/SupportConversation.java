@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
@@ -65,6 +66,9 @@ public class SupportConversation extends AuditableEntity {
     @Column(nullable = false, length = 20)
     private String status;
 
+    @Column(nullable = false, length = 255)
+    private String subject;
+
     @Column(name = "last_activity_at", nullable = false)
     private Instant lastActivityAt;
 
@@ -80,4 +84,11 @@ public class SupportConversation extends AuditableEntity {
     @Version
     @Column(nullable = false)
     private Long version;
+
+    @PrePersist
+    void applyDefaults() {
+        if (subject == null || subject.isBlank()) {
+            subject = "Yêu cầu hỗ trợ khách hàng";
+        }
+    }
 }

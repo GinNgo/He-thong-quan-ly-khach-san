@@ -58,6 +58,9 @@ public class ReservationService {
     private final CheckoutOperationsService checkoutOperationsService;
     private final PublicInventoryEligibilityPolicy publicInventoryEligibilityPolicy;
 
+    @Autowired(required = false)
+    private UserPropertyRepository userPropertyRepository;
+
     /** Legacy unit fixtures omit this field; production always wires the canonical evaluator. */
     @Autowired(required = false)
     private PromotionQuoteService promotionQuoteService;
@@ -355,6 +358,33 @@ public class ReservationService {
 
     @Transactional
     public ReservationDTO checkIn(Long id) {
+        // Front-desk check-in may be the first operational action. Assign the
+        // reserved room type automatically when no physical room was selected.
+        Reservation reservation = reservationRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy booking."));
+        requireOperationalAccess(reservation);
+        List<ReservationRoom> assignments = reservationRoomRepository.findAssignedByReservationIdForUpdate(id);
+        if (assignments.isEmpty()) {
+            List<ReservationDetail> details = reservationDetailRepository.findByReservationId(id);
+            if (details.size() == 1 && details.get(0).getRoomType() != null) {
+                int quantity = details.get(0).getQuantity() == null ? 1 : details.get(0).getQuantity();
+                List<Long> roomIds = roomRepository.findAvailableRoomsByRoomTypeAndDateForUpdate(
+                                details.get(0).getRoomType().getId(),
+                                List.of("MAINTENANCE", "OUT_OF_SERVICE", "DIRTY", "CLEANING", "OCCUPIED"),
+                                RoomAvailabilityService.RELEASED_RESERVATION_STATUSES,
+                                reservation.getCheckInDate(), reservation.getCheckOutDate()).stream()
+                        .filter(room -> room.getHotel().getId().equals(reservation.getHotel().getId()))
+                        .filter(RoomStatePolicy::isAssignable)
+                        .limit(quantity)
+                        .map(Room::getId)
+                        .toList();
+                if (roomIds.size() == quantity) {
+                    AssignRoomsRequest request = new AssignRoomsRequest();
+                    request.setRoomIds(roomIds);
+                    assignRooms(id, request);
+                }
+            }
+        }
         return updateReservationStatus(id, "CHECKED_IN");
     }
 
@@ -370,6 +400,12 @@ public class ReservationService {
 
     @Transactional
     public ReservationDTO cancelMyReservation(Long id, String username) {
+        return cancelMyReservation(id, username,
+                new CustomerCancellationRequest("CHANGE_OF_PLANS", "Thay đổi kế hoạch"));
+    }
+
+    @Transactional
+    public ReservationDTO cancelMyReservation(Long id, String username, CustomerCancellationRequest request) {
         Reservation reservation = reservationRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy booking."));
         if (username == null || reservation.getUser() == null
@@ -386,11 +422,47 @@ public class ReservationService {
         cancelLockedReservation(
                 reservation,
                 reservationRoomRepository.findAssignedByReservationIdForUpdate(id));
+        String reasonCode = request.reasonCode().trim().toUpperCase(java.util.Locale.ROOT);
+        String reason = request.reason() == null ? "" : request.reason().trim();
+        if ("OTHER".equals(reasonCode) && reason.isBlank()) {
+            throw new IllegalArgumentException("Vui lòng nhập lý do khác.");
+        }
+        String displayedReason = reason.isBlank() ? cancellationReasonLabel(reasonCode) : reason;
         reservation.setStatus("CANCELLED");
+        reservation.setCancellationReasonCode(reasonCode);
+        reservation.setCancellationReason(displayedReason);
+        reservation.setCancelledAt(LocalDateTime.now());
         Reservation saved = reservationRepository.save(reservation);
         reservationHoldService.releaseActiveHold(id, LocalDateTime.now());
-        auditReservation("RESERVATION_CANCELLED", saved, before, reservationSnapshot(saved), "Customer cancelled reservation");
+        auditReservation("RESERVATION_CANCELLED", saved, before, reservationSnapshot(saved),
+                "Customer cancelled reservation: " + displayedReason);
+        notifyPropertyCancellation(saved, displayedReason);
         return mapToDTO(saved);
+    }
+
+    private void notifyPropertyCancellation(Reservation reservation, String reason) {
+        Long hotelId = reservation.getHotel().getId();
+        userRepository.findSupportRecipientUsernames(hotelId).stream()
+                .map(userRepository::findByUsername)
+                .flatMap(java.util.Optional::stream)
+                .filter(user -> user.getRoles().stream().anyMatch(role -> Set.of(
+                        "PROPERTY_OWNER", "HOTEL_ADMIN", "HOTEL_MANAGER", "RECEPTIONIST", "SUPER_ADMIN")
+                        .contains(role.getCode())))
+                .forEach(user -> notificationService.sendUserNotificationOnce(
+                        "reservation-cancelled:" + reservation.getId() + ":" + user.getId(),
+                        user.getUsername(), user.getId(), "RESERVATION_CANCELLED",
+                        "Khách đã hủy đặt phòng #" + reservation.getId(),
+                        "Lý do: " + reason));
+    }
+
+    private String cancellationReasonLabel(String code) {
+        return switch (code) {
+            case "CHANGE_OF_PLANS" -> "Thay đổi kế hoạch";
+            case "BOOKED_BY_MISTAKE" -> "Đặt nhầm";
+            case "FOUND_ANOTHER_PROPERTY" -> "Đã chọn nơi lưu trú khác";
+            case "PAYMENT_ISSUE" -> "Gặp vấn đề thanh toán";
+            default -> throw new IllegalArgumentException("Lý do hủy không hợp lệ.");
+        };
     }
 
     private void reconcileReservationHold(
@@ -631,6 +703,9 @@ public class ReservationService {
         dto.setStatus(reservation.getStatus());
         dto.setPaymentMethod(reservation.getPaymentMethod());
         dto.setSpecialRequests(reservation.getSpecialRequests());
+        dto.setCancellationReasonCode(reservation.getCancellationReasonCode());
+        dto.setCancellationReason(reservation.getCancellationReason());
+        dto.setCancelledAt(reservation.getCancelledAt());
         dto.setDetails(reservationDetailRepository.findByReservationId(reservation.getId()).stream()
                 .map(this::mapDetailToDTO).toList());
         dto.setPayment(mapPaymentSummary(reservation));
@@ -644,6 +719,26 @@ public class ReservationService {
                         java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
                 .toList());
         dto.setQuote(promotionQuoteService == null ? null : promotionQuoteService.restoreSnapshot(reservation));
+        dto.setProperty(mapPropertyContact(reservation.getHotel()));
+        return dto;
+    }
+
+    private ReservationDTO.PropertyContactDTO mapPropertyContact(Hotel hotel) {
+        if (hotel == null) return null;
+        ReservationDTO.PropertyContactDTO dto = new ReservationDTO.PropertyContactDTO();
+        dto.setId(hotel.getId());
+        dto.setName(hotel.getName());
+        dto.setAddress(hotel.getAddressLine());
+        dto.setPhone(hotel.getPhone());
+        dto.setEmail(hotel.getEmail());
+        if (userPropertyRepository != null) {
+            userPropertyRepository.findByHotelIdAndRelationshipTypeAndStatus(hotel.getId(), "OWNER", "ACTIVE")
+                    .stream().findFirst().map(UserProperty::getUser).ifPresent(owner -> {
+                        dto.setContactName(owner.getFullName());
+                        dto.setEmail(dto.getEmail() == null || dto.getEmail().isBlank() ? owner.getEmail() : dto.getEmail());
+                        dto.setPhone(dto.getPhone() == null || dto.getPhone().isBlank() ? owner.getPhone() : dto.getPhone());
+                    });
+        }
         return dto;
     }
 

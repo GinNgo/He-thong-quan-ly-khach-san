@@ -8,6 +8,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,12 +47,18 @@ public class VnpayPaymentGateway {
                 "provider",
                 "VNPAY"));
         fields.put("vnp_IpAddr", clientIp == null || clientIp.isBlank() ? "127.0.0.1" : clientIp);
-        fields.put("vnp_CreateDate", createdAt.atZone(VIETNAM_ZONE).format(VNPAY_TIME));
-        fields.put("vnp_ExpireDate", session.getExpiresAt().atZone(VIETNAM_ZONE).format(VNPAY_TIME));
+        fields.put("vnp_CreateDate", formatVietnamTime(createdAt));
+        fields.put("vnp_ExpireDate", formatVietnamTime(session.getExpiresAt()));
 
         String hashPayload = canonicalPayload(fields);
         return config.getPayUrl() + "?" + hashPayload
                 + "&vnp_SecureHash=" + VnpayConfig.hmacSHA512(config.getHashSecret(), hashPayload);
+    }
+
+    String formatVietnamTime(LocalDateTime utcTime) {
+        return utcTime.atZone(ZoneOffset.UTC)
+                .withZoneSameInstant(VIETNAM_ZONE)
+                .format(VNPAY_TIME);
     }
 
     public String canonicalPayload(Map<String, String> fields) {

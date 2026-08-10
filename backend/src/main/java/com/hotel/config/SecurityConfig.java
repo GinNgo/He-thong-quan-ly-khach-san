@@ -4,6 +4,7 @@ import com.hotel.security.JwtAccessDeniedHandler;
 import com.hotel.security.JwtAuthFilter;
 import com.hotel.security.JwtAuthenticationEntryPoint;
 import com.hotel.security.PaymentTrafficAbuseFilter;
+import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -60,6 +61,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(jwtAccessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
+                .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/auth/social-identities").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/auth/social-identities/*/link").authenticated()

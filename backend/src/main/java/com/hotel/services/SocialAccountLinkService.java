@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.sql.SQLException;
 import java.util.List;
 
 @Service
@@ -41,10 +42,25 @@ public class SocialAccountLinkService {
         try {
             return provisioningService.resolveOrProvision(profile).user();
         } catch (DataIntegrityViolationException collision) {
+            if (!isUniqueConstraintViolation(collision)) {
+                throw collision;
+            }
             // The failed transaction is isolated in the provisioning service. A new
             // transaction can safely resolve the winner of a concurrent unique insert.
             return provisioningService.recoverAfterUniqueCollision(profile);
         }
+    }
+
+    private boolean isUniqueConstraintViolation(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof SQLException sqlException
+                    && (sqlException.getErrorCode() == 2601 || sqlException.getErrorCode() == 2627)) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     @Transactional(readOnly = true)

@@ -80,7 +80,10 @@
         <small *ngIf="isInvalid('provinceId')" class="field-error">Chọn tỉnh/thành phố.</small>
       </label>
       <label for="property-ward">Phường/xã *
-        <p-select inputId="property-ward" [options]="wards" optionLabel="nameVi" optionValue="id" formControlName="wardId" [placeholder]="form.controls.provinceId.value ? 'Chọn phường/xã' : 'Chọn tỉnh/thành phố trước'" [loading]="locationsLoading"></p-select>
+        <p-select inputId="property-ward" [options]="wards" optionLabel="displayName" optionValue="id" formControlName="wardId"
+          [placeholder]="form.controls.provinceId.value ? 'Chọn phường/xã' : 'Chọn tỉnh/thành phố trước'" [loading]="locationsLoading"
+          [filter]="true" filterBy="displayName,nameVi,legacyParentName" filterMatchMode="contains"
+          filterPlaceholder="Nhập tên phường/xã hoặc quận/huyện" emptyFilterMessage="Không tìm thấy phường/xã"></p-select>
         <small *ngIf="isInvalid('wardId')" class="field-error">Chọn phường/xã.</small>
       </label>
       <label class="wide" for="property-address">Địa chỉ *

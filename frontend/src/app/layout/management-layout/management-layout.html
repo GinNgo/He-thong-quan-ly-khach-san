@@ -33,7 +33,7 @@
                   [routerLinkActiveOptions]="{ exact: link.url === '/management/dashboard' }"
                   [queryParams]="activePropertyId ? { propertyId: activePropertyId } : null"
                   [attr.aria-current]="activeLink.isActive ? 'page' : null"
-                  [title]="isSidebarCollapsed ? link.label : null"
+                  [attr.title]="isSidebarCollapsed ? link.label : null"
                   (click)="closeMobileNavigation()"
                 >
                   <span class="material-symbols-outlined" aria-hidden="true">{{ link.icon }}</span>
@@ -105,7 +105,7 @@
               (change)="selectProperty(propertySelect.value)"
             >
               @for (property of properties; track property.id) {
-                <option [value]="property.id">{{ property.nameVi }}</option>
+                <option [value]="property.id">{{ propertyName(property) }}</option>
               }
             </select>
           }
@@ -150,7 +150,7 @@
       <aside class="property-status-banner" role="alert" aria-live="polite">
         <span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span>
         <div>
-          <strong>Chưa thể vận hành {{ activeProperty.nameVi }}</strong>
+          <strong>Chưa thể vận hành {{ propertyName(activeProperty) }}</strong>
           <span>
             Duyệt: {{ statusLabel(activeProperty.approvalStatus) }} · Vận hành: {{ statusLabel(activeProperty.operationStatus) }}.
             Bạn vẫn có thể hoàn thiện hồ sơ cơ sở và quản lý gói phần mềm.

@@ -67,6 +67,37 @@ describe('HotelDetailComponent', () => {
     expect(component.pageError).toContain('Không tìm thấy chỗ nghỉ này');
   });
 
+  it('shows a one-night estimate immediately when a room is selected without dates', async () => {
+    const room = {
+      id: 902,
+      code: 'DOUBLE',
+      nameVi: 'Phòng đôi',
+      nameEn: 'Double room',
+      maxGuest: 3,
+      maxGuests: 3,
+      maxAdults: 2,
+      maxChildren: 1,
+      basePrice: 875000,
+      descriptionVi: 'Phòng đôi',
+      descriptionEn: 'Double room',
+      availableRooms: 3,
+    };
+    api.getHotelById.mockReturnValue(of({ id: 44, name: 'Biệt thự Sóc Sơn Xanh' }));
+    api.getRoomTypesByHotel.mockReturnValue(of([room]));
+
+    params$.next(convertToParamMap({ id: '44' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    component.selectQuantity(room, 1);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(component.selectedQuote).toBeNull();
+    expect(component.displayedRoomTotal).toBe(875000);
+    expect(fixture.nativeElement.querySelector('.summary-total strong')?.textContent).toContain('875.000');
+    expect(fixture.nativeElement.querySelector('.summary-total small')?.textContent).toContain('1 đêm');
+  });
+
   it('renders canonical quote totals, member tier, and typed sponsored disclosure', async () => {
     const room = {
       id: 901,

@@ -26,6 +26,8 @@ export interface ChatConversation {
   hotelName: string;
   reservationId?: number;
   assignedAgentId?: number;
+  channel: 'IN_APP' | 'TENANT_ADMIN';
+  subject: string;
   status: 'OPEN' | 'ASSIGNED' | 'ESCALATED' | 'CLOSED';
   lastMessage: string;
   lastMessageAt?: string;
@@ -128,12 +130,20 @@ export class ChatService {
     return this.publish('/app/chat.support.send', { content, hotelId, reservationId });
   }
 
+  sendTenantMessage(content: string, hotelId: number): boolean {
+    return this.publish('/app/chat.tenant.send', { content, hotelId });
+  }
+
   sendSupportReply(conversationId: number, content: string): boolean {
     return this.publish('/app/chat.support.reply', { conversationId, content });
   }
 
   getMyHistory(): Observable<ChatMessage[]> {
     return this.http.get<ChatMessage[]>(`${this.apiUrl}/me/history`);
+  }
+
+  getMyTenantSupportHistory(): Observable<ChatMessage[]> {
+    return this.http.get<ChatMessage[]>(`${this.apiUrl}/tenant/history`);
   }
 
   getSupportConversations(): Observable<ChatConversation[]> {

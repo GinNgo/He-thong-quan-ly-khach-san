@@ -81,6 +81,7 @@ export interface PlatformPaymentAttempt {
   completedAt?: string | null;
   merchantReferenceMasked?: string | null;
   replayed?: boolean;
+  redirectUrl?: string | null;
 }
 
 export interface PlatformOrderDetails extends PlatformOrder {

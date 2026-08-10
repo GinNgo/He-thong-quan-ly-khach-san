@@ -33,6 +33,9 @@ public class UserProperty extends AuditableEntity {
     @Column(name = "is_primary_owner")
     private Boolean isPrimaryOwner = false;
 
+    @Column(name = "billing_admin", nullable = false)
+    private Boolean billingAdmin = false;
+
     private String status = "ACTIVE"; // ACTIVE, INACTIVE, SUSPENDED
 
     @Column(name = "start_date")

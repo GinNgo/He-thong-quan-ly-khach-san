@@ -35,6 +35,8 @@ import java.util.UUID;
 public class ChatService {
 
     private static final Set<String> ACTIVE_STATUSES = Set.of("OPEN", "ASSIGNED", "ESCALATED");
+    private static final String CUSTOMER_CHANNEL = "IN_APP";
+    private static final String TENANT_ADMIN_CHANNEL = "TENANT_ADMIN";
 
     private final ChatMessageRepository chatMessageRepository;
     private final SupportConversationRepository conversationRepository;
@@ -62,6 +64,28 @@ public class ChatService {
         if (conversation.getReservation() == null && context.reservation() != null) {
             conversation.setReservation(context.reservation());
         }
+        conversation.setLastActivityAt(Instant.now());
+        conversationRepository.save(conversation);
+        return saveMessage(conversation, sender.getUserId(), 0L, normalizeContent(content));
+    }
+
+    @Transactional
+    public ChatMessageDTO sendTenantToAdmin(
+            CustomUserDetails sender,
+            Long requestedHotelId,
+            String content) {
+        Hotel hotel = resolveTenantHotel(sender, requestedHotelId);
+        User requester = userRepository.findByIdForUpdate(sender.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("Support requester was not found."));
+        SupportConversation conversation = conversationRepository
+                .findFirstByCustomerIdAndHotelIdAndChannelAndStatusInOrderByLastActivityAtDesc(
+                        sender.getUserId(), hotel.getId(), TENANT_ADMIN_CHANNEL, ACTIVE_STATUSES)
+                .orElseGet(() -> createConversation(
+                        requester,
+                        hotel,
+                        null,
+                        TENANT_ADMIN_CHANNEL,
+                        "Yêu cầu hỗ trợ từ đối tác"));
         conversation.setLastActivityAt(Instant.now());
         conversationRepository.save(conversation);
         return saveMessage(conversation, sender.getUserId(), 0L, normalizeContent(content));
@@ -128,6 +152,15 @@ public class ChatService {
     }
 
     @Transactional(readOnly = true)
+    public List<ChatMessageDTO> getMyTenantSupportHistory(CustomUserDetails userDetails) {
+        return conversationRepository
+                .findFirstByCustomerIdAndChannelOrderByLastActivityAtDesc(
+                        userDetails.getUserId(), TENANT_ADMIN_CHANNEL)
+                .map(this::mapHistory)
+                .orElseGet(List::of);
+    }
+
+    @Transactional(readOnly = true)
     public List<ChatMessageDTO> getSupportHistory(CustomUserDetails support, Long conversationId) {
         authorizationService.requirePermission(support, ActionCode.VIEW);
         return mapHistory(requireAccessibleConversation(support, conversationId, "HISTORY"));
@@ -143,7 +176,8 @@ public class ChatService {
             Set<Long> hotelIds = accessibleHotelIds(support.getUserId());
             conversations = hotelIds.isEmpty()
                     ? List.of()
-                    : conversationRepository.findByHotelIdInAndStatusNotOrderByLastActivityAtDesc(hotelIds, "CLOSED");
+                    : conversationRepository.findByHotelIdInAndChannelAndStatusNotOrderByLastActivityAtDesc(
+                            hotelIds, CUSTOMER_CHANNEL, "CLOSED");
         }
         return conversations.stream().map(this::toConversation).toList();
     }
@@ -158,14 +192,29 @@ public class ChatService {
         return userRepository.findSupportRecipientUsernames(hotelId);
     }
 
+    @Transactional(readOnly = true)
+    public List<String> getSystemSupportRecipients() {
+        return userRepository.findSystemSupportRecipientUsernames();
+    }
+
     private SupportConversation createConversation(User customer, Hotel hotel, Reservation reservation) {
+        return createConversation(customer, hotel, reservation, CUSTOMER_CHANNEL, "Yêu cầu hỗ trợ khách hàng");
+    }
+
+    private SupportConversation createConversation(
+            User customer,
+            Hotel hotel,
+            Reservation reservation,
+            String channel,
+            String subject) {
         SupportConversation conversation = new SupportConversation();
         conversation.setPublicId(UUID.randomUUID().toString());
         conversation.setCustomer(customer);
         conversation.setHotel(hotel);
         conversation.setReservation(reservation);
-        conversation.setChannel("IN_APP");
+        conversation.setChannel(channel);
         conversation.setStatus("OPEN");
+        conversation.setSubject(subject);
         conversation.setLastActivityAt(Instant.now());
         return conversationRepository.save(conversation);
     }
@@ -209,6 +258,8 @@ public class ChatService {
                 conversation.getHotel().getName(),
                 conversation.getReservation() == null ? null : conversation.getReservation().getId(),
                 conversation.getAssignedAgent() == null ? null : conversation.getAssignedAgent().getId(),
+                conversation.getChannel(),
+                conversation.getSubject(),
                 conversation.getStatus(),
                 lastMessage == null ? "" : lastMessage.getContent(),
                 lastMessage == null ? conversation.getLastActivityAt() : lastMessage.getTimestamp());
@@ -223,6 +274,15 @@ public class ChatService {
         }
         SupportConversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Support conversation was not found."));
+        if (TENANT_ADMIN_CHANNEL.equals(conversation.getChannel())
+                && !authorizationService.isSystemAdministrator(support)) {
+            auditService.recordDenied(
+                    conversation,
+                    support.getUserId(),
+                    "ACCESS_DENIED_" + action,
+                    "Tenant support conversations are restricted to system administrators");
+            throw new ResourceNotFoundException("Support conversation was not found.");
+        }
         if (!authorizationService.isSystemAdministrator(support)
                 && !accessibleHotelIds(support.getUserId()).contains(conversation.getHotel().getId())) {
             auditService.recordDenied(
@@ -233,6 +293,19 @@ public class ChatService {
             throw new ResourceNotFoundException("Support conversation was not found.");
         }
         return conversation;
+    }
+
+    private Hotel resolveTenantHotel(CustomUserDetails sender, Long requestedHotelId) {
+        Set<Long> hotelIds = accessibleHotelIds(sender.getUserId());
+        Long hotelId = requestedHotelId != null ? requestedHotelId : sender.getHotelId();
+        if (hotelId == null && hotelIds.size() == 1) {
+            hotelId = hotelIds.iterator().next();
+        }
+        if (hotelId == null || !hotelIds.contains(hotelId)) {
+            throw new AccessDeniedException("Choose a property you are authorized to manage.");
+        }
+        return hotelRepository.findById(hotelId)
+                .orElseThrow(() -> new ResourceNotFoundException("Property was not found."));
     }
 
     private void assignForReply(SupportConversation conversation, CustomUserDetails support) {

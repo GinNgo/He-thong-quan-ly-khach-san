@@ -227,6 +227,28 @@
     }
   },
   "PUBLIC": {
+    "FAVORITES": {
+      "EYEBROW": "CHỖ NGHỈ ĐÃ LƯU",
+      "TITLE": "Danh sách yêu thích",
+      "DESCRIPTION": "Lưu những chỗ nghỉ bạn muốn quay lại xem trong cùng một nơi.",
+      "BROWSE": "Khám phá chỗ nghỉ",
+      "LOADING_TITLE": "Đang tải danh sách yêu thích",
+      "LOADING_BODY": "Vui lòng chờ trong khi danh sách được cập nhật.",
+      "ERROR_TITLE": "Không thể tải danh sách yêu thích",
+      "RETRY": "Thử lại",
+      "EMPTY_TITLE": "Danh sách yêu thích đang trống",
+      "EMPTY_BODY": "Nhấn biểu tượng trái tim trên thẻ hoặc trang chi tiết chỗ nghỉ để lưu tại đây.",
+      "FIND_STAY": "Tìm chỗ nghỉ",
+      "VIEW_PROPERTY": "Xem {{name}}",
+      "REVIEWS": "{{count}} đánh giá",
+      "FROM": "Từ",
+      "PER_NIGHT": "/ đêm",
+      "VIEW_DETAILS": "Xem chi tiết",
+      "SAVED": "Đã lưu",
+      "SAVE": "Lưu",
+      "REMOVE_ARIA": "Xóa khỏi danh sách yêu thích",
+      "SAVE_ARIA": "Lưu chỗ nghỉ này"
+    },
     "SEARCH": {
       "REGION_ARIA": "T\u00ecm ki\u1ebfm ch\u1ed7 ngh\u1ec9",
       "PLAN_KICKER": "L\u00ean k\u1ebf ho\u1ea1ch l\u01b0u tr\u00fa",
@@ -501,6 +523,8 @@
       "MEMBER_PRICE": "Quy\u1ec1n l\u1ee3i th\u00e0nh vi\u00ean h\u1ea1ng {{tier}}",
       "TOTAL": "T\u1ed5ng thanh to\u00e1n",
       "BACKEND_NOTE": "Backend s\u1ebd ki\u1ec3m tra v\u00e0 t\u00ednh l\u1ea1i khi x\u00e1c nh\u1eadn.",
+      "ONE_NIGHT_ESTIMATE_NOTE": "T\u1ea1m t\u00ednh cho 1 \u0111\u00eam theo s\u1ed1 l\u01b0\u1ee3ng ph\u00f2ng \u0111\u00e3 ch\u1ecdn. Ch\u1ecdn ng\u00e0y \u0111\u1ec3 xem t\u1ed5ng ch\u00ednh x\u00e1c.",
+      "QUOTE_PENDING_NOTE": "T\u1ea1m t\u00ednh theo gi\u00e1 ph\u00f2ng; b\u00e1o gi\u00e1 ch\u00ednh x\u00e1c \u0111ang \u0111\u01b0\u1ee3c ki\u1ec3m tra.",
       "CAPACITY_ERROR": "S\u1ee9c ch\u1ee9a ch\u01b0a \u0111\u00e1p \u1ee9ng s\u1ed1 kh\u00e1ch \u0111\u00e3 ch\u1ecdn.",
       "SELECT_HINT": "Ch\u1ecdn s\u1ed1 l\u01b0\u1ee3ng \u1edf m\u1ed9t lo\u1ea1i ph\u00f2ng \u0111\u1ec3 xem t\u1ed5ng ti\u1ec1n.",
       "CONTINUE_BOOKING": "Ti\u1ebfp t\u1ee5c \u0111\u1eb7t ph\u00f2ng",
@@ -540,6 +564,9 @@
       "INITIAL_MESSAGE": "\u0110ang x\u1eed l\u00fd k\u1ebft qu\u1ea3 thanh to\u00e1n...",
       "INVALID_DATA": "Kh\u00f4ng t\u00ecm th\u1ea5y d\u1eef li\u1ec7u thanh to\u00e1n h\u1ee3p l\u1ec7.",
       "STATUS_UNAVAILABLE": "Ch\u01b0a th\u1ec3 ki\u1ec3m tra tr\u1ea1ng th\u00e1i t\u1eeb m\u00e1y ch\u1ee7. B\u1ea1n c\u00f3 th\u1ec3 m\u1edf l\u1ecbch s\u1eed \u0111\u1eb7t ph\u00f2ng \u0111\u1ec3 ki\u1ec3m tra l\u1ea1i.",
+      "STATUS_TIMEOUT": "VNPAY \u0111ang x\u1eed l\u00fd x\u00e1c nh\u1eadn l\u00e2u h\u01a1n b\u00ecnh th\u01b0\u1eddng. \u0110\u01a1n c\u1ee7a b\u1ea1n kh\u00f4ng b\u1ecb thanh to\u00e1n l\u1ea1i; h\u00e3y ch\u1ecdn Ki\u1ec3m tra l\u1ea1i ho\u1eb7c m\u1edf l\u1ecbch s\u1eed \u0111\u1eb7t ph\u00f2ng.",
+      "CHECK_AGAIN": "Ki\u1ec3m tra l\u1ea1i",
+      "CHECKING_AGAIN": "\u0110ang ki\u1ec3m tra...",
       "RECONCILIATION_MESSAGE": "Kho\u1ea3n thanh to\u00e1n \u0111\u00e3 \u0111\u01b0\u1ee3c ghi nh\u1eadn nh\u01b0ng \u0111\u01a1n \u0111\u00e3 h\u1ebft h\u1ea1n ho\u1eb7c b\u1ecb h\u1ee7y. B\u1ed9 ph\u1eadn h\u1ed7 tr\u1ee3 s\u1ebd \u0111\u1ed1i so\u00e1t tr\u01b0\u1edbc khi ho\u00e0n t\u1ea5t.",
       "SUCCESS_MESSAGE": "C\u1ed5ng thanh to\u00e1n \u0111\u00e3 x\u00e1c nh\u1eadn giao d\u1ecbch v\u00e0 \u0111\u01a1n \u0111\u1eb7t ph\u00f2ng c\u1ee7a b\u1ea1n \u0111\u00e3 \u0111\u01b0\u1ee3c c\u1eadp nh\u1eadt.",
       "FAILED_MESSAGE": "C\u1ed5ng thanh to\u00e1n b\u00e1o giao d\u1ecbch kh\u00f4ng th\u00e0nh c\u00f4ng. B\u1ea1n c\u00f3 th\u1ec3 quay l\u1ea1i \u0111\u01a1n \u0111\u1eb7t ph\u00f2ng \u0111\u1ec3 th\u1eed l\u1ea1i.",
@@ -637,6 +664,19 @@
       "PAYMENT": "Thanh to\u00e1n",
       "REFUND": "Ho\u00e0n ti\u1ec1n",
       "CANCEL_CONFIRM": "H\u1ec7 th\u1ed1ng s\u1ebd t\u1ea1o y\u00eau c\u1ea7u ho\u00e0n ti\u1ec1n v\u00e0 ch\u1edd c\u1ed5ng thanh to\u00e1n x\u00e1c nh\u1eadn. B\u1ea1n c\u00f3 mu\u1ed1n ti\u1ebfp t\u1ee5c kh\u00f4ng?"
+      ,"CANCEL_DIALOG_TITLE": "X\u00e1c nh\u1eadn h\u1ee7y \u0111\u1eb7t ph\u00f2ng"
+      ,"CANCEL_REASON_LABEL": "L\u00fd do h\u1ee7y"
+      ,"CANCEL_REASON_PLACEHOLDER": "Ch\u1ecdn m\u1ed9t l\u00fd do"
+      ,"CANCEL_REASON_CHANGE": "Thay \u0111\u1ed5i k\u1ebf ho\u1ea1ch"
+      ,"CANCEL_REASON_MISTAKE": "T\u00f4i \u0111\u1eb7t nh\u1ea7m"
+      ,"CANCEL_REASON_OTHER_PROPERTY": "T\u00f4i \u0111\u00e3 ch\u1ecdn n\u01a1i l\u01b0u tr\u00fa kh\u00e1c"
+      ,"CANCEL_REASON_PAYMENT": "G\u1eb7p v\u1ea5n \u0111\u1ec1 thanh to\u00e1n"
+      ,"CANCEL_REASON_OTHER": "L\u00fd do kh\u00e1c"
+      ,"CANCEL_REASON_DETAIL": "Chi ti\u1ebft (kh\u00f4ng b\u1eaft bu\u1ed9c, tr\u1eeb khi ch\u1ecdn l\u00fd do kh\u00e1c)"
+      ,"CANCEL_REASON_REQUIRED": "Vui l\u00f2ng ch\u1ecdn l\u00fd do h\u1ee7y."
+      ,"CANCEL_OTHER_REQUIRED": "Vui l\u00f2ng nh\u1eadp l\u00fd do kh\u00e1c."
+      ,"CANCEL_DIALOG_BACK": "Quay l\u1ea1i"
+      ,"CANCEL_DIALOG_SUBMIT": "X\u00e1c nh\u1eadn h\u1ee7y"
       ,"BOOKINGS_LOAD_ERROR": "Kh\u00f4ng th\u1ec3 t\u1ea3i danh s\u00e1ch chuy\u1ebfn \u0111i."
       ,"CANCEL_SUCCESS_REFUND": "\u0110\u00e3 h\u1ee7y \u0111\u1eb7t ph\u00f2ng. Y\u00eau c\u1ea7u ho\u00e0n ti\u1ec1n \u0111\u00e3 \u0111\u01b0\u1ee3c t\u1ea1o v\u00e0 \u0111ang ch\u1edd nh\u00e0 cung c\u1ea5p x\u1eed l\u00fd."
       ,"CANCEL_SUCCESS_NO_REFUND": "\u0110\u00e3 h\u1ee7y \u0111\u1eb7t ph\u00f2ng. Kh\u00f4ng c\u00f3 kho\u1ea3n thanh to\u00e1n th\u00e0nh c\u00f4ng c\u1ea7n ho\u00e0n."

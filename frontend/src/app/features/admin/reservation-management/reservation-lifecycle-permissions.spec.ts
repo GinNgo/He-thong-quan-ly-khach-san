@@ -57,7 +57,7 @@ describe('ReservationManagement lifecycle permissions', () => {
             hasPermission: vi.fn((functionCode: string, actionCode: number) =>
               (functionCode === FunctionCode.RESERVATION && actionCode === ActionCode.UPDATE) ||
               (functionCode === FunctionCode.HOTEL_SERVICE && actionCode === ActionCode.VIEW) ||
-              (functionCode === FunctionCode.CHECKIN && actionCode === ActionCode.UPDATE) ||
+              (functionCode === FunctionCode.CHECKIN && actionCode === ActionCode.TASK_EXECUTE) ||
               (functionCode === FunctionCode.RESERVATION_CANCEL && actionCode === ActionCode.UPDATE) ||
               (functionCode === FunctionCode.RESERVATION_NO_SHOW && actionCode === ActionCode.UPDATE)),
           },

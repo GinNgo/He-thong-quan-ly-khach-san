@@ -10,6 +10,7 @@ import {
   SocialAuthServiceConfig,
   SocialUser,
 } from '@abacritt/angularx-social-login';
+import { MessageService } from 'primeng/api';
 import { Subscription, finalize } from 'rxjs';
 
 import { AuthService, SocialIdentity, SocialProvider } from '../../../core/services/auth';
@@ -88,6 +89,7 @@ const socialAuthConfig: SocialAuthServiceConfig = {
 export class SocialAccountLinksComponent implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly socialAuth = inject(SocialAuthService);
+  private readonly messages = inject(MessageService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly subscription = new Subscription();
 
@@ -132,7 +134,18 @@ export class SocialAccountLinksComponent implements OnInit, OnDestroy {
     this.saving = true;
     this.error = '';
     this.auth.unlinkSocialIdentity(identity.provider, this.currentPassword).pipe(finalize(() => { this.saving = false; this.cdr.markForCheck(); })).subscribe({
-      next: () => { this.currentPassword = ''; this.load(); },
+      next: () => {
+        this.currentPassword = '';
+        this.messages.add({
+          severity: 'success',
+          summary: this.english ? 'Unlinked successfully' : 'Hủy liên kết thành công',
+          detail: this.english
+            ? `${this.providerName(identity.provider)} is no longer linked to your account.`
+            : `Tài khoản ${this.providerName(identity.provider)} đã được hủy liên kết.`,
+          life: 3500,
+        });
+        this.load();
+      },
       error: error => { this.error = this.messageFor(error); },
     });
   }
@@ -146,9 +159,23 @@ export class SocialAccountLinksComponent implements OnInit, OnDestroy {
     if (!credential) { this.error = this.english ? 'The provider did not return a credential.' : 'Nền tảng không trả về thông tin xác thực.'; this.cdr.markForCheck(); return; }
     this.saving = true;
     this.auth.linkSocialIdentity(provider, credential).pipe(finalize(() => { this.saving = false; this.cdr.markForCheck(); })).subscribe({
-      next: () => this.load(),
+      next: () => {
+        this.messages.add({
+          severity: 'success',
+          summary: this.english ? 'Linked successfully' : 'Liên kết thành công',
+          detail: this.english
+            ? `${this.providerName(provider)} is now linked to your account.`
+            : `Tài khoản ${this.providerName(provider)} đã được liên kết.`,
+          life: 3500,
+        });
+        this.load();
+      },
       error: error => { this.error = this.messageFor(error); },
     });
+  }
+
+  private providerName(provider: SocialProvider): string {
+    return provider === 'GOOGLE' ? 'Google' : 'Facebook';
   }
 
   private messageFor(error: any): string {

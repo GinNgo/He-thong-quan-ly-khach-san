@@ -4,15 +4,12 @@
 <p-card header="Dịch vụ lưu trú" styleClass="service-card shadow-sm mt-3">
   <p class="catalog-intro">Khai báo các dịch vụ bán cho khách như bữa sáng, spa, đón tiễn sân bay hoặc giặt ủi. Đây không phải gói phần mềm của LuxeStay.</p>
   <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
-    <label class="property-picker">
-      <span>Cơ sở áp dụng</span>
-      <select class="form-select" [(ngModel)]="selectedPropertyId" (change)="onPropertyChange()" [disabled]="loading || saving">
-      <option [ngValue]="null">Chọn cơ sở</option>
-      <option *ngFor="let property of properties" [ngValue]="property.id">{{ property.nameVi }}</option>
-      </select>
-    </label>
+    <div class="property-context-note" *ngIf="selectedPropertyId">
+      <i class="pi pi-building" aria-hidden="true"></i>
+      Dữ liệu đang hiển thị theo cơ sở đã chọn trên header.
+    </div>
     <div class="catalog-actions">
-    <p-button label="Thêm dịch vụ" icon="pi pi-plus" styleClass="p-button-success" (click)="openCreate()" [disabled]="loading || saving || !selectedPropertyId"></p-button>
+    <p-button label="Thêm dịch vụ" icon="pi pi-plus" styleClass="p-button-success" (click)="openCreate()" [disabled]="saving || !selectedPropertyId"></p-button>
     <p-button label="Tải lại" icon="pi pi-refresh" styleClass="p-button-outlined p-button-secondary" (click)="loadServices()" [disabled]="loading"></p-button>
     </div>
   </div>
@@ -63,7 +60,13 @@
 
     <ng-template pTemplate="emptymessage">
       <tr>
-        <td colspan="6" class="text-center p-4">Cơ sở này chưa khai báo dịch vụ lưu trú.</td>
+        <td colspan="6" class="text-center p-4">
+          <div class="empty-services-state">
+            <i class="pi pi-inbox" aria-hidden="true"></i>
+            <strong>Cơ sở này chưa khai báo dịch vụ lưu trú.</strong>
+            <span>Bấm “Thêm dịch vụ” để tạo dịch vụ đầu tiên.</span>
+          </div>
+        </td>
       </tr>
     </ng-template>
   </p-table>

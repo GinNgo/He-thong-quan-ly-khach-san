@@ -71,16 +71,16 @@ public class HotelServiceLogicImpl implements HotelServiceLogic {
 
     private Hotel resolveTargetProperty(Long requestedHotelId) {
         if (requestedHotelId != null) {
-            return propertyAccessService.requireManagedHotel(requestedHotelId);
+            return propertyAccessService.requireTenantAssignedHotel(requestedHotelId);
         }
         if (propertyAccessService.isSystemAdministrator()) {
             throw new IllegalArgumentException("A property must be selected before managing services.");
         }
-        var accessible = propertyAccessService.accessibleHotelIds();
-        if (accessible.size() != 1) {
+        var assigned = propertyAccessService.assignedHotelIds();
+        if (assigned.size() != 1) {
             throw new IllegalArgumentException("A property must be selected before managing services.");
         }
-        return propertyAccessService.requireManagedHotel(accessible.iterator().next());
+        return propertyAccessService.requireTenantAssignedHotel(assigned.iterator().next());
     }
 
     private HotelService findService(Long id) {

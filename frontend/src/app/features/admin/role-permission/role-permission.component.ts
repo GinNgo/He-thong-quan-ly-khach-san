@@ -29,7 +29,8 @@ export class RolePermissionComponent implements OnInit {
     { label: 'Sửa', value: 4 },
     { label: 'Xóa', value: 8 },
     { label: 'Xuất', value: 16 },
-    { label: 'Duyệt', value: 32 }
+    { label: 'Duyệt', value: 32 },
+    { label: 'Thực hiện', value: 64 }
   ];
 
   private roleService = inject(RoleService);
@@ -39,10 +40,12 @@ export class RolePermissionComponent implements OnInit {
   private cdr = inject(ChangeDetectorRef);
 
   get protectedRole(): boolean {
-    const governedCodes = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER', 'PROPERTY_OWNER', 'HOTEL_ADMIN', 'HOTEL_MANAGER', 'RECEPTIONIST', 'ACCOUNTANT'];
-    return Boolean(this.selectedRole?.systemRole)
-      || this.selectedRole?.roleType === 'SYSTEM'
-      || governedCodes.includes(this.selectedRole?.code || '');
+    const immutableCodes = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER'];
+    return immutableCodes.includes(this.selectedRole?.code || '');
+  }
+
+  get editableSystemRole(): boolean {
+    return Boolean(this.selectedRole?.systemRole) && !this.protectedRole;
   }
 
   ngOnInit(): void {
@@ -110,10 +113,20 @@ export class RolePermissionComponent implements OnInit {
     return ((func.actionMask || 0) & actionValue) === actionValue;
   }
 
+  supportsAction(func: AppFunction, actionValue: number): boolean {
+    return ((func.supportedActionMask ?? 127) & actionValue) === actionValue;
+  }
+
   togglePermission(func: AppFunction, actionValue: number, checked: boolean): void {
-    if (this.protectedRole) return;
+    if (this.protectedRole || !this.supportsAction(func, actionValue)) return;
     const currentMask = func.actionMask || 0;
-    func.actionMask = checked ? currentMask | actionValue : currentMask & ~actionValue;
+    if (actionValue === 1 && !checked) {
+      func.actionMask = 0;
+    } else if (checked) {
+      func.actionMask = currentMask | actionValue | 1;
+    } else {
+      func.actionMask = currentMask & ~actionValue;
+    }
     this.updateDirty();
   }
 
@@ -122,12 +135,17 @@ export class RolePermissionComponent implements OnInit {
   }
 
   toggleAll(actionValue: number, checked: boolean): void { this.modules.forEach(module => this.toggleModule(module, actionValue, checked)); }
-  allHavePermission(actionValue: number): boolean { const funcs=this.modules.flatMap(m=>m.functions); return funcs.length>0 && funcs.every(f=>this.hasPermission(f, actionValue)); }
+  allHavePermission(actionValue: number): boolean { const funcs=this.modules.flatMap(m=>m.functions).filter(f=>this.supportsAction(f,actionValue)); return funcs.length>0 && funcs.every(f=>this.hasPermission(f, actionValue)); }
   resetPermissions(): void { this.modules.forEach(m=>m.functions.forEach(f=>f.actionMask=this.originalMasks.get(f.id)||0)); this.dirty=false; }
   private updateDirty(): void { this.dirty=this.modules.some(m=>m.functions.some(f=>(f.actionMask||0)!==(this.originalMasks.get(f.id)||0))); }
 
   moduleHasPermission(module: AppModule, actionValue: number): boolean {
-    return module.functions.length > 0 && module.functions.every((func) => this.hasPermission(func, actionValue));
+    const supportedFunctions = module.functions.filter((func) => this.supportsAction(func, actionValue));
+    return supportedFunctions.length > 0 && supportedFunctions.every((func) => this.hasPermission(func, actionValue));
+  }
+
+  moduleSupportsAction(module: AppModule, actionValue: number): boolean {
+    return module.functions.some((func) => this.supportsAction(func, actionValue));
   }
 
   savePermissions(): void {
@@ -154,6 +172,7 @@ export class RolePermissionComponent implements OnInit {
     this.saving = true;
     this.roleService.updateRolePermissions(this.selectedRole.id, {
       expectedVersion: this.selectedRole.version,
+      reason: 'Cập nhật ma trận quyền từ giao diện quản trị',
       permissions
     }).pipe(
       timeout(10000),

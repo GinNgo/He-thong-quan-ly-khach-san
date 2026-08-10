@@ -1,6 +1,6 @@
 services:
   sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: mcr.microsoft.com/mssql/server:2025-latest
     restart: unless-stopped
     environment:
       ACCEPT_EULA: Y
@@ -26,6 +26,8 @@ services:
       # The bundled Flyway scripts upgrade an existing legacy schema; Hibernate
       # initializes a new deployment schema before this service accepts traffic.
       SPRING_FLYWAY_ENABLED: ${SPRING_FLYWAY_ENABLED:-false}
+      # Legacy production schemas are migrated explicitly; never let Hibernate alter populated tables at startup.
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-none}
       RESERVATION_AMENDMENT_DEFAULT_ARRIVAL_TIME: "14:00"
       JAVA_TOOL_OPTIONS: -Dapp.reservation-amendment.default-arrival-time=14:00
       # Retained image versions write to /app as a non-root user; use /tmp until
@@ -42,11 +44,15 @@ services:
       REGISTRATION_LOGIN_URL: ${PUBLIC_ORIGIN}/login
       PASSWORD_RESET_URL: ${PUBLIC_ORIGIN}/reset-password
       EMAIL_VERIFICATION_URL: ${PUBLIC_ORIGIN}/verify-email
+      DEMO_ACCOUNT_PASSWORD: ${DEMO_ACCOUNT_PASSWORD:-}
       VNPAY_RETURN_URL: ${PUBLIC_ORIGIN}/payment-result
       VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:-}
       VNPAY_HASH_SECRET: ${VNPAY_HASH_SECRET:-}
       VNPAY_URL: ${VNPAY_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODELS: ${GEMINI_MODELS:-gemini-2.5-flash}
+      GEMINI_STREAMING_ENABLED: ${GEMINI_STREAMING_ENABLED:-true}
       FACEBOOK_APP_ID: ${FACEBOOK_APP_ID:-}
       FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET:-}
       MAIL_USERNAME: ${MAIL_USERNAME:-}

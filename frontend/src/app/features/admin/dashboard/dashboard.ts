@@ -7,6 +7,7 @@ import { RevenueChart } from '../../../shared/components/charts/revenue-chart/re
 import { OccupancyChart } from '../../../shared/components/charts/occupancy-chart/occupancy-chart';
 import { DataTable, ColumnDefinition } from '../../../shared/components/data-table/data-table';
 import { PageRequest, SortRequest, FilterRequest } from '../../../shared/models/pagination.model';
+import { AuthService } from '../../../core/services/auth';
 
 @Component({
   selector: 'app-dashboard',
@@ -25,6 +26,11 @@ export class Dashboard implements OnInit {
     policiesCompleted: false,
     isApproved: false
   };
+
+  get showOnboarding(): boolean {
+    const setupRoles = ['PROPERTY_OWNER', 'HOTEL_ADMIN', 'HOTEL_MANAGER'];
+    return this.authService.getRoles().some(role => setupRoles.includes(role));
+  }
 
   get completedSteps(): number {
     let count = 0;
@@ -61,7 +67,8 @@ export class Dashboard implements OnInit {
   constructor(
     private analyticsService: AnalyticsService, 
     private cdr: ChangeDetectorRef,
-    private router: Router
+    private router: Router,
+    private authService: AuthService
   ) {}
 
   navigateTo(route: string) {

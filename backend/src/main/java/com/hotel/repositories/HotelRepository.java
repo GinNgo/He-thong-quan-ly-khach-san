@@ -35,6 +35,8 @@ public interface HotelRepository extends JpaRepository<Hotel, Long> {
     List<Hotel> searchAutocomplete(@org.springframework.data.repository.query.Param("keyword") String keyword,
                                    @org.springframework.data.repository.query.Param("rawKeyword") String rawKeyword,
                                    Pageable pageable);
+    @org.springframework.data.jpa.repository.Query("SELECT h FROM Hotel h WHERE h.approvalStatus = 'APPROVED' AND h.operationStatus = 'ACTIVE' ORDER BY h.nameVi, h.name")
+    List<Hotel> findPublicSearchCandidates(Pageable pageable);
     @org.springframework.data.jpa.repository.Query("SELECT up.hotel FROM UserProperty up WHERE up.user.id = :ownerId AND up.relationshipType = 'OWNER'")
     List<Hotel> findByOwnerId(@org.springframework.data.repository.query.Param("ownerId") Long ownerId);
 }

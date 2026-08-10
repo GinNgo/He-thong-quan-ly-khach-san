@@ -1,6 +1,7 @@
 package com.hotel.services;
 
 import com.hotel.entities.Hotel;
+import com.hotel.entities.Location;
 import com.hotel.repositories.AccountSubscriptionRepository;
 import com.hotel.repositories.HotelRepository;
 import com.hotel.repositories.SubscriptionPlanRepository;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -32,6 +34,7 @@ class PropertyRegistrationServiceTest {
     @Mock private AccountSubscriptionRepository accountSubscriptionRepository;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private PropertyOwnershipLifecycleService ownershipLifecycleService;
+    @Mock private ProvinceCompatibilityService provinceCompatibilityService;
 
     @InjectMocks
     private PropertyRegistrationService registrationService;
@@ -48,14 +51,27 @@ class PropertyRegistrationServiceTest {
             return hotel;
         });
         when(planRepository.findByCode("BASIC")).thenReturn(Optional.empty());
+        Location province = new Location();
+        province.setId(79L);
+        province.setNameVi("Thành phố Hồ Chí Minh");
+        Location ward = new Location();
+        ward.setId(760L);
+        ward.setNameVi("Phường Bến Nghé");
+        when(provinceCompatibilityService.currentProvinceForId(79L)).thenReturn(province);
+        when(provinceCompatibilityService.wardsFor(79L)).thenReturn(List.of(ward));
 
         var user = registrationService.registerPropertyOwner(
                 "owner@example.com", "secret123", "Owner", "0900000000",
-                "Pending Hotel", "1 Test Street", null);
+                "Pending Hotel", "1 Test Street", 79L, 760L, null);
 
         assertTrue(user.getRoles() == null || user.getRoles().isEmpty());
         ArgumentCaptor<Hotel> property = ArgumentCaptor.forClass(Hotel.class);
         verify(ownershipLifecycleService).createPendingOwner(any(), property.capture());
+        assertEquals("Thành phố Hồ Chí Minh", property.getValue().getCity());
+        assertEquals("Vietnam", property.getValue().getCountry());
+        assertEquals(79L, property.getValue().getProvinceId());
+        assertEquals(760L, property.getValue().getWardId());
+        assertEquals("1 Test Street, Phường Bến Nghé, Thành phố Hồ Chí Minh", property.getValue().getAddressLine());
         assertTrue("PENDING_APPROVAL".equals(property.getValue().getApprovalStatus()));
         assertTrue("INACTIVE".equals(property.getValue().getOperationStatus()));
     }

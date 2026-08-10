@@ -50,6 +50,7 @@ export class ProfileComponent implements OnInit {
   uploading = false;
   emailActionBusy = false;
   cancellingId: number | null = null;
+  cancellationBookingId: number | null = null;
   error = '';
   bookingsError = '';
   success = '';
@@ -75,6 +76,11 @@ export class ProfileComponent implements OnInit {
     email: ['', [Validators.required, Validators.email]],
     phone: ['', [Validators.maxLength(30), Validators.pattern(/^[0-9+().\-\s]*$/)]],
     avatarUrl: [''],
+  });
+
+  readonly cancellationForm = this.fb.nonNullable.group({
+    reasonCode: ['', Validators.required],
+    reason: ['', Validators.maxLength(500)],
   });
 
   ngOnInit(): void {
@@ -220,19 +226,33 @@ export class ProfileComponent implements OnInit {
 
   cancelBooking(id: number): void {
     if (this.cancellingId !== null) return;
-    if (
-      !confirm(
-        this.i18n.text('PUBLIC.ACCOUNT.CANCEL_CONFIRM'),
-      )
-    )
+    this.cancellationBookingId = id;
+    this.cancellationForm.reset({ reasonCode: '', reason: '' });
+  }
+
+  closeCancellationDialog(): void {
+    if (this.cancellingId !== null) return;
+    this.cancellationBookingId = null;
+  }
+
+  confirmCancellation(): void {
+    const id = this.cancellationBookingId;
+    if (id === null || this.cancellationForm.invalid) {
+      this.cancellationForm.markAllAsTouched();
       return;
+    }
+    const cancellation = this.cancellationForm.getRawValue();
+    if (cancellation.reasonCode === 'OTHER' && !cancellation.reason.trim()) {
+      this.cancellationForm.controls.reason.setErrors({ required: true });
+      return;
+    }
 
     this.cancellingId = id;
     this.bookingsError = '';
     this.success = '';
     const idempotencyKey = this.getCancellationKey(id);
     this.actionCoordinator
-      .run(`reservation:cancel:${id}`, () => this.reservationService.cancelMyReservation(id, idempotencyKey))
+      .run(`reservation:cancel:${id}`, () => this.reservationService.cancelMyReservation(id, cancellation, idempotencyKey))
       .pipe(
         finalize(() => {
           this.cancellingId = null;
@@ -248,6 +268,9 @@ export class ProfileComponent implements OnInit {
                   status: updated.status || 'CANCELLED',
                   payment: updated.payment,
                   refunds: updated.refunds,
+                  cancellationReasonCode: updated.cancellationReasonCode,
+                  cancellationReason: updated.cancellationReason,
+                  cancelledAt: updated.cancelledAt,
                 }
               : booking,
           );
@@ -255,6 +278,7 @@ export class ProfileComponent implements OnInit {
             ? this.i18n.text('PUBLIC.ACCOUNT.CANCEL_SUCCESS_REFUND')
             : this.i18n.text('PUBLIC.ACCOUNT.CANCEL_SUCCESS_NO_REFUND');
           sessionStorage.removeItem(`hotel:reservation-cancel:${id}`);
+          this.cancellationBookingId = null;
           this.loadProfile();
         },
         error: (err) => {

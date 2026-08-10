@@ -45,7 +45,7 @@ export class ReservationManagement implements OnInit {
   private permissionService = inject(PermissionService);
   readonly canViewServices = this.permissionService.hasPermission(FunctionCode.HOTEL_SERVICE, ActionCode.VIEW);
   readonly canUpdateReservation = this.permissionService.hasPermission(FunctionCode.RESERVATION, ActionCode.UPDATE);
-  readonly canCheckIn = this.permissionService.hasPermission(FunctionCode.CHECKIN, ActionCode.UPDATE);
+  readonly canCheckIn = this.permissionService.hasPermission(FunctionCode.CHECKIN, ActionCode.TASK_EXECUTE);
   readonly canCancelOperational = this.permissionService.hasPermission(FunctionCode.RESERVATION_CANCEL, ActionCode.UPDATE);
   readonly canMarkNoShow = this.permissionService.hasPermission(FunctionCode.RESERVATION_NO_SHOW, ActionCode.UPDATE);
   readonly lifecycleActionKey = signal<string | null>(null);

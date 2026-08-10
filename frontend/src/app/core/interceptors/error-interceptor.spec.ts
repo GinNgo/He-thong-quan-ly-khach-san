@@ -66,6 +66,24 @@ describe('errorInterceptor', () => {
     expect(routerSpy.navigate).not.toHaveBeenCalled();
   });
 
+  it('keeps mutation permission errors on the current page for inline notification', () => {
+    routerSpy.url = '/admin/rooms';
+
+    httpClient.put('/api/rooms/1', { roomNumber: '101' }).subscribe({ error: () => undefined });
+
+    const req = httpMock.expectOne('/api/rooms/1');
+    req.flush({
+      status: 403,
+      code: 'FORBIDDEN_PERMISSION',
+      message: 'Bạn không có quyền chỉnh sửa phòng.',
+      retryable: false,
+      fieldErrors: {},
+      path: '/api/rooms/1',
+    }, { status: 403, statusText: 'Forbidden' });
+
+    expect(routerSpy.navigate).not.toHaveBeenCalled();
+  });
+
   it('keeps an authentication failure on the login page for inline error handling', () => {
     routerSpy.url = '/login';
     httpClient.post('/api/auth/login', { username: 'customer@example.com', password: 'wrong' })

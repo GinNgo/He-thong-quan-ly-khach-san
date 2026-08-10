@@ -22,6 +22,7 @@ import java.util.Map;
 public class ChatChannelInterceptor implements ChannelInterceptor {
 
     private static final String CUSTOMER_SEND_DESTINATION = "/app/chat.support.send";
+    private static final String TENANT_SEND_DESTINATION = "/app/chat.tenant.send";
     private static final String SUPPORT_REPLY_DESTINATION = "/app/chat.support.reply";
     private static final String CUSTOMER_QUEUE_DESTINATION = "/user/queue/messages";
     private static final String SUPPORT_QUEUE_DESTINATION = "/user/queue/support/messages";
@@ -105,7 +106,8 @@ public class ChatChannelInterceptor implements ChannelInterceptor {
     }
 
     private void authorizeSend(CustomUserDetails userDetails, String destination) {
-        if (CUSTOMER_SEND_DESTINATION.equals(destination)) {
+        if (CUSTOMER_SEND_DESTINATION.equals(destination)
+                || TENANT_SEND_DESTINATION.equals(destination)) {
             return;
         }
         if (SUPPORT_REPLY_DESTINATION.equals(destination)) {

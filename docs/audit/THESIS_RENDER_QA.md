@@ -8,6 +8,7 @@
 | `docs/export/LuxeStay_HuongDan_TraLoi_Rubric_DRAFT_scrubbed.docx` | Packaged `render_docx.py` with bundled Python | NOT_RUN after the thesis render blocker; same environment limitation applies |
 | Thesis draft | Microsoft Word COM export | BLOCKED: export exceeded 120 seconds; orphaned Word process created by the probe was stopped |
 | `docs/export/LuxeStay_KhoaLuan_FINAL.docx` | Packaged `render_docx.py --emit_pdf` with bundled Python | BLOCKED: `soffice` executable unavailable (`WinError 2`); no page PNG/PDF produced |
+| Final DOCX after architecture image and FLOW-01..FLOW-04 mapping | Structural/a11y audit | PASS_STRUCTURAL; 459 paragraphs, 49 inline images, 0 SVG, a11y 0 findings |
 
 ## What was verified without rendering
 

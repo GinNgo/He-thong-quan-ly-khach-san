@@ -1,4 +1,79 @@
 /* login.component.css */
+.login-shell {
+    height: 100dvh;
+    min-height: 0;
+    width: 100%;
+    overflow: hidden;
+}
+
+:host {
+    display: block;
+    height: 100dvh;
+    overflow: hidden;
+}
+
+.login-shell {
+    position: relative;
+}
+
+.login-main {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.login-footer {
+    min-height: 64px;
+    padding: .65rem 1rem;
+}
+
+.login-footer > div {
+    gap: .5rem 1rem;
+}
+
+.login-brand-mark {
+    display: block;
+    width: 3rem;
+    height: 3rem;
+    filter: drop-shadow(0 5px 10px rgb(7 27 45 / .18));
+}
+
+.login-footer-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    color: #0f3b64;
+    font-family: var(--hotel-font-heading);
+    font-size: 1.1rem;
+}
+
+.login-footer-brand img {
+    width: 1.75rem;
+    height: 1.75rem;
+}
+
+.glass-panel {
+    animation: auth-card-enter 360ms cubic-bezier(.22, .8, .28, 1) both;
+}
+
+.glass-panel > :not(.absolute) {
+    animation: auth-content-enter 300ms cubic-bezier(.22, .8, .28, 1) both;
+}
+
+.glass-panel > :nth-child(2) { animation-delay: 45ms; }
+.glass-panel > :nth-child(3) { animation-delay: 85ms; }
+.glass-panel > :nth-child(4) { animation-delay: 125ms; }
+.glass-panel > :nth-child(5) { animation-delay: 165ms; }
+
+@keyframes auth-card-enter {
+    from { opacity: 0; transform: translateY(16px) scale(.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes auth-content-enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .glass-panel {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(12px);
@@ -223,10 +298,18 @@
 }
 
 @media (max-width: 420px) {
+    :host, .login-shell { height: auto; min-height: 100dvh; overflow: visible; }
+    .login-main { padding: .75rem .75rem 1rem; overflow: visible; }
+    .login-main > div { margin-block: 0; }
+    .glass-panel { padding: 1.15rem; border-radius: .85rem; }
+    .login-footer { min-height: auto; padding: .8rem .75rem; }
+    .login-footer > div { flex-direction: column; text-align: center; }
+    .login-footer > div > div { flex-wrap: wrap; justify-content: center; gap: .35rem .75rem; }
+
     .social-login-stack {
+        display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        align-items: center;
-        gap: 0.75rem;
+        gap: .65rem;
     }
 
     .google-button-shell {
@@ -238,24 +321,68 @@
     }
 
     .social-button {
-        width: 44px;
-        min-width: 44px;
-        height: 44px;
+        width: 100%;
+        min-width: 0;
+        height: 48px;
         min-height: 44px;
-        justify-self: center;
-        padding: 0;
-        gap: 0;
+        padding: 0 .55rem;
+        gap: .45rem;
+        border-radius: .85rem;
+        box-shadow: 0 4px 12px rgb(15 23 42 / 8%);
     }
 
-    .social-button__label,
+    .social-button__label {
+        display: block;
+        font-size: .72rem;
+    }
+
     .social-lock {
         display: none;
     }
 
     .social-config-note {
+        position: static;
         grid-column: 1 / -1;
     }
+
+    .social-login-stack { position: relative; margin-bottom: 0; }
 }
+
+.social-button--google-mobile .social-mark--google {
+    background: conic-gradient(from -35deg, #4285f4 0 25%, #34a853 0 48%, #fbbc05 0 70%, #ea4335 0 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.social-button--facebook {
+    box-shadow: 0 4px 12px rgb(24 78 166 / 10%);
+}
+
+/* Keep the whole sign-in journey and its footer in a short laptop viewport. */
+@media (min-width: 421px) and (max-height: 900px) {
+    .login-main { padding-block: .75rem; }
+    .glass-panel { padding: 1.1rem 1.5rem !important; }
+    .glass-panel .mb-6 { margin-bottom: .75rem; }
+    .glass-panel form.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: .65rem; }
+    .social-divider { margin-top: .8rem; margin-bottom: .65rem; }
+    .glass-panel .mt-5 { margin-top: .85rem; }
+    .login-footer { min-height: 54px; padding-block: .35rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .glass-panel,
+    .glass-panel > :not(.absolute) {
+        animation: none;
+    }
+}
+
+.legal-modal-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 1rem; background: rgb(7 27 45 / 55%); backdrop-filter: blur(4px); }
+.legal-modal { position: relative; width: min(100%, 30rem); padding: 1.5rem; border-radius: 1rem; background: #fff; box-shadow: 0 24px 80px rgb(7 27 45 / 28%); }
+.legal-modal h2 { margin: 0 2rem .75rem 0; color: #10263b; font-size: 1.25rem; }
+.legal-modal p { margin: 0; color: #475569; line-height: 1.6; }
+.legal-modal-close { position: absolute; top: .65rem; right: .75rem; border: 0; background: transparent; color: #64748b; font-size: 1.75rem; cursor: pointer; }
+.legal-modal-link { display: inline-flex; margin-top: 1rem; color: #0f766e; font-weight: 700; }
 
 .custom-scrollbar::-webkit-scrollbar {
     width: 4px;

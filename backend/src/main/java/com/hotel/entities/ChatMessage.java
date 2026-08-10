@@ -50,9 +50,15 @@ public class ChatMessage {
     @Column(name = "is_read")
     private boolean isRead;
 
+    @Column(name = "delivery_status", nullable = false, length = 20)
+    private String deliveryStatus = "SENT";
+
     @PrePersist
     protected void onCreate() {
         this.timestamp = Instant.now();
         this.isRead = false;
+        if (this.deliveryStatus == null || this.deliveryStatus.isBlank()) {
+            this.deliveryStatus = "SENT";
+        }
     }
 }

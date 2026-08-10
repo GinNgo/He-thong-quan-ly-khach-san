@@ -10,6 +10,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+import java.util.LinkedHashMap;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -131,13 +134,26 @@ public class HotelController {
 
     @PreAuthorize("hasAuthority('SUPER_ADMIN')")
     @PostMapping("/{id}/approve")
-    public ResponseEntity<Hotel> approveHotel(@PathVariable Long id) {
-        return ResponseEntity.ok(propertyRegistrationService.approveProperty(id));
+    public ResponseEntity<Map<String, Object>> approveHotel(@PathVariable Long id) {
+        return ResponseEntity.ok(propertyStatus(propertyRegistrationService.approveProperty(id)));
     }
 
     @PreAuthorize("hasAuthority('SUPER_ADMIN')")
     @PostMapping("/{id}/reject")
-    public ResponseEntity<Hotel> rejectHotel(@PathVariable Long id) {
-        return ResponseEntity.ok(propertyRegistrationService.rejectProperty(id));
+    public ResponseEntity<Map<String, Object>> rejectHotel(@PathVariable Long id) {
+        return ResponseEntity.ok(propertyStatus(propertyRegistrationService.rejectProperty(id)));
+    }
+
+    private Map<String, Object> propertyStatus(Hotel hotel) {
+        Map<String, Object> status = new LinkedHashMap<>();
+        status.put("id", hotel.getId());
+        status.put("code", hotel.getCode());
+        status.put("nameVi", hotel.getNameVi());
+        status.put("propertyType", hotel.getPropertyType());
+        status.put("address", hotel.getAddressLine());
+        status.put("approvalStatus", hotel.getApprovalStatus());
+        status.put("operationStatus", hotel.getOperationStatus());
+        status.put("isDemo", Boolean.TRUE.equals(hotel.getIsDemo()));
+        return status;
     }
 }

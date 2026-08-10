@@ -23,6 +23,26 @@ describe('PropertyManagementComponent', () => {
 
   afterEach(() => http.verify());
 
+  it('renders properties as soon as the list request completes', () => {
+    const fixture = TestBed.createComponent(PropertyManagementComponent);
+    fixture.detectChanges();
+
+    http.expectOne(`${environment.apiUrl}/v1/hotels`).flush([
+      {
+        id: 181,
+        name: 'LuxeStay Test',
+        address: '01 Duong Bien',
+        city: 'Da Nang',
+        propertyType: 'HOTEL',
+        status: 'DRAFT'
+      }
+    ]);
+    http.expectOne(`${environment.apiUrl}/public/locations/provinces`).flush([]);
+
+    expect(fixture.nativeElement.textContent).toContain('LuxeStay Test');
+    fixture.destroy();
+  });
+
   it('opens the create form and submits a typed draft payload', () => {
     const fixture = TestBed.createComponent(PropertyManagementComponent);
     const component = fixture.componentInstance;

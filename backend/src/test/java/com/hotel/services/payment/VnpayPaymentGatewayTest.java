@@ -9,11 +9,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class VnpayPaymentGatewayTest {
@@ -25,8 +26,8 @@ class VnpayPaymentGatewayTest {
 
     @BeforeEach
     void setUp() {
-        when(config.getHashSecret()).thenReturn("test_hash_secret");
-        when(config.getTmnCode()).thenReturn("TEST_TMN");
+        lenient().when(config.getHashSecret()).thenReturn("test_hash_secret");
+        lenient().when(config.getTmnCode()).thenReturn("TEST_TMN");
         gateway = new VnpayPaymentGateway(config);
     }
 
@@ -81,6 +82,13 @@ class VnpayPaymentGatewayTest {
         fields.put("provider", "VNPAY");
 
         assertTrue(gateway.verifyCallback(fields).valid());
+    }
+
+    @Test
+    void formatVietnamTime_ConvertsStoredUtcTimeToGatewayLocalTime() {
+        assertEquals(
+                "20260808184254",
+                gateway.formatVietnamTime(LocalDateTime.of(2026, 8, 8, 11, 42, 54)));
     }
 
     private Map<String, String> successfulFields() {

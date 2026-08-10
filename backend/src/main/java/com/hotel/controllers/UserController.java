@@ -36,6 +36,12 @@ public class UserController {
         return ResponseEntity.ok(userService.getCustomers());
     }
 
+    @GetMapping("/property-guests")
+    @Permission(function = FunctionCode.CUSTOMER, action = ActionCode.VIEW)
+    public ResponseEntity<List<com.hotel.dtos.PropertyGuestDTO>> getPropertyGuests() {
+        return ResponseEntity.ok(userService.getPropertyGuests());
+    }
+
     @PostMapping("/customers")
     @Permission(function = FunctionCode.CUSTOMER, action = ActionCode.CREATE)
     public ResponseEntity<UserDto> createCustomer(@RequestBody com.hotel.dtos.UserRequest request) {

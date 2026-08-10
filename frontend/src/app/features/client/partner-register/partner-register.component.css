@@ -53,8 +53,24 @@
 
 .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
+}
+
+.account-notice {
+  margin-bottom: 1rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--hotel-primary);
+  border-radius: var(--hotel-radius);
+  background: color-mix(in srgb, var(--hotel-primary) 8%, white);
+  color: var(--hotel-text-primary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+input[readonly] {
+  background: var(--hotel-surface);
+  cursor: not-allowed;
 }
 
 @media (max-width: 576px) {
@@ -67,6 +83,7 @@
   margin-bottom: 1rem;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 label {
@@ -102,13 +119,50 @@ input.invalid {
 }
 
 .error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
   background-color: #fee2e2;
   color: var(--hotel-error);
   padding: 1rem;
   border-radius: var(--hotel-radius);
   margin-bottom: 1.5rem;
   font-size: 0.9rem;
-  text-align: center;
+  text-align: left;
+  line-height: 1.5;
+}
+
+p-select {
+  width: 100%;
+}
+
+:host ::ng-deep .p-select {
+  width: 100%;
+  max-width: 100%;
+  min-height: 44px;
+}
+
+:host ::ng-deep .p-select-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host ::ng-deep .p-select-overlay {
+  max-width: min(34rem, calc(100vw - 2rem));
+}
+
+:host ::ng-deep .p-select-option {
+  align-items: flex-start;
+  min-height: 44px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.error-banner i {
+  margin-top: 0.15rem;
+  flex: 0 0 auto;
 }
 
 .submit-btn {

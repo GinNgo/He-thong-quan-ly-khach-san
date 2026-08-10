@@ -44,6 +44,14 @@ describe('ChatService', () => {
     request.flush([]);
   });
 
+  it('uses the tenant-scoped support history endpoint', () => {
+    service.getMyTenantSupportHistory().subscribe();
+
+    const request = http.expectOne('/api/chat/tenant/history');
+    expect(request.request.method).toBe('GET');
+    request.flush([]);
+  });
+
   it('adds a fresh correlation id to each published STOMP message', () => {
     const publish = vi.fn();
     const mutableService = service as unknown as {
@@ -59,6 +67,22 @@ describe('ChatService', () => {
       headers: {
         'X-Correlation-ID': expect.stringMatching(/^chat-message-/),
       },
+    }));
+  });
+
+  it('publishes tenant messages to the system support destination', () => {
+    const publish = vi.fn();
+    const mutableService = service as unknown as {
+      connected: boolean;
+      stompClient: { publish: typeof publish };
+    };
+    mutableService.connected = true;
+    mutableService.stompClient = { publish };
+
+    expect(service.sendTenantMessage('help', 11)).toBe(true);
+    expect(publish).toHaveBeenCalledWith(expect.objectContaining({
+      destination: '/app/chat.tenant.send',
+      body: JSON.stringify({ content: 'help', hotelId: 11 }),
     }));
   });
 });

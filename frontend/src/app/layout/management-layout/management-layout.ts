@@ -45,6 +45,14 @@ export class ManagementLayout implements OnInit, OnDestroy {
         { label: 'Loại phòng', url: '/management/room-types', icon: 'bed', operationalOnly: true },
         { label: 'Danh sách phòng', url: '/management/rooms', icon: 'meeting_room', operationalOnly: true },
         {
+          label: 'Tác vụ vận hành',
+          url: '/management/tasks',
+          icon: 'task_alt',
+          functionCode: FunctionCode.OPERATIONAL_TASK,
+          actionCode: ActionCode.VIEW,
+          operationalOnly: true,
+        },
+        {
           label: 'Dịch vụ lưu trú',
           url: '/management/services',
           icon: 'room_service',
@@ -57,6 +65,13 @@ export class ManagementLayout implements OnInit, OnDestroy {
     {
       label: 'Tài khoản',
       links: [
+        {
+          label: 'Nhân viên & phân quyền',
+          url: '/admin/users',
+          icon: 'group',
+          functionCode: FunctionCode.USER,
+          actionCode: ActionCode.VIEW,
+        },
         {
           label: 'Cấu hình thanh toán',
           url: '/management/payment-configuration',
@@ -103,7 +118,7 @@ export class ManagementLayout implements OnInit, OnDestroy {
       ],
     },
     {
-      label: 'Housekeeping',
+      label: 'Dọn phòng',
       links: [
         {
           label: 'Hàng đợi dọn phòng',
@@ -112,6 +127,16 @@ export class ManagementLayout implements OnInit, OnDestroy {
           functionCode: FunctionCode.HOUSEKEEPING,
           actionCode: ActionCode.VIEW,
           operationalOnly: true,
+        },
+      ],
+    },
+    {
+      label: 'Hỗ trợ',
+      links: [
+        {
+          label: 'Liên hệ quản trị hệ thống',
+          url: '/management/support',
+          icon: 'support_agent',
         },
       ],
     },
@@ -244,6 +269,13 @@ export class ManagementLayout implements OnInit, OnDestroy {
     return this.properties.find((property) => property.id === this.activePropertyId);
   }
 
+  propertyName(property: ManagedProperty): string {
+    return property.nameVi?.trim()
+      || property.name?.trim()
+      || property.nameEn?.trim()
+      || `Cơ sở #${property.id}`;
+  }
+
   statusLabel(status?: string): string {
     return ({
       ACTIVE: 'Đang hoạt động',
@@ -257,7 +289,11 @@ export class ManagementLayout implements OnInit, OnDestroy {
   }
 
   canViewLink(link: ManagementLink): boolean {
-    if (link.operationalOnly && !this.activePropertyOperational) return false;
+    if (
+      link.operationalOnly
+      && !this.activePropertyOperational
+      && !this.permissionService.isSuperAdmin()
+    ) return false;
     return !link.functionCode || this.permissionService.hasPermission(
       link.functionCode,
       link.actionCode ?? ActionCode.VIEW,

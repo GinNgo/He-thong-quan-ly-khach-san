@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Observable, catchError, shareReplay, throwError } from 'rxjs';
+import { Observable, catchError, map, of, shareReplay, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import type { PaymentLifecycleSummary, RefundSummary } from './reservation.service';
 
@@ -47,6 +47,14 @@ export interface Hotel {
     currency: string;
   };
   quote?: PromotionQuote;
+  property?: {
+    id: number;
+    name: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    contactName?: string;
+  };
 }
 
 export interface PublicPlacementDisclosure {
@@ -154,6 +162,9 @@ export interface ReservationRequest {
   lastName: string;
   phone: string;
   paymentMethod: string;
+  cancellationReasonCode?: string;
+  cancellationReason?: string;
+  cancelledAt?: string;
   quantity?: number;
   adults?: number;
   children?: number;
@@ -175,6 +186,14 @@ export interface ReservationSummary {
   payment?: PaymentLifecycleSummary;
   refunds?: RefundSummary[];
   quote?: PromotionQuote;
+  property?: {
+    id: number;
+    name: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    contactName?: string;
+  };
   details?: Array<{
     id: number;
     roomId: number;
@@ -341,6 +360,10 @@ export class ClientApiService {
     return this.http.get<Hotel>(`${this.hotelApiUrl}/public/${id}`);
   }
 
+  getAccessibleHotels(): Observable<Hotel[]> {
+    return this.http.get<Hotel[]>(`${this.hotelApiUrl}/accessible`);
+  }
+
   getProvinces(): Observable<any[]> {
     return this.http.get<any[]>(`${environment.apiUrl}/public/locations/provinces`);
   }
@@ -476,6 +499,18 @@ export class ClientApiService {
     return this.http.get<HomeRecommendationDestination[]>(
       `${environment.apiUrl}/public/home/recommendation-destinations`,
       { params },
+    ).pipe(
+      // Older deployed APIs do not expose the recommendation endpoint yet.
+      // Popular destinations preserve a useful home experience until that API is available.
+      catchError(() => this.getPopularDestinations(limit).pipe(
+        map(destinations => destinations.map((destination, index) => ({
+          id: destination.provinceId ?? destination.id,
+          name: destination.name,
+          displayName: destination.displayName,
+          propertyCount: destination.propertyCount ?? 0,
+          selectedByDefault: index === 0,
+        }))),
+      )),
     );
   }
 
@@ -493,6 +528,43 @@ export class ClientApiService {
     return this.http.get<HomeRecommendationResponse>(
       `${environment.apiUrl}/public/home/recommendations`,
       { params },
+    ).pipe(
+      catchError(() => this.searchHotels({
+        provinceId: query.provinceId,
+        pageNumber: 1,
+        pageSize: Math.min(Math.max(query.limit ?? 8, 1), 12),
+      }).pipe(
+        map(page => ({
+          destination: {
+            id: query.provinceId,
+            name: '',
+            displayName: '',
+            propertyCount: page.content?.length ?? 0,
+            selectedByDefault: true,
+          },
+          items: (page.content ?? []).map(property => ({
+            propertyId: property.id,
+            name: property.name,
+            propertyType: property.propertyType ?? 'HOTEL',
+            provinceId: query.provinceId,
+            provinceName: property.provinceName ?? '',
+            wardName: property.wardName,
+            imageUrl: property.mainImageUrl ?? property.mainImage,
+            imageAlt: property.imageAltText,
+            starRating: property.starRating,
+            reviewScore: property.reviewScore,
+            reviewCount: property.reviewCount,
+            availableRoomCount: property.availableRoomCount,
+            pricing: property.startingPrice === undefined ? null : {
+              nightlyPrice: property.startingPrice,
+              currency: 'VND' as const,
+            },
+            recommendationReason: 'POPULAR_DESTINATION' as const,
+            sponsored: false as const,
+          })),
+          totalAvailable: page.totalElements ?? page.content?.length ?? 0,
+        })),
+      )),
     );
   }
 
@@ -503,6 +575,36 @@ export class ClientApiService {
     return this.http.get<HomeSpotlight[]>(
       `${environment.apiUrl}/public/home/spotlights`,
       { params },
-    );
+    ).pipe(catchError(() => of(this.localHomeSpotlights(locale).slice(0, Math.min(Math.max(limit, 1), 10)))));
+  }
+
+  /** Keeps the editorial rail useful while older API images are being upgraded. */
+  private localHomeSpotlights(locale: 'vi' | 'en'): HomeSpotlight[] {
+    const english = locale === 'en';
+    const items: Array<[string, string, string, string]> = english
+      ? [
+        ['Discover Hanoi heritage stays', 'A curated selection for your next city break.', 'Hanoi', '01'],
+        ['Da Nang by the coast', 'Wake up close to beaches, food and local life.', 'Da Nang', '04'],
+        ['A slower Phu Quoc escape', 'Find a quiet island stay for your next reset.', 'Phu Quoc', '06'],
+        ['Weekend in Ho Chi Minh City', 'Hand-picked stays in the city that never sleeps.', 'Ho Chi Minh City', '02'],
+      ]
+      : [
+        ['Khám phá nơi ở giữa lòng Hà Nội', 'Gợi ý lưu trú chọn lọc cho chuyến đi sắp tới.', 'Hà Nội', '01'],
+        ['Đà Nẵng bên bờ biển', 'Tận hưởng biển xanh, ẩm thực và nhịp sống địa phương.', 'Đà Nẵng', '04'],
+        ['Một Phú Quốc thật chậm', 'Tìm nơi nghỉ yên bình cho kỳ nghỉ tiếp theo.', 'Phú Quốc', '06'],
+        ['Cuối tuần ở Thành phố Hồ Chí Minh', 'Những nơi ở nổi bật giữa thành phố không ngủ.', 'Thành phố Hồ Chí Minh', '02'],
+      ];
+    return items.map(([title, description, location, image], index) => ({
+      id: 9000 + index,
+      kind: 'EDITORIAL' as const,
+      title,
+      description,
+      imageUrl: `assets/destinations/destination-${image}.webp`,
+      imageAlt: title,
+      disclosure: english ? 'LuxeStay editorial' : 'LuxeStay tuyển chọn',
+      target: { type: 'SEARCH_COLLECTION' as const, route: '/search', query: { displayLocation: location } },
+      startsAt: '2020-01-01T00:00:00Z',
+      endsAt: '2035-12-31T23:59:59Z',
+    }));
   }
 }

@@ -48,6 +48,9 @@ export interface Reservation {
   status?: string;
   paymentMethod: string;
   specialRequests?: string;
+  cancellationReasonCode?: string;
+  cancellationReason?: string;
+  cancelledAt?: string;
   details: ReservationDetail[];
   payment?: PaymentLifecycleSummary;
   refunds?: RefundSummary[];
@@ -89,11 +92,11 @@ export class ReservationService {
     return this.http.post<Reservation>(`${this.apiUrl}/${id}/no-show`, {});
   }
 
-  cancelMyReservation(id: number, idempotencyKey?: string): Observable<Reservation> {
+  cancelMyReservation(id: number, cancellation: { reasonCode: string; reason?: string }, idempotencyKey?: string): Observable<Reservation> {
     const options = idempotencyKey
       ? { headers: new HttpHeaders({ 'Idempotency-Key': idempotencyKey }) }
       : {};
-    return this.http.post<Reservation>(`${this.apiUrl}/${id}/cancel`, {}, options);
+    return this.http.post<Reservation>(`${this.apiUrl}/${id}/cancel`, cancellation, options);
   }
 
   deleteReservation(id: number): Observable<void> {

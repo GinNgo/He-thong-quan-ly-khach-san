@@ -37,12 +37,9 @@ import java.util.stream.Collectors;
 
 @Service
 public class RolePermissionService {
-    private static final int SUPPORTED_ACTION_MASK = ActionCode.VIEW
-            | ActionCode.CREATE
-            | ActionCode.UPDATE
-            | ActionCode.DELETE
-            | ActionCode.EXPORT
-            | ActionCode.APPROVE;
+    private static final Set<String> IMMUTABLE_PERMISSION_ROLE_CODES = Set.of(
+            "SUPER_ADMIN", "ADMIN", "CUSTOMER");
+    private static final int SUPPORTED_ACTION_MASK = ActionCode.ALL;
 
     @Autowired
     private RolePermissionRepository rolePermissionRepository;
@@ -102,6 +99,10 @@ public class RolePermissionService {
                         functionDto.setIcon(function.getIcon());
                         functionDto.setSortOrder(function.getSortOrder());
                         functionDto.setActionMask(permissionMap.getOrDefault(function.getId(), 0));
+                        functionDto.setSupportedActionMask(function.getSupportedActionMask());
+                        functionDto.setScopeType(function.getScopeType());
+                        functionDto.setActive(function.getActive());
+                        functionDto.setVersion(function.getVersion());
                         return functionDto;
                     })
                     .sorted(Comparator.comparing(function -> function.getSortOrder() == null ? 999 : function.getSortOrder()))
@@ -114,8 +115,8 @@ public class RolePermissionService {
     @Transactional
     public Long updateRolePermissions(Long roleId, UpdateRolePermissionsRequest request) {
         Role role = roleRepository.findById(roleId).orElseThrow(() -> new RuntimeException("Role not found"));
-        if (isGovernedSystemRole(role)) {
-            throw new IllegalStateException("System role permissions are immutable.");
+        if (isImmutablePermissionRole(role)) {
+            throw new IllegalStateException("Không thể chỉnh quyền của vai trò quản trị lõi.");
         }
         if (request == null || request.getExpectedVersion() == null) {
             throw new IllegalArgumentException("expectedVersion and permissions are required.");
@@ -136,12 +137,6 @@ public class RolePermissionService {
         for (Map.Entry<Long, Integer> entry : requestedMasks.entrySet()) {
             int actionMask = entry.getValue();
             RolePermission existing = existingByFunctionId.get(entry.getKey());
-            if (actionMask == 0) {
-                if (existing != null) {
-                    rolePermissionRepository.delete(existing);
-                }
-                continue;
-            }
             if (existing != null) {
                 existing.setActionMask(actionMask);
                 rolePermissionRepository.save(existing);
@@ -199,16 +194,36 @@ public class RolePermissionService {
             if (actionMask < 0 || (actionMask & ~SUPPORTED_ACTION_MASK) != 0) {
                 throw new IllegalArgumentException("Action mask contains unsupported actions.");
             }
-            appFunctionRepository.findById(entry.getFunctionId())
+            AppFunction function = appFunctionRepository.findById(entry.getFunctionId())
                     .orElseThrow(() -> new IllegalArgumentException("Unknown function id: " + entry.getFunctionId()));
+            // The UI submits the complete permission matrix, including inactive rows.
+            // Keep those rows harmless (mask 0), but never allow permissions on them.
+            if (!Boolean.TRUE.equals(function.getActive())) {
+                if (actionMask != 0) {
+                    throw new IllegalArgumentException("Inactive function cannot receive permissions: " + function.getCode());
+                }
+                requestedMasks.put(entry.getFunctionId(), 0);
+                continue;
+            }
+            int functionMask = function.getSupportedActionMask() == null
+                    ? SUPPORTED_ACTION_MASK
+                    : function.getSupportedActionMask();
+            if ((actionMask & ~functionMask) != 0) {
+                throw new IllegalArgumentException("Action mask contains actions unsupported by function "
+                        + function.getCode() + ".");
+            }
+            // Legacy matrices may contain an action without VIEW. Normalize them so
+            // the admin UI can save the complete matrix and repair the old state.
+            if (actionMask != 0 && (actionMask & ActionCode.VIEW) == 0) {
+                actionMask |= ActionCode.VIEW;
+            }
             requestedMasks.put(entry.getFunctionId(), actionMask);
         }
         return requestedMasks;
     }
 
-    private boolean isGovernedSystemRole(Role role) {
-        return Boolean.TRUE.equals(role.getSystemRole())
-                || RoleService.SYSTEM_ROLE_CODES.contains(role.getCode());
+    private boolean isImmutablePermissionRole(Role role) {
+        return IMMUTABLE_PERMISSION_ROLE_CODES.contains(role.getCode());
     }
 
     private String permissionSnapshot(List<RolePermission> permissions) {

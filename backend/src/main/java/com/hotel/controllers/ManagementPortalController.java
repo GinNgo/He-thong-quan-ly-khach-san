@@ -31,57 +31,67 @@ public class ManagementPortalController {
     public ResponseEntity<List<Map<String, Object>>> properties() { return ResponseEntity.ok(service.properties()); }
 
     @PostMapping("/properties")
+    @PreAuthorize("hasAnyAuthority('PROPERTY_OWNER','SUPER_ADMIN')")
     public ResponseEntity<Map<String, Object>> createProperty(@RequestBody ManagementPropertyRequest request) {
         return ResponseEntity.ok(service.createProperty(request));
     }
 
     @GetMapping("/room-types")
+    @Permission(function = FunctionCode.ROOM_TYPE, action = ActionCode.VIEW)
     public ResponseEntity<List<RoomTypeDTO>> roomTypes(@RequestParam Long propertyId) {
         return ResponseEntity.ok(service.roomTypes(propertyId));
     }
 
     @PostMapping("/room-types")
+    @Permission(function = FunctionCode.ROOM_TYPE, action = ActionCode.CREATE)
     public ResponseEntity<RoomTypeDTO> createRoomType(@RequestBody RoomTypeDTO request) {
         return ResponseEntity.ok(service.createRoomType(request));
     }
 
     @PutMapping("/room-types/{id}")
+    @Permission(function = FunctionCode.ROOM_TYPE, action = ActionCode.UPDATE)
     public ResponseEntity<RoomTypeDTO> updateRoomType(@PathVariable Long id, @RequestBody RoomTypeDTO request) {
         return ResponseEntity.ok(service.updateRoomType(id, request));
     }
 
     @GetMapping("/rooms")
+    @Permission(function = FunctionCode.ROOM, action = ActionCode.VIEW)
     public ResponseEntity<List<RoomDTO>> rooms(@RequestParam Long propertyId) {
         return ResponseEntity.ok(service.rooms(propertyId));
     }
 
     @PostMapping("/rooms")
+    @Permission(function = FunctionCode.ROOM, action = ActionCode.CREATE)
     public ResponseEntity<RoomDTO> createRoom(@RequestBody RoomDTO request) {
         return ResponseEntity.ok(service.createRoom(request));
     }
 
     @PostMapping("/rooms/bulk")
+    @Permission(function = FunctionCode.ROOM, action = ActionCode.CREATE)
     public ResponseEntity<List<RoomDTO>> bulkRooms(@RequestBody BulkRoomRequest request) {
         return ResponseEntity.ok(service.bulkRooms(request));
     }
 
     @PutMapping("/rooms/{id}")
+    @Permission(function = FunctionCode.ROOM, action = ActionCode.UPDATE)
     public ResponseEntity<RoomDTO> updateRoom(@PathVariable Long id, @RequestBody RoomDTO request) {
         return ResponseEntity.ok(service.updateRoom(id, request));
     }
 
     @PostMapping("/rooms/{id}/maintenance/start")
+    @Permission(function = FunctionCode.ROOM, action = ActionCode.UPDATE)
     public ResponseEntity<RoomDTO> startRoomMaintenance(@PathVariable Long id) {
         return ResponseEntity.ok(service.startRoomMaintenance(id));
     }
 
     @PostMapping("/rooms/{id}/maintenance/complete")
+    @Permission(function = FunctionCode.ROOM, action = ActionCode.UPDATE)
     public ResponseEntity<RoomDTO> completeRoomMaintenance(@PathVariable Long id) {
         return ResponseEntity.ok(service.completeRoomMaintenance(id));
     }
 
     @PostMapping("/housekeeping/{taskId}/complete")
-    @Permission(function = FunctionCode.HOUSEKEEPING, action = ActionCode.APPROVE)
+    @Permission(function = FunctionCode.HOUSEKEEPING, action = ActionCode.TASK_EXECUTE)
     public ResponseEntity<Map<String, Object>> completeHousekeeping(
             @PathVariable Long taskId,
             @RequestBody(required = false) HousekeepingCommandRequest request) {

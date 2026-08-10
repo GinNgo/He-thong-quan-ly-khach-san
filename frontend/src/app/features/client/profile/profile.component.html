@@ -28,7 +28,7 @@
         [class.active]="activeTab === 'bookings'"
         (click)="setActiveTab('bookings')"
       >
-        <i class="pi pi-suitcase"></i>{{ i18n.text('PUBLIC.ACCOUNT.MY_TRIPS') }}
+        <i class="pi pi-briefcase" aria-hidden="true"></i>{{ i18n.text('PUBLIC.ACCOUNT.MY_TRIPS') }}
       </button>
       <a routerLink="/my-invoices"><i class="pi pi-file"></i>{{ i18n.text('PUBLIC.ACCOUNT.MY_INVOICES') }}</a>
       <a routerLink="/support"><i class="pi pi-question-circle"></i>{{ i18n.text('LAYOUT.SUPPORT_CENTER') }}</a>
@@ -117,8 +117,52 @@
         {{ bookingsError }} <button type="button" (click)="loadBookings()">{{ i18n.text('PUBLIC.ACCOUNT.RETRY') }}</button>
       </div>
       <div *ngIf="!bookingsLoading && !bookingsError && !bookings.length" class="empty">
-        <i class="pi pi-suitcase"></i><strong>{{ i18n.text('PUBLIC.ACCOUNT.NO_TRIPS') }}</strong
+        <i class="pi pi-briefcase" aria-hidden="true"></i><strong>{{ i18n.text('PUBLIC.ACCOUNT.NO_TRIPS') }}</strong
         ><a routerLink="/search">{{ i18n.text('PUBLIC.SEARCH.SUBMIT') }}</a>
+      </div>
+      <div
+        *ngIf="cancellationBookingId !== null"
+        class="cancel-dialog-backdrop"
+        role="presentation"
+        (click)="closeCancellationDialog()"
+      >
+        <section
+          class="cancel-dialog"
+          role="dialog"
+          aria-modal="true"
+          [attr.aria-labelledby]="'cancel-dialog-title'"
+          (click)="$event.stopPropagation()"
+        >
+          <h2 id="cancel-dialog-title">{{ i18n.text('PUBLIC.ACCOUNT.CANCEL_DIALOG_TITLE') }}</h2>
+          <p>{{ i18n.text('PUBLIC.ACCOUNT.CANCEL_CONFIRM') }}</p>
+          <form [formGroup]="cancellationForm" (ngSubmit)="confirmCancellation()">
+            <label for="cancel-reason">{{ i18n.text('PUBLIC.ACCOUNT.CANCEL_REASON_LABEL') }}</label>
+            <select id="cancel-reason" formControlName="reasonCode">
+              <option value="">{{ i18n.text('PUBLIC.ACCOUNT.CANCEL_REASON_PLACEHOLDER') }}</option>
+              <option value="CHANGE_OF_PLANS">{{ i18n.text('PUBLIC.ACCOUNT.CANCEL_REASON_CHANGE') }}</option>
+              <option value="BOOKED_BY_MISTAKE">{{ i18n.text('PUBLIC.ACCOUNT.CANCEL_REASON_MISTAKE') }}</option>
+              <option value="FOUND_ANOTHER_PROPERTY">{{ i18n.text('PUBLIC.ACCOUNT.CANCEL_REASON_OTHER_PROPERTY') }}</option>
+              <option value="PAYMENT_ISSUE">{{ i18n.text('PUBLIC.ACCOUNT.CANCEL_REASON_PAYMENT') }}</option>
+              <option value="OTHER">{{ i18n.text('PUBLIC.ACCOUNT.CANCEL_REASON_OTHER') }}</option>
+            </select>
+            <small class="field-error" *ngIf="cancellationForm.controls.reasonCode.touched && cancellationForm.controls.reasonCode.invalid">
+              {{ i18n.text('PUBLIC.ACCOUNT.CANCEL_REASON_REQUIRED') }}
+            </small>
+            <label for="cancel-detail">{{ i18n.text('PUBLIC.ACCOUNT.CANCEL_REASON_DETAIL') }}</label>
+            <textarea id="cancel-detail" rows="3" maxlength="500" formControlName="reason"></textarea>
+            <small class="field-error" *ngIf="cancellationForm.controls.reason.errors?.['required']">
+              {{ i18n.text('PUBLIC.ACCOUNT.CANCEL_OTHER_REQUIRED') }}
+            </small>
+            <div class="cancel-dialog-actions">
+              <button type="button" class="dialog-secondary" (click)="closeCancellationDialog()">
+                {{ i18n.text('PUBLIC.ACCOUNT.CANCEL_DIALOG_BACK') }}
+              </button>
+              <button type="submit" class="dialog-danger" [disabled]="cancellingId !== null">
+                {{ cancellingId !== null ? i18n.text('PUBLIC.ACCOUNT.CANCEL_PENDING') : i18n.text('PUBLIC.ACCOUNT.CANCEL_DIALOG_SUBMIT') }}
+              </button>
+            </div>
+          </form>
+        </section>
       </div>
       <div class="booking-list" *ngIf="!bookingsLoading && bookings.length">
         <article *ngFor="let booking of bookings" [attr.data-booking-id]="booking.id">
@@ -158,6 +202,23 @@
               <dd>{{ booking.totalAmount | currency: 'VND' : 'symbol' : '1.0-0' }}</dd>
             </div>
           </dl>
+
+          <section class="property-contact" *ngIf="booking.property as property">
+            <div class="property-contact-heading">
+              <i class="pi pi-building" aria-hidden="true"></i>
+              <div>
+                <small>Cơ sở lưu trú</small>
+                <strong>{{ property.name }}</strong>
+                <span *ngIf="property.address">{{ property.address }}</span>
+              </div>
+              <a *ngIf="property.id" class="property-link" [routerLink]="['/hotel', property.id]">Xem cơ sở</a>
+            </div>
+            <div class="property-contact-details">
+              <span *ngIf="property.contactName"><i class="pi pi-user"></i>{{ property.contactName }}</span>
+              <a *ngIf="property.phone" [href]="'tel:' + property.phone"><i class="pi pi-phone"></i>{{ property.phone }}</a>
+              <a *ngIf="property.email" [href]="'mailto:' + property.email"><i class="pi pi-envelope"></i>{{ property.email }}</a>
+            </div>
+          </section>
 
           <section class="financial-summary" [attr.aria-label]="i18n.text('PUBLIC.ACCOUNT.PAYMENT_REFUND')">
             <div class="financial-row">

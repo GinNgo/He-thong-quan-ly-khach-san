@@ -23,6 +23,18 @@ public class PlatformMerchantCredentialResolver {
     }
 
     public ResolvedMerchantCredentials resolveReference(String secretReference) {
+        if (secretReference != null && "internal://simulator".equalsIgnoreCase(secretReference.trim())) {
+            String signingSecret = environment.getProperty(
+                    "payment.demo.signing-secret",
+                    environment.getProperty("jwt.secret", ""));
+            if (signingSecret == null || signingSecret.isBlank()) {
+                return new ResolvedMerchantCredentials(null, Map.of(), null);
+            }
+            return new ResolvedMerchantCredentials(
+                    "PLATFORM-SIMULATOR",
+                    Map.of("signingSecret", signingSecret.trim()),
+                    null);
+        }
         String prefix = environmentPrefix(secretReference);
         if (prefix == null) {
             return new ResolvedMerchantCredentials(null, Map.of(), null);
@@ -36,8 +48,19 @@ public class PlatformMerchantCredentialResolver {
         putIfPresent(secrets, "secretKey", property(prefix, "SECRET_KEY"));
         putIfPresent(secrets, "hashSecret", property(prefix, "HASH_SECRET"));
         putIfPresent(secrets, "key2", property(prefix, "KEY2"));
+        if (prefix.contains("VNPAY")) {
+            merchantId = firstPresent(merchantId, environment.getProperty("VNPAY_TMN_CODE"));
+            endpointValue = firstPresent(endpointValue, environment.getProperty("VNPAY_URL"));
+            putIfPresent(secrets, "hashSecret", firstPresent(
+                    secrets.get("hashSecret"), environment.getProperty("VNPAY_HASH_SECRET")));
+        }
         URI endpoint = endpointValue == null || endpointValue.isBlank() ? null : safeUri(endpointValue);
         return new ResolvedMerchantCredentials(merchantId, Map.copyOf(secrets), endpoint);
+    }
+
+    private String firstPresent(String primary, String fallback) {
+        return primary != null && !primary.isBlank() ? primary.trim()
+                : fallback == null || fallback.isBlank() ? null : fallback.trim();
     }
 
     private void putIfPresent(Map<String, String> target, String key, String value) {

@@ -81,6 +81,7 @@ class SocialAccountProvisioningServiceTest {
 
         assertEquals(42L, result.user().getId());
         assertEquals("guest@example.com", result.user().getEmail());
+        assertEquals(0, result.user().getFailedLoginCount());
         ArgumentCaptor<SocialIdentity> identity = ArgumentCaptor.forClass(SocialIdentity.class);
         verify(identities).saveAndFlush(identity.capture());
         assertEquals("new-subject", identity.getValue().getProviderSubject());

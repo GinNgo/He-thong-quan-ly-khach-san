@@ -2,6 +2,7 @@ package com.hotel.controllers;
 
 import com.hotel.dtos.ReservationDTO;
 import com.hotel.dtos.ReservationRequest;
+import com.hotel.dtos.CustomerCancellationRequest;
 import com.hotel.paymentprovider.idempotency.FinancialIdempotencyService;
 import com.hotel.paymentprovider.idempotency.MutationIdempotencyService;
 import com.hotel.services.ReservationService;
@@ -86,10 +87,12 @@ class ReservationControllerIdempotencyTest {
         cancelled.setId(77L);
         cancelled.setStatus("CANCELLED");
         when(authentication.getName()).thenReturn("customer@example.test");
-        when(reservationService.cancelMyReservation(77L, "customer@example.test")).thenReturn(cancelled);
+        CustomerCancellationRequest cancellation =
+                new CustomerCancellationRequest("CHANGE_OF_PLANS", "Thay đổi kế hoạch");
+        when(reservationService.cancelMyReservation(77L, "customer@example.test", cancellation)).thenReturn(cancelled);
 
         var response = controller.cancelMyReservation(
-                authentication, 77L, "cancel-key", servletRequest("corr-2"));
+                authentication, 77L, cancellation, "cancel-key", servletRequest("corr-2"));
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         FinancialIdempotencyService.BeginCommand command = capturedCommand();

@@ -5,6 +5,7 @@ import { ClientApiService } from '../../../core/services/client-api.service';
 import { PropertyPaymentService } from '../../../core/services/property-payment.service';
 import { BookingCheckoutComponent } from './booking-checkout.component';
 import { AsyncActionCoordinatorService } from '../../../core/services/async-action-coordinator.service';
+import { PaymentService } from '../../../core/services/payment.service';
 
 describe('BookingCheckoutComponent', () => {
   let fixture: ComponentFixture<BookingCheckoutComponent>;
@@ -20,6 +21,9 @@ describe('BookingCheckoutComponent', () => {
     createAttempt: ReturnType<typeof vi.fn>;
     getAttempt: ReturnType<typeof vi.fn>;
   };
+  let paymentSessionApi: {
+    createPaymentSession: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     localStorage.clear();
@@ -34,12 +38,16 @@ describe('BookingCheckoutComponent', () => {
       createAttempt: vi.fn(),
       getAttempt: vi.fn((attemptId: string) => of({ ...attemptResponse(), attemptId })),
     };
+    paymentSessionApi = {
+      createPaymentSession: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       imports: [BookingCheckoutComponent],
       providers: [
         { provide: ClientApiService, useValue: clientApi },
         { provide: PropertyPaymentService, useValue: paymentApi },
+        { provide: PaymentService, useValue: paymentSessionApi },
         { provide: AsyncActionCoordinatorService, useValue: new AsyncActionCoordinatorService() },
         { provide: Router, useValue: { navigate: vi.fn() } },
         {
@@ -80,6 +88,23 @@ describe('BookingCheckoutComponent', () => {
 
     expect(component.bookingContextValid).toBe(true);
     expect(component.quote?.quoteId).toBe('quote-1');
+  });
+
+  it('offers only pay-at-hotel and VNPAY with the VNPAY logo', () => {
+    queryParams$.next({
+      checkIn: '2026-08-10', checkOut: '2026-08-12', adultCount: '2', childCount: '0',
+      quantity: '1', hotelId: '10', roomTypeName: 'Deluxe'
+    });
+    fixture.detectChanges();
+
+    const paymentInputs = fixture.nativeElement.querySelectorAll(
+      'input[name="paymentMethod"]'
+    ) as NodeListOf<HTMLInputElement>;
+    const methods = Array.from(paymentInputs, input => input.value);
+    expect(methods).toEqual(['PAY_AT_HOTEL', 'VNPAY']);
+    expect(fixture.nativeElement.querySelector('img[src="/assets/payment/vnpay-logo.svg"]')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).not.toContain('MoMo');
+    expect(fixture.nativeElement.textContent).not.toContain('ZaloPay');
   });
 
   it('renders canonical original/final price, member tier, and typed sponsored disclosure', () => {
@@ -164,6 +189,18 @@ describe('BookingCheckoutComponent', () => {
     secondFixture.destroy();
   });
 
+  it('shows the backend message for a financial conflict instead of reporting sold out', () => {
+    setValidBooking('VNPAY');
+
+    component.submitBooking();
+    reservation$.error({
+      status: 409,
+      error: { code: 'POLICY_NOT_CONFIGURED', message: 'Payment policy is not configured.' },
+    });
+
+    expect(component.errorMessage).toBe('Payment policy is not configured.');
+  });
+
   it('creates a server-owned deposit attempt after the reservation succeeds', () => {
     const paymentAttempt$ = new Subject<any>();
     paymentApi.createAttempt.mockReturnValue(paymentAttempt$);
@@ -188,22 +225,21 @@ describe('BookingCheckoutComponent', () => {
 
   it('retries the same attempt request without creating a second reservation', () => {
     const firstAttempt$ = new Subject<any>();
-    paymentApi.createAttempt
+    paymentSessionApi.createPaymentSession
       .mockReturnValueOnce(firstAttempt$)
-      .mockReturnValueOnce(of(attemptResponse()));
+      .mockReturnValueOnce(of({ url: 'https://sandbox.vnpayment.vn/pay' }));
     setValidBooking('VNPAY');
 
     component.submitBooking();
     reservation$.next({ id: 88 });
     firstAttempt$.error({ status: 503 });
 
-    const firstKey = paymentApi.createAttempt.mock.calls[0][2].idempotencyKey;
+    const firstKey = paymentSessionApi.createPaymentSession.mock.calls[0][2];
     component.submitBooking();
 
     expect(clientApi.bookRoom).toHaveBeenCalledTimes(1);
-    expect(paymentApi.createAttempt).toHaveBeenCalledTimes(2);
-    expect(paymentApi.createAttempt.mock.calls[1][2].idempotencyKey).toBe(firstKey);
-    expect(component.bookingSuccess).toBe(true);
+    expect(paymentSessionApi.createPaymentSession).toHaveBeenCalledTimes(2);
+    expect(paymentSessionApi.createPaymentSession.mock.calls[1][2]).toBe(firstKey);
   });
 
   it('creates a fresh terminal retry without creating a second reservation', () => {

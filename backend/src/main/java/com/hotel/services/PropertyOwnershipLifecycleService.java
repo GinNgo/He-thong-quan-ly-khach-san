@@ -38,6 +38,7 @@ public class PropertyOwnershipLifecycleService {
         mapping.setHotel(hotel);
         mapping.setRelationshipType("OWNER");
         mapping.setIsPrimaryOwner(false);
+        mapping.setBillingAdmin(false);
         mapping.setStatus("PENDING");
         mapping.setStartDate(null);
         mapping.setEndDate(null);
@@ -63,6 +64,7 @@ public class PropertyOwnershipLifecycleService {
         }
         mapping.setStatus("ACTIVE");
         mapping.setIsPrimaryOwner(true);
+        mapping.setBillingAdmin(true);
         mapping.setStartDate(LocalDateTime.now());
         mapping.setEndDate(null);
         UserProperty saved = userPropertyRepository.save(mapping);
@@ -90,6 +92,7 @@ public class PropertyOwnershipLifecycleService {
                 .map(mapping -> {
                     mapping.setStatus("INACTIVE");
                     mapping.setIsPrimaryOwner(false);
+                    mapping.setBillingAdmin(false);
                     mapping.setEndDate(LocalDateTime.now());
                     userPropertyRepository.save(mapping);
                     removeOwnerRoleIfUnused(mapping.getUser());
@@ -104,6 +107,7 @@ public class PropertyOwnershipLifecycleService {
                 .findByHotelIdAndRelationshipTypeAndStatus(hotelId, "OWNER", "PENDING")) {
             mapping.setStatus("INACTIVE");
             mapping.setIsPrimaryOwner(false);
+            mapping.setBillingAdmin(false);
             mapping.setEndDate(LocalDateTime.now());
             userPropertyRepository.save(mapping);
             removeOwnerRoleIfUnused(mapping.getUser());

@@ -45,7 +45,7 @@ class PlatformBillingControllerTest {
     void setUp() {
         controller = new PlatformBillingController(
                 catalogService, orderService, attemptService, renewalService, upgradeService,
-                policyService, configurationService, queryService, entitlementService);
+                policyService, configurationService, queryService, entitlementService, null);
     }
 
     @Test

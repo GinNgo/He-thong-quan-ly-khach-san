@@ -74,7 +74,7 @@
                 <small>{{ i18n.text('PUBLIC.DETAIL.NIGHTLY_RATE') }}</small>
                 <strong>{{ formatVnd(room.basePrice) }}</strong>
                 <label [for]="'qty-'+room.id">{{ i18n.text('PUBLIC.DETAIL.ROOM_QUANTITY') }}</label>
-                <select [id]="'qty-'+room.id" [ngModel]="selectedRoomType?.id===room.id ? selectedQuantity : 0" (ngModelChange)="selectQuantity(room,$event)" [disabled]="!room.availableRooms">
+                <select class="room-quantity-select" [id]="'qty-'+room.id" [ngModel]="selectedRoomType?.id===room.id ? selectedQuantity : 0" (ngModelChange)="selectQuantity(room,$event)" [disabled]="!room.availableRooms">
                   <option *ngFor="let q of quantities(room)" [ngValue]="q">{{ q }}</option>
                 </select>
                 <em *ngIf="!room.availableRooms">{{ i18n.text('PUBLIC.DETAIL.SOLD_OUT') }}</em>
@@ -103,10 +103,11 @@
                 <strong *ngIf="memberTierLabel">{{ i18n.text('PUBLIC.DETAIL.MEMBER_PRICE', { tier: memberTierLabel }) }}</strong>
               </div>
               <div *ngIf="!capacityValid" class="capacity-error">{{ i18n.text('PUBLIC.DETAIL.CAPACITY_ERROR') }}</div>
-              <div class="summary-total">
+              <div class="summary-total" aria-live="polite">
                 <span>{{ i18n.text('PUBLIC.DETAIL.TOTAL') }}</span>
-                <strong>{{ selectedQuote ? formatVnd(roomTotal) : '—' }}</strong>
-                <small>{{ i18n.text('PUBLIC.DETAIL.BACKEND_NOTE') }}</small>
+                <strong>{{ formatVnd(displayedRoomTotal) }}</strong>
+                <small *ngIf="selectedQuote">{{ i18n.text('PUBLIC.DETAIL.BACKEND_NOTE') }}</small>
+                <small *ngIf="!selectedQuote">{{ i18n.text(hasStayDates ? 'PUBLIC.DETAIL.QUOTE_PENDING_NOTE' : 'PUBLIC.DETAIL.ONE_NIGHT_ESTIMATE_NOTE') }}</small>
               </div>
             </ng-container>
             <ng-template #selectHint><p class="hint">{{ i18n.text('PUBLIC.DETAIL.SELECT_HINT') }}</p></ng-template>

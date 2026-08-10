@@ -69,13 +69,13 @@ public class PermissionInterceptor implements HandlerInterceptor {
             Integer userMask = masks == null ? null : masks.get(permission.function());
             if (userMask == null) {
                 writeJsonError(response, request, HttpServletResponse.SC_FORBIDDEN, "FORBIDDEN_PERMISSION",
-                        "No access to function " + permission.function());
+                        permissionDeniedMessage(permission.function(), permission.action()));
                 return false;
             }
 
             if ((userMask & permission.action()) != permission.action()) {
                 writeJsonError(response, request, HttpServletResponse.SC_FORBIDDEN, "FORBIDDEN_PERMISSION",
-                        "Missing required action mask");
+                        permissionDeniedMessage(permission.function(), permission.action()));
                 return false;
             }
         }
@@ -91,6 +91,46 @@ public class PermissionInterceptor implements HandlerInterceptor {
         }
 
         return true;
+    }
+
+    private String permissionDeniedMessage(FunctionCode function, int actionMask) {
+        String action = switch (actionMask) {
+            case ActionCode.VIEW -> "xem";
+            case ActionCode.CREATE -> "thêm";
+            case ActionCode.UPDATE -> "chỉnh sửa";
+            case ActionCode.DELETE -> "xóa";
+            case ActionCode.EXPORT -> "xuất dữ liệu";
+            case ActionCode.APPROVE -> "duyệt";
+            case ActionCode.TASK_EXECUTE -> "thực hiện tác vụ";
+            default -> "thực hiện thao tác trên";
+        };
+        return "Bạn không có quyền " + action + " " + functionLabel(function) + ".";
+    }
+
+    private String functionLabel(FunctionCode function) {
+        return switch (function) {
+            case ROOM -> "phòng";
+            case ROOM_TYPE -> "loại phòng";
+            case RESERVATION -> "đặt phòng";
+            case RESERVATION_ASSIGNMENT -> "phân phòng";
+            case RESERVATION_CANCEL -> "hủy đặt phòng";
+            case RESERVATION_NO_SHOW -> "khách không đến";
+            case CHECKIN -> "nhận phòng";
+            case CHECKOUT -> "trả phòng";
+            case INVOICE -> "hóa đơn";
+            case REPORT -> "báo cáo";
+            case USER -> "người dùng";
+            case ROLE -> "vai trò";
+            case ROLE_PERMISSION -> "phân quyền";
+            case HOTEL -> "cơ sở lưu trú";
+            case HOTEL_SERVICE, RESERVATION_SERVICE -> "dịch vụ";
+            case HOUSEKEEPING -> "dọn phòng";
+            case PROPERTY_REFUND, PLATFORM_REFUND -> "yêu cầu hoàn tiền";
+            case PROPERTY_PAYMENT_CONFIG -> "cấu hình thanh toán";
+            case CUSTOMER -> "khách hàng";
+            case AUDIT_LOG -> "nhật ký hệ thống";
+            default -> "chức năng này";
+        };
     }
 
     private void writeJsonError(HttpServletResponse response, HttpServletRequest request,

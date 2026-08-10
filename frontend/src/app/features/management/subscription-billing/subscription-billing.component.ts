@@ -10,6 +10,7 @@ import {
   PlatformPolicyAvailability,
 } from '../../../core/services/platform-billing.service';
 import { PlatformPaymentPanelComponent } from './platform-payment-panel.component';
+import { ManagementApiService } from '../../../core/services/management-api.service';
 
 @Component({
   selector: 'app-subscription-billing',
@@ -22,6 +23,7 @@ export class SubscriptionBillingComponent implements OnInit {
   private readonly platformBilling = inject(PlatformBillingService);
   private readonly route = inject(ActivatedRoute);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly managementApi = inject(ManagementApiService);
 
   plans: PlatformCatalogPlan[] = [];
   currentEntitlement: PlatformSubscriptionEntitlement | null = null;
@@ -39,11 +41,43 @@ export class SubscriptionBillingComponent implements OnInit {
   loadingPolicy = true;
 
   ngOnInit(): void {
-    const propertyId = Number(this.route.snapshot.queryParamMap.get('propertyId'));
-    this.activePropertyId = Number.isInteger(propertyId) && propertyId > 0 ? propertyId : undefined;
     this.loadPlans();
-    this.loadEntitlement();
     this.loadPolicyAvailability();
+
+    // The management header changes propertyId without recreating this routed component.
+    this.route.queryParamMap.subscribe((params) => {
+      const paymentOrder = params.get('paymentOrder');
+      if (paymentOrder && paymentOrder !== this.latestOrder?.publicId) {
+        this.platformBilling.getOrder(paymentOrder).subscribe({
+          next: (order) => {
+            this.latestOrder = order;
+            this.loadEntitlement();
+            this.cdr.markForCheck();
+          },
+          error: (err) => this.orderError = err?.error?.message || 'Không thể cập nhật kết quả thanh toán gói.',
+        });
+      }
+      const propertyId = Number(params.get('propertyId'));
+      const nextPropertyId = Number.isInteger(propertyId) && propertyId > 0 ? propertyId : undefined;
+      if (!nextPropertyId) {
+        this.managementApi.context().subscribe({
+          next: (context) => {
+            this.activePropertyId = context.activePropertyId ?? context.properties?.[0]?.id;
+            this.loadEntitlement();
+            this.cdr.markForCheck();
+          },
+          error: () => {
+            this.activePropertyId = undefined;
+            this.loadEntitlement();
+          },
+        });
+        return;
+      }
+      if (nextPropertyId === this.activePropertyId && this.loadingSubscription === false) return;
+      this.activePropertyId = nextPropertyId;
+      this.loadEntitlement();
+      this.cdr.markForCheck();
+    });
   }
 
   loadPlans(): void {

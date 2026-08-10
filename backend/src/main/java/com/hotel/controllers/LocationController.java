@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/public/locations")
@@ -28,8 +30,9 @@ public class LocationController {
     }
 
     @GetMapping("/provinces/{provinceId}/wards")
-    public ResponseEntity<List<Location>> getWards(@PathVariable Long provinceId) {
-        return ResponseEntity.ok(provinceCompatibilityService.wardsFor(provinceId));
+    public ResponseEntity<List<Map<String, Object>>> getWards(@PathVariable Long provinceId) {
+        return ResponseEntity.ok(provinceCompatibilityService.wardsFor(provinceId).stream()
+                .map(this::locationResponse).toList());
     }
 
     @GetMapping("/search")
@@ -45,5 +48,22 @@ public class LocationController {
     public ResponseEntity<List<LocationSuggestionDTO>> getPopularProvinces(
             @RequestParam(defaultValue = "6") int size) {
         return ResponseEntity.ok(suggestionService.popular(size));
+    }
+
+    private Map<String, Object> locationResponse(Location location) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("id", location.getId());
+        response.put("code", location.getCode());
+        response.put("sourceCode", location.getSourceCode());
+        response.put("nameVi", location.getNameVi());
+        response.put("nameEn", location.getNameEn());
+        response.put("normalizedName", location.getNormalizedName());
+        response.put("locationType", location.getLocationType());
+        response.put("fullPath", location.getFullPath());
+        response.put("legacyParentName", location.getLegacyParentName());
+        response.put("sourceProvider", location.getSourceProvider());
+        response.put("sourceObjectId", location.getSourceObjectId());
+        response.put("parent", location.getParent() == null ? null : Map.of("id", location.getParent().getId()));
+        return response;
     }
 }

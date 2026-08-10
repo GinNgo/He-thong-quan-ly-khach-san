@@ -108,6 +108,8 @@ class PermissionInterceptorTest {
         assertFalse(interceptor.preHandle(request, response, handlerMethod));
         assertEquals(HttpServletResponse.SC_FORBIDDEN, response.getStatus());
         assertTrue(response.getContentAsString().contains("FORBIDDEN_PERMISSION"));
+        assertEquals("Bạn không có quyền chỉnh sửa đặt phòng.",
+                new ObjectMapper().readTree(response.getContentAsByteArray()).get("message").asText());
     }
 
     @Test

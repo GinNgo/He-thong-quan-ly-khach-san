@@ -31,7 +31,7 @@ describe('ManagementLayout', () => {
     fixture.detectChanges();
 
     context$.next({
-      properties: [{ id: 1, code: 'HOTEL-1', nameVi: 'LuxeStay Hà Nội', propertyType: 'HOTEL', address: 'Hà Nội', approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', isDemo: false }],
+      properties: [{ id: 1, code: 'HOTEL-1', name: 'Grand Palace Hotel', propertyType: 'HOTEL', address: 'Hà Nội', approvalStatus: 'APPROVED', operationStatus: 'ACTIVE', isDemo: false }],
       activePropertyId: 1,
       planCode: 'STANDARD',
       subscriptionStatus: 'ACTIVE',
@@ -45,7 +45,7 @@ describe('ManagementLayout', () => {
     const element: HTMLElement = fixture.nativeElement;
     expect(element.textContent).not.toContain('Đang tải...');
     expect(element.querySelector('#active-property')).not.toBeNull();
-    expect(element.textContent).toContain('LuxeStay Hà Nội');
+    expect(element.textContent).toContain('Grand Palace Hotel');
   });
 
   it('removes the closed mobile sidebar from keyboard navigation', async () => {
@@ -117,7 +117,13 @@ describe('ManagementLayout', () => {
           },
         },
         { provide: ManagementApiService, useValue: { context: () => context$ } },
-        { provide: PermissionService, useValue: { hasPermission: vi.fn(() => allowed) } },
+        {
+          provide: PermissionService,
+          useValue: {
+            hasPermission: vi.fn(() => allowed),
+            isSuperAdmin: vi.fn(() => false),
+          },
+        },
       ],
     }).compileComponents();
 
@@ -169,7 +175,13 @@ describe('ManagementLayout', () => {
           },
         },
         { provide: ManagementApiService, useValue: { context: () => context$ } },
-        { provide: PermissionService, useValue: { hasPermission: vi.fn(() => true) } },
+        {
+          provide: PermissionService,
+          useValue: {
+            hasPermission: vi.fn(() => true),
+            isSuperAdmin: vi.fn(() => false),
+          },
+        },
       ],
     }).compileComponents();
 
@@ -207,5 +219,46 @@ describe('ManagementLayout', () => {
     expect(text).not.toContain('Danh sách phòng');
     expect(text).not.toContain('Cấu hình thanh toán');
     expect(text).not.toContain('Doanh thu cơ sở');
+  });
+
+  it('keeps the housekeeping screen accessible to admin without an operational property', async () => {
+    await TestBed.configureTestingModule({
+      imports: [ManagementLayout],
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            currentUser$: new BehaviorSubject<AuthState>({
+              isAuthenticated: true,
+              username: 'admin',
+              fullName: 'Administrator',
+              avatarUrl: '',
+              roles: ['ADMIN'],
+              permissions: [],
+            }),
+            logout: () => undefined,
+          },
+        },
+        { provide: ManagementApiService, useValue: { context: () => new Subject<ManagementContext>() } },
+        {
+          provide: PermissionService,
+          useValue: {
+            hasPermission: vi.fn(() => true),
+            isSuperAdmin: vi.fn(() => true),
+          },
+        },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManagementLayout);
+    fixture.detectChanges();
+
+    const housekeepingLink = Array.from(
+      fixture.nativeElement.querySelectorAll('a') as NodeListOf<HTMLAnchorElement>,
+    ).find((link) => link.textContent?.includes('Hàng đợi dọn phòng'));
+
+    expect(housekeepingLink).toBeDefined();
+    expect(housekeepingLink?.getAttribute('href')).toContain('/management/housekeeping');
   });
 });

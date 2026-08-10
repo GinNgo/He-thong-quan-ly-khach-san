@@ -1,10 +1,12 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { SharedModule } from '@app/shared/shared.module';
 import { HotelServiceService, HotelServiceDTO } from '@app/core/services/hotel-service.service';
 import { ManagementApiService, ManagedProperty } from '@app/core/services/management-api.service';
 import { ConfirmationService, MessageService } from 'primeng/api';
-import { finalize, timeout } from 'rxjs/operators';
+import { Subject, of } from 'rxjs';
+import { catchError, finalize, switchMap, tap, timeout } from 'rxjs/operators';
 
 @Component({
   selector: 'app-service-management',
@@ -29,22 +31,52 @@ export class ServiceManagement implements OnInit {
   private messageService = inject(MessageService);
   private confirmationService = inject(ConfirmationService);
   private route = inject(ActivatedRoute);
+  private destroyRef = inject(DestroyRef);
+  private changeDetector = inject(ChangeDetectorRef);
+
+  /** Emits to cancel any in-flight context+services request chain. */
+  private loadTrigger$ = new Subject<number | undefined>();
 
   ngOnInit(): void {
-    const propertyId = Number(this.route.snapshot.queryParamMap.get('propertyId'));
-    const requestedPropertyId = Number.isInteger(propertyId) && propertyId > 0 ? propertyId : undefined;
-    this.managementApi.context(requestedPropertyId).subscribe({
-      next: (context) => {
-        this.properties = context.properties ?? [];
-        this.selectedPropertyId = context.activePropertyId ?? this.properties[0]?.id ?? null;
-        this.loadServices();
-      },
-      error: (error) => {
-        this.loading = false;
-        this.errorMessage = error?.error?.message || 'Không thể tải danh sách cơ sở quản lý.';
-        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: this.errorMessage });
-      },
+    // Wire up the load pipeline: each trigger cancels the previous in-flight chain.
+    this.loadTrigger$.pipe(
+      takeUntilDestroyed(this.destroyRef),
+      tap(() => {
+        this.loading = true;
+        this.errorMessage = '';
+      }),
+      switchMap((requestedPropertyId) =>
+        this.managementApi.context(requestedPropertyId).pipe(
+          timeout(15000),
+          catchError((error) => {
+            this.loading = false;
+            this.errorMessage = error?.error?.message || 'Không thể tải danh sách cơ sở quản lý.';
+            this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: this.errorMessage });
+            this.changeDetector.markForCheck();
+            return of(null);
+          }),
+        ),
+      ),
+    ).subscribe((context) => {
+      if (!context) return; // error already handled
+
+      this.properties = context.properties ?? [];
+      this.selectedPropertyId = context.activePropertyId ?? this.properties[0]?.id ?? null;
+      this.changeDetector.markForCheck();
+      this.loadServices();
     });
+
+    // Listen for queryParam changes and feed the pipeline.
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => {
+        this.loadTrigger$.next(this.toPropertyId(params.get('propertyId')));
+      });
+  }
+
+  private toPropertyId(rawValue: string | null): number | undefined {
+    const propertyId = Number(rawValue);
+    return Number.isInteger(propertyId) && propertyId > 0 ? propertyId : undefined;
   }
 
   loadServices(): void {
@@ -58,17 +90,21 @@ export class ServiceManagement implements OnInit {
     }
 
     this.hotelService.getServices(this.selectedPropertyId).pipe(
-      timeout(10000),
+      timeout(15000),
       finalize(() => {
         this.loading = false;
+        this.changeDetector.markForCheck();
       })
     ).subscribe({
       next: (data) => {
-        this.services = data;
+        this.services = Array.isArray(data) ? data : [];
+        this.changeDetector.markForCheck();
       },
       error: (error) => {
+        this.services = [];
         this.errorMessage = error?.error?.message || 'Không thể tải danh sách dịch vụ.';
         this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: this.errorMessage });
+        this.changeDetector.markForCheck();
       }
     });
   }
