@@ -27,7 +27,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             select notification
             from Notification notification
             where notification.createdAt >= :cutoff
-              and (notification.userId is null or notification.userId = :userId)
+              and (notification.userId = :userId
+                   or (notification.userId is null and notification.type <> 'BOOKING'))
             """)
     Page<Notification> findVisibleToUser(
             @Param("userId") Long userId,
@@ -39,7 +40,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             from Notification notification
             where notification.createdAt >= :cutoff
               and notification.isRead = false
-              and (notification.userId is null or notification.userId = :userId)
+              and (notification.userId = :userId
+                   or (notification.userId is null and notification.type <> 'BOOKING'))
             """)
     long countUnreadVisibleToUser(
             @Param("userId") Long userId,

@@ -177,7 +177,9 @@ public class ReservationService {
                 quantity,
                 "RESERVATION-" + savedReservation.getId());
 
-        notificationService.sendSystemNotification(
+        notificationService.sendPropertyNotification(
+                hotel.getId(),
+                "reservation-created:" + savedReservation.getId(),
                 "BOOKING",
                 "Có đặt phòng mới!",
                 "Khách hàng " + user.getFullName() + " vừa đặt " + quantity + " " + roomType.getNameVi()

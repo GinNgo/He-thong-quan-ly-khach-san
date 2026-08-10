@@ -1,8 +1,12 @@
 package com.hotel.services;
 
 import com.hotel.entities.Notification;
+import com.hotel.entities.Role;
+import com.hotel.entities.User;
+import com.hotel.entities.UserProperty;
 import com.hotel.exceptions.ResourceNotFoundException;
 import com.hotel.repositories.NotificationRepository;
+import com.hotel.repositories.UserPropertyRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +21,7 @@ import org.springframework.security.access.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -38,11 +43,14 @@ class NotificationServiceTest {
     @Mock
     private SimpMessagingTemplate messagingTemplate;
 
+    @Mock
+    private UserPropertyRepository userPropertyRepository;
+
     private NotificationService notificationService;
 
     @BeforeEach
     void setUp() {
-        notificationService = new NotificationService(notificationRepository, messagingTemplate, 30);
+        notificationService = new NotificationService(notificationRepository, messagingTemplate, userPropertyRepository, 30);
     }
 
     @Test
@@ -65,6 +73,32 @@ class NotificationServiceTest {
 
         verify(messagingTemplate).convertAndSendToUser(
                 "staff-user", "/queue/notifications", saved);
+    }
+
+    @Test
+    void propertyNotificationTargetsAssignedStaffAndExcludesSystemAdministrators() {
+        User receptionist = user(7L, "reception", "RECEPTIONIST");
+        User systemAdmin = user(1L, "admin", "SUPER_ADMIN");
+        UserProperty receptionistAssignment = assignment(receptionist);
+        UserProperty adminAssignment = assignment(systemAdmin);
+        when(userPropertyRepository.findByHotelId(9L))
+                .thenReturn(List.of(receptionistAssignment, adminAssignment));
+        when(notificationRepository.findByEventKey("reservation-created:20:user:7"))
+                .thenReturn(Optional.empty());
+        when(notificationRepository.save(any(Notification.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<Notification> sent = notificationService.sendPropertyNotification(
+                9L, "reservation-created:20", "BOOKING", "New booking", "Message");
+
+        assertEquals(1, sent.size());
+        assertEquals(7L, sent.get(0).getUserId());
+        verify(messagingTemplate).convertAndSendToUser(
+                eq("reception"), eq("/queue/notifications"), any(Notification.class));
+        verify(messagingTemplate, never()).convertAndSendToUser(
+                eq("admin"), eq("/queue/notifications"), any(Notification.class));
+        verify(messagingTemplate, never()).convertAndSend(
+                eq("/topic/admin/notifications"), any(Notification.class));
     }
 
     @Test
@@ -157,5 +191,22 @@ class NotificationServiceTest {
         notification.setCreatedAt(LocalDateTime.now());
         notification.setRead(read);
         return notification;
+    }
+
+    private User user(Long id, String username, String roleCode) {
+        Role role = new Role();
+        role.setCode(roleCode);
+        User user = new User();
+        user.setId(id);
+        user.setUsername(username);
+        user.setRoles(Set.of(role));
+        return user;
+    }
+
+    private UserProperty assignment(User user) {
+        UserProperty assignment = new UserProperty();
+        assignment.setUser(user);
+        assignment.setStatus("ACTIVE");
+        return assignment;
     }
 }
