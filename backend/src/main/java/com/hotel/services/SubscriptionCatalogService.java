@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.math.BigDecimal;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Service
@@ -59,6 +61,87 @@ public class SubscriptionCatalogService {
                         .thenComparing(SubscriptionPlan::getCode))
                 .map(this::toPlanDto)
                 .toList();
+    }
+
+    @Transactional
+    public SubscriptionPlanDTO createPlan(PlanCommand command) {
+        validatePlan(command, null);
+        SubscriptionPlan plan = new SubscriptionPlan();
+        applyPlan(plan, command);
+        plan.setStatus("ACTIVE");
+        return toPlanDto(planRepository.save(plan));
+    }
+
+    @Transactional
+    public SubscriptionPlanDTO updatePlan(Long id, PlanCommand command) {
+        SubscriptionPlan plan = requirePlan(id);
+        validatePlan(command, id);
+        applyPlan(plan, command);
+        return toPlanDto(planRepository.save(plan));
+    }
+
+    @Transactional
+    public SubscriptionPlanDTO setPlanStatus(Long id, String status) {
+        SubscriptionPlan plan = requirePlan(id);
+        String normalized = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
+        if (!Set.of("ACTIVE", "INACTIVE").contains(normalized)) {
+            throw new IllegalArgumentException("Trạng thái gói không hợp lệ.");
+        }
+        plan.setStatus(normalized);
+        return toPlanDto(planRepository.save(plan));
+    }
+
+    private SubscriptionPlan requirePlan(Long id) {
+        return planRepository.findById(id)
+                .orElseThrow(() -> new com.hotel.exceptions.ResourceNotFoundException("Không tìm thấy gói dịch vụ."));
+    }
+
+    private void validatePlan(PlanCommand command, Long currentId) {
+        if (command == null) throw new IllegalArgumentException("Thiếu thông tin gói dịch vụ.");
+        if (command.code() == null || !command.code().trim().matches("[A-Za-z0-9_-]{2,40}")) {
+            throw new IllegalArgumentException("Mã gói phải có 2-40 ký tự chữ, số, gạch ngang hoặc gạch dưới.");
+        }
+        if (command.nameVi() == null || command.nameVi().isBlank()) {
+            throw new IllegalArgumentException("Tên gói tiếng Việt là bắt buộc.");
+        }
+        String billingType = normalizeBillingType(command.billingType());
+        if (command.price() == null || command.price().signum() < 0) {
+            throw new IllegalArgumentException("Giá gói không được âm.");
+        }
+        boolean duplicate = currentId == null
+                ? planRepository.existsByCodeIgnoreCase(command.code().trim())
+                : planRepository.existsByCodeIgnoreCaseAndIdNot(command.code().trim(), currentId);
+        if (duplicate) throw new IllegalArgumentException("Mã gói đã tồn tại.");
+        if ("ONCE".equals(billingType) && !Boolean.TRUE.equals(command.isLifetime())) {
+            throw new IllegalArgumentException("Gói thanh toán một lần phải là gói vĩnh viễn.");
+        }
+    }
+
+    private void applyPlan(SubscriptionPlan plan, PlanCommand command) {
+        String billingType = normalizeBillingType(command.billingType());
+        plan.setCode(command.code().trim().toUpperCase(Locale.ROOT));
+        plan.setNameVi(command.nameVi().trim());
+        plan.setNameEn(command.nameEn() == null ? "" : command.nameEn().trim());
+        plan.setBillingType(billingType);
+        plan.setPrice(command.price());
+        plan.setIsLifetime("ONCE".equals(billingType) || Boolean.TRUE.equals(command.isLifetime()));
+    }
+
+    private String normalizeBillingType(String value) {
+        String normalized = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+        if (!Set.of("MONTHLY", "YEARLY", "ONCE").contains(normalized)) {
+            throw new IllegalArgumentException("Chu kỳ gói không hợp lệ.");
+        }
+        return normalized;
+    }
+
+    public record PlanCommand(
+            String code,
+            String nameVi,
+            String nameEn,
+            String billingType,
+            BigDecimal price,
+            Boolean isLifetime) {
     }
 
     @Transactional(readOnly = true)

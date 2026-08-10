@@ -52,6 +52,15 @@ export interface SubscriptionUsage {
   features: SubscriptionEntitlement[];
 }
 
+export interface SubscriptionPlanCommand {
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  billingType: 'MONTHLY' | 'YEARLY' | 'ONCE';
+  price: number;
+  isLifetime: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -65,6 +74,20 @@ export class SubscriptionService {
 
   getAdminPlans(): Observable<SubscriptionPlan[]> {
     return this.http.get<SubscriptionPlan[]>(`${environment.apiUrl}/admin/subscription-plans`);
+  }
+
+  createAdminPlan(command: SubscriptionPlanCommand): Observable<SubscriptionPlan> {
+    return this.http.post<SubscriptionPlan>(`${environment.apiUrl}/admin/subscription-plans`, command);
+  }
+
+  updateAdminPlan(id: number, command: SubscriptionPlanCommand): Observable<SubscriptionPlan> {
+    return this.http.put<SubscriptionPlan>(`${environment.apiUrl}/admin/subscription-plans/${id}`, command);
+  }
+
+  setAdminPlanStatus(id: number, status: 'ACTIVE' | 'INACTIVE'): Observable<SubscriptionPlan> {
+    return this.http.put<SubscriptionPlan>(`${environment.apiUrl}/admin/subscription-plans/${id}/status`, null, {
+      params: { value: status }
+    });
   }
 
   getMySubscriptions(): Observable<AccountSubscription[]> {

@@ -7,14 +7,19 @@ import { CardModule } from 'primeng/card';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
+import { FormsModule } from '@angular/forms';
+import { DialogModule } from 'primeng/dialog';
+import { InputTextModule } from 'primeng/inputtext';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { SelectModule } from 'primeng/select';
 import { AuthService } from '../../../core/services/auth';
-import { AccountSubscription, SubscriptionPlan, SubscriptionService } from '../../../core/services/subscription.service';
+import { AccountSubscription, SubscriptionPlan, SubscriptionPlanCommand, SubscriptionService } from '../../../core/services/subscription.service';
 import { finalize, timeout } from 'rxjs';
 
 @Component({
   selector: 'app-subscription-plans',
   standalone: true,
-  imports: [CommonModule, ButtonModule, CardModule, ToastModule, TableModule, TagModule],
+  imports: [CommonModule, FormsModule, ButtonModule, CardModule, ToastModule, TableModule, TagModule, DialogModule, InputTextModule, InputNumberModule, SelectModule],
   providers: [MessageService],
   templateUrl: './subscription-plans.html',
   styles: [`
@@ -36,6 +41,15 @@ export class SubscriptionPlansComponent implements OnInit {
   mySubscriptions: AccountSubscription[] = [];
   loading = true;
   errorMessage = '';
+  dialogVisible = false;
+  saving = false;
+  editingId?: number;
+  form: SubscriptionPlanCommand = this.emptyForm();
+  billingOptions = [
+    { label: 'Theo tháng', value: 'MONTHLY' },
+    { label: 'Theo năm', value: 'YEARLY' },
+    { label: 'Thanh toán một lần', value: 'ONCE' }
+  ];
 
   get isSystemAdministrator(): boolean {
     return this.authService.getRoles().some(role => role === 'SUPER_ADMIN' || role === 'ADMIN');
@@ -86,5 +100,65 @@ export class SubscriptionPlansComponent implements OnInit {
   billingLabel(plan: SubscriptionPlan): string {
     if (plan.isLifetime || plan.billingType === 'ONCE') return 'Vĩnh viễn';
     return plan.billingType === 'YEARLY' ? 'Năm' : 'Tháng';
+  }
+
+  openCreate(): void {
+    this.editingId = undefined;
+    this.form = this.emptyForm();
+    this.dialogVisible = true;
+  }
+
+  openEdit(plan: SubscriptionPlan): void {
+    this.editingId = plan.id;
+    this.form = {
+      code: plan.code,
+      nameVi: plan.nameVi,
+      nameEn: plan.nameEn || '',
+      billingType: plan.billingType as SubscriptionPlanCommand['billingType'],
+      price: plan.price,
+      isLifetime: plan.isLifetime
+    };
+    this.dialogVisible = true;
+  }
+
+  savePlan(): void {
+    if (this.saving || !this.form.code.trim() || !this.form.nameVi.trim() || this.form.price < 0) return;
+    if (this.form.billingType === 'ONCE') this.form.isLifetime = true;
+    this.saving = true;
+    const request = this.editingId
+      ? this.subscriptionService.updateAdminPlan(this.editingId, this.form)
+      : this.subscriptionService.createAdminPlan(this.form);
+    request.pipe(
+      finalize(() => { this.saving = false; this.cdr.detectChanges(); }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: () => {
+        this.dialogVisible = false;
+        this.messageService.add({ severity: 'success', summary: 'Thành công', detail: this.editingId ? 'Đã cập nhật gói.' : 'Đã tạo gói mới.' });
+        this.loadPlans();
+      },
+      error: error => {
+        const detail = error.error?.message || error.error?.detail || 'Không thể lưu gói dịch vụ.';
+        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail });
+      }
+    });
+  }
+
+  toggleSelling(plan: SubscriptionPlan): void {
+    const nextStatus = plan.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    this.subscriptionService.setAdminPlanStatus(plan.id, nextStatus)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: updated => {
+          this.plans = this.plans.map(item => item.id === updated.id ? { ...updated, features: updated.features ?? [] } : item);
+          this.messageService.add({ severity: 'success', summary: 'Thành công', detail: nextStatus === 'ACTIVE' ? 'Gói đã được bán lại.' : 'Gói đã ngừng bán.' });
+          this.cdr.detectChanges();
+        },
+        error: error => this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: error.error?.message || 'Không thể đổi trạng thái gói.' })
+      });
+  }
+
+  private emptyForm(): SubscriptionPlanCommand {
+    return { code: '', nameVi: '', nameEn: '', billingType: 'MONTHLY', price: 0, isLifetime: false };
   }
 }
