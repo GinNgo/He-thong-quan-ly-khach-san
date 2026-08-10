@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -8,6 +9,7 @@ import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { AuthService } from '../../../core/services/auth';
 import { AccountSubscription, SubscriptionPlan, SubscriptionService } from '../../../core/services/subscription.service';
+import { finalize, timeout } from 'rxjs';
 
 @Component({
   selector: 'app-subscription-plans',
@@ -27,6 +29,8 @@ export class SubscriptionPlansComponent implements OnInit {
   private subscriptionService = inject(SubscriptionService);
   private messageService = inject(MessageService);
   private authService = inject(AuthService);
+  private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
 
   plans: SubscriptionPlan[] = [];
   mySubscriptions: AccountSubscription[] = [];
@@ -48,10 +52,18 @@ export class SubscriptionPlansComponent implements OnInit {
     const request = this.isSystemAdministrator
       ? this.subscriptionService.getAdminPlans()
       : this.subscriptionService.getPlans();
-    request.subscribe({
-      next: data => { this.plans = data; this.loading = false; },
-      error: () => {
+    request.pipe(
+      timeout(15_000),
+      finalize(() => {
         this.loading = false;
+        this.cdr.detectChanges();
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: data => {
+        this.plans = data.map(plan => ({ ...plan, features: plan.features ?? [] }));
+      },
+      error: () => {
         this.errorMessage = 'Không thể tải danh sách gói dịch vụ.';
         this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: this.errorMessage });
       }
@@ -59,10 +71,12 @@ export class SubscriptionPlansComponent implements OnInit {
   }
 
   loadMySubscriptions(): void {
-    this.subscriptionService.getMySubscriptions().subscribe({
-      next: data => this.mySubscriptions = data,
-      error: () => this.mySubscriptions = []
-    });
+    this.subscriptionService.getMySubscriptions()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: data => { this.mySubscriptions = data; this.cdr.detectChanges(); },
+        error: () => { this.mySubscriptions = []; this.cdr.detectChanges(); }
+      });
   }
 
   isCurrentPlan(plan: SubscriptionPlan): boolean {
